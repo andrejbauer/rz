@@ -92,13 +92,13 @@ let make_type_name _ = function
 
 let rec translateSet ctx = function
     L.Empty -> 
-      { ty = TopTy;
+      { ty = VoidTy;
 	tot = (any, False);
 	per = (any, any, False)
       }
   | L.Unit ->
       let x = fresh [mk_word "x"] [] ctx in
-      { ty = TopTy;
+      { ty = UnitTy;
 	tot = (x, Equal (Id x, Star));
 	per = (any, any, True)
       }

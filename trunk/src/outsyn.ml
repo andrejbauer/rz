@@ -7,6 +7,7 @@ type label = string
 type ty =
     NamedTy of string          (* 0 *)
   | UnitTy                     (* 0 *)
+  | VoidTy                     (* 0 *)
   | TopTy                      (* 0 *)
   | ListTy of ty               (* 1 *)
   | SumTy of (label * ty) list (* 1 *)
@@ -28,6 +29,7 @@ and binding = name * ty
 and term =
     Id of name
   | Star
+  | Dagger
   | App of term * term
   | Lambda of binding * term
   | Tuple of term list
@@ -197,7 +199,7 @@ let string_of_name = function
 
 let rec string_of_ty' level t =
   let rec makeTupleTy = function
-      []    -> "unit"
+      []    -> "top"
     | [t]   -> string_of_ty' 1 t
     | t::ts -> (string_of_ty' 1 t) ^ " * " ^ (makeTupleTy ts)
 
@@ -227,6 +229,7 @@ let rec string_of_term' level t =
   let (level', str) = match t with
       Id n -> (0, string_of_name n)
     | Star -> (0, "()")
+    | Dagger -> (0, "!")
     | App (App (Id (n, Syntax.Infix0), t), u) -> 
 	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 8 u))
     | App (App (Id (n, Syntax.Infix1), t), u) -> 
