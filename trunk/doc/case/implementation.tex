@@ -61,6 +61,7 @@ theory will still translate, but the generated assertions will not be
 satisfied by any implementation.
 
 \subsection{Realizability Translation}
+\label{subsec:real-transl}
 
 We first discuss the realizability translation of sets and terms, and
 then focus on the translation of logic, which is the interesting part.
@@ -148,14 +149,22 @@ then emits
 This way the axiom~$\phi$ has been separated into its computational
 content~$r$ and a statement $\phi'$ which describes when~$r$ is a
 valid realizer of~$\phi$. Because $\phi'$ is almost negative it has no
-computational content, which means that its classical reading is the
-same as constructive reading. Therefore a constructive mathematician
-and a classical programmer will agree on the meaning of $\phi'(r)$.
+computational content, which means that its classical and constructive
+readings agree. Therefore a constructive mathematician and a classical
+programmer will agree on the meaning of $\phi'(r)$.
 
 RZ recognizes almost negative formulas and optimizes away their
-realizers, as described below. In addition, the user
-may declare a basic predicate or relation to be stable, which will be
-taken into account by RZ during translation and optimization.
+realizers, as described below. In addition, the user may declare a
+basic predicate or relation to be stable, which will be taken into
+account by RZ during translation and optimization.
+
+It seems worth noting that the computational irrelevance of
+stable propositions is akin to \emph{proof irrelevance} studied by
+Pfenning~\cite{pfenning01:_inten_exten_proof_irrel_modal_type_theor}.
+This is not surprising in view of the well known fact that double
+negation enjoys many formal properties of a modal possibility
+operator.
+
 
 \subsection{Optimization}
 
