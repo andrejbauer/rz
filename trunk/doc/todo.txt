@@ -39,6 +39,7 @@
 
 - VERIFY (2004-06-17) [Chris]:
   Make sure only first-order functors are allowed.
+     [2004-06-28  CAS: This is obsolete, right?]
 
 - IMPROVEMENT (2004-06-17) [Andrej & Chris]:
   Allow top level model declarations.
