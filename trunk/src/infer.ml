@@ -1111,7 +1111,7 @@ and annotateBindingWithCheckedDefault cntxt default_st = function
 		    else
 		      tyGenericError ( "Annotated Binding " ^ 
 				       string_of_bnd (x, Some s2) ^
-				       "doesn't match inferred set " ^ 
+				       " doesn't match inferred set " ^ 
 				       string_of_set default_st )
 		 
 		 
@@ -1273,26 +1273,36 @@ and annotateTerm cntxt =
 		Rz ty' -> RzQuot t', ty'
 	      | _ -> tyWrongSortError t "n RZ" ty)
 
-     | RzChoose (bnd, t1, t2, None) ->
+     | RzChoose (bnd, t1, t2, body_ty_opt) ->
 	 let (t1', ty1) = ann t1 in
 	 let ((nm, Some ty), cntxt') = annotateBindingWithCheckedDefault cntxt (Rz ty1) bnd in
 	 let (t2', ty2) = annotateTerm cntxt' t2 in
 	 (begin
 	   match hnfSet cntxt ty with
 	     Rz ty' ->
-	       if eqSet cntxt ty1 ty' then begin
-		 (try (ignore(annotateSet cntxt ty2)) with
-		   _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
-					"defns; maybe add a constraint?")) ;
-		 RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
-	       end
+	       if eqSet cntxt ty1 ty' then 
+		 begin
+		   (try (ignore(annotateSet cntxt ty2)) with
+		     _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
+					  "defns; maybe add a constraint?") ) ;
+		   ( match body_ty_opt with
+		       None -> ()
+		     | Some body_ty -> if (eqSet cntxt' (annotateSet cntxt body_ty) ty2 ) then
+		                         ()
+		                       else
+		                         tyGenericError ("Annotation of body in let[] is " ^ 
+							 string_of_set body_ty ^ 
+							 " but the body is really " ^
+							 string_of_set ty2 ) ) ;
+		   RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
+		 end
 	       else
 		 failwith "type mismatch in let [...] = "
 	   | _ -> failwith "type mismatch in let [...] = "
 	 end,
 	 ty2 )
 
-     | Choose (bnd, r, t1, t2, None) ->
+     | Choose (bnd, r, t1, t2, body_ty_opt) ->
          (* let  nm      % r = t1 in t2
             let (nm : s) % r = t1 in t2 
           *)
@@ -1303,15 +1313,24 @@ and annotateTerm cntxt =
 	       if ( r = r' ) then
 		 let ((nm, _) as bnd', cntxt') = 
 		   annotateBindingWithCheckedDefault cntxt ty_member bnd in 
-		 let ( t2', typ_of_body ) = 
-		   annotateTerm cntxt' t2  in
+		 let ( t2', typ_of_body ) = annotateTerm cntxt' t2  in
 		 begin
                    ( try  ( ignore ( annotateSet cntxt typ_of_body ) ) with
 		     _ -> tyGenericError ("Inferred let%-body type " ^ 
 					  string_of_set typ_of_body ^ 
                                           "\ndepends on local defns; " ^
-					  "maybe add a constraint?")) ;
-		   (Choose (bnd', r, t1', t2', Some typ_of_body), typ_of_body )
+					  "maybe add a constraint?") ) ;
+		   ( match body_ty_opt with
+		       None -> ()
+		     | Some body_ty -> if (eqSet cntxt' (annotateSet cntxt body_ty) 
+					     typ_of_body ) then
+		                         ()
+		                       else
+		                         tyGenericError ("Annotation of body in let% is " ^ 
+							 string_of_set body_ty ^ 
+							 " but the body is really " ^
+							 string_of_set typ_of_body ) ) ;
+		     (Choose (bnd', r, t1', t2', Some typ_of_body), typ_of_body )
 		 end
 	       else
 		 tyGenericError "Mismatch in let% equivalence relations"
@@ -1319,21 +1338,7 @@ and annotateTerm cntxt =
 				  "\nin let% inferred as " ^
 				  (string_of_set typ_of_eqclass) )
 	 end
-	   
-     | Choose (bnd, r, t1, t2, Some st) ->
-	 let (t1', ty1) = ann t1 in
-	 let ((_, Some ty) as bnd', cntxt') = annotateBindingWithCheckedDefault cntxt ty1 bnd in
-	 let (t2', ty2) = annotateTerm cntxt' t2 in
-	 let st' = annotateSet cntxt st in
-	   if eqSet cntxt (hnfSet cntxt ty1) (Quotient (ty, r)) then begin
-	      if (subSet cntxt' ty2 st') then
-		(Choose (bnd', r, t1', t2', Some ty2), st')
-	      else
-		tyGenericError ("Inferred let%-body type does not match annotation")
-	    end
-	   else
-	     failwith "type mismatch in let % = "
-	   
+  
         
      | Let (bnd, t1, t2, None) ->
          let    (t1', ty1) = ann t1
