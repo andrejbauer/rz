@@ -654,12 +654,15 @@ and translateTheory ctx = function
 	    Ctx _ -> failwith "translateTheory: cannot apply a non-parametrized theory"
 	  | CtxParam (m, smmry') -> substMSummary m mdl smmry')
 
+let attachSignat s (ss, ctx) = s::ss, ctx
+
 let rec translateToplevel ctx = function
-  | [] -> []
+  | [] -> [], ctx
   | L.Theorydef (n, thr) :: rest -> 
       let sgnt, smmry = translateTheory ctx thr in
-	Signatdef (n, sgnt) :: (translateToplevel (addTheory n smmry ctx) rest)
-  | L.TopComment cmmnt :: rest -> TopComment cmmnt :: (translateToplevel ctx rest)
+	attachSignat (Signatdef (n, sgnt)) (translateToplevel (addTheory n smmry ctx) rest)
+  | L.TopComment cmmnt :: rest ->
+      attachSignat (TopComment cmmnt) (translateToplevel ctx rest)
   | L.TopModel (mdlnm, thry) :: rest ->
       let sgnt, smmry = translateTheory ctx thry in
-	TopModul (mdlnm, sgnt) :: (translateToplevel (addModel mdlnm smmry ctx) rest)
+	attachSignat (TopModul (mdlnm, sgnt)) (translateToplevel (addModel mdlnm smmry ctx) rest)
