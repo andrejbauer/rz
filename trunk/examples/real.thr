@@ -1,16 +1,99 @@
+# We axiomatize the real numbers as the
+# ordered Archimedean Cauchy complete field.
+# We take into account validity of MP, which implies
+# that apartness is the same thing as inequality.
+
 theory Real =
 thy
+  set nat # we pretend we have a type of natural numbers	
   set r
-  relation apart : r * r
 
-  constant z : r
-  constant e : r
-  constant p : r * r -> r
-  constant m : r * r -> r
-  constant n : r * r -> r
+  # we pretend nat is a subset of r
+  constant i : n -> r
+  constant z : n
+  constant succ : n -> n
 
-  set r_nonzero = { x : r | apart (x, z) }
+  constant zero : r
+  constant one : r
+  constant ( + ) : r -> r -> r
+  constant ( * ) : r -> r -> r
+  constant ( - ) : r -> r -> r
+  constant ( ~ ) : r -> r
 
-  const d : r * r_nonzero -> r
+  set r' = { x : r | not (x = zero) }
+
+  constant inv : r' -> r'
+
+  ##################################################
+  # Basic algebraic structure
+
+  # (r, zero, +, ~) is a commutative group
+
+  implicit x, y, z : r
+
+  axiom assoc_plus x y z =
+	(x + y) + z = x + (y + z)
+
+  axiom comm_plus x y =
+	x + y = y + x
+
+  axiom zero_plus x =
+	x + zero = zero
+
+  axiom inverse_plus x =
+        x + ~x = zero
+
+  # (r, zero, one, +, ~, *) is a commutative ring with unit
+
+  axiom assoc_mult x y z =
+	(x * y) * z = x * (y * z)
+
+  axiom comm_mult x y =
+	x * y = y * x
+
+  axiom one_mult x =
+	x * one = x
+
+  axiom distributivity x y z =
+	(x + y) * z = (x * z) + (y * z)
+  
+  # r is a field
+
+  axiom field x =
+	not (x = zero) => x * (inv (x :> r') :< r) = one
+
+  ##################################################
+  # linear order
+
+  # we take into account the fact that < turns out to be stable
+
+  stable relation ( < ) : r * r
+
+  axiom assymetry x y =
+	not (x < y and y < x)
+
+  axiom linearity x y z =
+	x < y => x < z or z < y
+
+  axiom not_apart x y =
+	not (x < y or y < x) => x = y
+
+  axiom order_plus x y z =
+	x < y => x + z < y + z
+
+  axiom order_mult x y z =
+	x < y and zero < x => x * z < y * z
+
+  axiom order_positive x y =
+	zero < x and zero < y => zero < x * y
+
+  axiom order_inverse x =
+	zero < x => zero < (inv (x :> r') :< r)
+  	
+  axiom archimedean x =
+	zero < x => some (n : nat) . x < n
+
+  ##################################################
+  # Cauchy completeness
 
 end

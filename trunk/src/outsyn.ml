@@ -177,6 +177,10 @@ let rec substProp ctx s = function
       let s' = substRemove n s in
       let n' = fresh [n] (fvSubst s') ctx in
 	Forall ((n', ty), substProp ctx (substAdd (n,n') s') q)
+  | Cexists ((n, ty), q) as p ->
+      let s' = substRemove n s in
+      let n' = fresh [n] (fvSubst s') ctx in
+	Cexists ((n', ty), substProp ctx (substAdd (n,n') s') q)
 
 and substTerm ctx s = function
     Id n ->
