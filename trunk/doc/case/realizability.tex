@@ -157,10 +157,18 @@ relation on~$\tot{S}$. The relationship between this representation of
 a modest set and the original one is as follows:
 %
 \begin{itemize}
-\item $\tot{S}$ is the set of those expressions $t \in \ut{S}$ that
+\item $\tot{S}$ is the set of those $t \in \ut{S}$ that
   realize something, i.e., there is $x \in S$ such that $t \rz_S x$.
+  These correspond to implementations type that satisfy
+  the representation invariant, e.g., graphs where the list of edges
+  mentions only integers in the list of nodes, a subset of
+  all values of type $\mathtt{int} \; \mathtt{list} * (\mathtt{int} *
+\mathtt{int}) \; \mathtt{list}$.
 \item $t \per{S} u$ if $t$ and $u$ realize the same element, i.e.,
   there is $x \in S$ such that $t \rz_S x$ and $u \rz_S x$.
+  This relation equates alternate concrete representations of the same
+  abtract value, e.g., equating two graph representations differing
+  only in the order of the nodes or the order of the edges.
 \end{itemize}
 %
 The alternative view of a modest set $(\ut{S}, \tot{S}, {\per{S}})$

@@ -2,25 +2,66 @@
 \section{Implementation}
 \label{sec:implementation}
 
-\subsection{Superstructure}
+\subsection{Pre-translation}
 
 After parsing, our implementation does type checking.  The type
-checker does rather limited type reconstruction; the types of all
-bound variables must either be given at the binding site, given
-through an \Verb|implicit| declaration, or be obvious from local
-context.  A very small amount of implicit subtyping is done (primarily
-between sums).  
+checker does simple type reconstruction.  Instead of doing full
+unification, we require that the types of all bound variables must
+either be given at the binding site, given through an \Verb|implicit|
+declaration, or be obvious from their definition.  
 
-The system will also try to insert explicit coercions into or out of
-subset types where they were omitted by the theory author.  This can
-significantly improve readability.  \comment{give example!}
+Unlike ML datatypes, we do not require disjoint union type
+to be declared before they are used, or to have different unions
+involve different tags.  Therefore, a very small amount of implicit 
+subtyping is done between sums.  Otherwise, if we had a
+specifiation of queues of integers that included
+\begin{Verbatim}
+  set queue
+  const emptyQueue
+  const enqueue : int*iqueue -> iqueue
+  const dequeue : 
+     iqueue -> `None + `Some:int*iqueue
+\end{Verbatim}
+then the axiom
+\begin{Verbatim}
+  dequeue emptyQueue = `None
+\end{Verbatim}
+would fail to typecheck (the most-precise set for the left-hand-side
+is a two-element disjoint unition, while the most-precise set
+for the right is a one-element disjoint union.)
 
-After type checking the theories are represented in abstract syntax and
-translated into ML signatures as described below.  
+The type checker will also try to convert between $\Set$ and $\LBRACE
+x \ \COLON \Setexp\ \BAR \Proposition \RBRACE$ as necessary in order
+to type check.  Thus, one can write
+\begin{Verbatim}
+  set real
+  set nz_real = {x:real | not (x=zero)}
+  const one : real
+  const reciprocal: nz_real -> nz_real
+  const ( * ) : real * real -> real
 
+  axiom field (x : real) =
+    not (x=zero) => x * (inv x) = one
+\end{Verbatim}
+instead of needing to write
+\begin{Verbatim}
+  axiom field (x : real) =
+    not (x=zero) => 
+      x * ((inv (x :> r)) :< r') = one
+\end{Verbatim}
+In this case, since \Verb|:>| and \Verb|:<| has computational content
+(going into a subset involves pairing the item with the realizer of
+the proposition; going out of a subset is then a first projection),
+the typechecker rewrites the former version of \Verb|field|
+into the latter before passing it on to the translation phase.
+
+\subsection{Realizability Translation}
+Here we provide more details about the translation.
+
+\subsection{Optimization}
 Propositions without constructive content have trivial realizers, and
 so a final ``unit elimination'' pass both removes these and does 
-peephole simplification of the resulting signature.   Without the optimizer,
+peephole simplification of the resulting signature.   Without an optimizer,
 the axioms of the theory \Verb|SQGROUP| would produce
 \begin{Verbatim}
 val unit : s -> top * top
@@ -35,18 +76,16 @@ val assoc : s -> s -> s -> top
    
 val sqrt : s -> s * top
 (**  Assertion sqrt (x:s) =  
-      pi0 (sqrt x) : ||s|| and 
-      pi0 (sqrt x) * pi0 (sqrt x) =s= x
+      pi0(sqrt x) : ||s|| and 
+      pi0(sqrt x) * pi0(sqrt x) =s= x
 *)
 \end{Verbatim}
-requiring the presence of trivial realizers for the first two axioms,
-and a more complicated (but not more useful) realizer for the final
-axiom.
-
-\subsection{Realizability Translation}
-Here we provide more details about the translation.
-
-
+where \Verb|top| is the type of trivial realizers.  The optimizer can
+easily tell from the types that the realizers for the \Verb|unit| and
+\Verb|assoc| axioms are trivial and can be discarded, and that
+although \Verb|sqrt| cannot be discarded entirely, part of its return
+value is unnecessary.  Assertions that reference discarded or optimized
+constants are automatically rewritten to preserve well-typedness, and we obtain the translation of \Verb|SQGROUP| shown previously.
 
 %%% Local Variables: 
 %%% mode: latex
