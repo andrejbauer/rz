@@ -153,6 +153,8 @@ and string_of_term trm =
     | Inj (lbl, None) -> lbl 
     | Case (_,_) -> "..."
     | Quot (_,_) -> "..."
+    | RzQuot t -> "[" ^ (toStr t) ^ "]"
+    | RzChoose _ -> "..."
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | And trms -> "(" ^ intersperse " && " (List.map toStr trms) ^ ")"

@@ -242,6 +242,7 @@ simple_term:
   | LPAREN RPAREN               { Star }
   | LPAREN term_seq RPAREN      { Tuple $2 }
   | LPAREN term RPAREN          { $2 }
+  | LBRACK term RBRACK          { RzQuot $2 }
   | BEGIN term END              { $2 }
   | simple_term PERIOD INTEGER    { Proj ($3, $1) }
   | simple_term PERIOD ZERO       { Proj (0, $1) }
@@ -283,7 +284,6 @@ term:
   | term SLASH term             { App (App (Var ("/", Infix3), $1), $3) }
   | term INFIXOP4 term          { App (App (Var ($2, Infix4), $1), $3) }
   | term PERCENT term           { Quot ($1, $3) }
-  | LBRACK term RBRACK          { RzQuot $2 }
   | term SUBIN subset_or_name   { Subin ($1, $3) }
   | term SUBOUT subset_or_name  { Subout ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }
