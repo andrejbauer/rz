@@ -180,7 +180,7 @@ and annotateProp ctx =
             let (bnd',ctx') = annotateBinding ctx bnd
             in Exists(bnd', annotateProp ctx' p)
         | t -> (match annotateTerm ctx t with
-                 (t', P) -> t'
+                 (t', Prop) -> t'
                 | _ -> tyError "Term found where a proposition was expected")
     in ann)
            
@@ -193,7 +193,7 @@ and annotateBinding ctx = function
                                    (tyError ("Bound variable not annotated " ^
                                              "explicitly or implicitly."))))
          in let ctx' = insertType ctx x s'
-         in ((x,Some s'), ctx')
+         in ((x, Some s'), ctx')
 
  (* Mildly bogus:  allows the types to refer to variables bound
     earlier in the sequence. *)
@@ -288,13 +288,11 @@ and annotateTheoryElem ctx =
            in let p' = annotateProp ctx' p
            in (Sentence(sort, n, bnds', p'),
                ctx)   (* XXX:  Cannot refer to previous axioms!? *)
-       | Predicate(n, Unstable, Product ss) ->
-           let    ss' = List.map (annotateSet ctx) ss
-           in let rec toArrow = function
-                   [] -> P
-                 | s::ss -> Exp(s,toArrow ss)
-           in (Predicate(n, Unstable, Product ss'),
-               insertType ctx n (Exp(Product ss', P)))
+       | Predicate (n, stab, s) ->
+           let s' = annotateSet ctx s
+           in
+	     (Predicate (n, stab, s'),
+              insertType ctx n (Exp (s', Prop)))
     in
       ann
 

@@ -30,7 +30,7 @@ and set =
   | Subset   of binding * term       (** subset *)
   | Quotient of set * term           (** quotent set *)
   | RZ of set                        (** the set of realizers *)
-  | P                                (** Only for typechecker internals! *)
+  | Prop                             (** Only for typechecker internals! *)
 
 and term =
     Var        of name

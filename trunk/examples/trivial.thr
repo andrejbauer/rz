@@ -18,4 +18,8 @@ thy
 
  axiom decidable = all x. all y. (x = y or not (x = y))
 
+ relation ( < ) : s * s
+
+ axiom t = ( < ) (u, u)
+
 end

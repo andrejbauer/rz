@@ -36,7 +36,7 @@ type binding = name * set
 and proposition =
     False
   | True
-  | Atomic of string * term (** atomic proposition *)
+  | Atomic of name * term (** atomic proposition *)
   | And    of proposition list
   | Imply  of proposition * proposition
   | Iff    of proposition * proposition
@@ -205,7 +205,7 @@ and make_bindings b = List.map (fun (n, Some s) -> (n, make_set s)) b
 and make_proposition = function
     S.False -> False
   | S.True -> True
-  | S.App (S.Var (n, S.Word), t) -> Atomic (n, make_term t)
+  | S.App (S.Var n, t) -> Atomic (n, make_term t)
   | S.App (_, _) -> (print_string "Application of non-variable\n";
                      raise Unimplemented)
   | S.And lst -> And (List.map make_proposition lst)

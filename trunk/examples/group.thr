@@ -3,7 +3,7 @@ thy
   set g  
 
   const e : g
-  const ( * ) : g * g -> g
+  const ( * ) : g -> g -> g
   const i : g -> g
 
   implicit x,y,z : g

@@ -142,6 +142,7 @@ let rec subst_proposition s = function
   | False -> False
   | NamedTotal (r, t) -> NamedTotal (r, subst_term s t)
   | NamedPer (r, u, v) -> NamedPer (r, subst_term s u, subst_term s v)
+  | NamedProp (n, u, v) -> NamedProp (n, subst_term s u, subst_term s v)
   | Equal (u, v) -> Equal (subst_term s u, subst_term s v)
   | And lst -> And (List.map (subst_proposition s) lst)
   | Cor lst -> Cor (List.map (subst_proposition s) lst)
