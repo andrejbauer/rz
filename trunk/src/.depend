@@ -5,17 +5,17 @@ infer.cmo: syntax.cmo
 infer.cmx: syntax.cmx 
 logic.cmo: syntax.cmo 
 logic.cmx: syntax.cmx 
-opt.cmo: logic.cmo outsyn.cmo syntax.cmo 
-opt.cmx: logic.cmx outsyn.cmx syntax.cmx 
+opt.cmo: flags.cmo logic.cmo outsyn.cmo syntax.cmo 
+opt.cmx: flags.cmx logic.cmx outsyn.cmx syntax.cmx 
 outsyn.cmo: logic.cmo syntax.cmo 
 outsyn.cmx: logic.cmx syntax.cmx 
 parser.cmo: message.cmo syntax.cmo parser.cmi 
 parser.cmx: message.cmx syntax.cmx parser.cmi 
 pp.cmo: logic.cmo outsyn.cmo syntax.cmo 
 pp.cmx: logic.cmx outsyn.cmx syntax.cmx 
-rz.cmo: infer.cmo logic.cmo message.cmo opt.cmo outsyn.cmo parser.cmi pp.cmo \
+rz.cmo: flags.cmo infer.cmo logic.cmo message.cmo opt.cmo parser.cmi pp.cmo \
     translate.cmo 
-rz.cmx: infer.cmx logic.cmx message.cmx opt.cmx outsyn.cmx parser.cmx pp.cmx \
+rz.cmx: flags.cmx infer.cmx logic.cmx message.cmx opt.cmx parser.cmx pp.cmx \
     translate.cmx 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 

@@ -1204,9 +1204,9 @@ and annotateToplevel cntxt = function
 	 insertModel cntxt mdlnm specs)
 
 and annotateToplevels cntxt = function
-    [] -> []
+    [] -> ([], cntxt)
   | td::tds -> let (td', cntxt') = annotateToplevel cntxt td
-               in let tds' = annotateToplevels cntxt' tds 
-               in td'::tds'
+               in let (tds',cntxt'') = annotateToplevels cntxt' tds 
+               in (td'::tds', cntxt'')
 
 

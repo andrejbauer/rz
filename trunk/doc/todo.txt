@@ -19,7 +19,7 @@
   Rename "thy" to "thr" OR rename ".thr" to ".thy"
 
 - IMPROVEMENT (2004-06-17) [Chris]:
-  Use fewer implementations of contexts.
+  Use fewer implementations of contexts, maybe.
 
 - NEW (2004-06-17) [Andrej]:
   Add abbreviations for common groups of assertions (such as "is a per").
@@ -28,15 +28,11 @@
 - IMPROVEMENT (2004-06-17):
   Comment source code.
     
-- IMPROVEMENT (2004-06-17) [Andrej]:
-  Improve pretty-printing of output.
-    
-- IMPROVEMENT (2004-06-17) [Andrej & Chris]:
-  Allow top level model declarations.
-
 - IMPROVEMENT (2004-06-17):
   Allow constant definitions of functions with arguments. Right now
   a function must be defined as an explicit lambda abstraction.
+
+    [What should the syntax be?]
 
 - NEW (2004-06-17) [Andrej]:
   Add "there exists exactly one"
@@ -49,6 +45,17 @@
 
 - IMPROVEMENT (2004-06-17):
   Improve the toplevel program.
+
+    [2004-07-01 CAS:  Done so far:
+      *  Uses OCaml's generic command-line-option-processing functions 
+         (the Arg library module), 
+      *  Writes output to .mli files that could be run through
+         ocamldoc, though the result is currently not pretty.
+      *  Handles multiple filenames, and later files can refer to
+         definitions in the earlier ones; see semilattice.thr
+         and kuratowski2.thr.
+     What else do we want to do?]
+     
 
 - NEW (2004-06-17):
   Write more examples

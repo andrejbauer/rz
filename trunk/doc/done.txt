@@ -1,4 +1,12 @@
 - DONE (2004-06-30)
+  IMPROVEMENT (2004-06-17) [Chris]:
+  Improve pretty-printing of output.
+    
+- DONE (2004-06-30) [Andrej & Chris]:
+  Allow top level model declarations.
+
+
+- DONE (2004-06-30)
   BUG (2004-06-17) [Andrej]:
   when a parametrized axiom is translated, some assertions are
   missing in the hypotheses (the "trivial" ones)

@@ -470,8 +470,12 @@ let optToplevel ctx = function
 	(TopModule(mdlnm, signat'), insertModel ctx mdlnm ctx')
 
     
-let rec optToplevels ctx = function
-    [] -> []
+let rec optToplevels' ctx = function
+    [] -> ([], ctx)
   | sg :: lst ->
       let sg', ctx' = optToplevel ctx sg in
-	sg' :: (optToplevels ctx' lst)
+      let lst', ctx'' = optToplevels' ctx' lst in
+	(sg'::lst', ctx'')
+
+let optToplevels ctx sigs =
+  if !Flags.do_opt then optToplevels' ctx sigs else (sigs,ctx)

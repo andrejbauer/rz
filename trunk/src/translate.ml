@@ -580,8 +580,9 @@ let translateToplevel ctx = function
       
 
 let rec translateToplevels ctx = function
-    [] -> []
+    [] -> ([], ctx)
   | thr :: ths ->
       let (signat,ctx') = translateToplevel ctx thr in
-	signat :: (translateToplevels ctx' ths)
+      let (signats,ctx'') = translateToplevels ctx' ths in
+	(signat :: signats, ctx'')
 
