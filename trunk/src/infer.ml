@@ -247,7 +247,8 @@ let joinSet ctx s1 s2 =
 	      try
 		let None = List.assoc l1 s2s
 		in (l1,None) :: joinSums(s1s, s2s)
-              with _ -> tyGenericError "Mismatch in sums [None/Some]"
+              with _ -> tyGenericError ("Disagreement whether " ^ l1 ^
+                         " stands alone or tags a value")
 	    else (l1,None) :: joinSums(s1s, s2s))
         | ((l1,Some s1)::s1s, s2s) ->
 	    (if (List.mem_assoc l1 s2s) then
@@ -256,8 +257,10 @@ let joinSet ctx s1 s2 =
 		in if eqSet ctx s1 s2 then
 		      (l1,None) :: joinSums(s1s, s2s)
 		else
-		    tyGenericError "Mismatch in sums [Some/Some]"
-              with _ -> tyGenericError "Mismatch in sums [Some/None]"
+		    tyGenericError ("Disagreement whether " ^ l1 ^
+                                    " tags a value or stands alone")
+              with _ -> tyGenericError("Disagreement on what type of value " ^ 
+                                        l1 ^ " should tag")
 	    else (l1,None) :: joinSums(s1s, s2s))
 
 
