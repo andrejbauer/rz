@@ -29,11 +29,13 @@
       "on", ON;
       "or", OR;
       "predicate", PREDICATE;
+      "Prop", PROP;
       "proposition", PROPOSITION;
       "relation", RELATION;
       "rz", RZ;
       "set", SET;
       "stable", STABLE;
+      "Stable", STABLEPROP;
       "structure", STRUCTURE;
       "theorem", THEOREM;
       "theory", THEORY;

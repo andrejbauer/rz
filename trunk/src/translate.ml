@@ -3,7 +3,6 @@
 module L = Logic
 module S = Syntax
 open Outsyn 
-open Context
 
 exception Unimplemented
 
@@ -66,13 +65,12 @@ let getProp n ctx =
   in
     find ctx
 
+(** *** *)
+
 let rec toSubset ctx = function
     L.Subset ((x,s), p) -> ((x, s), p)
   | L.Basic b -> toSubset ctx (getSet b ctx)
   | _ -> failwith "not a subset"
-
-
-(** *** *)
 
 let any = mk_word "_"
 
@@ -105,15 +103,15 @@ let rec translateSet ctx = function
   | L.Bool ->
       let x = fresh [mk_word "x"; mk_word "u"] [] ctx in
       let y = fresh [mk_word "y"; mk_word "v"] [x] ctx in
-	{ ty = NamedTy "bool";
+	{ ty = NamedTy (mk_word "bool");
 	  tot = (x, (Cor [Equal (Id x, mk_id "true");
                           Equal (Id x, mk_id "false")]));
 	  per = (x, y, Equal (Id x, Id y))
       }
   | L.Basic s ->
-      let x = fresh [mk_word "x"; mk_word "u"] [] ctx in
-      let y = fresh [mk_word "y"; mk_word "v"] [x] ctx in
-	{ ty = NamedTy (fst s);
+      let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "a"] [] ctx in
+      let y = fresh [mk_word "y"; mk_word "v"; mk_word "b"] [x] ctx in
+	{ ty = NamedTy s;
 	  tot = (x, NamedTotal (s, Id x));
 	  per = (x, y, NamedPer (s, Id x, Id y))
 	}
@@ -190,6 +188,15 @@ let rec translateSet ctx = function
 	      (w, w', substProp ctx [(y, Proj (0, Id w)); (y', Proj (0, Id w'))] q)
 	  )
 	}
+  | L.Quotient (s, x, y, eq) ->
+      let {ty=u; tot=(w,p); per=(z,z',q)} = translateSet ctx s in
+	{ ty = u;
+	  tot = (w,p);
+	  per = (
+	    let x' = fresh [x] [] ctx in
+	    let y' = fresh [y] [x] ctx in
+	      (x', y', substProp ctx [(x, Id x'); (y, Id y')] (eq; raise Unimplemented)))
+	}
 
   | L.Sum _ -> failwith "Translation of sums not implemented"
 
@@ -198,7 +205,6 @@ let rec translateSet ctx = function
 (* remaining cases:
   | Sum of (label * set option) list
   | RZ of set
-  | Quotient, if we add this to Logic
 *)
 
 and translateTerm ctx = function
@@ -249,7 +255,7 @@ and translateProp ctx = function
   | L.Atomic (n, t) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let ty = (match fst (getProp n ctx) with
-		    Syntax.Unstable -> NamedTy (fst n)
+		    Syntax.Unstable -> NamedTy n
 		  | Syntax.Stable -> TopTy)
       in
 	(ty, r, NamedProp (n, Id r, translateTerm ctx t))
@@ -312,7 +318,7 @@ and translateProp ctx = function
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=(x,q)} = translateSet ctx s in
       let (u, y, p') = translateProp (addBind n s ctx) p in
-      let x' = fresh [x] [] ctx in
+      let x' = fresh [n] [] ctx in
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "l"] [x'] ctx
       in
 	(ArrowTy (t, u),
@@ -358,7 +364,7 @@ let translateTheoryElement ctx = function
       ),
       addSet n s ctx
 
-  | L.Predicate (n, stb, s) ->
+  | L.Predicate (n, s) ->
 (*
       let nty = (match stb with Syntax.Stable -> TopTy | Syntax.Unstable -> NamedTy n) in
       let {ty=t; tot=(x,p); per=(y,z,q)} = translateSet ctx s in
@@ -372,8 +378,9 @@ let translateTheoryElement ctx = function
 			Imply (And (), NamedProp(n, Id (**UNFINISHED**) ))
 	]
 *)
-      (if stb = Syntax.Stable then [] else [TySpec (n, None)]),
-      addProp n (stb, None) ctx
+      let stb = L.stability s in
+	(if stb = Syntax.Stable  then [] else [TySpec (n, None)]),
+	addProp n (stb, None) ctx
 
   | L.Let_predicate (n, bind, p) ->
       failwith "predicate definitions not implemented"

@@ -102,8 +102,8 @@ let eqSet ctx s1 s2 =
 		                   ("WARNING: cannot confirm " ^ 
                                     "proposition equality\n");
 				 true)
-        | (Quotient(s3,t3), Quotient(s4,t4)) ->
-            cmp(s3,s4) && if (t3=t4) then
+        | (Quotient(s3,x3,y3,t3), Quotient(s4,x4,y4,t4)) ->
+            cmp(s3,s4) && if x3=y3 && y3=y4 && t3=t4 then
                                 true 
 		             else
                                 (print_string 
@@ -113,6 +113,8 @@ let eqSet ctx s1 s2 =
         | (RZ s3, RZ s4) -> cmp(s3, s4)
 
         | (Prop,Prop) -> raise Impossible (** Shouldn't occur without HOL *)
+
+        | (StableProp,StableProp) -> raise Impossible (** Shouldn't occur without HOL *)
 
         | (_,_) -> false
 
@@ -160,10 +162,11 @@ let rec annotateSet ctx =
              let (bnd',ctx') = annotateBinding ctx bnd
              in let p' = annotateProp ctx' p
              in Subset(bnd', p')
-        | Quotient(s, t) -> 
-             (* What is the type of an equivalence relation? *)
-             raise Unimplemented
-(*             Quotient(ann s, annotateTerm ctx t) *)
+        | Quotient(s, x, y, eq) -> 
+	    let (_, ctx') = annotateBinding ctx (x, Some s) in
+	    let (_, ctx'') = annotateBinding ctx' (y, Some s) in
+	    let eq' = annotateProp ctx'' eq in
+	      Quotient (ann s, x, y, eq')
         | RZ s -> RZ (ann s)
         | Set_name name ->
              (if peekSet ctx name then
@@ -210,8 +213,9 @@ and annotateProp ctx =
             let (bnd',ctx') = annotateBinding ctx bnd
             in Exists(bnd', annotateProp ctx' p)
         | t -> (match annotateTerm ctx t with
-                 (t', Prop) -> t'
-                | _ -> tyError "Term found where a proposition was expected")
+                    (t', Prop) -> t'
+                  | (t', StableProp) -> t'
+                  | _ -> tyError "Term found where a proposition was expected")
     in ann)
            
 and annotateBinding ctx = function
@@ -272,7 +276,7 @@ and annotateTerm ctx =
          (print_string "No point in implementing Case until we have Inj";
           raise Unimplemented)
 
-     | Quot(_,_) -> 
+     | Quot(t, r) -> 
          (print_string "What is the type of an equivalence relation?";
           raise Unimplemented)
  

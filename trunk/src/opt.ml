@@ -71,7 +71,7 @@ let emptyCtx = {types = []; tydefs = []}
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
     NamedTy n ->
-      (match (peekTydef ctx n) with
+      (match (peekTydef ctx (fst n)) with
         Some s' -> hnfTy ctx s'
       | None -> NamedTy n)
   | s -> s
@@ -126,10 +126,13 @@ let rec optTerm ctx = function
      in (match (optTy ctx oldty, hnfTy ctx ty2') with
            (TopTy, _) -> (* Application can be eliminated entirely *)
                             (oldty, Dagger, TopTy)
-         | (_, TopTy) -> (* Argument is unit and can be eliminated *)
+         | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
                             (oldty, e1', ty1')
          | (ty', _)    -> (* Both parts matter *)
                             (oldty, App(e1', e2'), ty'))
+(** AB: Why doesn't this work as expected?
+ | Tuple [] -> (TupleTy [], Dagger, TopTy)
+**)
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
      in (topTyize (TupleTy ts), Tuple es', topTyize (TupleTy ts'))
@@ -169,7 +172,8 @@ let rec optTerm ctx = function
      in 
         loop (tys, List.map (optTy ctx) tys, 0, 0) 
  | e -> (** XXX: Way wrong! *)
-        (NamedTy "unknown", e, NamedTy "unknown")
+     print_endline "WAY WRONG!";
+        (NamedTy (mk_word "unknown"), e, NamedTy (mk_word "unknown"))
 
 
 and optTerms ctx = function 
@@ -186,7 +190,9 @@ and optTerm' ctx e =
    in e'      
 
 and optProp ctx = function
-    NamedTotal(str, e) -> NamedTotal(str, optTerm' ctx e)
+    True -> True
+  | False -> False
+  | NamedTotal(str, e) -> NamedTotal(str, optTerm' ctx e)
   | NamedPer(str, e1, e2) -> NamedPer(str, optTerm' ctx e1, optTerm' ctx e2)
   | NamedProp(str, e1, e2) -> NamedProp(str, optTerm' ctx e1, optTerm' ctx e2)
   | Equal(e1, e2) -> 

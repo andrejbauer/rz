@@ -56,6 +56,7 @@
 %token PLUS
 %token PREDICATE
 %token <string> PREFIXOP
+%token PROP
 %token PROPOSITION
 %token RBRACE
 %token RBRACK
@@ -67,6 +68,7 @@
 %token SUBIN
 %token SUBOUT
 %token STABLE
+%token STABLEPROP
 %token STAR
 %token STRUCTURE
 %token THEOREM
@@ -198,10 +200,12 @@ simple_set:
   | ONE				{ Unit }
   | TWO                         { Bool }
   | BOOL                        { Bool }
+  | PROP                        { Prop }
+  | STABLEPROP                  { StableProp }
   | NAME                        { Set_name ($1, Syntax.Word) }
   | LPAREN set RPAREN           { $2 }
   | subset                      { $1 }
-  | simple_set SLASH term       { Quotient ($1, $3) }
+  | simple_set SLASH LPAREN name COMMA name COLON term RPAREN { Quotient ($1, $4, $6, $8) }
   | RZ simple_set               { RZ $2 }
 
 subset:

@@ -9,9 +9,8 @@ thy
   constant m : r * r -> r
   constant n : r * r -> r
 
-  set r_nonzero = { x : r | apart (x, r) }
+  set r_nonzero = { x : r | apart (x, z) }
 
   const d : r * r_nonzero -> r
 
-  constant x = let y = let z = u in z in (y, y)
 end

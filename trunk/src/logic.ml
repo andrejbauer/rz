@@ -56,9 +56,10 @@ and set =
   | Sum     of (label * set option) list
   | Subset  of binding * proposition
   | Rz      of set (** the set of realizers *)
-(** missing quotient types *)
+  | Quotient of set * name * name * proposition
   | PROP (** we pretend propositions form a set *)
-  | SET (** we pretend sets form a set *)
+  | STABLE (** we pretend not-not stable propositions form a set *)
+  | SET  (** we pretend sets form a set! *)
 
 and term =
     Star
@@ -80,7 +81,7 @@ type sentence_type = Syntax.sentence_type
 type theory_element =
     Set of set_name
   | Let_set of set_name * set
-  | Predicate of name * Syntax.stability * set
+  | Predicate of name * set
   | Let_predicate of name * binding list * proposition
   | Let_term of name * set * term (** abbreviation *)
   | Value of name * set
@@ -109,6 +110,7 @@ type theory = {
      are "fresh".
 *)
 
+(* AB: These seem not to be used anywhere?
 let rec substProp x t =
   (let rec sub = function
       And ps           -> And  (List.map sub ps)
@@ -168,7 +170,35 @@ and subst x t =
         | (l,None,u)::rest ->
               (l, None, sub u) :: (subarms rest)
      in sub)
+*)
+(** *** *)
+module S = Syntax
 
+let rec isSet = function
+    Empty | Unit | Bool | Basic _ -> true
+  | Product lst -> List.for_all isSet lst
+  | Sum lst -> List.for_all (function (_, None) -> true | (_, Some s) -> isSet s) lst
+  | Subset ((_, s), _) -> isSet s
+  | Rz s -> isSet s
+  | Quotient (s,_,_,_) -> isSet s
+  | Exp (s, t) -> isSet s && isSet t
+  | PROP -> false
+  | STABLE -> false
+  | SET -> false
+
+and isProp = function
+    Empty | Unit | Bool | Basic _ | Product _
+  | Sum _ | Subset _ | Rz _ | Quotient _ -> false
+  | PROP -> true
+  | STABLE -> true
+  | SET -> false
+  | Exp (s, t) -> isSet s && isProp t
+
+let rec stability = function
+    PROP -> S.Unstable
+  | STABLE -> S.Stable
+  | Exp (s, t) -> stability t
+  | _ -> failwith "Stability of a non-proposition"
 
 (************************************)
 (* Translation from Syntax to Logic *)
@@ -183,8 +213,6 @@ and subst x t =
    make_theory        : Syntax.theory -> Logic.theory_element list
 *)
 
-module S = Syntax
-
 let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
@@ -197,7 +225,9 @@ let rec make_set = function
                       lst)
   | S.Exp (s, t) -> Exp (make_set s, make_set t)
   | S.Subset ((n, Some s), phi) -> Subset ((n, make_set s), make_proposition phi)
-  | S.Quotient (_,_) -> raise Unimplemented
+  | S.Quotient (s, x, y, eq) -> Quotient (make_set s, x, y, make_proposition eq)
+  | S.Prop -> PROP
+  | S.StableProp -> STABLE
 
 (* Assumes that we have already done Type Inference
    or that the user has specified sets for all variables
@@ -245,22 +275,32 @@ and make_term = function
 				  | (lb, None, u) -> (lb, None, make_term u))
 			       lst)
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
-  | S.Choose (_,_,_) -> raise Unimplemented
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
+  | S.Quot (t, r) -> failwith "Quotients not implemented"
+  | S.Choose (n, t, u) -> failwith "Choose not implemented"
+  | S.Let (n, t, u) -> failwith "Let not impliemented"
   | _ -> (print_string "unrecognized term\n";
 	  raise HOL)
 
 and make_theory_element = function
     S.Set (n, None)-> Set n
   | S.Set (n, Some t) -> Let_set (n, make_set t)
-  | S.Predicate (n, stab, t) -> Predicate (n, stab, make_set t)
+  | S.Predicate (n, stab, t) ->
+      Predicate (n, Exp (make_set t, (if stab = S.Stable then STABLE else PROP)))
   | S.Let_predicate (n, b, p) -> Let_predicate (n, make_bindings b, make_proposition p)
   | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
   | S.Let_term ((_, None), t) -> (print_string "Let_term without ty ann.\n";
                                   raise Unimplemented)
   | S.Sentence (st, n, b, t) -> Sentence (st, n, make_bindings b, make_proposition t)
-  | S.Value (n,s) ->  Value (n, make_set s)
+  | S.Value (n, s) ->
+      let s' = make_set s in
+	if isProp s' then
+	  Predicate (n, s')
+	else if isSet s' then
+	  Value (n, s')
+	else
+	  raise HOL
 
 and make_theoryspec {S.t_arg=args; S.t_name=name; S.t_body=body} =
   { t_name = name;

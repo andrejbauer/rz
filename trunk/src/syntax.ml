@@ -28,9 +28,10 @@ and set =
   | Sum      of (label * set option) list (** finite coproduct *)
   | Exp      of set * set            (** function space *)
   | Subset   of binding * term       (** subset *)
-  | Quotient of set * term           (** quotent set *)
+  | Quotient of set * name * name * term  (** quotent set *)
   | RZ of set                        (** the set of realizers *)
   | Prop                             (** Only for typechecker internals! *)
+  | StableProp                       (** Only for typechecker internals! *)
 
 and term =
     Var        of name
@@ -101,6 +102,10 @@ and theory =
      are "fresh".
 *)
 
+(** AB: As far as I can tell all this stuff is not used anywhere.
+        So I commented it out. *)
+(*
+
 exception Unimplemented
 
 let rec subst x t = 
@@ -150,13 +155,16 @@ and substSet x t =
          | Subset((y,sopt),u) ->
               Subset((y,substSetOption x t sopt),
                        if (x=y) then u else subst x t u )
-         | Quotient(s,u)      -> Quotient(sub s, subst x t u)
+         | Quotient(s,y,y',u)    -> Quotient(sub s, y, y',
+					     (if x = y or x = y' then u else subst x t u))
          | s                    -> s
      in sub
 
 and substSetOption x t = function
       None   -> None
     | Some s -> Some (substSet x t s)
+
+*)
 
 module NameOrder = struct
                      type t = name

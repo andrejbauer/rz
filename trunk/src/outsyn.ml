@@ -4,8 +4,12 @@ type label = string
 
 (** XXX CS: Why isn't this NamedTy of set_name? *)
 
+type name = Syntax.name
+
+type set_name = Syntax.set_name
+
 type ty =
-    NamedTy of string          (* 0 *)
+    NamedTy of set_name        (* 0 *)
   | UnitTy                     (* 0 *)
   | VoidTy                     (* 0 *)
   | TopTy                      (* 0 *)
@@ -13,10 +17,6 @@ type ty =
   | SumTy of (label * ty) list (* 1 *)
   | TupleTy of ty list         (* 2 *)
   | ArrowTy of ty * ty         (* 3 *)
-
-type name = Syntax.name
-
-type set_name = Syntax.set_name
 
 type modest = {
   ty : ty;
@@ -71,6 +71,14 @@ type signat = {
 let mk_word n = (n, Syntax.Word)
 let mk_id n = Id (mk_word n)
 
+let tupleOrDagger = function
+    [] -> Dagger
+  | xs -> Tuple xs
+
+let tupleOrTopTy = function
+    [] -> TopTy
+  | ts -> TupleTy ts
+
 let nameSubscript s =
   try
     let k = String.rindex s '_' in
@@ -104,7 +112,6 @@ let nextName (n,nt) =
 	   ),
     nt
 
-
 let fresh good bad ctx =
   let rec find g =
     try
@@ -119,6 +126,7 @@ let rec fvModest flt acc {tot=(x,p); per=(u,v,q)} =
 and fvTerm' flt acc = function
     Id n -> if List.mem n flt then acc else n :: acc
   | Star -> acc
+  | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
   | Lambda ((n, s), t) -> fvTerm' (n::flt) acc t
   | Tuple lst -> List.fold_left (fun a t -> fvTerm' flt a t) acc lst
@@ -140,6 +148,8 @@ and fvProp' flt acc = function
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
 
+let fvSubst subst = List.concat (List.map (fun (_, t) -> fvTerm t) subst)
+
 let substRemove n subst = List.filter (fun (m,_) -> n <> m) subst
 
 let substAdd (n, n') s = (if n = n' then s else (n, Id n')::s)
@@ -157,9 +167,9 @@ let rec substProp ctx s = function
   | Iff (p, q) -> Iff (substProp ctx s p, substProp ctx s q)
   | Not p -> Not (substProp ctx s p)
   | Forall ((n, ty), q) as p ->
-      let n' = fresh [n] (List.map fst s) ctx in
-      let s' = substAdd (n,n') (substRemove n s) in
-	Forall ((n, ty), substProp ctx s' q)
+      let s' = substRemove n s in
+      let n' = fresh [n] (fvSubst s') ctx in
+	Forall ((n', ty), substProp ctx (substAdd (n,n') s') q)
 
 and substTerm ctx s = function
     Id n ->
@@ -167,18 +177,18 @@ and substTerm ctx s = function
   | Star -> Star
   | App (t, u) -> App (substTerm ctx s t, substTerm ctx s u)
   | Lambda ((n, ty), t) ->
-      let s = substRemove n s in
-      let n' = fresh [n] [] s in
-	Lambda ((n, ty), substTerm ctx (substAdd (n,n') s) t)
+      let s' = substRemove n s in
+      let n' = fresh [n] (fvSubst s') ctx in
+	Lambda ((n', ty), substTerm ctx (substAdd (n,n') s') t)
   | Tuple lst -> Tuple (List.map (substTerm ctx s) lst)
   | Proj (k, t) -> Proj (k, substTerm ctx s t)
   | Inj (k, t) -> Inj (k, substTerm ctx s t)
   | Cases (t, lst) -> 
       Cases (substTerm ctx s t,
 	     List.map (fun (lb, (n, ty), t) ->
-			 let s = substRemove n s in
-			 let n' = fresh [n] [] s in
-			 (lb, (n', ty), substTerm ctx (substAdd (n,n') s) t)
+			 let s' = substRemove n s in
+			 let n' = fresh [n] (fvSubst s') ctx in
+			 (lb, (n', ty), substTerm ctx (substAdd (n,n') s') t)
 		      ) lst)
   | Obligation ((x, ty), p) ->
 	Obligation ((x, ty), substProp ctx (substRemove x s) p)
@@ -211,7 +221,7 @@ let rec string_of_ty' level t =
 		
   in let (level', str ) = 
        (match t with
-            NamedTy name   -> (0, name)
+            NamedTy name   -> (0, fst name)
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
           | ListTy t       -> (1, (string_of_ty' 1 t) ^ "list")
@@ -236,7 +246,7 @@ and string_of_term' level t =
   let (level', str) = match t with
       Id n -> (0, string_of_name n)
     | Star -> (0, "()")
-    | Dagger -> failwith "Is this a dagger which I see before me?"
+    | Dagger -> (0, "DAGGER")
     | App (App (Id (n, Syntax.Infix0), t), u) -> 
 	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 8 u))
     | App (App (Id (n, Syntax.Infix1), t), u) -> 
@@ -280,8 +290,8 @@ and string_of_prop level p =
       True -> (0, "true")
     | False -> (0, "false")
     | NamedTotal (n, t) -> (0, "Tot_" ^ (string_of_name n) ^ "(" ^ (string_of_term t) ^ ")")
-    | NamedPer (n, t, u) -> (9, (string_of_term' 9 u) ^ " =_" ^
-			       (string_of_name n) ^ " " ^ (string_of_term' 9 t))
+    | NamedPer (n, t, u) -> (9, (string_of_term' 9 t) ^ " =_" ^
+			       (string_of_name n) ^ " " ^ (string_of_term' 9 u))
     | NamedProp (n, Dagger, u) -> (0, string_of_app (n, u))
     | NamedProp (n, t, u) -> (9, (string_of_term t) ^ " |= " ^ (string_of_app (n, u)))
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
