@@ -5,5 +5,5 @@ thy
  relation r : a * b
  axiom choice =
   (all (x:a). some (y:b) . r(x,y)) =>
-  some (f:a->b) . all (x:a) . r(x,f(x))
+  some (g:a->b) . all (x:a) . r(x,g(x))
 end

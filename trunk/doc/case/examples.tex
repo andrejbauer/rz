@@ -1,8 +1,6 @@
 \section{Examples}
 \label{sec:examples}
 
-In this section we show typical examples of RZ at work.
-
 \paragraph{Decidable set.}
 \label{sec:decidable-set}
 
@@ -37,11 +35,10 @@ arguments, we could write a Halting Oracle.)
 \paragraph{Natural Numbers.}
 \label{sec:natural-numb}
 
-Next we condier the theory of natural numbers as an initial algebra.
-This example shows how axioms can be parametrized by theories. Recall
-that the natural numbers are the initial algebra with one constant and
-one unary operation (such algebras are sometimes called ``iteration
-algebras''):
+Next we consider the theory of natural numbers. This example shows how
+axioms can be parametrized by theories. Recall that the natural
+numbers are the initial algebra with one constant and one unary
+operation (such algebras are sometimes called ``iteration algebras''):
 %
 {\small\VerbatimInput{nat.thy}}%
 %
@@ -59,8 +56,8 @@ function from natural numbers to \Verb|I.s| by simple recursion.
 
 \begin{figure*}
   \centering
-  {\VerbatimInput{nat.mli}}
-  \caption{Output for theory \texttt{Nat}}
+  {\small\VerbatimInput{nat.mli}}
+  \caption{Output for theories \texttt{Iteration} and \texttt{Nat}}
   \label{fig:nat}
 \end{figure*}
 
@@ -75,28 +72,27 @@ states that every total relation has a choice function:
 \begin{multline*}
   (\forall x \in A .\,
    \exists y \in B .\, R(x, y)) \implies \\
-  \exists f \in B^A .\,
-  \forall x \in A .\, R(x, f(x)) \;.
+  \exists g \in B^A .\,
+  \forall x \in A .\, R(x, g(x)) \;.
 \end{multline*}
 %
 We could write this as a theory parametrized by sets $A$, $B$ and the
-relation~$R$, but to keep things simple, we use the following simpler
-version:
+relation~$R$, but to keep things simple, we use the following version:
 %
 {\small\VerbatimInput{choice.thy}}%
 %
 The output is shown in Figure~\ref{fig:choice}. The interesting bit is
-the assertion for \Verb|choice|. It says that the
-function~\Verb|choice| takes as an argument a realizer \Verb|f| for
-the $\forall\exists$ statement and outputs a pair of functions, of
-which the first is the choice function and the second one provides
-realizers witnessing that the choice function does its job. However,
-there is a problem: the realizer \Verb|f| is not required to respect
-\Verb|=a=| while the choice function is. In general there is no way
-for \Verb|choice| to transform \Verb|f| into a \Verb|=a=|-respecting
-function. We may conclude that in general the Axiom of Choice is
-\emph{not} valid in the realizability interpretation. This is another
-important difference between realizability and propositions-as-types.
+the assertion for \Verb|choice|, which says that \Verb|choice| takes
+as an argument a realizer $f$ for the $\forall\exists$ statement and
+outputs a pair of functions, of which the first is the choice
+function~$g$ and the second one provides realizers witnessing that the
+choice function does its job. However, there is a problem: the
+realizer $f$ is not required to respect \Verb|=a=| while the choice
+function $g$ is. In general there is no way for \Verb|choice| to
+transform $f$ into a \Verb|=a=|-respecting function. It follows that
+in general the Axiom of Choice is \emph{not} valid in the
+realizability interpretation. This is another important difference
+between realizability and propositions-as-types.
 
 \begin{figure*}
   \centering
