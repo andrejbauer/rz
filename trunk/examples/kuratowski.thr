@@ -1,0 +1,52 @@
+# Kuratowski finite sets over a set
+
+theory Semilattice =
+thy
+  set s
+  const zero : s
+  const join : s -> s -> s
+
+  implicit x, y, z : s
+
+  axiom commutative x y = (join x y = join y x)
+
+  axiom associative x y z = (join (join x y) z = join x (join y z))
+
+  axiom idempotent x = (join x x = x)
+
+  axiom bottom (x : s) =  (join x zero = x)
+
+  stable predicate leq x y = (join x y = y)
+end
+
+
+theory Kuratowski(A : thy set a end) =
+thy
+  set s
+  const empty
+  const union : s -> s -> s
+  const singleton : A.a -> s
+
+  # at this point we want to say that (s, zero, union) is a semilattice
+  # and it seems like we just have to repeat the axioms
+
+  implicit x, y, z : s
+
+  axiom commutative x y = (union x y = union y x)
+  axiom associative x y z = (union (union x y) z = union x (union y z))
+  axiom idempotent x = (union x x = x)
+  axiom bottom (x : s) =  (union x empty = x)
+
+  # we really want unique existence, but we don't have the some1
+  # quantifier yet
+
+  axiom initial (S : Semilattice) (f : A.a -> S.s) =
+    some (f' : s -> S.s) . (
+      f' empty = S.zero and
+      all (x : A.a) . (f a = f' (singleton x)) and
+      all (u : s) . all (v : s) . (
+        f' (union u v) = S.join (f' u) (f' v)
+      )
+    )
+
+end
