@@ -1,5 +1,5 @@
 (*******************************************************************)
-(** {1 Type Reconstruction}                                        *)
+(** {1 Type Reconstruction and Checking}                           *)
 (**                                                                *)
 (** For now we assume that                                         *)
 (** all bound variables are annotated, either when declared        *)
@@ -11,67 +11,55 @@ open Syntax
 exception Unimplemented
 exception Impossible
 
-(*************************************)
-(** {2 Lookup Tables (Environments)} *)
-(*************************************)
-
-let emptyenv = []
-let insert (x,s,env) = (x,s)::env
-exception NotFound
-let rec lookup = function
-      (y,[]) -> (print_string ("Unbound name: " ^ y ^ "\n");
-                 raise NotFound)
-    | (y,(k,v)::rest) -> if (y=k) then v else lookup(y,rest)
-
-let rec lookupName = function
-      (y,[]) -> (print_string ("Unbound name: " ^ (fst y) ^ "\n");
-                 raise NotFound)
-    | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
-
-
-
 (*********************************)
 (** {2 The Typechecking Context} *)
 (*********************************)
 
 (** Context carried around by the type reconstruction algorithm.
  *)
-type ctx = {implicits  : (string*set) list;  
-               (** Implicit types for given variable names *)
-            types      : (name*set) list;
-               (** Typing context; types for names in scope *)
-            tydefs     : (set_name*set) list;
+type ctx = {implicits  : set NameMap.t;  
+               (** Implicit types for variables *)
+            types      : set NameMap.t;
+               (** Typing context; types for names in scope,
+                   including sentences and terms *)
+            tydefs     : set NameMap.t;
                (** Definitions of type/set variables in scope *)
-            sets       : set_name list ;
+            sets       : NameSet.t ;
                (** Abstract (undefined) type/set variables in scope *)
            }
 
 (** Determines whether a variable has an implicitly declared type.
-     @param ctx  The type reconstruction context
-     @param str  The (string) name of the variable.
+     @param ctx   The type reconstruction context
+     @param name  The name of the variable.
+
+     @raise Not_Found when the name isn't in the map.
   *)
-let lookupImplicit ctx str = lookup (str, ctx.implicits)
+let lookupImplicit ctx name = NameMap.find name ctx.implicits
 
-let lookupType     ctx   n = lookupName (n, ctx.types)
-let lookupTydef    ctx str = lookupName (str, ctx.tydefs)
-let lookupSet      ctx str = if (List.mem str ctx.sets) then
-                                   ()
-                             else raise NotFound
+let lookupType     ctx name = NameMap.find name ctx.types
+let lookupTydef    ctx name = NameMap.find name ctx.tydefs
 
-let peekTydef ctx s = try Some(lookupTydef ctx s) with
-                        NotFound -> None
 
-let insertImplicit ({implicits=implicits} as ctx) str ty = 
-       {ctx with implicits = insert(str,ty,implicits)}
-let insertType ({types=types} as ctx) n ty = 
-       {ctx with types = insert(n,ty,types)}
-let insertTydef ({tydefs=tydefs} as ctx) str ty = 
-       {ctx with tydefs = insert(str,ty,tydefs)}
-let insertSet ({sets=sets} as ctx) str =
-       {ctx with sets = str::sets}
+let peekSet ctx str = NameSet.mem str ctx.sets
 
-let emptyCtx = {implicits = []; types = [];
-                tydefs = []; sets = []}
+let peekTydef ctx name = 
+       if (NameMap.mem name ctx.tydefs) then
+           Some (NameMap.find name ctx.tydefs)
+       else None
+
+let insertImplicit ctx name ty = 
+       {ctx with implicits = NameMap.add name ty ctx.implicits}
+let insertType ctx name ty = 
+       {ctx with types = NameMap.add name ty ctx.types}
+let insertTydef ctx name ty = 
+       {ctx with tydefs = NameMap.add name ty ctx.tydefs}
+let insertSet ctx name =
+       {ctx with sets = NameSet.add name ctx.sets}
+
+let emptyCtx = {implicits = NameMap.empty; 
+                types     = NameMap.empty;
+                tydefs    = NameMap.empty; 
+                sets = NameSet.empty}
 
 (**********************************)
 (** {2 Set Comparison Operations} *)
@@ -84,13 +72,13 @@ let tyError s = (print_string ("TYPE ERROR: " ^ s ^ "\n");
 
 (** Expand out any top-level definitions for a set *)
 let rec hnfSet ctx = function
-    Set_name n ->
-      (match (peekTydef ctx n) with
-        Some s' -> hnfSet ctx s'
-      | None -> Set_name n)
-  | s -> s
+    Set_name name ->
+      (match (peekTydef ctx name) with
+        Some set -> hnfSet ctx set
+      | None -> Set_name name)
+  | set -> set
 
-let eqSet   ctx s1 s2 = 
+let eqSet ctx s1 s2 = 
    if (s1 = s2) then
       (* Short circuting for common case *)
       true
@@ -100,18 +88,18 @@ let eqSet   ctx s1 s2 =
    
       in let rec cmp = function
           (Empty, Empty) -> true
-        | (Unit, Unit) -> true
-	| (Bool, Bool) -> true       (* Bool <> Sum() for now *)
+        | (Unit, Unit)   -> true
+	| (Bool, Bool)   -> true       (* Bool <> Sum() for now *)
         | (Set_name n1, Set_name n2) -> (n1 = n2)
 	| (Product ss1, Product ss2) -> cmps (ss1,ss2)
-        | (Sum lsos1, Sum lsos2) -> cmpsum (lsos1, lsos2)
-        | (Exp(s3,s4), Exp(s5,s6)) -> cmp (s3,s5) && cmp (s4,s6)
+        | (Sum lsos1, Sum lsos2)     -> cmpsum (lsos1, lsos2)
+        | (Exp(s3,s4), Exp(s5,s6))   -> cmp (s3,s5) && cmp (s4,s6)
 	| (Subset(b1,p1), Subset(b2,p2)) -> 
             cmpbnd(b1,b2) && if (p1=p2) then
                                 true 
 		             else
                                 (print_string 
-		                   ("WARNING: not guaranteeing " ^ 
+		                   ("WARNING: cannot confirm " ^ 
                                     "proposition equality\n");
 				 true)
         | (Quotient(s3,t3), Quotient(s4,t4)) ->
@@ -119,26 +107,31 @@ let eqSet   ctx s1 s2 =
                                 true 
 		             else
                                 (print_string 
-		                   ("WARNING: not guaranteeing " ^ 
+		                   ("WARNING: cannot confirm " ^ 
                                     "equivalence-relation equality\n");
 				 true)
         | (RZ s3, RZ s4) -> cmp(s3, s4)
-        | (Prop,Prop) -> raise Unimplemented (* Shouldn't occur without HOL *)
+
+        | (Prop,Prop) -> raise Impossible (** Shouldn't occur without HOL *)
+
         | (_,_) -> false
+
       and cmps = function
           ([], []) -> true
 	| (s1::s1s, s2::s2s) -> cmp(s1,s2) && cmps(s1s,s2s)
         | (_,_) -> false
+
       and cmpsum = function
           ([], []) -> true
-	| ((l1,None)::s1s, (l2,None)::s2s) -> (l1=l2) && cmpsum(s1s,s2s)
+	| ((l1,None   )::s1s, (l2,None   )::s2s) -> (l1=l2) && cmpsum(s1s,s2s)
 	| ((l1,Some s1)::s1s, (l2,Some s2)::s2s) -> 
                                 (l1=l2) && cmp(s1,s2) && cmpsum(s1s,s2s)
         | (_,_) -> false
+
       and cmpbnd = function
 	  (* Since we're not verifying equivalence of propositions,
 	     we don't have to worry about the bound variable *)
-          ((_, None),(_,None)) -> true
+          ((_, None), (_,None)) -> true
         | ((_, Some s1), (_,Some s2)) -> cmp(s1,s2)
         | (_,_) -> false
 
@@ -148,40 +141,6 @@ let subSet  ctx s1 s2 =
   match hnfSet ctx s1 with
       Subset ((_, Some t), _) -> eqSet ctx t s2
     | _ -> false
-			
-let joinSet ctx s1 s2 = if (eqSet ctx s1 s2) then s1 else (tyError "No Join")
-
-(* toProduct : ctx -> Syntax.set -> Syntax.set
-     Supposed to return the "least supertype" of the given set
-     that is a tuple type.  Currently only tries to expand
-     definitions.
-*)
-let rec toProduct ctx = function
-   Set_name s -> 
-     let s' = (try lookupTydef ctx s with
-                 NotFound -> 
-                   tyError ("Cannot project from term of abstract type " ^ (fst s)))
-     in toProduct ctx s'                    
- | Product ss -> Product ss
- | Subset (_,_) -> tyError "toProduct not defined for Subsets"
- | Quotient (_,_) -> tyError "toProduct not defined for Quotients"
- | _ -> tyError "bad projection; projectee is not a product"
-
-(* toExp : ctx -> Syntax.set -> Syntax.set
-     Supposed to return the "least supertype" of the given set
-     that is a function type.  Currently only tries to expand
-     definitions.
-*)
-let rec toExp ctx = function
-   Set_name s -> 
-     let s' = (try lookupTydef ctx s with
-                NotFound -> 
-                   tyError ("Cannot apply term of abstract type " ^ (fst s)))
-     in toExp ctx s'
- | Exp (ty1,ty2) -> Exp (ty1, ty2)
- | Subset (_,_) -> tyError "toProduct not defined for Subsets"
- | Quotient (_,_) -> tyError "toProduct not defined for Quotients"
- | _ -> tyError "bad application; operand is not a function"
 
 
 (*****************************************)
@@ -206,40 +165,41 @@ let rec annotateSet ctx =
              raise Unimplemented
 (*             Quotient(ann s, annotateTerm ctx t) *)
         | RZ s -> RZ (ann s)
-        | Set_name str ->
-             ((try ignore(lookupSet ctx str) with
-                _ -> ignore(lookupTydef ctx str));
-              Set_name str)
+        | Set_name name ->
+             (if peekSet ctx name then
+		 Set_name name
+	      else match peekTydef ctx name with
+                     Some _ -> Set_name name
+                   | None -> tyError ("Unknown set " ^ (fst name)))
         | s -> s
      in
         ann)
 
-and annotateSetOpt ctx =
-    (let ann = function
-          Some s -> Some (annotateSet ctx s)
-        | None -> None
-     in
-       ann)
+and annotateSetOpt ctx = function
+      Some s -> Some (annotateSet ctx s)
+    | None -> None
 
 and annotateProp ctx =
     (let rec ann = function
-          False -> False
-        | True -> True
+          False  -> False
+        | True   -> True
         | And ps -> And (List.map ann ps)
-        | Or ps -> Or (List.map ann ps)
+        | Or  ps -> Or  (List.map ann ps)
         | Imply (p1, p2) -> Imply (ann p1, ann p2)
-        | Iff (p1, p2) -> Iff (ann p1, ann p2)
-        | Not p -> Not (ann p)
+        | Iff (p1, p2)   -> Iff (ann p1, ann p2)
+        | Not p  -> Not (ann p)
         | Equal (None, t1, t2) ->
             let    (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
-            in let ty = joinSet ctx ty1 ty2
-            in Equal(Some ty, t1', t2')
+            in if (eqSet ctx ty1 ty2) then
+                  Equal(Some ty1, t1', t2')
+               else
+                  tyError "Operands of equality in different sets"
         | Equal (Some s, t1, t2) ->
             let    ty = annotateSet ctx s
             in let (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
-            in if (eqSet ctx ty1 ty) then
+            in if (eqSet ctx ty1 ty) && (eqSet ctx ty2 ty) then
                 Equal(Some ty, t1', t2')
               else
                 tyError "Operands of equality don't match constraint"
@@ -255,22 +215,22 @@ and annotateProp ctx =
     in ann)
            
 and annotateBinding ctx = function
-      ((str,_) as x,sopt) -> 
+      (x,sopt) -> 
          let s' = (match sopt with
                      Some s -> annotateSet ctx s
-                   | None   -> (try (lookupImplicit ctx str) with
-                                  NotFound -> 
+                   | None   -> (try (lookupImplicit ctx x) with
+                                  Not_found -> 
                                    (tyError ("Bound variable not annotated " ^
                                              "explicitly or implicitly."))))
          in let ctx' = insertType ctx x s'
          in ((x, Some s'), ctx')
 
- (* Mildly bogus:  allows the types to refer to variables bound
+ (** XXX  Mildly bogus?:  allows the types to refer to variables bound
     earlier in the sequence. *)
 and annotateBindings ctx = function
       [] -> ([], ctx)
     | (bnd::bnds) -> 
-         let    (bnd',ctx') = annotateBinding ctx bnd
+         let    (bnd',  ctx') = annotateBinding ctx bnd
          in let (bnds', ctx'') = annotateBindings ctx' bnds
          in (bnd'::bnds', ctx'')
 
@@ -290,7 +250,7 @@ and annotateTerm ctx =
         in (Tuple ts', Product tys)
      | Proj (n, t) -> 
         let    (t', tuplety) = ann t
-        in let Product tys = toProduct ctx tuplety
+        in let Product tys = hnfSet ctx tuplety
         in if (n >= 1 && n <= List.length tys) then
               (Proj(n,t'), List.nth tys (n+1))
            else
@@ -298,7 +258,7 @@ and annotateTerm ctx =
      | App (t1, t2) ->
         let    (t1', ty1) = ann t1
         in let (t2', ty2) = ann t2
-        in let Exp(ty3,ty4) = toExp ctx ty1
+        in let Exp(ty3,ty4) = hnfSet ctx ty1
         in if (eqSet ctx ty2 ty3) then
               (App (t1', t2'), ty4)
            else
@@ -375,7 +335,7 @@ and annotateTheoryElem ctx =
                ctx)   (* XXX:  Cannot refer to previous axioms!? *)
        | Predicate ((_, (Infix0|Infix1|Infix3|Infix4)) as n, stab, s) ->
 	   begin
-	     match toProduct ctx s with
+	     match hnfSet ctx s with
 		 Product [s1; s2] ->
 		   (Predicate (n, stab, s),
 		    insertType ctx n (Exp (s1, Exp (s2, Prop))))
@@ -401,10 +361,10 @@ and annotateTheoryElem ctx =
 and annotateTheoryElems ctx = function
       [] -> ([], ctx)
   
-    | (Implicit(strs, s)::tes) ->    (* Eliminated during inference *)
+    | (Implicit(strs, s)::tes) ->    (** Eliminated during inference *)
            let    s' = annotateSet ctx s
            in let ctx' = List.fold_left 
-                            (fun ctx -> fun str -> insertImplicit ctx str s') 
+                            (fun ctx str -> insertImplicit ctx (str,Word) s') 
                             ctx strs
            in annotateTheoryElems ctx' tes
 

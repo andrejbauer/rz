@@ -157,3 +157,12 @@ and substSet x t =
 and substSetOption x t = function
       None   -> None
     | Some s -> Some (substSet x t s)
+
+module NameOrder = struct
+                     type t = name
+                     let compare = Pervasives.compare
+                   end
+
+module NameMap = Map.Make(NameOrder)
+
+module NameSet = Set.Make(NameOrder)

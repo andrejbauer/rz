@@ -40,10 +40,10 @@ all: $(TARGETS) $(OPT_TARGETS)
 
 parser.cmo: parser.ml parser.cmi
 
-parser.cmi: parser.mli
+parser.cmi: parser.mli syntax.cmi
 	$(OCAMLC) $(OCAMLFLAGS) -c parser.mli
 
-lexer.cmi: lexer.mli
+lexer.cmi: lexer.mli parser.mli
 	$(OCAMLC) $(OCAMLFLAGS) -c lexer.mli
 
 $(TARGETS): %: $(BYTE_OBJS) %.cmo
