@@ -141,8 +141,8 @@ theory_body:
   | theory_element theory_body	{ $1 :: $2 }
 
 theory_element:
-    SET NAME  			{ Set ($2, None) }
-  | SET NAME EQUAL set		{ Set ($2, Some $4) }
+    SET NAME  			{ Set (($2, Syntax.Word), None) }
+  | SET NAME EQUAL set		{ Set (($2, Syntax.Word), Some $4) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
   | CONSTANT name_typed EQUAL term { Let_term ($2, $4) }
   | PREDICATE name COLON set    { Predicate ($2, Unstable, $4) }
@@ -198,7 +198,7 @@ simple_set:
   | ONE				{ Unit }
   | TWO                         { Bool }
   | BOOL                        { Bool }
-  | NAME                        { Set_name $1 }
+  | NAME                        { Set_name ($1, Syntax.Word) }
   | LPAREN set RPAREN           { $2 }
   | subset                      { $1 }
   | simple_set SLASH term       { Quotient ($1, $3) }
@@ -210,7 +210,7 @@ subset:
 
 subset_or_name:
     subset  { $1 }
-  | NAME    { Set_name $1 }
+  | NAME    { Set_name ($1, Syntax.Word) }
 
 product:
     simple_set STAR simple_set        { [$1; $3] }

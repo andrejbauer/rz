@@ -13,7 +13,7 @@ type name = string * name_type
 
 let underscore = ("_", Word)
 
-type set_name = string
+type set_name = name
 
 (** names of sets must be valid type names *)
 

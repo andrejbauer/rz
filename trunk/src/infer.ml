@@ -53,7 +53,7 @@ type ctx = {implicits  : (string*set) list;
 let lookupImplicit ctx str = lookup (str, ctx.implicits)
 
 let lookupType     ctx   n = lookupName (n, ctx.types)
-let lookupTydef    ctx str = lookup (str, ctx.tydefs)
+let lookupTydef    ctx str = lookupName (str, ctx.tydefs)
 let lookupSet      ctx str = if (List.mem str ctx.sets) then
                                    ()
                              else raise NotFound
@@ -160,7 +160,7 @@ let rec toProduct ctx = function
    Set_name s -> 
      let s' = (try lookupTydef ctx s with
                  NotFound -> 
-                   tyError ("Cannot project from term of abstract type " ^ s))
+                   tyError ("Cannot project from term of abstract type " ^ (fst s)))
      in toProduct ctx s'                    
  | Product ss -> Product ss
  | Subset (_,_) -> tyError "toProduct not defined for Subsets"
@@ -176,7 +176,7 @@ let rec toExp ctx = function
    Set_name s -> 
      let s' = (try lookupTydef ctx s with
                 NotFound -> 
-                   tyError ("Cannot apply term of abstract type " ^ s))
+                   tyError ("Cannot apply term of abstract type " ^ (fst s)))
      in toExp ctx s'
  | Exp (ty1,ty2) -> Exp (ty1, ty2)
  | Subset (_,_) -> tyError "toProduct not defined for Subsets"

@@ -5,42 +5,85 @@ module S = Syntax
 open Outsyn 
 open Context
 
-(** AB
-Translation functions should be (roughly):
+exception Unimplemented
 
-translateSet s
-  translates a set s to a pair (ty, re) where ty is a
-  type and re describes the realizability relation on ty.
+(** contexts (environments)
+    We're anticipating dependent contexts here so we have a single
+    context with everything stuffed in it.
 
-translateTerm t
-  translates a term t of Logic.term to a value of type Outsyn.term.
-
-translateProp phi
-  translate a formula phi to (ty, s) where ty is a type
-  and s tells which values of ty are realizers for phi.
-
-I am not quite sure this is right. I need to think more.
-At some point we need to separate logical formulas from terms
-(they're not in syntax.ml). Also, it seems likely we need to drag
-around typing contexts.
-
+    A context entry is one of:
+    - name bound to a type (can be bound to a kind SET or PROP)
+    - definition of a term (name = term)
+    - definition of a set (name = set definition)
+    - definition of a proposition
 *)
 
-exception Unimplemented
+type ctxElement =
+    CtxBind of L.set
+  | CtxTerm of L.term
+  | CtxSet of L.set
+  | CtxProp of L.binding list * L.proposition
+
+let empty = []
+
+let addBind n s ctx = (n, CtxBind s) :: ctx
+let addTerm n t ctx = (n, CtxTerm t) :: ctx
+let addSet  n s ctx = (n,  CtxSet s) :: ctx
+let addProp n (b,p) ctx = (n, CtxProp (b,p)) :: ctx
+
+let getBind n ctx =
+  let rec find = function
+      [] -> raise Not_found
+    | (m, CtxBind s) :: ctx' -> if n = m then s else find ctx'
+    | _ :: ctx' -> find ctx'
+  in
+    find ctx
+    
+let getTerm n ctx =
+  let rec find = function
+      [] -> raise Not_found
+    | (m, CtxTerm t) :: ctx' -> if n = m then t else find ctx'
+    | _ :: ctx' -> find ctx'
+  in
+    find ctx
+    
+let getSet n ctx =
+  let rec find = function
+      [] -> raise Not_found
+    | (m, CtxSet s) :: ctx' -> if n = m then s else find ctx'
+    | _ :: ctx' -> find ctx'
+  in
+    find ctx
+    
+let getProp n ctx =
+  let rec find = function
+      [] -> raise Not_found
+    | (m, CtxProp (b,p)) :: ctx' -> if n = m then (b,p) else find ctx'
+    | _ :: ctx' -> find ctx'
+  in
+    find ctx
+
+let rec toSubset ctx = function
+    L.Subset ((x,s), p) -> ((x, s), p)
+  | L.Basic b -> toSubset ctx (getSet b ctx)
+  | _ -> failwith "not a subset"
+
+
+(** *** *)
 
 let any = mk_word "_"
 
-
-let make_type_name = function
+let make_type_name _ = function
     (n, Syntax.Word) -> n
   | ("<", _) -> "lt"
   | (">", _) -> "gt"
   | ("<=", _) -> "leq"
   | (">=", _) -> "geq"
   | ("=", _) -> "eq"
-  | ("=", _) -> "eq"
   | ("<>", _) -> "neq"
   | (s, _) -> s
+
+(** translation functions *)
 
 let rec translateSet ctx = function
     L.Empty -> 
@@ -145,7 +188,7 @@ let rec translateSet ctx = function
 
   | L.Sum _ -> failwith "Translation of sums not implemented"
 
-  | L.RZ _ -> failwith "Translation of RZ not implemented"
+  | L.Rz _ -> failwith "Translation of RZ not implemented"
 
 (* remaining cases:
   | Sum of (label * set option) list
@@ -172,20 +215,20 @@ and translateTerm ctx = function
       Cases (translateTerm ctx t1, List.map
 	       (function
 		    (lb, Some (n, s), t) ->
-		      let ctx' = addCtx n s ctx in
+		      let ctx' = addBind n s ctx in
 			(lb, (n, (translateSet ctx' s).ty), translateTerm ctx' t)
                   | (lb, None, t) ->
-                      (lb, (any, UnitTy), translateTerm (addCtx any L.Unit ctx) t)
+                      (lb, (any, UnitTy), translateTerm (addBind any L.Unit ctx) t)
 	       )
                lst
 	    )
 
   | L.Let ((n, s), u, v) ->
-      Let (n, translateTerm ctx u, translateTerm (addCtx n s ctx) v)
+      Let (n, translateTerm ctx u, translateTerm (addTerm n u ctx) v)
 
   | L.Subin (t, sb) ->
-      let ((x, s), p) = L.toSubset ctx sb in
-      let (ty, y, p') = translateProp (addCtx x s ctx) p in
+      let ((x, s), p) = toSubset ctx sb in
+      let (ty, y, p') = translateProp (addBind x s ctx) p in
       let t' = translateTerm ctx t in
       let y' = fresh [y; mk_word "v"; mk_word "u"; mk_word "t"] [] ctx in
 	Tuple [t'; Obligation ((y', ty), substProp [(y, Id y'); (x,t')] p')]
@@ -201,11 +244,12 @@ and translateProp ctx = function
   | L.Atomic (n, t) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let n' = make_type_name ctx n in
-	(NamedTy n', r, NamedProp (n', Id r, translateTerm t))
+	(NamedTy n', r, NamedProp (n', Id r, translateTerm ctx t))
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
-      let t = fresh [mk_word "t"; mk_word "p"; mk_word "u"; mk_word "q"; mk_word "r"] ctx in
+      let t =
+	fresh [mk_word "t"; mk_word "p"; mk_word "u"; mk_word "q"; mk_word "r"] [] ctx in
 	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
 		List.map (fun (_, x, p) ->
@@ -216,25 +260,25 @@ and translateProp ctx = function
   | L.Imply (p, q) ->
       let (t, x, p') = translateProp ctx p in
       let (u, y, q') = translateProp ctx q in
-      let x' = fresh [x; "x"; "y"; "z"] [] ctx in
+      let x' = fresh [x; mk_word "x"; mk_word "y"; mk_word "z"] [] ctx in
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x'] ctx in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x', t), Imply (substProp [(x,x')] p',
+	 Forall ((x', t), Imply (substProp [(x, Id x')] p',
 				 substProp [(y, App (Id f, Id x'))] q')))
 
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProp ctx p in
       let (u, y, q') = translateProp ctx q in
-      let x' = fresh [x; "x"; "y"; "z"] [] ctx in
-      let y' = fresh [y; "y"; "z"; "x"] [x'] ctx in
+      let x' = fresh [x; mk_word "x"; mk_word "y"; mk_word "z"] [] ctx in
+      let y' = fresh [y; mk_word "y"; mk_word "z"; mk_word "x"] [x'] ctx in
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x';y'] ctx in
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
 	 f,
 	 And [
-	   Forall ((x', t), Imply (substProp [(x,x')] p',
+	   Forall ((x', t), Imply (substProp [(x, Id x')] p',
 				   substProp [(y, App (Proj (0, Id f), Id x))] q'));
-	   Forall ((y', u), Imply (substProp [(y,y')] q',
+	   Forall ((y', u), Imply (substProp [(y, Id y')] q',
 				   substProp [(x, App (Proj (1, Id f), Id y))] p'))
 	 ]
 	)
@@ -253,26 +297,26 @@ and translateProp ctx = function
 	   List.map2
 		(fun lb (t,x,p) ->
 		   let x' = fresh [x] [u] ctx in
-		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Id x')), substProp [(x,x')] p)))
+		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Id x')), substProp [(x, Id x')] p)))
 		lbs lst'
 	 ))
 
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=(x,q)} = translateSet ctx s in
-      let (u, y, p') = translateProp (ctxAdd n s ctx) p in
-      let x' = fresh [x] ctx in
+      let (u, y, p') = translateProp (addBind n s ctx) p in
+      let x' = fresh [x] [] ctx in
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "l"] [x'] ctx
       in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x',t), Imply (substProp [(x,x')] q,
-				substProp [(n,x'); (y, App (Id f, Id x'))] p'))
+	 Forall ((x',t), Imply (substProp [(x, Id x')] q,
+				substProp [(n, Id x'); (y, App (Id f, Id x'))] p'))
 	)
 
   | L.Exists ((n, s), p) -> 
-      let {ty=t; tot=(x,q)} = translateSet s in
+      let {ty=t; tot=(x,q)} = translateSet ctx s in
       let (u, y, p') = translateProp ctx p in
-      let w = find_name [mk_word "w"; mk_word "u"; mk_word "p"; mk_word "t"] (List.map fst ctx)
+      let w = fresh [mk_word "w"; mk_word "u"; mk_word "p"; mk_word "t"] [] ctx
       in
 	(TupleTy [t; u], w,
 	 And [
@@ -285,28 +329,60 @@ and translateProp ctx = function
 	(UnitTy, any, Forall ((n, t), Not p'))
 
   | L.Equal (s, t, u) ->
-      let {per=(x,y',p)} = translateSet ctx s in
+      let {per=(x,y,p)} = translateSet ctx s in
       let t' = translateTerm ctx t in
       let u' = translateTerm ctx u in
 	(UnitTy, any, substProp [(x,t'); (y,u')] p)
 
-let translateBinding (n, s) = (n, (translateSet s).ty)
+let translateBinding ctx (n, s) = (n, (translateSet ctx s).ty)
 
-let translateTheoryElement = function
-    L.Set n -> TySpec (n, None)
-  | L.Let_set (n, s) -> TySpec (n, Some (translateSet s))
-  | L.Predicate (n, _, s) -> TySpec (make_type_name n, None)
-  | L.Let_predicate (n, bind, p) -> raise Unimplemented
+let translateTheoryElement ctx = function
+    L.Set n -> 
+      TySpec (fst n, None),
+      addBind n L.SET ctx
+
+  | L.Let_set (n, s) ->
+      TySpec (fst n, Some (translateSet ctx s)),
+      addSet n s ctx
+
+  | L.Predicate (n, _, s) ->
+      TySpec (make_type_name ctx n, None),
+      addBind n (L.Exp (s, L.PROP)) ctx
+
+  | L.Let_predicate (n, bind, p) ->
+      failwith "predicate definitions not implemented"
+
   | L.Let_term (n, s, t) -> raise Unimplemented
-  | L.Value (n, s) -> ValSpec (n, translateSet s, None)
-  | L.Define (n, s, t) -> ValSpec (n, translateSet s, Some (translateTerm t))
+
+  | L.Value (n, s) ->
+      ValSpec (n, translateSet ctx s, None),
+      addBind n s ctx
+
+  | L.Define (n, s, t) ->
+      ValSpec (n, translateSet ctx s, Some (translateTerm ctx t)),
+      addTerm n t ctx
+
   | L.Sentence (_, n, bind, p) ->
-      SentenceSpec (n, List.map translateBinding bind, translateProp [] p)
+      SentenceSpec (n, List.map (translateBinding ctx) bind, translateProp ctx p),
+      addProp n (bind, p) ctx
+
+let rec translateTheoryBody ctx = function
+    [] -> ctx, []
+  | elem::elems ->
+      let e, ctx' = translateTheoryElement ctx elem in
+      let ctx'', th = translateTheoryBody ctx' elems in
+	ctx'', (e :: th)
 
 let translateTheory {L.t_name=name; L.t_arg=args; L.t_body=body} =
-  { s_name = name;
-    s_arg = (match args with
-		 None -> None
-	       | Some a -> Some (List.map translateTheoryElement a));
-    s_body = List.map translateTheoryElement body
-  }
+  let ctx, args' =
+    (match args with
+	 None -> empty, None
+       | Some a ->
+	   let ctx, a' = translateTheoryBody empty a in
+	     ctx, Some a'
+    )
+  in
+    { s_name = name;
+      s_arg = args';
+      s_body = snd (translateTheoryBody ctx body)
+    }

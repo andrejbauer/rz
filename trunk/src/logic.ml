@@ -50,13 +50,15 @@ and set =
     Empty
   | Unit
   | Bool (** Bool is isomorphic to Unit+Unit *)
-  | Basic   of name
+  | Basic   of set_name
   | Product of set list
   | Exp     of set * set
   | Sum     of (label * set option) list
   | Subset  of binding * proposition
-  | RZ      of set (** the set of realizers *)
+  | Rz      of set (** the set of realizers *)
 (** missing quotient types *)
+  | PROP (** we pretend propositions form a set *)
+  | SET (** we pretend sets form a set *)
 
 and term =
     Star
@@ -131,7 +133,7 @@ and substSet x t =
                                     lss)
          | Subset ((y,s),p) -> Subset ((y,sub s),
 				       if (x=y) then p else substProp x t p )
-         | RZ s             -> RZ(sub s)
+         | Rz s             -> Rz (sub s)
 (*         | Quotient(s,u)   -> Quotient(sub s, subst x t u) *)
          | s                    -> s  (* Empty, Unit, Bool, and Basic *)
      and subOpt = function
@@ -168,12 +170,6 @@ and subst x t =
      in sub)
 
 
-let rec toSubset ctx = function
-    Subset ((x,s), p) -> ((x, s), p)
-  | Basic b -> toSubset ctx (Context.getCtx b ctx)
-  | _ -> failwith "not a subset"
-
-
 (************************************)
 (* Translation from Syntax to Logic *)
 (************************************)
@@ -193,7 +189,7 @@ let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
   | S.Bool -> Bool
-  | S.Set_name n -> Basic (n, Syntax.Word)
+  | S.Set_name n -> Basic n
   | S.Product lst -> Product (List.map make_set lst)
   | S.Sum lst -> Sum (List.map
 			(function (lb, None) -> (lb, None) 

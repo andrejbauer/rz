@@ -3,4 +3,5 @@ thy
  set s
  implicit x, y : s
  axiom foo x = all y . x = y
+ axiom bar = all x . some y . x = y
 end
