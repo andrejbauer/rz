@@ -71,10 +71,12 @@ and term =
   | Lambda of binding  * term
   | Inj    of label * term option
   | Case   of term * (label * binding option * term) list
+  | RzQuot of term
+  | RzChoose of binding * term * term
   | Let    of binding * term * term
   | Subin  of term * set
   | Subout of term * set
-(** missing terms for realizers *)
+
 
 type sentence_type = Syntax.sentence_type
 
@@ -226,6 +228,7 @@ let rec make_set = function
   | S.Exp (s, t) -> Exp (make_set s, make_set t)
   | S.Subset ((n, Some s), phi) -> Subset ((n, make_set s), make_proposition phi)
   | S.Quotient (s, x, y, eq) -> Quotient (make_set s, x, y, make_proposition eq)
+  | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
   | S.StableProp -> STABLE
 
@@ -279,6 +282,8 @@ and make_term = function
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
   | S.Quot (t, r) -> failwith "Quotients not implemented"
+  | S.RzQuot t -> RzQuot (make_term t)
+  | S.RzChoose ((n, Some s), t, u) -> RzChoose ((n, make_set s), make_term t, make_term u)
   | S.Choose (n, t, u) -> failwith "Choose not implemented"
   | S.Let (n, t, u) -> failwith "Let not impliemented"
   | _ -> (print_string "unrecognized term\n";

@@ -1,9 +1,17 @@
 theory Trivial =
 thy
  set s
- implicit x, y : s
- axiom f x = some y . not (x = y)
+ const a : s
 
- stable predicate p : s * s
- axiom g x = p (x, x)
+ set t = rz ((s -> s) -> s)
+
+ const f0 : t
+
+ axiom foo (x : (s -> s) -> s) = [f0] = x
+
+ axiom bar (x : t) = f0 = x
+
+ axiom baz (f : (s -> s) -> s) =
+   (let [(g : t)] = f in g) = f0
+
 end

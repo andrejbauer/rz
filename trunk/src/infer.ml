@@ -189,7 +189,7 @@ let eqSet' do_subtyping ctx s1 s2 =
 		                   ("WARNING: cannot confirm " ^ 
                                     "equivalence-relation equality\n");
 				 true)
-        | (RZ s3, RZ s4) -> cmp(s3, s4)
+        | (Rz s3, Rz s4) -> cmp(s3, s4)
 
         | (Prop,Prop) -> raise Impossible (** Shouldn't occur without HOL *)
 
@@ -302,7 +302,7 @@ let rec annotateSet ctx =
 	    let (_, ctx'') = annotateBinding ctx' (y, Some s) in
 	    let eq' = annotateProp ctx'' eq in
 	      Quotient (ann s, x, y, eq')
-        | RZ s -> RZ (ann s)
+        | Rz s -> Rz (ann s)
         | Set_name name ->
              (if peekSet ctx name then
 		 Set_name name
@@ -442,7 +442,26 @@ and annotateTerm ctx =
      | Quot(t, r) -> 
          (print_string "What is the type of an equivalence relation?";
           raise Unimplemented)
- 
+
+     | RzQuot t ->
+	 let (t', ty) = ann t in
+	   (match hnfSet ctx ty with
+		Rz ty' -> RzQuot t', ty'
+	      | _ -> tyGenericError "[] with a non-rz type")
+
+     | RzChoose (bnd, t1, t2) ->
+	 let (t1', ty1) = ann t1 in
+	 let ((_, Some ty) as bnd', ctx') = annotateBinding ctx bnd in
+	 let (t2', ty2) = annotateTerm ctx' t2 in
+	   (match hnfSet ctx ty with
+		Rz ty' ->
+		  if eqSet ctx ty1 ty' then
+		    RzChoose(bnd', t1', t2')
+		  else
+		    failwith "type mismatch in let [...] = "
+	      | _ -> failwith "type mismatch in let [...] = "),
+	   ty2
+
      | Choose(_,_,_) ->
          (print_string "No point in implementing Choose until we have Quot";
           raise Unimplemented)

@@ -244,7 +244,13 @@ let rec translateSet ctx = function
 	  )
 	}
 
-  | L.Rz _ -> failwith "Translation of RZ not implemented"
+  | L.Rz s ->
+      let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
+	{
+	  ty = t;
+	  tot = (x, p);
+	  per = (y, y', Equal (Id y, Id y'));
+	}
 
 (* remaining cases:
   | Sum of (label * set option) list
@@ -269,16 +275,20 @@ and translateTerm ctx = function
   | L.Inj (lb, Some t) -> Inj (lb, Some (translateTerm ctx t))
 
   | L.Case (t1, lst) ->
-      Cases (translateTerm ctx t1, List.map
+      Case (translateTerm ctx t1, List.map
 	       (function
 		    (lb, Some (n, s), t) ->
 		      let ctx' = addBind n s ctx in
-			(lb, (n, (translateSet ctx' s).ty), translateTerm ctx' t)
+			(lb, Some (n, (translateSet ctx' s).ty), translateTerm ctx' t)
                   | (lb, None, t) ->
-                      (lb, (any, TopTy), translateTerm (addBind any L.Unit ctx) t)
+                      (lb, None, translateTerm (addBind any L.Unit ctx) t)
 	       )
                lst
 	    )
+  | L.RzQuot t -> translateTerm ctx t
+
+  | L.RzChoose ((n, s), t, u) ->
+      Let (n, translateTerm ctx t, translateTerm (addTerm n u ctx) u)
 
   | L.Let ((n, s), u, v) ->
       Let (n, translateTerm ctx u, translateTerm (addTerm n u ctx) v)
@@ -433,7 +443,12 @@ let translateTheoryElement ctx = function
       failwith "predicate definitions not implemented"
 
   | L.Let_term (n, s, t) ->
-      failwith "term definitions not implemented"
+      let {ty=u; per=(y,y',q)} = translateSet ctx s in
+      let t' = translateTerm ctx t in
+      [ValSpec (n, u);
+       AssertionSpec([], substProp ctx [(y, Id n); (y', t')] q)
+      ],
+      addTerm n t (addBind n s ctx)
 
   | L.Value (n, s) ->
       let {ty=t; tot=(x,p)} = translateSet ctx s in

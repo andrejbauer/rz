@@ -206,7 +206,7 @@ simple_set:
   | LPAREN set RPAREN           { $2 }
   | subset                      { $1 }
   | simple_set SLASH LPAREN name COMMA name COLON term RPAREN { Quotient ($1, $4, $6, $8) }
-  | RZ simple_set               { RZ $2 }
+  | RZ simple_set               { Rz $2 }
 
 subset:
     LBRACE name BAR term RBRACE { Subset (($2, None), $4) }
@@ -271,7 +271,7 @@ term:
   | term EQUAL term             { Equal (None, $1, $3) }
   | LPAREN term EQUAL term IN set RPAREN   { Equal (Some $6 , $2, $4) }
   | LET name_typed EQUAL term IN term { Let ($2, $4, $6) }
-  | LET LBRACK name_typed RBRACK EQUAL term IN term { Choose ($3, $6, $8) }
+  | LET LBRACK name_typed RBRACK EQUAL term IN term { RzChoose ($3, $6, $8) }
   | and_term                    { And $1 }
   | or_term                     { Or $1 }
   | term INFIXOP0 term          { App (App (Var ($2, Infix0), $1), $3) }
@@ -283,6 +283,7 @@ term:
   | term SLASH term             { App (App (Var ("/", Infix3), $1), $3) }
   | term INFIXOP4 term          { App (App (Var ($2, Infix4), $1), $3) }
   | term PERCENT term           { Quot ($1, $3) }
+  | LBRACK term RBRACK          { RzQuot $2 }
   | term SUBIN subset_or_name   { Subin ($1, $3) }
   | term SUBOUT subset_or_name  { Subout ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }

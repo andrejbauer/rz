@@ -29,7 +29,7 @@ and set =
   | Exp      of set * set            (** function space *)
   | Subset   of binding * term       (** subset *)
   | Quotient of set * name * name * term  (** quotent set *)
-  | RZ of set                        (** the set of realizers *)
+  | Rz of set                        (** the set of realizers *)
   | Prop                             (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
 
@@ -46,6 +46,8 @@ and term =
   | Case   of term  * (label * binding option * term) list
   | Quot   of term  * term (** quotient under equivalence relation *)
   | Choose of binding * term * term (** elimination of equivalence class *)
+  | RzChoose of binding * term * term (** elimination of rz class *)
+  | RzQuot of term
   | Subin  of term * set
   | Subout of term * set
   | And    of term list
@@ -125,7 +127,7 @@ let rec string_of_set set =
     | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
     | Prop -> "Prop"
     | StableProp -> "StableProp"
-    | RZ set -> "RZ " ^ toStr set
+    | Rz set -> "rz (" ^ toStr set ^ ")"
     | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " | " ^ 
 	                     string_of_term term ^ " }"
     | Quotient (_,_,_,_) -> "unimplemented toStr"

@@ -35,7 +35,7 @@ and term =
   | Tuple of term list
   | Proj of int * term
   | Inj of label * term option
-  | Cases of term * (label * binding * term) list
+  | Case of term * (label * binding option * term) list
   | Let of name * term * term
   | Obligation of binding * proposition
 
@@ -133,7 +133,10 @@ and fvTerm' flt acc = function
   | Proj (_, t) -> fvTerm' flt acc t
   | Inj (_, Some t) -> fvTerm' flt acc t
   | Inj (_, None) -> acc
-  | Cases (t, lst) -> List.fold_left (fun a (_, (n, _), t) -> fvTerm' (n::flt) a t) (fvTerm' flt acc t) lst
+  | Case (t, lst) ->
+      List.fold_left
+      (fun a (_, bnd, t) -> fvTerm' (match bnd with None -> flt | Some (n, _) -> n::flt) a t)
+      (fvTerm' flt acc t) lst
 
 and fvProp' flt acc = function
     True -> acc
@@ -181,16 +184,22 @@ and substTerm ctx s = function
       let s' = substRemove n s in
       let n' = fresh [n] (fvSubst s') ctx in
 	Lambda ((n', ty), substTerm ctx (substAdd (n,n') s') t)
+  | Let (n, t, u) ->
+      let s' = substRemove n s in
+      let n' = fresh [n] (fvSubst s') ctx in
+	Let (n', substTerm ctx s t, substTerm ctx (substAdd (n,n') s') u)
   | Tuple lst -> Tuple (List.map (substTerm ctx s) lst)
   | Proj (k, t) -> Proj (k, substTerm ctx s t)
   | Inj (k, None) -> Inj (k, None)
   | Inj (k, Some t) -> Inj (k, Some (substTerm ctx s t))
-  | Cases (t, lst) -> 
-      Cases (substTerm ctx s t,
-	     List.map (fun (lb, (n, ty), t) ->
-			 let s' = substRemove n s in
-			 let n' = fresh [n] (fvSubst s') ctx in
-			 (lb, (n', ty), substTerm ctx (substAdd (n,n') s') t)
+  | Case (t, lst) -> 
+      Case (substTerm ctx s t,
+	     List.map (function
+			   (lb, None, t) -> (lb, None, substTerm ctx s t)
+			 | (lb, Some (n, ty), t) ->
+			     let s' = substRemove n s in
+			     let n' = fresh [n] (fvSubst s') ctx in
+			       (lb, Some (n', ty), substTerm ctx (substAdd (n,n') s') t)
 		      ) lst)
   | Obligation ((x, ty), p) ->
 	Obligation ((x, ty), substProp ctx (substRemove x s) p)
@@ -275,12 +284,15 @@ and string_of_term' level t =
     | Proj (k, t) -> (4, ("pi" ^ (string_of_int k) ^ " " ^ (string_of_term' 3 t)))
     | Inj (lb, None) -> (4, ("`" ^ lb))
     | Inj (lb, Some t) -> (4, ("`" ^ lb ^ " " ^ (string_of_term' 3 t)))
-    | Cases (t, lst) ->
+    | Case (t, lst) ->
 	(13, "match " ^ (string_of_term' 13 t) ^ " with " ^
-	   (String.concat " | " (List.map (fun (lb,(n,ty),u) -> 
-					     lb ^ " (" ^ (string_of_name n) ^ " : " ^
-					     (string_of_ty ty) ^ ") -> " ^
-					     (string_of_term' 11 u)) lst)))
+	   (String.concat " | "
+	      (List.map (function
+			     (lb, None, u) -> "`" ^ lb ^ " -> " ^  (string_of_term' 11 u)
+			   | (lb, Some (n,ty), u) -> 
+			       "`" ^ lb ^ " (" ^ (string_of_name n) ^ " : " ^
+			       (string_of_ty ty) ^ ") -> " ^
+			       (string_of_term' 11 u)) lst)))
     | Let (n, t, u) ->
 	(13, "let " ^ (string_of_name n) ^ " = " ^
 	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
