@@ -505,12 +505,13 @@ and translateTheoryElement ctx = function
       addBind n s ctx
 
   | L.Sentence (_, nm, mbind, bind, p) ->
-      let mbind', ctx' = translateModelBinding ctx mbind in
+      [], ctx
+(*      let mbind', ctx' = translateModelBinding ctx mbind in
 	[StructureSpec (Syntax.N (String.uppercase (Syntax.string_of_name nm), S.Word),
 			mbind',
 			Signat [(* XXX missing stuff, use ctx' here *)])],
       ctx
-
+*)
 (*
       begin
 	let prep m (Syntax.N(s,t)) = Syntax.LN(m,[s],t) in
