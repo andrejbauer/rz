@@ -517,9 +517,11 @@ and translateTheoryElement ctx = function
 	let ctx'' = addBinding valbnd ctx' in
 	let bnd = translateBinding ctx' valbnd in
 	let (typ, x, prp') = translateProp ctx'' prp in
+	let typ' = List.fold_right (fun (_,t) a -> ArrowTy (t, a)) bnd typ in
+	let app = List.fold_left (fun a (n,_) -> App (a, toId n)) (toId nm) bnd in
 	let elems =
-	  [ ValSpec (nm, typ, [(Syntax.string_of_name nm, bnd, 
-				substProp ctx'' [(x, toId nm)] prp')]) ]
+	  [ ValSpec (nm, typ', [(Syntax.string_of_name nm, bnd, 
+				substProp ctx'' [(x, app)] prp')]) ]
 	in
 	  if mdlbind = [] then
 	    elems

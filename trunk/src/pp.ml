@@ -236,7 +236,7 @@ and output_prop_9 ppf = function
   | NamedProp (n, t, u) ->
       fprintf ppf "%a |= %a"   output_term t   output_app (n,u)
   | Equal (t, u) -> 
-      fprintf ppf "%a = %a"  output_term_8 t   output_term_8 t
+      fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
 
 and output_prop_8 ppf = function
@@ -257,8 +257,8 @@ and output_prop_0 ppf = function
   | prp -> fprintf ppf "(%a)"   output_prop prp
     
 and output_app ppf = function
-    ((Logic.LN(_,_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)) as ln), [Tuple [u;v]]) ->
-      fprintf ppf "%a %a %a" 
+    ((Logic.LN(_,_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)) as ln), [u;v]) ->
+       fprintf ppf "%a %a %a" 
          output_term u  output_longname ln  output_term v
   | (ln, trms) -> 
       fprintf ppf "%a %a" 

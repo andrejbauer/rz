@@ -128,6 +128,7 @@ module StringSet = Set.Make(StringOrder)
 
 let rec string_of_name = function 
     N(str,Word) -> str
+  | N("*",_) -> "( * )"
   | N(str,_) -> "(" ^ str ^ ")"
 
 let rec string_of_set set = 

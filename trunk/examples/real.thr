@@ -31,7 +31,7 @@ thy
   constant ( + ) : r -> r -> r
   constant ( * ) : r -> r -> r
   constant ( - ) : r -> r -> r
-  constant ( ~ ) : r -> r
+  constant ( ~- ): r -> r
 
   set r' = { x : r | not (x = zero) }
 
@@ -40,7 +40,7 @@ thy
   ##################################################
   # Basic algebraic structure
 
-  # (r, zero, +, ~) is a commutative group
+  # (r, zero, +, ~-) is a commutative group
 
   implicit x, y, z : r
 
@@ -54,9 +54,9 @@ thy
 	x + zero = zero
 
   axiom inverse_plus x =
-        x + ~x = zero
+        x + (~- x) = zero
 
-  # (r, zero, one, +, ~, *) is a commutative ring with unit
+  # (r, zero, one, +, ~-, *) is a commutative ring with unit
 
   axiom assoc_mult x y z =
 	(x * y) * z = x * (y * z)
@@ -130,7 +130,7 @@ thy
 	min x y <= x and min x y <= y and
         all z. ((z <= x and z <= y) => z <= min x y)
 
-  const (abs : r -> r) = lam x . (max x (~ x))
+  const (abs : r -> r) = lam x . (max x (~- x))
 
   ##################################################
   # Cauchy completeness

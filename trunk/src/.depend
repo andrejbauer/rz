@@ -1,6 +1,4 @@
 parser.cmi: syntax.cmo 
-infer-bak.cmo: syntax.cmo 
-infer-bak.cmx: syntax.cmx 
 infer.cmo: syntax.cmo 
 infer.cmx: syntax.cmx 
 logic.cmo: syntax.cmo 

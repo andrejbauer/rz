@@ -1007,7 +1007,7 @@ and annotateTerm cntxt =
 	     failwith "type mismatch in let % = "),
 	   ty2	 
         
-     | Let(bnd,t1,t2,None) ->
+     | Let (bnd, t1, t2, None) ->
          let    (t1', ty1) = ann t1
          in let (bnd',cntxt') = annotateBindingWithDefault cntxt ty1 bnd
          in let (t2', ty2) = annotateTerm cntxt' t2
@@ -1016,7 +1016,7 @@ and annotateTerm cntxt =
                             "defns; maybe add a constraint?"));
              (Let(bnd',t1',t2',Some ty2), ty2))
 
-     | Let(bnd,t1,t2,Some st) ->
+     | Let (bnd, t1, t2, Some st) ->
          let    (t1', ty1) = ann t1
          in let (bnd',cntxt') = annotateBindingWithDefault cntxt ty1 bnd
          in let (t2', ty2) = annotateTerm cntxt' t2
@@ -1026,7 +1026,7 @@ and annotateTerm cntxt =
 	   else
              tyGenericError ("Inferred let-body type doesn;t match annotation")
 
-     | Lambda(bnd,t) ->
+     | Lambda (bnd,t) ->
          let    ((_,Some ty1) as bnd', cntxt') = annotateBinding cntxt bnd
          in let (t', ty2) = annotateTerm cntxt' t
          in (Lambda(bnd',t'), Exp(ty1, ty2))

@@ -95,7 +95,7 @@ and term =
   | RzQuot of term
   | RzChoose of binding * term * term
   | Quot   of term * longname
-  | Choose of binding * set_longname * term * term
+  | Choose of binding * longname * term * term
   | Let    of binding * term * term * set  (** set is type of the whole let *)
   | Subin  of term * set
   | Subout of term * set
