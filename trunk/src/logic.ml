@@ -25,18 +25,20 @@ type label = string
 
 (** names of identifiers *)
 type name = Syntax.name
-type longname = Syntax.longname
 
 (** names of sets *)
 type set_name = Syntax.set_name
-type set_longname = Syntax.set_longname
+
+type model_name = Syntax.model_name
+
+type theory_name = Syntax.theory_name
 
 type sentence_type = Syntax.sentence_type
 
 (** a binding in a quantifier or lambda *)
 type binding = name * set
 
-and model_binding = string * theory
+and model_binding = model_name * theory
 
 (** first-order proposition, without accompanying context  *)
 and proposition =

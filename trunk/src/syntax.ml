@@ -11,38 +11,41 @@ type name_type = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4
 
 type name = N of string * name_type
 
-type longname = LN of string * string list * name_type
-          
-type set_name = name
+type set_name = string
 
-type set_longname = longname
+type model_name = string
 
-let toLN (N(str,fixity)) = LN(str,[],fixity)
+type theory_name = string
 
 (** names of sets must be valid type names *)
 
 type binding = name * set option
 
-and mbinding = string * theory
+and mbinding = model_name * theory
 
 and set =
     Empty                            (** empty set, a.k.a, void *)
   | Unit                             (** unit set *)
   | Bool                             (** booleans *)
-  | Set_name of set_longname         (** atomic set *)
+  | Set_name of set_name             (** atomic set *)
+  | Set_mproj of model * label
   | Product  of set list             (** finite product *)
   | Sum      of (label * set option) list (** finite coproduct *)
   | Exp      of set * set            (** function space *)
   | Subset   of binding * term       (** subset *)
-  | Quotient of set * set_longname   (** quotient set *)
+  | Quotient of set * term           (** quotient set *)
   | Rz of set                        (** the set of realizers *)
 
   | Prop                             (** Only for typechecker internals! *)
   | EquivProp                        (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
 
+and model = 
+  | ModelName of model_name
+  | ModelProj of model * label
+
 and term =
-    Var        of longname
+    Var        of name
   | Constraint of term * set
   | Star (** the member of Unit *)
   | False
@@ -52,10 +55,11 @@ and term =
   | App    of term  * term
   | Inj    of label * term option (** injection into a sum type *)
   | Case   of term  * (label * binding option * term) list
-  | Quot   of term  * set_longname (** quotient under equivalence relation *)
-  | Choose of binding * set_longname * term * term (** elimination of equivalence class *)
+  | Quot   of term  * term (** quotient under equivalence relation *)
+  | Choose of binding * term * term * term (** elimination of equivalence class *)
   | RzQuot of term
   | RzChoose of binding * term * term (** elimination of rz *)
+  | MProj  of model * label * name_type
   | Subin  of term * set
   | Subout of term * set
   | And    of term list
@@ -91,15 +95,14 @@ and theory_element =
   | Variable      of name * set
   | Sentence      of sentence_type * name * mbinding list * binding list * term
   | Model         of string * theory
-  | Subtheory     of string * (string * theory) list * theory
   | Implicit      of string list * set
 
 and theory = 
     Theory of theory_element list
-  | TheoryID of string
+  | TheoryID of theory_name
 
 and theorydef = 
-    Theorydef of string * (string * theory) list * theory
+    Theorydef of theory_name * (model_name * theory) list * theory
 
 module NameOrder = struct
                      type t = name
@@ -117,20 +120,18 @@ module StringMap = Map.Make(StringOrder)
 
 module NameSet = Set.Make(NameOrder)
 
+module StringSet = Set.Make(StringOrder)
+
 let rec string_of_name = function 
     N(str,Word) -> str
   | N(str,_) -> "(" ^ str ^ ")"
-
-let rec string_of_longname = function 
-    LN(str,strs,Word) -> String.concat "." (str :: strs)
-  | LN(str,strs,_) -> "(" ^ (String.concat "." (str :: strs)) ^ ")"
 
 let rec string_of_set set = 
   (let rec toStr = function 
       Empty -> "0"
     | Unit  -> "1"
     | Bool  -> "2"
-    | Set_name lname -> string_of_longname lname
+    | Set_name stnm -> stnm
     | Product sets -> "(" ^ String.concat " * " (List.map toStr sets) ^ ")"
     | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"
     | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
@@ -138,13 +139,14 @@ let rec string_of_set set =
     | StableProp -> "StableProp"
     | EquivProp -> "EquivProp"
     | Rz set -> "rz (" ^ toStr set ^ ")"
+    | Set_mproj (mdl, lbl) -> string_of_model mdl ^ "::" ^ lbl
     | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " | " ^ 
 	                     string_of_term term ^ " }"
-    | Quotient (s, r) ->
-	(match s with
+    | Quotient (st, trm) ->
+	(match st with
 	     Product _ | Sum _ | Exp _ | Rz _ ->
-	       "(" ^ (toStr s) ^ ") % " ^ (string_of_longname r)
-	   | _ -> (toStr s) ^ " % " ^ (string_of_longname r))
+	       "(" ^ (toStr st) ^ ") % " ^ (string_of_term trm)
+	   | _ -> (toStr st) ^ " % " ^ (string_of_term trm))
 
 
    and sumarmToStr = function
@@ -156,7 +158,7 @@ let rec string_of_set set =
     
 and string_of_term trm =
   (let rec toStr = function
-      Var lname  -> string_of_longname lname
+      Var nm  -> string_of_name nm
     | Constraint(trm, set) -> "(" ^ toStr trm ^ " : " ^ string_of_set set ^ ")"
     | Star -> "()"
     | False -> "false"
@@ -173,6 +175,8 @@ and string_of_term trm =
     | Choose _ -> "..."
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
+    | MProj(mdl, lbl, Word) -> string_of_model mdl ^ "::" ^ lbl
+    | MProj(mdl, lbl, _) -> "(" ^ string_of_model mdl ^ "::" ^ lbl ^ ")"
     | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
     | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
@@ -200,7 +204,9 @@ and string_of_bnd = function
      |  (name, Some set) -> string_of_name name  ^  ":"  ^  string_of_set set
 
 
-
+and string_of_model = function
+    ModelName strng -> strng
+  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "::" ^ lbl
 
 
 (* Substitution functions.
@@ -212,31 +218,45 @@ and string_of_bnd = function
 
 exception Unimplemented
 
-type renamingsubst = (name * longname) list
+type subst = {terms: term NameMap.t;
+              sets: set StringMap.t;
+              models: model StringMap.t}
 
-let rec substLN (substitution : renamingsubst) = function
-      LN(str, labels, sort) as ln ->
-           (try 
-              (match (List.assoc (N(str,Word)) substitution)  with
-               LN(str',labels',sort') ->
-                    LN(str',labels' @ labels, sort'))
-            with Not_found -> ln)
+let emptysubst = {terms = NameMap.empty;
+		  sets = StringMap.empty;
+		  models = StringMap.empty}
 
-let rec subst (substitution : renamingsubst) =
+let insertTermvar sbst nm trm =
+  {sbst with terms = NameMap.add nm trm sbst.terms}
+let insertSetvar sbst nm st =
+  {sbst with sets = StringMap.add nm st sbst.sets}
+let insertModelvar sbst strng mdl =
+  {sbst with models = StringMap.add strng mdl sbst.models}
+
+let getTermvar sbst nm =
+   try (NameMap.find nm sbst.terms) with Not_found -> Var nm
+let getSetvar sbst stnm =
+   try (StringMap.find stnm sbst.sets) with Not_found -> Set_name stnm
+let getModelvar sbst mdlnm =
+   try (StringMap.find mdlnm sbst.models) with Not_found -> ModelName mdlnm
+
+
+let rec subst (substitution : subst) =
      let rec sub = function
-          Var ln -> Var(substLN substitution ln)
+          Var nm -> getTermvar substitution nm
         | Constraint(u,s) -> Constraint(sub u, substSet substitution s)
         | Tuple ts      -> Tuple(List.map sub ts)
         | Proj(n,t1)    -> Proj(n, sub t1)
         | App(t1,t2)    -> App(sub t1, sub t2)
         | Inj(l,termopt)     -> Inj(l, substTermOption substitution termopt)
         | Case(t1,arms) -> Case(t1,subarms arms)
-        | Quot(t1,ln)   -> Quot(sub t1, substLN substitution ln)
-        | Choose((y,sopt),ln,t1,t2) ->
+        | Quot(trm1,trm2)   -> Quot(sub trm1, sub trm2)
+        | Choose((y,sopt),trm_equiv,t1,t2) ->
             Choose((y,substSetOption substitution sopt),
-                   substLN substitution ln,
-                     sub t1, 
-                     subst ((y, toLN y)::substitution) t2)
+                   sub trm_equiv,
+                   sub t1, 
+                   subst (insertTermvar substitution y (Var y)) t2)
+        | MProj(mdl, lbl, fix) -> MProj(substModel substitution mdl, lbl, fix)
         | And ts        -> And(List.map sub ts)
         | Imply(t1,t2)  -> Imply(sub t1, sub t2)
         | Iff(t1,t2)    -> Iff(sub t1, sub t2)
@@ -247,42 +267,45 @@ let rec subst (substitution : renamingsubst) =
         | Let((y,sopt),t1,t2) ->
             Let((y,substSetOption substitution sopt),
                   sub t1, 
-                  subst ((y, toLN y)::substitution) t2)
+		  subst (insertTermvar substitution y (Var y)) t2)
         | Forall((y,sopt),t1) -> 
             Forall((y,substSetOption substitution sopt),
-                   subst ((y, toLN y)::substitution) t1)
+		  subst (insertTermvar substitution y (Var y)) t1)
         | Exists((y,sopt),t1) -> 
             Exists((y,substSetOption substitution sopt),
-                   subst ((y, toLN y)::substitution) t1)
+		  subst (insertTermvar substitution y (Var y)) t1)
         | t               -> t
      and subarms = function
           [] -> []
         | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
         | (l,Some(y,sopt),u)::rest ->
               (l,Some(y,substSetOption substitution sopt),
-               subst ((y, toLN y)::substitution) u)::(subarms rest)
+  	         subst (insertTermvar substitution y (Var y)) u) ::
+	      (subarms rest)
      in sub
 
 and substSet substitution =
      let rec sub = function
-           Set_name ln -> Set_name(substLN substitution ln)
+           Set_name stnm -> getSetvar substitution stnm
+         | Set_mproj (mdl, lbl) -> Set_mproj(substModel substitution mdl, lbl) 
          | Product ss         -> Product(List.map sub ss)
          | Exp(s1,s2)         -> Exp(sub s1, sub s2)
          | Subset((y,sopt),u) ->
               Subset((y,substSetOption substitution sopt),
-                     subst ((y, toLN y)::substitution) u)
-         | Quotient(s,ln)   -> 
-              Quotient(sub s, substLN substitution ln)
+  	         subst (insertTermvar substitution y (Var y)) u)
+         | Quotient(st,trm)   -> 
+              Quotient(sub st, subst substitution trm)
          | s                    -> s
      in sub
 
 and substSetOption substitution = function
-      None   -> None
-    | Some s -> Some (substSet substitution s)
+      None    -> None
+    | Some st -> Some (substSet substitution st)
 
 and substTermOption substitution = function
-      None   -> None
-    | Some term -> Some (subst substitution term)
+      None     -> None
+    | Some trm -> Some (subst substitution trm)
 
-
-
+and substModel substitution = function
+    ModelName strng -> getModelvar substitution strng
+  | ModelProj (mdl, lbl) -> ModelProj(substModel substitution mdl, lbl)
