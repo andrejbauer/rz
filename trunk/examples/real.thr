@@ -1,18 +1,31 @@
+# First we need natural numbers
+
+theory Natural =
+thy
+  set nat
+  const zero : nat
+  const succ : nat -> nat
+
+  axiom recursion [A : thy
+                         set s
+                         const x : s
+                         const f : s -> s
+                       end] =
+  some (g : nat -> A.s) . (
+    g zero = A.x and
+    all (n : nat) . (g (succ n) = A.f (g n))
+  )
+end
+
+
 # We axiomatize the real numbers as the
 # ordered Archimedean Cauchy complete field.
 # We take into account validity of MP, which implies
 # that apartness is the same thing as inequality.
 
-theory Real =
+theory Real (N : Natural) =
 thy
-  set nat # we pretend we have a type of natural numbers	
   set r
-
-  # we pretend nat is a subset of r
-  constant i : nat -> r
-  constant z : nat
-  constant succ : nat -> nat
-
   constant zero : r
   constant one : r
   constant ( + ) : r -> r -> r
@@ -92,8 +105,16 @@ thy
   axiom order_inverse x =
 	zero < x => zero < (inv (x :> r') :< r)
   	
+  # The Archimedean axiom
+
+  const i : N.nat -> r
+
+  axiom i_injects =
+    i N.zero = zero and
+    all (n : N.nat) . (i (N.succ n) = one + i n)
+
   axiom archimedean x =
-	zero < x => some (n : nat) . x < i n
+	zero < x => some (n : N.nat) . x < i n
 
   ##################################################
   # reals form a lattice
@@ -114,6 +135,20 @@ thy
   ##################################################
   # Cauchy completeness
 
-  # we can't really do this without natural numbers
+  const halfTo : N.nat -> r
+
+  axiom halfTo_is_what_you_think_it_is =
+    halfTo N.zero = one and
+    all (n : N.nat) . (halfTo (N.succ n) + halfTo (N.succ n) = halfTo n)
+
+
+  axiom cauchy (a : N.nat -> r) =
+  begin
+    all (n : N.nat) . (abs (a (N.succ n) - a n) < halfTo n)
+    =>
+    some (x : r) . all (n : N.nat) . (
+      abs (x - a (N.succ n)) < halfTo n
+    )
+  end
 
 end
