@@ -17,6 +17,7 @@ type ty =
   | SumTy of (label * ty option) list (* 1 *)
   | TupleTy of ty list         (* 2 *)
   | ArrowTy of ty * ty         (* 3 *)
+  | TYPE
 
 type modest = {
   ty : ty;
@@ -63,13 +64,14 @@ type signat_element =
   | TySpec of set_name * ty option
   | PredicateSpec of name * ty
 
-type signat = 
-{
-  s_name : string;
-  s_arg : signat_element list option;
-  s_body : signat_element list
-}
+type signat =
+    SignatID of string
+  | Signat of signat_element list
 
+type struct_binding = string * signat
+
+type signatdef = Signatdef of string * struct_binding list * signat
+    
 
 let mk_word str = Syntax.N(str, Syntax.Word)
 let mk_longword str = Syntax.LN(str, [], Syntax.Word)
@@ -361,7 +363,7 @@ and string_of_proposition p = string_of_prop 999 p
 let string_of_bind bind =
     String.concat ", " (List.map (fun (n,t) -> (string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
 
-let string_of_spec ctx = function
+let string_of_spec = function
     ValSpec (name, ty) ->
       "val " ^ (string_of_name name) ^ " : " ^ (string_of_ty ty)
     | TySpec (name, None) -> "type " ^ (string_of_name name)
@@ -371,11 +373,15 @@ let string_of_spec ctx = function
 	(if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
 	(string_of_proposition p) ^ "\n*)"
 
-let string_of_signat { s_name = s; s_arg = arg; s_body = body } = 
-  "module type " ^ s ^
-  (match arg with
-       None -> ""
-     | Some a -> "(\n" ^ (String.concat "\n\t" (List.map (string_of_spec []) a)) ^ "\n)"
-  ) ^ " =\n" ^ "sig\n" ^
-  (String.concat "\n\n" (List.map (string_of_spec []) body)) ^
-  "\nend\n"
+let string_of_signat = function
+    SignatID s -> s
+  | Signat body -> String.concat "\n" (List.map string_of_spec body)
+
+let string_of_signatdef (Signatdef (s, args, body)) =
+  "module type " ^ s ^ " =\n" ^
+  (if args = [] then "" else
+     String.concat "\n"
+     (List.map
+	(fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") -> ")
+	args)) ^
+  "\n" ^ (string_of_signat body)

@@ -114,23 +114,22 @@ let peekImplicit (ctx : ctx) (N(namestring, fixity) : name) =
 (* For simplicity, at the moment does not descend into models,
    hence does not require substitutions *)
 let peekTheory (ctx : ctx) namestring =
-   let rec loop = function
-       [] -> None
-     | Subtheory (thisstring, theory)::rest -> 
-         if thisstring = namestring 
-            then Some theory
-            else loop rest
-     | _::rest -> loop rest
-   in
-      loop ctx
+  let rec loop = function
+      [] -> None
+    | Subtheory (thisstring, [], theory) :: rest -> 
+        if thisstring = namestring 
+        then Some theory
+        else loop rest
+    | _::rest -> loop rest
+  in
+    loop ctx
 
 let rec expandTheory ctx = function
-    Theory {t_arg = []; t_body = elems} -> elems
-  | Theory _ -> []
+    Theory elems -> elems
   | TheoryID theoryid -> 
      (match (peekTheory ctx theoryid) with
-        Some theory -> expandTheory ctx theory
-      | None -> tyGenericError ("Undefined theory " ^ theoryid))
+          Some theory -> expandTheory ctx theory
+	| None -> tyGenericError ("Undefined theory " ^ theoryid))
           
 
 let addToSubst (substitution : renamingsubst) (N(namestring,fixity)) = function
@@ -176,7 +175,7 @@ let addToSubst (substitution : renamingsubst) (N(namestring,fixity)) = function
  *)
 
 let rec peekTypeof' subst0 ctx pathtohere = function
-    LN(namestring, strs, fixity) as lname ->
+    LN (namestring, strs, fixity) as lname ->
       let rec loop substitution = function
        [] -> None
         | Set(sname, sopt) :: rest ->
@@ -320,7 +319,7 @@ let insertSet ctx name = (Set(name, None) :: ctx)
 let insertTydef ctx name set = (Set(name,Some set) :: ctx)
 let insertType ctx name set = (Value(name,set) :: ctx)
 let insertImplicits ctx namestrings set = (Implicit(namestrings,set) :: ctx)
-let insertTheory ctx thrstring thr = (Subtheory(thrstring, thr)::ctx)
+let insertTheory ctx thrstring args thr = (Subtheory (thrstring, args, thr) :: ctx)
 
 
 
@@ -619,11 +618,13 @@ and annotateProp ctx =
             in
 	      Exists (bnd', fst (annotateProp ctx' p)), Unstable
 
+(*
         | ForallModels (str, thr, p) ->
 	    let thr' = annotateTheory ctx thr
 	    in let ctx' = insertModel ctx str thr'
 	    in let (p',stb) = annotateProp ctx' p
-            in (ForallModels(str,thr',p'), stb) (** XXX Correct stability? *)
+            in (ForallModels(str,thr',p'), stb)
+*)
 
 	| Case(e, arms) -> 
 	    let (e', ty) = annotateTerm ctx e
@@ -868,11 +869,12 @@ and annotateTheoryElems ctx raccum ctx0 = function
               else
                 tyGenericError "Term definition doesn't match constraint"
 
-       | Sentence(sort, n, bnds, p)::rest ->
-           let    (bnds',ctx') = annotateBindings ctx bnds
-           in let (p',_) = annotateProp ctx' p
-           in annotateTheoryElems ctx (Sentence(sort, n, bnds', p')::raccum) 
-                                  ctx0 rest
+       | Sentence(sort, n, mbnds, bnds, p)::rest ->
+	   let (mbnds', ctx') = annotateModelBindings ctx mbnds in
+           let (bnds',ctx'') = annotateBindings ctx' bnds in
+           let (p',_) = annotateProp ctx'' p in
+             annotateTheoryElems ctx (Sentence(sort, n, mbnds', bnds', p')::raccum) 
+               ctx0 rest
                     (** XXX:  Cannot refer to previous axioms!? *)
 
        | Predicate (n, stab, s)::rest ->
@@ -903,7 +905,7 @@ and annotateTheoryElems ctx raccum ctx0 = function
            in let ctx' = insertImplicits ctx strs s'
            in annotateTheoryElems ctx' raccum ctx0 rest
 
-       | Model (str,thr) :: rest ->
+       | Model (str, thr) :: rest ->
            let thr' = annotateTheory ctx thr
            in let ctx' = insertModel ctx str thr'
            in let ctx0' = insertModel ctx str thr'
@@ -914,27 +916,30 @@ and annotateTheoryElems ctx raccum ctx0 = function
             raise Unimplemented
 *)
 
-(* XXX Does not return context or handle TheoryID's*)
-and annotateTheory ctx = function
-  | Theory {t_arg = []; t_body = tesb } ->
-	let (tesb', ctx_thr, _) = annotateTheoryElems ctx [] emptyCtx tesb
-        in Theory {t_arg=[]; t_body = tesb'}
+and annotateModelBindings ctx = function
+    [] -> [], ctx
+  | (m, th) :: bnd ->
+      let th' = annotateTheory ctx th in
+      let bnd', ctx'' = annotateModelBindings (insertModel ctx m th') bnd in
+	(m, th') :: bnd', ctx''
 
-  |  Theory {t_arg = tesa; t_body = tesb} -> 
-	let (tesa', _, ctx') = annotateTheoryElems ctx [] emptyCtx tesa
-	in let (tesb', ctx_thr, _) = annotateTheoryElems ctx' [] emptyCtx tesb
-        in Theory {t_arg=tesa'; t_body = tesb'}
-    | TheoryID str -> (match peekTheory ctx str with
+and annotateTheory ctx = function
+  | Theory elems ->
+	let (elems', _, _) = annotateTheoryElems ctx [] emptyCtx elems
+        in
+	  Theory elems'
+
+  | TheoryID str -> (match peekTheory ctx str with
 			 Some thr -> TheoryID str
 		       | None -> tyGenericError ("Unknown Theory " ^ str))
 			    
 
 
 and annotateTheoryDef ctx = function
-      TheoryDef(str, thr) -> 
-	let thr' = annotateTheory ctx thr
-	in (TheoryDef(str, thr'),
-	    insertTheory ctx str thr')
+      Theorydef (str, args, thr) -> 
+	let args', ctx' = annotateModelBindings ctx args in
+	let thr' = annotateTheory ctx' thr
+	in (Theorydef (str, args', thr'), insertTheory ctx str args thr')
 
 and annotateTheoryDefs ctx = function
     [] -> []

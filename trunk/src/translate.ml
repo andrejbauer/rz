@@ -24,12 +24,13 @@ type ctxElement =
 
 and context = (L.name * ctxElement) list
 
-let empty : context = []
+let emptyCtx : context = []
 
-let addBind (n : L.name) s ctx = (n, CtxBind s) :: ctx
-let addTerm (n : L.name) t ctx = (n, CtxTerm t) :: ctx
-let addSet  (n : L.name) s ctx = (n,  CtxSet s) :: ctx
-let addProp (n : L.name) (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
+let addBind  (n : L.name) s ctx = (n, CtxBind s) :: ctx
+let addTerm  (n : L.name) t ctx = (n, CtxTerm t) :: ctx
+let addSet   (n : L.name) s ctx = (n,  CtxSet s) :: ctx
+let addProp  (n : L.name) (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
+let addModel n ctx' ctx = (Syntax.N(n,Syntax.Word), CtxModel ctx') :: ctx
 
 let addBinding bind ctx =
   List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
@@ -66,18 +67,18 @@ let getProp n ctx =
   in
     find ctx
 
-let getModel (n : L.name) ctx =
+let getModel n ctx =
   let rec find = function
       [] -> raise Not_found
-    | (m, CtxModel thr) :: ctx' -> if n = m then thr else find ctx'
+    | (Syntax.N(m,_), CtxModel thr) :: ctx' -> if n = m then thr else find ctx'
     | _ :: ctx' -> find ctx'
   in
     find ctx
 
 let rec getLong getter ctx = function
-    (Syntax.LN(str, [], namesort) as lname) -> getter (Syntax.N(str,namesort)) ctx
+    (S.LN(str, [], namesort) as lname) -> getter (Syntax.N(str,namesort)) ctx
   | (S.LN(str, lab::labs, namesort) as lname) ->
-      let ctx' = getModel (Syntax.N(str,Syntax.Word)) ctx
+      let ctx' = getModel str ctx
       in getLong getter ctx' (Syntax.LN(lab, labs, namesort))
 
 
@@ -425,15 +426,10 @@ and translateProp ctx = function
       let u' = translateTerm ctx u in
 	(TopTy, any, substProp ctx [(x,t'); (y,u')] p)
 
-let translateBinding ctx bind =
+and translateBinding ctx bind =
   List.map (fun (n, s) -> n, (translateSet ctx s).ty) bind
 
-let rec domain = function
-  | L.Exp (s, t) -> s :: (domain t)
-  | L.PROP | L.STABLE | L.EQUIV -> []
-  | _ -> failwith "Internal error: invalid domain of a predicate"
-
-let translateTheoryElement ctx = function
+and translateTheoryElement ctx = function
     L.Set n -> 
       [TySpec (n, None);
        (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
@@ -463,9 +459,20 @@ let translateTheoryElement ctx = function
       ),
       addSet n s ctx
 
-  | L.Predicate (n, stab, s) ->
-      let ty = (if stab = Syntax.Stable or stab = Syntax.Equivalence then TopTy else NamedTy (toLN n)) in
-	((if stab = Syntax.Stable or stab = Syntax.Equivalence then [] else [TySpec (n, None)])) @
+  | L.Predicate (n, stab, s) -> begin
+      let rec domain = function
+	| L.Exp (s, t) -> s :: (domain t)
+	| L.PROP | L.STABLE | L.EQUIV -> []
+	| _ -> failwith "Internal error: invalid domain of a predicate"
+      in
+      let ty = (if stab = Syntax.Stable or stab = Syntax.Equivalence then
+		  TopTy else
+		    NamedTy (toLN n))
+      in
+	((if stab = Syntax.Stable or stab = Syntax.Equivalence then
+	    []
+	  else
+	    [TySpec (n, None)])) @
 	[(
 	   let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
 	   let _, bind, app, tots =
@@ -493,11 +500,12 @@ let translateTheoryElement ctx = function
 	      ([r;n], [], [], [], []) (domain s)
 	  in
 	    AssertionSpec ((Syntax.string_of_name n) ^ "_extensional",
-	      (r, ty)::bind, Imply (
+			   (r, ty)::bind, Imply (
 		And ((NamedProp (toLN n, toId r, tuplify app1))::eqs),
 		NamedProp (toLN n, toId r, tuplify app2)
 	      )))] ,
-      addProp n (stab, None) ctx
+	addProp n (stab, None) ctx
+    end
 
   | L.Let_predicate (n, stab, bind, p) ->
       let bind' = translateBinding ctx bind in
@@ -527,11 +535,13 @@ let translateTheoryElement ctx = function
       ],
       addBind n s ctx
 
-  | L.Sentence (_, n, bind, p) ->
+  | L.Sentence (_, n, mbind, bind, p) ->
       begin
 	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in
 	let (ty, x, p') = translateProp ctx' p in
-	let p'' = substProp ctx' [(x, App (toId n, Tuple (List.map (fun (x,_) -> toId x) bind)))] p' in
+	let p'' = substProp ctx'
+		    [(x, App (toId n, Tuple (List.map (fun (x,_) -> toId x) bind)))] p'
+	in
 	let rec fold cx tots = function
 	    [] -> [],
 	      (match List.rev tots with
@@ -552,37 +562,25 @@ let translateTheoryElement ctx = function
       addProp n (Syntax.Unstable, Some (bind, p)) ctx
 
 let rec translateTheoryBody ctx = function
-    [] -> ctx, []
+    [] -> [], ctx
   | elem::elems ->
       let es, ctx' = translateTheoryElement ctx elem in
-      let ctx'', th = translateTheoryBody ctx' elems in
-	ctx'', (es @ th)
+      let th, ctx'' = translateTheoryBody ctx' elems in
+	(es @ th), ctx''
 
-(*
-let translateTheory {L.t_name=name; L.t_arg=args; L.t_body=body} =
-  let ctx, args' =
-    (match args with
-	 None -> empty, None
-       | Some a ->
-	   let ctx, a' = translateTheoryBody empty a in
-	     ctx, Some a'
-    )
-  in
-    { s_name = name;
-      s_arg = args';
-      s_body = snd (translateTheoryBody ctx body)
-    }
-*)
+let translateTheory ctx = function
+    L.Theory body -> 
+      let body', ctx' = translateTheoryBody ctx body in
+	Signat body', ctx'      
+  | L.TheoryID id -> SignatID id, getModel id ctx
 
-let translateTheoryDef ctx = function
-  L.TheoryDef(str, L.Theory {L.t_arg = []; L.t_body = body}) ->
-    { s_name = str;
-      s_arg = None;
-      s_body = snd (translateTheoryBody ctx body)
-    }
-  | L.TheoryDef(str, L.Theory {L.t_arg = arg; L.t_body = body}) ->
-    raise Unimplemented
+let rec translateModelBinding ctx = function
+    [] -> [], emptyCtx
+  | (m, th) :: rest ->
+      let th', ctx' = translateTheory ctx th in
+      let rest', ctx'' = translateModelBinding ctx rest in
+	(m, th') :: rest', (addModel m ctx' ctx'')
 
-
-
-
+let translateTheorydef ctx (L.Theorydef (n, args, th)) =
+  let args', ctx' = translateModelBinding ctx args in
+    Signatdef (n, args', (fst (translateTheory ctx' th)))

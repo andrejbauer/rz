@@ -136,17 +136,17 @@ theorydefs:
   | EOF                       { [] }
   | theorydef theorydefs      { $1 :: $2 }
 
-
-
 theorydef:
-    THEORY TNAME EQUAL TNAME   { TheoryDef($2, TheoryID $4) }
-  | THEORY TNAME EQUAL THY theory_elements END   
-                               { TheoryDef($2, Theory { t_arg = []; 
-							t_body = $5}) }
-  | THEORY TNAME LPAREN theory_elements RPAREN EQUAL 
-             THY theory_elements END 
-                                { TheoryDef($2, Theory { t_arg = $4;
-							 t_body = $8 }) }
+  | THEORY TNAME thargs EQUAL TNAME                   { Theorydef ($2, [], TheoryID $5) }
+  | THEORY TNAME thargs EQUAL THY theory_elements END { Theorydef ($2, $3, Theory $6) }
+
+thargs:
+  |                                         { [] }
+  | LPAREN TNAME COLON theory RPAREN thargs { ($2, $4) :: $6 }
+
+theory:
+  | TNAME                               { TheoryID $1 }
+  | THY theory_elements END             { Theory $2 }
 
 theory_elements:
   |                             	{ [] }
@@ -167,36 +167,29 @@ theory_element:
   | STABLE RELATION name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
   | EQUIVALENCE name COLON set   { Predicate ($2, Equivalence, $4) }
   | EQUIVALENCE name args EQUAL term  { Let_predicate ($2, Equivalence, $3, $5) }
-  | AXIOM name args EQUAL term   { Sentence (Axiom, $2, $3, $5) }
-  | THEOREM name args EQUAL term { Sentence (Theorem, $2, $3, $5) }
-  | LEMMA name args EQUAL term       { Sentence (Lemma, $2, $3, $5) }
-  | PROPOSITION name args EQUAL term { Sentence (Proposition, $2, $3, $5) }
-  | COROLLARY name args EQUAL term   { Sentence (Corollary, $2, $3, $5) }
-  | MODEL TNAME COLON TNAME       { Model($2, TheoryID $4) }
-  | MODEL TNAME COLON THY theory_elements END 
-                                {  Model($2, Theory { t_arg = [];
-							 t_body = $5 }) }
-  | MODEL TNAME LPAREN theory_elements RPAREN COLON THY theory_elements END 
-                                {  Model($2, Theory { t_arg = $4;
-							 t_body = $8 }) }
+  | thm name margs args EQUAL term    { Sentence ($1, $2, $3, $4, $6) }
+  | MODEL TNAME COLON TNAME                  { Model($2, TheoryID $4) }
+  | MODEL TNAME COLON THY theory_elements END    { Model($2, Theory $5) }
   | IMPLICIT name_list COLON set  { Implicit($2, $4) }
+
+thm:
+  | AXIOM          { Axiom }
+  | THEOREM        { Theorem }
+  | LEMMA          { Lemma }
+  | PROPOSITION    { Proposition }
+  | COROLLARY      { Corollary }
 
 name_list:
   | NAME                        { [$1] }
   | NAME COMMA name_list        { $1 :: $3 }
 
+margs:
+  |                                        { [] }
+  | RBRACK TNAME COLON theory RBRACK margs { ($2, $4) :: $6 }
+
 args:
-                                { [] }
-  | args_curried		{ $1 }
-  | LPAREN arg_list RPAREN	{ $2 }
-
-args_curried:
-    name_typed                  { [$1] }
-  | name_typed args_curried     { $1 :: $2 }
-
-arg_list:
-    name_typed COMMA name_typed	{ [$1; $3] }
-  | name_typed COMMA arg_list	{ $1 :: $3 }
+  |                             { [] }
+  | name_typed args             { $1 :: $2 }
 
 name:
     NAME                          { N($1, Word) }
@@ -338,8 +331,6 @@ term:
   | LAMBDA name_typed PERIOD term { Lambda ($2, $4) }
   | FORALL name_typed PERIOD term { Forall ($2, $4) }
   | EXISTS name_typed PERIOD term { Exists ($2, $4) }
-  | FORALL TNAME COLON TNAME PERIOD term  { ForallModels ($2, TheoryID $4, $6) }
-  | FORALL TNAME COLON THY theory_elements END PERIOD term  { ForallModels ($2, Theory {t_arg=[]; t_body = $5}, $8) }
 
 term_seq:
     term COMMA term             { [$1; $3] }

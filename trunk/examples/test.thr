@@ -1,15 +1,6 @@
-theory Foo =
+theory Bar =
 thy
   set s
-  const f : s * s -> s
-
-  implicit x, y, x', y' : s
-
-  axiom bar = all x . all y . f(x, y) = f(y, x)
-
-
-  axiom foo = all x . all y . (
-    x = y => 
-    all x' . all y' . (x' = y' => f (x', y') = f (x, y))
-  )
+  const x : s
+  set t = s
 end

@@ -13,8 +13,6 @@ type name = N of string * name_type
 
 type longname = LN of string * string list * name_type
           
-let underscore = ("_", Word)
-
 type set_name = name
 
 type set_longname = longname
@@ -24,6 +22,8 @@ let toLN (N(str,fixity)) = LN(str,[],fixity)
 (** names of sets must be valid type names *)
 
 type binding = name * set option
+
+and mbinding = string * theory
 
 and set =
     Empty                            (** empty set, a.k.a, void *)
@@ -68,7 +68,6 @@ and term =
   | Lambda of binding * term
   | Forall of binding * term
   | Exists of binding * term
-  | ForallModels of string * theory * term
 
 (********************************************************************)
 
@@ -90,20 +89,17 @@ and theory_element =
   | Let_term      of binding * term
   | Value         of name * set
   | Variable      of name * set
-  | Sentence      of sentence_type * name * binding list * term
+  | Sentence      of sentence_type * name * mbinding list * binding list * term
   | Model         of string * theory
-  | Subtheory     of string * theory 
+  | Subtheory     of string * (string * theory) list * theory
   | Implicit      of string list * set
 
-and theoryinfo = {t_arg  : theory_element list;
-               t_body : theory_element list}
-
 and theory = 
-    Theory of theoryinfo
+    Theory of theory_element list
   | TheoryID of string
 
 and theorydef = 
-    TheoryDef of string * theory
+    Theorydef of string * (string * theory) list * theory
 
 module NameOrder = struct
                      type t = name

@@ -31,8 +31,12 @@ type longname = Syntax.longname
 type set_name = Syntax.set_name
 type set_longname = Syntax.set_longname
 
+type sentence_type = Syntax.sentence_type
+
 (** a binding in a quantifier or lambda *)
 type binding = name * set
+
+and model_binding = string * theory
 
 (** first-order proposition, without accompanying context  *)
 and proposition =
@@ -44,6 +48,7 @@ and proposition =
   | Iff    of proposition * proposition
   | Or     of proposition list
   | Forall of binding * proposition
+  | ForallModels of model_binding * proposition
   | Exists of binding * proposition
   | Not    of proposition
   | Equal  of set * term * term
@@ -82,30 +87,22 @@ and term =
   | Subin  of term * set
   | Subout of term * set
 
-
-type sentence_type = Syntax.sentence_type
-
-type theory_element =
+and theory_element =
     Set of set_name
   | Let_set of set_name * set
   | Predicate of name * Syntax.propKind * set
   | Let_predicate of name * Syntax.propKind * binding list * proposition
   | Let_term of name * set * term
   | Value of name * set
-  | Sentence of sentence_type * name * binding list * proposition
+  | Sentence of sentence_type * name * model_binding list * binding list * proposition
   | Model of string * theory
 
-and theoryinfo = {
-   t_arg : theory_element list;
-   t_body : theory_element list
- }
-
 and theory = 
-    Theory of theoryinfo
+    Theory of theory_element list
   | TheoryID of string
 
 and theorydef =
-    TheoryDef of string * theory
+    Theorydef of string * model_binding list * theory
 
 type context = (string * theory_element) list
 
@@ -313,15 +310,17 @@ and make_theory_element = function
   | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
   | S.Let_term ((_, None), t) -> (print_string "Let_term without ty ann.\n";
                                   raise Unimplemented)
-  | S.Sentence (st, n, b, t) -> Sentence (st, n, make_bindings b, make_proposition t)
+  | S.Sentence (st, n, mb, b, t) ->
+      Sentence (st, n, make_model_bindings mb, make_bindings b, make_proposition t)
   | S.Value (n, s) -> Value (n, make_set s)
   | S.Model (str, thr) -> Model(str, make_theory thr)
 
 and make_theory = function
-    S.Theory {S.t_arg = eltsa; S.t_body = eltsb} ->
-       Theory{t_arg = List.map make_theory_element eltsa;
-	      t_body = List.map make_theory_element eltsb}
-  | S.TheoryID id -> raise Unimplemented
+    S.Theory elems -> Theory (List.map make_theory_element elems)
+  | S.TheoryID id -> TheoryID id
 
 and make_theorydef = function
-    S.TheoryDef(str, thr) -> TheoryDef(str, make_theory thr)
+    S.Theorydef(str, args, thr) ->
+      Theorydef (str, make_model_bindings args, make_theory thr)
+
+and make_model_bindings bnd = List.map (fun (m,th) -> (m, make_theory th)) bnd

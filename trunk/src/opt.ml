@@ -350,30 +350,46 @@ and optProp ctx = function
 
       
 and optElems ctx = function
-    [] -> []
+    [] -> [], emptyCtx
   |  ValSpec(name, ty) :: rest ->
       let    ty'   = optTy ctx ty
-      in let rest' = optElems (insertType ctx name ty) rest
-      in (match ty' with
-  	TopTy -> rest'
-      |	ty' ->   ValSpec(name, ty') :: rest')
-
+      in let rest', ctx' = optElems (insertType ctx name ty) rest in
+	(match ty' with
+  	     TopTy -> rest', ctx'
+	   | ty' -> ValSpec (name, ty') :: rest', (insertType ctx' name ty'))
+	
   |  AssertionSpec(name, bnds, prop) :: rest ->
       (** XXX Eliminate unit bindings? *)
-      let ctx' = insertTypeBnds ctx bnds
-      in AssertionSpec(name, bnds, optProp ctx' prop) :: optElems ctx rest
-  |  TySpec(n, None) :: rest -> 
-      TySpec(n, None) :: optElems ctx rest
-  |  TySpec(Syntax.N(str,_) as n, Some ty) :: rest ->
-      (** XXX Need to add the definition into the context *)
-      TySpec(n, Some (optTy ctx ty)) :: 
-      optElems (insertTydef ctx str ty) rest
+      let ctx' = insertTypeBnds ctx bnds in
+      let rest', ctx'' = optElems ctx rest in
+	(AssertionSpec (name, bnds, optProp ctx' prop) :: rest'), ctx''
 
- 
-(** XXX needs a context; body needs context from args *)
-let optSignat {s_name = n; s_arg = a; s_body = b} = 
-   {s_name = n;
-    s_arg = (match a with
-              None -> None
-            | Some elts -> Some (optElems emptyCtx elts));
-    s_body = optElems emptyCtx b}
+  |  TySpec(Syntax.N(str,_) as n, None) :: rest -> 
+       let rest', ctx' = optElems ctx rest in
+	 (TySpec (n, None) :: rest'), insertTydef ctx str TYPE
+
+  |  TySpec(Syntax.N(str,_) as n, Some ty) :: rest ->
+       let ty' = optTy ctx ty in
+       let rest', ctx' = optElems (insertTydef ctx str ty') rest in
+	 TySpec(n, Some ty') :: rest', (insertTydef ctx' str ty')
+
+let optSignat ctx = function
+    SignatID s -> SignatID s, lookupModel ctx s
+  | Signat body -> 
+      let body', ctx' = optElems ctx body in
+	Signat body', ctx'
+
+let rec optStructBinding ctx = function
+    [] -> [], ctx
+  | (m, signat) :: bnd ->
+      let signat', ctx' = optSignat ctx signat in
+      let bnd', ctx'' = optStructBinding ctx bnd in
+	(m, signat') :: bnd',
+	insertModel ctx'' m ctx'
+
+let optSignatdef ctx (Signatdef (s, args, signat)) =
+  let args', ctx' = optStructBinding ctx args in
+    Signatdef (s, args', match signat with
+		   SignatID _ -> signat
+		 | Signat body -> Signat (fst (optElems ctx' body)))
+    

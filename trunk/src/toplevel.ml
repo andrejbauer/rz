@@ -21,9 +21,9 @@ else
   let _ = print_endline ("Typechecked.") in
   let lthy = List.map Logic.make_theorydef thy' in
   let _ = print_endline "Translated to Logic form" in
-  let spec = List.map (Translate.translateTheoryDef Translate.empty) lthy in
+  let spec = List.map (Translate.translateTheorydef Translate.emptyCtx) lthy in
   let _ = print_endline "Translated to a specification:\n-----------\n" in
-  let _ = List.iter (fun s -> print_string (Outsyn.string_of_signat s)) spec in
-  let spec2 = List.map Opt.optSignat spec in
+  let _ = List.iter (fun s -> print_string (Outsyn.string_of_signatdef s)) spec in
+  let spec2 = List.map (Opt.optSignatdef Opt.emptyCtx) spec in
   let _ = print_endline "\n-------\nOptimized specification:\n-----------\n" in
-    List.iter (fun s -> print_string (Outsyn.string_of_signat s)) spec2
+    List.iter (fun s -> print_string (Outsyn.string_of_signatdef s)) spec2
