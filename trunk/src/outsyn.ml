@@ -32,7 +32,7 @@ and term =
   | Inj of label * term
   | Cases of term * (label * binding * term) list
   | Let of name * term * term
-  | Obligation of name * ty * proposition
+  | Obligation of binding * proposition
 
 (** specifications are expressed in classical logic
     (negative fragment to be exact)
@@ -148,6 +148,7 @@ let rec subst_proposition s = function
   | And lst -> And (List.map (subst_proposition s) lst)
   | Cor lst -> Cor (List.map (subst_proposition s) lst)
   | Imply (p, q) -> Imply (subst_proposition s p, subst_proposition s q)
+  | Iff (p, q) -> Iff (subst_proposition s p, subst_proposition s q)
   | Not p -> Not (subst_proposition s p)
   | Forall ((n, ty), q) as p ->
       let s = subst_remove n s in
@@ -157,7 +158,6 @@ let rec subst_proposition s = function
 and subst_term s = function
     Id n ->
       (try List.assoc n s with Not_found -> Id n)
-  | Questionmark -> Questionmark
   | Star -> Star
   | App (t, u) -> App (subst_term s t, subst_term s u)
   | Lambda ((n, ty), t) ->
@@ -174,6 +174,8 @@ and subst_term s = function
 			 let n' = find_name_subst [n] [] s in
 			 (lb, (n', ty), subst_term (subst_add (n,n') s) t)
 		      ) lst)
+  | Obligation ((x, ty), p) ->
+	Obligation ((x, ty), subst_proposition (subst_remove x s) p)
 
 and subst_modest s {ty=t; tot=(x,p); per=(y,z,q)} =
   { ty = t;
@@ -220,7 +222,6 @@ let string_of_ty t = string_of_ty' 999 t
 let rec string_of_term' level t =
   let (level', str) = match t with
       Id n -> (0, string_of_name n)
-    | Questionmark -> (0, "?")
     | Star -> (0, "()")
     | App (App (Id (n, Syntax.Infix0), t), u) -> 
 	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 9 u))
@@ -251,12 +252,16 @@ let rec string_of_term' level t =
     | Let (n, t, u) ->
 	(13, "let " ^ (string_of_name n) ^ " = " ^
 	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
+    | Obligation ((n, ty), p) ->
+	(12,
+	 "[some " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " : " ^
+	 (string_of_proposition p) ^ "]")
   in
     if level' > level then "(" ^ str ^ ")" else str
 
-let string_of_term t = string_of_term' 999 t
+and string_of_term t = string_of_term' 999 t
 
-let rec string_of_prop level p =
+and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
@@ -277,8 +282,7 @@ let rec string_of_prop level p =
   in
     if level' > level then "(" ^ str ^ ")" else str
     
-let string_of_proposition p = string_of_prop 999 p
-
+and string_of_proposition p = string_of_prop 999 p
 
 let string_of_spec = function
       ValSpec (name, {ty=t; tot=(x,p); per=(y,z,q)}, v) ->

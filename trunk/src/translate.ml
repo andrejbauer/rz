@@ -160,7 +160,10 @@ and translateTerm = function
   | L.Let ((n,_), u, v) -> Let (n, translateTerm u, translateTerm v)
   | L.Subin (t, L.Subset ((x, _), p)) ->
       let (ty, y, p') = translateProposition [] p in
-	Tuple [translateTerm t; Obligation (y, ty, subst_proposition [(x,t)] p)]
+      let t' = translateTerm t in
+	Tuple [t'; Obligation ((y, ty), subst_proposition [(x,t')] p')]
+  | L.Subin (t, L.Basic s) ->
+      failwith "I need a context"
   | L.Subout (t, _) -> Proj (1, translateTerm t)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
