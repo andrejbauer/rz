@@ -1,5 +1,7 @@
+(** XXX: Can we avoid expanding out all the type definitions? *)
+
 (*******************************************************************)
-(** {1 Type Reconstruction}                                        *)
+(** {1 TopTy Elimination}                                          *)
 (**                                                                *)
 (** For now we assume that                                         *)
 (** all bound variables are annotated, either when declared        *)
@@ -113,15 +115,17 @@ let rec optTy ctx ty =
 let rec optTerm ctx = function
    Id n -> (let oldty = lookupType ctx n
             in  match (optTy ctx oldty) with
-                   TopTy -> (oldty, Star, TopTy)
+                   TopTy -> (oldty, Dagger, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
  | Star -> (UnitTy, Star, UnitTy)
+ | Dagger -> (print_string "Is this a Dagger I see before me?\n";
+	      (UnitTy, Dagger, UnitTy))
  | App(e1,e2) -> 
      let    (ArrowTy(ty2, oldty), e1', ty1') = optTerm ctx e1
      in let (_, e2', ty2') = optTerm ctx e2
      in (match (optTy ctx oldty, hnfTy ctx ty2') with
            (TopTy, _) -> (* Application can be eliminated entirely *)
-                            (oldty, Star, TopTy)
+                            (oldty, Dagger, TopTy)
          | (_, TopTy) -> (* Argument is unit and can be eliminated *)
                             (oldty, e1', ty1')
          | (ty', _)    -> (* Both parts matter *)
@@ -141,7 +145,7 @@ let rec optTerm ctx = function
          (ty::tys, TopTy::tys', nonunits, index) ->
          if index == n then
            (* Projection is unit-like and can be eliminated entirely *)
-           (ty, Star, TopTy)
+           (ty, Dagger, TopTy)
 	 else
 	   loop(tys, tys', nonunits, index+1)
        | (ty::tys, ty'::tys', nonunits, index) ->
