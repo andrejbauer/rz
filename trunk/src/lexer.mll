@@ -17,7 +17,9 @@
       "equiv", EQUIVALENCE;
       "equivalence", EQUIVALENCE;
       "exists", EXISTS;
+      "exists1", UNIQUE;
       "some", EXISTS;
+      "some1", UNIQUE;
       "false", FALSE;
       "forall", FORALL;
       "iff", IFF;

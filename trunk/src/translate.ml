@@ -19,7 +19,7 @@ type ctxElement =
     CtxBind of L.set
   | CtxTerm of L.term
   | CtxSet of L.set
-  | CtxProp of Syntax.propKind * (L.binding list * L.proposition) option
+  | CtxProp of S.propKind * (L.binding list * L.proposition) option
   | CtxModel of context
   | CtxTheory of L.model_binding list * L.theory
 
@@ -31,9 +31,9 @@ let addBind  (n : L.name) s ctx = (n, CtxBind s) :: ctx
 let addTerm  (n : L.name) t ctx = (n, CtxTerm t) :: ctx
 let addSet   (n : L.name) s ctx = (n,  CtxSet s) :: ctx
 let addProp  (n : L.name) (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
-let addModel n thry ctx = (Syntax.N(n,Syntax.Word), CtxModel thry) :: ctx
+let addModel n thry ctx = (S.N(n,S.Word), CtxModel thry) :: ctx
 let addTheory n args th ctx =
-  (Syntax.N(n,Syntax.Word), CtxTheory (args, th)) :: ctx
+  (S.N(n,S.Word), CtxTheory (args, th)) :: ctx
 
 let addBinding bind ctx =
   List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
@@ -73,7 +73,7 @@ let getProp n ctx =
 let getModel n ctx =
   let rec find = function
       [] -> raise Not_found
-    | (Syntax.N(m,_), CtxModel thr) :: ctx' -> if n = m then thr else find ctx'
+    | (S.N(m,_), CtxModel thr) :: ctx' -> if n = m then thr else find ctx'
     | _ :: ctx' -> find ctx'
   in
     find ctx
@@ -81,15 +81,15 @@ let getModel n ctx =
 let getTheory n ctx =
   let rec find = function
       [] -> (failwith ("No such theory " ^ n))
-    | (Syntax.N(m,_), CtxTheory (args, th)) :: ctx' ->
+    | (S.N(m,_), CtxTheory (args, th)) :: ctx' ->
 	if n = m then (args, th) else find ctx'
-    | (Syntax.N(m,_), _) :: ctx' ->
+    | (S.N(m,_), _) :: ctx' ->
 	find ctx'
   in
     find ctx
 
 let rec getLong getter ctx = function
-    (L.LN(str, [], namesort) as lname) -> getter (Syntax.N(str,namesort)) ctx
+    (L.LN(str, [], namesort) as lname) -> getter (S.N(str,namesort)) ctx
   | (L.LN(str, lab::labs, namesort) as lname) ->
       let ctx' = getModel str ctx
       in getLong getter ctx' (L.LN(lab, labs, namesort))
@@ -103,18 +103,6 @@ let rec toSubset ctx = function
   | _ -> failwith "not a subset"
 
 let any = mk_word "_"
-
-(*
-let make_type_name _ = function
-    (n, Syntax.Word) -> n
-  | ("<", _) -> "lt"
-  | (">", _) -> "gt"
-  | ("<=", _) -> "leq"
-  | (">=", _) -> "geq"
-  | ("=", _) -> "eq"
-  | ("<>", _) -> "neq"
-  | (s, _) -> s
-*)
 
 (** translation functions *)
 
@@ -145,7 +133,7 @@ let rec translateSet (ctx : context) = function
   | L.Basic s ->
       let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "a"] [] ctx in
       let y = fresh [mk_word "y"; mk_word "v"; mk_word "b"] [x] ctx in
-	{ ty = NamedTy s;
+	{ ty = NamedTy (L.typename_of_longname s);
 	  tot = (x, NamedTotal (s, toId x));
 	  per = (x, y, NamedPer (s, toId x, toId y))
 	}
@@ -379,8 +367,8 @@ and translateProp ctx = function
   | L.Atomic (n, trms) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let ty = (match fst (getLong getProp ctx n) with
-		    Syntax.Unstable -> NamedTy n
-		  | Syntax.Stable | Syntax.Equivalence -> TopTy)
+		    S.Unstable -> NamedTy (L.typename_of_longname n)
+		  | S.Stable | S.Equivalence -> TopTy)
       in
 	(ty, r, NamedProp (n, toId r, List.map (translateTerm ctx) trms))
 
@@ -463,6 +451,26 @@ and translateProp ctx = function
 	   substProp ctx [(n, Proj (0, toId w)); (y, Proj (1, toId w))] p'
 	 ])
 
+  | L.Unique ((n, s), p) -> 
+      let {ty=t; tot=(x,q); per=(z,z',pr)} = translateSet ctx s in
+      let (u, y, p') = translateProp (addBind n s ctx) p in
+      let w = fresh [mk_word "w"; mk_word "u"; mk_word "p"; mk_word "t"] [] ctx in
+      let w' = fresh [mk_word "u"; mk_word "p"; mk_word "t"] [w] ctx in
+	(TupleTy [t; u], w,
+	 And [
+	   substProp ctx [(x, Proj (0, toId w))] q;
+	   substProp ctx [(n, Proj (0, toId w)); (y, Proj (1, toId w))] p';
+	   Forall ((w', TupleTy [t; u]),
+		   Imply (
+		     substProp ctx [(x, Proj (0, toId w'))] q,
+		     Imply (
+		       substProp ctx [(n, Proj (0, toId w')); (y, Proj (1, toId w'))] p',
+		       substProp ctx [(z,Proj(0, toId w)); (z',Proj(0,toId w'))] pr
+		     )
+		   )
+		  )
+	 ])
+
   | L.Not p ->
       let (t, n, p') = translateProp ctx p in
 	(TopTy, any, Forall ((n, t), Not p'))
@@ -479,7 +487,7 @@ and translateBinding ctx bind =
 and translateTheoryElement ctx = function
     L.Set n -> 
       [TySpec (n, None, [("per_" ^ n, [], IsPer n)])],
-      addBind (Syntax.N(n, Syntax.Word)) L.SET ctx
+      addBind (S.N(n, S.Word)) L.SET ctx
 
   | L.Let_set (n, s) ->
       (let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
@@ -488,24 +496,19 @@ and translateTheoryElement ctx = function
 	  (n ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (ln_of_string n, toId y, toId y'), q))])
 	]
       ),
-      addSet (Syntax.N(n, Syntax.Word)) s ctx
+      addSet (S.N(n, S.Word)) s ctx
 
   | L.Predicate (n, stab, s) -> begin
-      let rec domain = function
-	| L.Exp (s, t) -> s :: (domain t)
-	| L.PROP | L.STABLE | L.EQUIV -> []
-	| _ -> failwith "Internal error: invalid domain of a predicate"
-      in
-      let ty = (if stab = Syntax.Stable or stab = Syntax.Equivalence then
-		  TopTy else
-		    NamedTy (toLN n))
-      in
-	[TySpec (Syntax.string_of_name n, None,
-		 if stab = Syntax.Stable or stab = Syntax.Equivalence then
-		   []
-		 else
-		   [("predicate_" ^ (Syntax.string_of_name n), [], IsPredicate n)])],
-	addProp n (stab, None) ctx
+      [match stab with
+	   S.Unstable ->
+	     TySpec (L.typename_of_name n,
+		     None,
+		     [("predicate_" ^ (S.string_of_name n), [], IsPredicate n)]
+		    )
+	 | S.Stable | S.Equivalence ->
+	     AssertionSpec ("predicate_" ^ (S.string_of_name n), [], IsPredicate n)
+      ],
+      addProp n (stab, None) ctx
     end
 
   | L.Let_predicate (n, stab, bind, p) ->
@@ -513,8 +516,8 @@ and translateTheoryElement ctx = function
       let ctx' = addBinding bind ctx in
       let (ty, r, p') = translateProp ctx' p in
       let r' = fresh [r] (List.map fst bind) ctx in
-	[TySpec (Syntax.string_of_name n, Some ty,
-	 [((Syntax.string_of_name n) ^ "_def",
+	[TySpec (L.typename_of_name n, Some ty,
+	 [((S.string_of_name n) ^ "_def",
 	   (r',ty) :: bind',
 	   Iff (NamedProp (toLN n, toId r', List.map (fun (y,_) -> toId y) bind),
 		substProp ctx ([(r, toId r')]) p'))])]
@@ -524,14 +527,14 @@ and translateTheoryElement ctx = function
   | L.Let_term (n, s, t) ->
       let {ty=u; per=(y,y',q)} = translateSet ctx s in
       let t' = translateTerm ctx t in
-      [ValSpec (n, u, [((Syntax.string_of_name n) ^ "_def", [], 
+      [ValSpec (n, u, [((S.string_of_name n) ^ "_def", [], 
 			substProp ctx [(y, toId n); (y', t')] q)])
       ],
       addTerm n t (addBind n s ctx)
 
   | L.Value (n, s) ->
       let {ty=t; tot=(x,p)} = translateSet ctx s in
-      [ValSpec (n, t, [((Syntax.string_of_name n) ^ "_total", [],
+      [ValSpec (n, t, [((S.string_of_name n) ^ "_total", [],
 		      substProp ctx [(x, toId n)] p)])],
       addBind n s ctx
 
@@ -546,13 +549,13 @@ and translateTheoryElement ctx = function
 	let typ' = List.fold_right (fun (_,t) a -> ArrowTy (t, a)) bnd typ in
 	let app = List.fold_left (fun a (n,_) -> App (a, toId n)) (toId nm) bnd in
 	let elems =
-	  [ ValSpec (nm, typ', [(Syntax.string_of_name nm, bnd, 
+	  [ ValSpec (nm, typ', [(S.string_of_name nm, bnd, 
 				substProp ctx'' [(x, app)] prp')]) ]
 	in
 	  if mdlbind = [] then
 	    elems
 	  else
-	    [ StructureSpec (String.capitalize (Syntax.string_of_name nm), strctbind, Signat elems) ]
+	    [ StructureSpec (String.capitalize (S.string_of_name nm), strctbind, Signat elems) ]
       end, ctx
 
 and translateModelBinding ctx = function

@@ -1,3 +1,19 @@
+- DONE (2004-12-30)
+  BUG (2004-06-29) [Andrej]:
+  the underlying type of a predicate such as < cannot be
+  called < as well. Should be something like lt.
+
+  [Perhaps the choice of names could be optimized some more,
+   see Logic.typename_of_name and Logic.typename_of_longname.]
+
+- DONE (2004-12-30)
+  NEW (2004-06-17) [Andrej]:
+  Add "there exists exactly one"
+
+- DONE (2004-12-30)
+  NEW (2004-06-17) [Andrej]:
+  Add the description operator "the x : s . phi"
+
 - DONE (2004-06-30)
   IMPROVEMENT (2004-06-17) [Chris]:
   Improve pretty-printing of output.

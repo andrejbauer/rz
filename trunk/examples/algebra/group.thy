@@ -14,7 +14,7 @@ thy
   axiom associative x y z =
     (x * y) * z = x * (y * z)
 
-  axiom unit x =
+  axiom neutral x =
     e * x = x and x * e = x
 
   axiom inverse x =
@@ -24,7 +24,7 @@ end
 
 
 # Sometimes a group is axiomatized with existence
-# axioms for inverse and unit
+# axioms for inverse and neutral
 theory GroupViaExistence =
 thy
   set g
@@ -35,30 +35,25 @@ thy
   axiom associative x y z =
     (x * y) * z = x * (y * z)
 
-  predicate is_unit (e : g) = all x . (e * x = x and x * e = x)
+  predicate is_neutral (e : g) = all x . (e * x = x and x * e = x)
 
-  axiom unit = some (e : g) . is_unit(e)
+  axiom neutral = some (e : g) . is_neutral(e)
 
 
-  # Now we want to show there exists exactly one unit and
+  # Now we want to show there exists exactly one neutral and
   # define it. But we do not have the unique existential quantifier
   # and the description operators, so this is a big pain.
 
-  theorem unit_unique =
-    (some (e : g) . is_unit(e)) and
-    (all (e : g). all (e' : g). (is_unit(e) and is_unit(e') => e = e'))
+  theorem neutral_unique = some1 (e : g) . is_neutral e
  
-
-  const e = the (e : g) . (is_unit (e))
+  const e = the (e : g) . (is_neutral e)
 
   # now we do a similar thing with inverses
 
   predicate inverses x y =
     x * y = e and y * x = e
 
-  axiom inverse x =
-    (some y . inverses x y) and
-    (all y . all z . (inverses x y and inverses x z => y = z))
+  axiom inverse x = some1 y . inverses x y
 
   const i  = lam x . the y . inverses x y
 end

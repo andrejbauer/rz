@@ -63,6 +63,7 @@ and proposition =
   | Or     of proposition list
   | Forall of binding * proposition
   | Exists of binding * proposition
+  | Unique of binding * proposition
   | Not    of proposition
   | Equal  of set * term * term
 
@@ -203,6 +204,7 @@ and subst x t =
 *)
 
 let ln_of_name (S.N(str,sort)) = LN(str,[],sort)
+
 let ln_of_string str = LN (str, [], S.Word)
 
 let ln_of_modelproj mdl nm nmtyp =
@@ -246,6 +248,42 @@ let rec string_of_set = function
 
 
 (** *** *)
+
+let rename = function
+  | "<" -> "_lt"
+  | ">" -> "_gt"
+  | "<=" -> "_leq"
+  | ">=" -> "_geq"
+  | "=" -> "_eq"
+  | "<>" -> "_neq"
+  | str -> begin
+      let names =
+	[('!',"_bang"); ('$',"_dollar"); ('%',"_percent");
+	 ('&',"_and"); ('*',"_star"); ('+',"_plus");
+	 ('-',"_minus"); ('.',"_dot"); ('/',"_slash");
+	 (':',"_colon"); ('<',"_less"); ('=',"_equal");
+	 ('>',"_greater"); ('?',"_question"); ('@',"_at");
+	 ('^',"_carat"); ('|',"_vert"); ('~',"_tilde")] in
+      let n = String.length str in
+      let rec map i =
+	if i < n then (List.assoc str.[i] names) ^ (map (i+1)) else ""
+      in
+	try map 0 with Not_found -> failwith "Logic.rename: unexpected character"
+    end
+
+let typename_of_name = function
+    Syntax.N(n, Syntax.Word) -> n
+  | Syntax.N(str, _) -> rename str
+
+let typename_of_longname = function
+    LN (_, _, S.Word) as n -> n
+  | LN (p, ps, _) ->
+      let rec map_last f = function
+	  [] -> []
+	| [x] -> [f x]
+	| x :: xs -> x :: (map_last f xs)
+      in
+	LN (p, (map_last rename ps), S.Word)
 
 (************************************)
 (* Translation from Syntax to Logic *)
@@ -309,6 +347,11 @@ and make_proposition = function
   | S.Exists ((n, Some s), phi) -> 
                             Exists ((n, make_set s), make_proposition phi)
   | S.Exists ((_, None), _) -> 
+                            (print_string "Exists missing type annotation\n";
+                            raise Unimplemented)
+  | S.Unique ((n, Some s), phi) -> 
+                            Unique ((n, make_set s), make_proposition phi)
+  | S.Unique ((_, None), _) -> 
                             (print_string "Exists missing type annotation\n";
                             raise Unimplemented)
   | _ -> (print_string "unrecognized proposition\n";

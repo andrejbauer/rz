@@ -1,10 +1,10 @@
+- BUG (2004-12-30) [Andrej]:
+  Fix Outsyn.IsPredicate so that it refers not only to the
+  predicate name but also its underlying type.
+
 - NEW (2004-12-22) [Andrej]:
   allow parametrized axioms to be turned into polymorphic functions
   (when possible) instead of functors.
-
-- BUG (2004-06-29) [Andrej]:
-  the underlying type of a predicate such as < cannot be
-  called < as well. Should be something like lt.
 
 - BUG (2004-06-17) [Andrej]:
   missing obligations in output code for "let [x] = p in e"
@@ -37,12 +37,6 @@
   a function must be defined as an explicit lambda abstraction.
 
     [What should the syntax be?]
-
-- NEW (2004-06-17) [Andrej]:
-  Add "there exists exactly one"
-
-- NEW (2004-06-17) [Andrej]:
-  Add the description operator "the x : s . phi"
 
 - NEW (2004-06-17):
   Add inductively defined sets which translate to (nice) recursive types.

@@ -759,6 +759,11 @@ and annotateProp cntxt =
             in
 	      Exists (bnd', fst (annotateProp cntxt' p)), Unstable
 
+        | Unique(bnd, p) ->
+            let (bnd',cntxt') = annotateBinding cntxt bnd
+            in
+	      Unique (bnd', fst (annotateProp cntxt' p)), Unstable
+
 (*
         | ForallModels (str, thr, p) ->
 	    let thr' = annotateTheory cntxt thr

@@ -74,6 +74,7 @@ and term =
   | The    of binding * term
   | Forall of binding * term
   | Exists of binding * term
+  | Unique of binding * term
 
 (********************************************************************)
 
@@ -206,6 +207,8 @@ and string_of_term trm =
 	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Exists(bnd,trm) ->
 	"(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | Unique(bnd,trm) ->
+	"(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
   in
     toStr trm)
 
@@ -307,6 +310,9 @@ let rec subst (substitution : subst) =
         | Exists((y,sopt),t1) -> 
             Exists((y,substSetOption substitution sopt),
 		  subst (insertTermvar substitution y (Var y)) t1)
+        | Unique((y,sopt),t1) -> 
+            Unique((y,substSetOption substitution sopt),
+		   subst (insertTermvar substitution y (Var y)) t1)
      and subarms = function
           [] -> []
         | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)

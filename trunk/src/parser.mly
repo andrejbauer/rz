@@ -89,6 +89,7 @@
 %token THY
 %token TRUE
 %token TWO
+%token UNIQUE
 %token WITH
 %token ZERO
 
@@ -341,6 +342,7 @@ term:
   | THE name_typed PERIOD term { The ($2, $4) }
   | FORALL name_typed PERIOD term { Forall ($2, $4) }
   | EXISTS name_typed PERIOD term { Exists ($2, $4) }
+  | UNIQUE name_typed PERIOD term { Unique ($2, $4) }
 
 term_seq:
     term COMMA term             { [$1; $3] }
