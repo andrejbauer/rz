@@ -1,14 +1,5 @@
-- IMPROVEMENT (2004-12-30):
-  Add the --nosave/--save command line option to avoid saving .mli files.
-
-- IMPROVEMENT (2004-12-30):
-  Print
-
-    assure _ : top . phi in t
-
-  as
-
-    assure phi in t
+- IMPROVEMENT (2004-12-30) [Andrej]:
+  Add a flag that disables use of the IsPer and IsPredicate abbreviations.
 
 - IMPROVEMENT (2004-12-30):
   Fold nested assures of the form
@@ -40,7 +31,26 @@
 
   For stable subsets we could avoid coersions :> and <: (but would
   still generate obligations in the output).
-  
+
+  [ CS: 2004-12-30 
+      Started this, and added StableSubset up to and
+      including the translation to Logic, except that right
+      now subtyping only allows an implicit subout
+        (using a value of the subset as if it were a member
+         of the whole set)
+      and *not* implici subins.
+      
+      But when I started thinking about the translation I realized
+      that we probably need to insert the implicit subin and subout's,
+      in order for translation to work correctly and to generate
+      the appropriate obligations.  
+
+      Of course, we could have done the same insertion of implicit
+      subins and subouts for non-stable subset types, so I'm 
+      now rather confused as to why we only wanted to do this for 
+      stable subsets.
+  ]
+
 
 - BUG (2004-12-30) [Andrej]:
   Fix Outsyn.IsPredicate so that it refers not only to the
@@ -68,10 +78,6 @@
 
 - IMPROVEMENT (2004-06-17) [Chris]:
   Use fewer implementations of contexts, maybe.
-
-- NEW (2004-06-17) [Andrej]:
-  Add abbreviations for common groups of assertions (such as "is a per").
-  Allow the user to use or not via run-time option.
 
 - IMPROVEMENT (2004-06-17):
   Comment source code.

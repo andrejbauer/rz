@@ -1,11 +1,11 @@
 theory UniqueExistence =
 thy
   set s
-  const  ( * ) : s -> s -> s
-  const ( + ) : s -> s -> s
+  set t
 
-  implicit x, y, z : s
+  stable predicate p : s * t
 
-  axiom foo x y z =
-   x * (y + z) = x + (y * z)
+  axiom hh (x : s) = some1 (y:t) . p(x,y)
+
+
 end

@@ -610,9 +610,9 @@ let rec coerce cntxt trm st1 st2 =
       let    st1' = hnfSet cntxt st1
       in let st2' = hnfSet cntxt st2
    
-      in match (st1', st2') with
-	| ( Subset ( ( _, Some st1'1 ) , _ ),
-            Subset ( ( _, Some st2'1 ) , _ ) ) -> 
+      in match (trm, st1', st2') with
+	| ( _, Subset ( ( _, Some st1'1 ) , _ ),
+               Subset ( ( _, Some st2'1 ) , _ ) ) -> 
 
 	    (** Try an implicit out-of-subset conversion *)
            (match ( coerce cntxt ( Subout(trm,st1) ) st1'1 st2 ) with
@@ -623,17 +623,27 @@ let rec coerce cntxt trm st1 st2 =
                         Some trm' -> Some ( Subin ( trm', st2 ) )
                       | None      -> None ) )
 
-        | ( Subset( ( _, Some st1'1 ), _ ), _ ) -> 
+        | ( _, Subset( ( _, Some st1'1 ), _ ), _ ) -> 
 	    (** Try an implicit out-of-subset conversion *)
             coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
 
-        | ( _, Subset( ( _, Some st2'1 ), _ ) ) -> 
+        | ( _, _, Subset( ( _, Some st2'1 ), _ ) ) -> 
 	    (** Try an implicit into-subset conversion *)
             ( match (coerce cntxt trm st1 st2'1) with
                 Some trm' -> Some ( Subin ( trm', st2 ))
               | None      -> None )
 
-        | (_,_) -> None
+        | ( Tuple trms, Product sts1, Product sts2 ) ->
+            let rec loop = function
+                ([], [], []) -> Some []
+              | ([], _, _)   -> None
+              | (trm::trms, st1::sts1, st2::sts2) ->
+                  (match (coerce cntxt trm st1 st2, loop(trms,sts1,sts2)) with
+                     (Some trm', Some trms') -> Some (trm'::trms')
+                   | _ -> None )
+            in (match (loop (trms, sts1, sts2)) with
+                  Some trms' -> Some (Tuple trms')
+                | None -> None)
 
 let rec coerceFromSubset cntxt trm st = 
    match (hnfSet cntxt st) with
@@ -1002,12 +1012,12 @@ and annotateTerm cntxt =
      | App (t1, t2) ->
         let (t1', ty1) = ann t1 in
         let (t2', ty2) = ann t2 in
-        let (ty3,ty4) = (match (hnfSet cntxt ty1) with
-	                      Exp(ty3,ty4) -> (ty3,ty4)
+        let (t1'',ty3,ty4) = (match (coerceFromSubset cntxt t1' ty1) with
+	                      (t1'', Exp(ty3,ty4)) -> (t1'',ty3,ty4)
 	                    | _ -> tyWrongSortError t1 " function" ty1)
         in
           ( match (coerce cntxt t2' ty2 ty3) with
-              Some trm2'' ->  (App (t1', trm2''), ty4)
+              Some trm2'' ->  (App (t1'', trm2''), ty4)
             | None        ->  tyMismatchError t2 ty3 ty2 )
 	      
      | Inj (l, None) ->

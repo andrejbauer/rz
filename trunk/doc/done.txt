@@ -1,3 +1,21 @@
+- DONE (<< 2004-12-30)
+  NEW (2004-06-17) [Andrej]:
+  Add abbreviations for common groups of assertions (such as "is a per").
+
+- DONE (2004-12-30)
+  IMPROVEMENT (2004-12-30) [Chris]:
+  Add the --nosave/--save command line option to avoid saving .mli files.
+
+- DONE (2004-12-30)
+  IMPROVEMENT (2004-12-30) [Chris]:
+  Print
+
+    assure _ : top . phi in t
+
+  as
+
+    assure phi in t
+
 - DONE (2004-12-30)
   BUG (2004-06-29) [Andrej]:
   the underlying type of a predicate such as < cannot be

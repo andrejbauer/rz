@@ -98,6 +98,7 @@ let notTopTy = function
 
 let topTyize = function
       TupleTy [] -> TopTy
+    | TupleTy [ty] -> ty
     | ty -> ty
 
 let joinTy ctx s1 s2 = 
@@ -178,6 +179,8 @@ let rec betaReduce = function
          betaReduce (substTerm [] [(nm, trm2)] trm1)
       else
          trm
+  | Proj(n, Tuple(trms)) ->
+      betaReduce (List.nth trms n)
   | trm -> trm
     
 
@@ -219,7 +222,7 @@ let rec optTerm ctx = function
      | (_,_)     -> (oldty, Lambda((name1,ty1'),term2'), ArrowTy(ty1',ty2')))
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
-     in (topTyize (TupleTy ts), Tuple es', topTyize (TupleTy ts'))
+     in (TupleTy ts, Tuple es', topTyize (TupleTy ts'))
  | Proj (n,e) ->
      let (ty, e', _) = optTerm ctx e
      in let tys = 
@@ -245,7 +248,7 @@ let rec optTerm ctx = function
            else
               (* Nope; there are multiple values so the tuple is 
                  still a tuple and this projection is still a projection *)
-	     (ty, Proj(nonunits, e'), ty')
+	     (ty, betaReduce (Proj(nonunits, e')), ty')
 	 else
 	   loop(tys, tys', nonunits+1, index+1)
        | (tys,tys',_,index) -> (print_string (string_of_int (List.length tys));
@@ -373,9 +376,9 @@ and optProp ctx = function
       | (p1',   p2'  ) -> Iff(p1', p2'))
 
   | Not p -> (match optProp ctx p with
-      True -> False
+      True  -> False
     | False -> True
-    | p' -> Not p')
+    | p'    -> Not p')
 
   | Forall((n,ty), p) ->
       let p' = optProp (insertType ctx n ty) p
