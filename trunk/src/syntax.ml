@@ -57,9 +57,9 @@ and term =
   | Inj    of label * term option (** injection into a sum type *)
   | Case   of term  * (label * binding option * term) list
   | Quot   of term  * term (** quotient under equivalence relation *)
-  | Choose of binding * term * term * term (** elimination of equivalence class *)
+  | Choose of binding * term * term * term * set option (** elimination of equivalence class *)
   | RzQuot of term
-  | RzChoose of binding * term * term (** elimination of rz *)
+  | RzChoose of binding * term * term * set option (** elimination of rz *)
   | MProj  of model * label * name_type
   | Subin  of term * set
   | Subout of term * set
@@ -272,12 +272,19 @@ let rec subst (substitution : subst) =
         | App(t1,t2)    -> App(sub t1, sub t2)
         | Inj(l,termopt)     -> Inj(l, substTermOption substitution termopt)
         | Case(t1,arms) -> Case(t1,subarms arms)
+	| RzQuot t -> RzQuot (sub t)
+	| RzChoose ((y,sopt),t1,t2,stopt2) ->
+	    RzChoose ((y, substSetOption substitution sopt),
+		      sub t1,
+		      subst (insertTermvar substitution y (Var y)) t2,
+		      substSetOption substitution stopt2)
         | Quot(trm1,trm2)   -> Quot(sub trm1, sub trm2)
-        | Choose((y,sopt),trm_equiv,t1,t2) ->
+        | Choose((y,sopt),trm_equiv,t1,t2,stopt2) ->
             Choose((y,substSetOption substitution sopt),
                    sub trm_equiv,
                    sub t1, 
-                   subst (insertTermvar substitution y (Var y)) t2)
+                   subst (insertTermvar substitution y (Var y)) t2,
+		   substSetOption substitution stopt2)
         | MProj(mdl, lbl, fix) -> MProj(substModel substitution mdl, lbl, fix)
         | And ts        -> And(List.map sub ts)
         | Imply(t1,t2)  -> Imply(sub t1, sub t2)
@@ -297,7 +304,6 @@ let rec subst (substitution : subst) =
         | Exists((y,sopt),t1) -> 
             Exists((y,substSetOption substitution sopt),
 		  subst (insertTermvar substitution y (Var y)) t1)
-        | t               -> t
      and subarms = function
           [] -> []
         | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)

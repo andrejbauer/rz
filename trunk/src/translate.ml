@@ -317,22 +317,35 @@ and translateTerm ctx = function
 	    )
   | L.RzQuot t -> translateTerm ctx t
 
-  | L.RzChoose ((n, s), t, u) ->
-      let {ty=ty; per=(x,y,p)} = translateSet ctx s in
+  | L.RzChoose ((n, st1), t, u, st2) ->
+      let {ty=ty1; per=(x1,y1,p1)} = translateSet ctx st1 in
+      let {per=(x2,y2,p2)} = translateSet ctx st2 in
       let n' = fresh [n] [n] ctx in
       let v = translateTerm (addTerm n t ctx) u in
-      let v' = v in
+      let v' = substTerm ctx [(n, toId n')] v in
 	Let (n, translateTerm ctx t,
 	     Obligation ((any, TopTy),
-			 Forall ((n', ty), Imply (substProp ctx [(x, toId n); (y, toId n')] p, Equal (v, v'))),
+			 Forall ((n', ty1), Imply (
+				   substProp ctx [(x1, toId n); (y1, toId n')] p1, 
+				   substProp ctx [(x2, v); (y2, v')] p2)),
 			 v))
 
   | L.Quot (t, _) -> translateTerm ctx t
 
-  | L.Choose ((n, s), r, t, u) ->
-      Let (n, translateTerm ctx t, translateTerm (addTerm n t ctx) u)
+  | L.Choose ((n, st1), r, t, u, st2) ->
+      let {ty=ty1; per=(x1,y1,p1)} = translateSet ctx st1 in
+      let {per=(x2,y2,p2)} = translateSet ctx st2 in
+      let n' = fresh [n] [n] ctx in
+      let v = translateTerm (addTerm n t ctx) u in
+      let v' = substTerm ctx [(n, toId n')] v in
+	Let (n, translateTerm ctx t,
+	     Obligation ((any, TopTy),
+			 Forall ((n', ty1), Imply (
+				   substProp ctx [(x1, toId n); (y1, toId n')] p1, 
+				   substProp ctx [(x2, v); (y2, v')] p2)),
+			 v))
 
-  | L.Let ((n, s), u, v,_) ->
+  | L.Let ((n, s), u, v, _) ->
       Let (n, translateTerm ctx u, translateTerm (addTerm n u ctx) v)
 
   | L.Subin (t, sb) ->

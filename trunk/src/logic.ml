@@ -93,9 +93,9 @@ and term =
   | Inj    of label * term option
   | Case   of term * (label * binding option * term) list
   | RzQuot of term
-  | RzChoose of binding * term * term
+  | RzChoose of binding * term * term * set
   | Quot   of term * longname
-  | Choose of binding * longname * term * term
+  | Choose of binding * longname * term * term * set
   | Let    of binding * term * term * set  (** set is type of the whole let *)
   | Subin  of term * set
   | Subout of term * set
@@ -333,8 +333,10 @@ and make_term = function
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
   | S.Quot (t, r) -> Quot (make_term t, ln_of_term r)
   | S.RzQuot t -> RzQuot (make_term t)
-  | S.RzChoose ((n, Some s), t, u) -> RzChoose ((n, make_set s), make_term t, make_term u)
-  | S.Choose ((n, Some s), r, t, u) -> Choose ((n, make_set s), ln_of_term r, make_term t, make_term u)
+  | S.RzChoose ((n, Some s), t, u, Some st) ->
+      RzChoose ((n, make_set s), make_term t, make_term u, make_set st)
+  | S.Choose ((n, Some s), r, t, u, Some st) ->
+      Choose ((n, make_set s), ln_of_term r, make_term t, make_term u, make_set st)
   | S.Let ((nm, Some st1), trm1, trm2, Some st2) -> 
       Let((nm, make_set st1), make_term trm1, make_term trm2,
 	  make_set st2)

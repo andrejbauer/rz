@@ -984,28 +984,54 @@ and annotateTerm cntxt =
 		Rz ty' -> RzQuot t', ty'
 	      | _ -> tyWrongSortError t "n RZ" ty)
 
-     | RzChoose (bnd, t1, t2) ->
+     | RzChoose (bnd, t1, t2, None) ->
 	 let (t1', ty1) = ann t1 in
-	 let ((_, Some ty) as bnd', cntxt') = annotateBinding cntxt bnd in
+	 let ((nm, Some ty), cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
 	 let (t2', ty2) = annotateTerm cntxt' t2 in
 	   (match hnfSet cntxt ty with
 		Rz ty' ->
-		  if eqSet cntxt ty1 ty' then
-		    RzChoose(bnd', t1', t2')
+		  if eqSet cntxt ty1 ty' then begin
+		    (try (ignore(annotateSet cntxt ty2)) with
+			 _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
+					      "defns; maybe add a constraint?")) ;
+		    RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
+		  end
 		  else
 		    failwith "type mismatch in let [...] = "
 	      | _ -> failwith "type mismatch in let [...] = "),
 	   ty2
 
-     | Choose (bnd, r, t1, t2) ->
+     | Choose (bnd, r, t1, t2, None) ->
 	 let (t1', ty1) = ann t1 in
-	 let ((_, Some ty) as bnd', cntxt') = annotateBinding cntxt bnd in
+	 let ((nm, Some ty), cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
 	 let (t2', ty2) = annotateTerm cntxt' t2 in
-	   (if eqSet cntxt (hnfSet cntxt ty1) (Quotient (ty, r)) then
-	     Choose (bnd', r, t1', t2')
+	   (match hnfSet cntxt ty with
+		Quotient (ty', r') ->
+		  if eqSet cntxt (hnfSet cntxt ty1) (Quotient (ty', r)) then begin
+		    (try (ignore(annotateSet cntxt ty2)) with
+			 _ -> tyGenericError ("Inferred let%-body type depends on local " ^ 
+					      "defns; maybe add a constraint?")) ;
+		    Choose ((nm, Some ty'), r', t1', t2', Some ty2)
+		  end
+		  else
+		    failwith "type mismatch in let % = "
+	      | _ -> failwith "type mismatch in let % = "),
+	   ty2
+
+     | Choose (bnd, r, t1, t2, Some st) ->
+	 let (t1', ty1) = ann t1 in
+	 let ((_, Some ty) as bnd', cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
+	 let (t2', ty2) = annotateTerm cntxt' t2 in
+	 let st' = annotateSet cntxt st in
+	   if eqSet cntxt (hnfSet cntxt ty1) (Quotient (ty, r)) then begin
+	      if (subSet cntxt' ty2 st') then
+		(Choose (bnd', r, t1', t2', Some ty2), st')
+	      else
+		tyGenericError ("Inferred let%-body type does not match annotation")
+	    end
 	   else
-	     failwith "type mismatch in let % = "),
-	   ty2	 
+	     failwith "type mismatch in let % = "
+	   
         
      | Let (bnd, t1, t2, None) ->
          let    (t1', ty1) = ann t1
@@ -1024,7 +1050,7 @@ and annotateTerm cntxt =
          in if (subSet cntxt' ty2 st') then
              (Let(bnd',t1',t2',Some st'), st')
 	   else
-             tyGenericError ("Inferred let-body type doesn;t match annotation")
+             tyGenericError ("Inferred let-body type does not match annotation")
 
      | Lambda (bnd,t) ->
          let    ((_,Some ty1) as bnd', cntxt') = annotateBinding cntxt bnd
