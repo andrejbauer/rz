@@ -6,18 +6,18 @@ intuitionistic arithmetic based on partial computable functions. The
 idea has since been studied and generalized by various
 authors~\cite{TroelstraA:rea,HylandJ:efft,HylandJ:trit,OostenJ:exer}.
 Building on the idea of \emph{typed realizability} by
-Longley~\cite{Longley00}, we have constructed a tool \emph{RZ} to
+Longley~\cite{Longley00}, we have constructed a tool \RZ to
 translate mathematical theories into specifications for code,
 explaining what is necessary in order to believe that we have a correct
 implementation of the mathematical theory.
 
 As the realizability interpretation validates the laws of
 \emph{intuitionistic} logic, our input theories are intuitionistic or
-constructive. Thus, \emph{RZ} extracts the computational
+constructive. Thus, \RZ extracts the computational
 meaning of a constructive theory and expresses it as a programming
 specification.
 
-We emphasize that RZ does \emph{not} extract programs from proofs---in
+We emphasize that \RZ does \emph{not} extract programs from proofs---in
 fact, there is no way to write a proof in our system. We just
 determine what the programs are supposed to do, i.e., we provide
 specifications for them. We leave it to the programmer, or to another
@@ -25,7 +25,7 @@ tool, to construct the programs as he or she sees fit. This leaves
 the programmer completely free to write efficient programs
 that need not correspond directly to a formal proof.
 
-The original aim of RZ was to aid development of data structures
+The original aim of \RZ was to aid development of data structures
 for computable mathematics. If one sets out to actually compute
 realizability interpretations of theories of constructive mathematics,
 one quickly wishes for an automated way of doing it. With a tool like
@@ -38,7 +38,7 @@ requirements about programs (expressed in classical logic).
 
 %We assume throughout that we have chosen a fixed programming
 %language~$\PL$. %Any ML-like language will do~\cite{milner+:definition}. 
-Our implementation of \emph{RZ} produces interfaces in Objective
+Our implementation of \RZ produces interfaces in Objective
 Caml~\cite{ocaml} but could easily be adopted to other similar typed
 languages.  The essential features we require of the target language
 are product, function, and sum types, as well as support for module
