@@ -5,6 +5,7 @@
 
   let reserved =
     [
+      "all", FORALL;
       "and", AND;
       "axiom", AXIOM;
       "begin", BEGIN;
@@ -13,9 +14,10 @@
       "constant", CONSTANT;
       "corollary", COROLLARY;
       "end", END;
+      "exists", EXISTS;
       "some", EXISTS;
       "false", FALSE;
-      "all", FORALL;
+      "forall", FORALL;
       "iff", IFF;
       "implicit", IMPLICIT;
       "implies", IMPLY;
@@ -89,7 +91,8 @@ rule token = parse
   | '%'             { PERCENT }
   | "=>"            { IMPLY }
   | "<=>"           { IFF }
-  | '&'             { AND }
+  | "&&"            { AND }
+  | "||"            { OR }
   | ident           { let w = Lexing.lexeme lexbuf in
                         begin
                           try

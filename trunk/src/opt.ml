@@ -145,13 +145,13 @@ let rec optTerm ctx = function
      in let rec loop = function
          (ty::tys, TopTy::tys', nonunits, index) ->
          if index == n then
-           (* Projection is unit-like and can be eliminated entirely *)
+           (* The projection is unit-like and can be eliminated entirely *)
            (ty, Dagger, TopTy)
 	 else
 	   loop(tys, tys', nonunits, index+1)
        | (ty::tys, ty'::tys', nonunits, index) ->
 	 if index = n then
-           (* Projection returns some interesting value.
+           (* The projection returns some interesting value.
               Check if it's the only interesting value in the tuple. *)
            if (nonunits = 0 && List.length(List.filter notTopTy tys')=0) then
               (* Yes; there were no non-unit types before or after. *)
@@ -169,6 +169,10 @@ let rec optTerm ctx = function
 			    raise Impossible)
      in 
         loop (tys, List.map (optTy ctx) tys, 0, 0) 
+ | Inj (lbl, None) -> (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
+ | Inj (lbl, Some e) ->
+     let (ty, e', ty') = optTerm ctx e
+     in  (SumTy [(lbl,Some ty)], Inj(lbl, Some e'), SumTy[(lbl, Some ty')])
  | e -> (** XXX: Way wrong! *)
      print_endline "WAY WRONG!";
         (NamedTy (mk_word "unknown"), e, NamedTy (mk_word "unknown"))
@@ -198,7 +202,9 @@ and optProp ctx = function
       in let e2' = optTerm' ctx e2
       in (match (hnfTy ctx ty1') with
             TopTy -> True
-      | _ -> Equal(e1',e2'))
+          | UnitTy -> True
+	  | VoidTy -> True
+          | _ -> Equal(e1',e2'))
   | And ps ->
       let rec loop = function
         | ([], []) -> True
@@ -220,7 +226,6 @@ and optProp ctx = function
             | p' -> loop(ps, p' :: raccum))
       in loop(ps,[])
 
-    (** XXX: Further simplifications possible *)
   | Imply (p1, p2) -> 
       (match (optProp ctx p1, optProp ctx p2) with
         (True,  p2'  ) -> p2'
@@ -244,9 +249,10 @@ and optProp ctx = function
 
   | Forall((n,ty), p) ->
       let p' = optProp (insertType ctx n ty) p
-      in (match (optTy ctx ty) with
-        TopTy -> p'
-      | ty' -> Forall((n,ty'), p'))
+      in (match (optTy ctx ty, p') with
+        (_, True) -> True
+      | (TopTy,_) -> p'
+      | (ty',_) -> Forall((n,ty'), p'))
 
       
 and optElems ctx = function

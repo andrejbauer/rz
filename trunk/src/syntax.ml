@@ -94,6 +94,94 @@ and theory =
      Theory of theory_element list
   |  TheoryID of string
 
+module NameOrder = struct
+                     type t = name
+                     let compare = Pervasives.compare
+                   end
+
+module NameMap = Map.Make(NameOrder)
+
+module NameSet = Set.Make(NameOrder)
+
+
+let rec intersperse mid = function
+      [] -> ""
+    | [str] -> str
+    | str::strs -> str ^ mid ^ (intersperse mid strs)
+
+   
+let rec string_of_name = function 
+    (str,Word) -> str
+  | (str,_) -> "(" ^ str ^ ")"
+
+let rec string_of_set set = 
+  (let rec toStr = function 
+      Empty -> "0"
+    | Unit  -> "1"
+    | Bool  -> "2"
+    | Set_name name -> string_of_name name
+    | Product sets -> "(" ^ intersperse " * " (List.map toStr sets) ^ ")"
+    | Sum sumarms -> "(" ^ intersperse " + " (List.map sumarmToStr sumarms) ^ ")"
+    | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
+    | Prop -> "Prop"
+    | StableProp -> "StableProp"
+    | RZ set -> "RZ " ^ toStr set
+    | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " | " ^ 
+	                     string_of_term term ^ " }"
+    | Quotient (_,_,_,_) -> "unimplemented toStr"
+
+   and sumarmToStr = function
+        (lbl, None) -> lbl
+     |  (lbl, Some set) -> lbl ^ ":" ^ toStr set
+
+  in
+    toStr set)
+    
+and string_of_term trm =
+  (let rec toStr = function
+      Var name  -> string_of_name name
+    | Constraint(trm, set) -> "(" ^ toStr trm ^ " : " ^ string_of_set set ^ ")"
+    | Star -> "()"
+    | False -> "false"
+    | True -> "true"
+    | Tuple trms -> "(" ^ intersperse ", " (List.map toStr trms) ^ ")"
+    | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
+    | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
+    | Inj (lbl, Some trm) -> "(" ^ lbl ^ " " ^ toStr trm ^ ")"
+    | Inj (lbl, None) -> lbl 
+    | Case (_,_) -> "..."
+    | Quot (_,_) -> "..."
+    | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
+    | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
+    | And trms -> "(" ^ intersperse " && " (List.map toStr trms) ^ ")"
+    | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
+    | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
+    | Or trms -> "(" ^ intersperse " || " (List.map toStr trms) ^ ")"
+    | Not trm -> "(not " ^ toStr trm ^ ")"
+    | Equal(None,trm1,trm2) -> "(" ^ toStr trm1 ^ " = " ^ toStr trm2 ^ ")"
+    | Equal(Some set, trm1, trm2) -> 
+          "(" ^ toStr trm1 ^ " = " ^ toStr trm2 ^ 
+	  " in " ^ string_of_set set ^ ")"
+    | Let(bnd,trm1,trm2) ->
+	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
+	" in " ^ toStr trm2 ^ ")"
+    | Lambda(bnd,trm) ->
+	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | Forall(bnd,trm) ->
+	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | Exists(bnd,trm) ->
+	"(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+  in
+    toStr trm)
+
+
+and string_of_bnd = function
+        (name, None    ) -> string_of_name name
+     |  (name, Some set) -> string_of_name name  ^  ":"  ^  string_of_set set
+
+
+
+
 
 (* Substitution functions.
 
@@ -166,11 +254,3 @@ and substSetOption x t = function
 
 *)
 
-module NameOrder = struct
-                     type t = name
-                     let compare = Pervasives.compare
-                   end
-
-module NameMap = Map.Make(NameOrder)
-
-module NameSet = Set.Make(NameOrder)
