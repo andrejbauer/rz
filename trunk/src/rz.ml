@@ -43,7 +43,7 @@ let read fn =
       (close_in fin ;
        e)
   with
-    Parsing.Parse_error ->
+    Message.Parse(_,_) ->
       let pos = lexbuf.Lexing.lex_curr_p in
       begin
         print_string "Syntax error detected at line ";

@@ -1,6 +1,10 @@
 theory Nat =
 thy
   set nat
+
+  const f : nat -> nat
+  const x : nat
+  const y = f ( f ( x ) )
 end
 
 theory Real(N : Nat) =
