@@ -818,6 +818,8 @@ let rec coerce cntxt trm st1 st2 =
                   Some trms' -> Some (Tuple trms')
                 | None -> None)
 
+        | _ -> None
+
 let rec coerceFromSubset cntxt trm st = 
    match (hnfSet cntxt st) with
       Subset( ( _, Some st1 ), _ ) -> 
