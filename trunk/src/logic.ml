@@ -90,7 +90,7 @@ and term =
   | Proj   of int * term
   | App    of term * term
   | Lambda of binding  * term
-  | The    of binding  * term
+  | The    of binding  * proposition
   | Inj    of label * term option
   | Case   of term * (label * binding option * term) list
   | RzQuot of term
@@ -330,7 +330,7 @@ and make_term = function
 				  | (lb, None, u) -> (lb, None, make_term u))
 			       lst)
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
-  | S.The ((n, Some s), t) -> The ((n, make_set s), make_term t)
+  | S.The ((n, Some s), t) -> The ((n, make_set s), make_proposition t)
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
   | S.Quot (t, r) -> Quot (make_term t, ln_of_term r)

@@ -48,6 +48,7 @@ thy
     (some (e : g) . is_unit(e)) and
     (all (e : g). all (e' : g). (is_unit(e) and is_unit(e') => e = e'))
  
+
   const e = the (e : g) . (is_unit (e))
 
   # now we do a similar thing with inverses

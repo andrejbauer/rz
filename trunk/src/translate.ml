@@ -300,7 +300,18 @@ and translateTerm ctx = function
 
   | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet ctx s).ty), translateTerm ctx t)
 
-  | L.The ((n, s), phi) -> Obligation ((n, s), phi, )
+  | L.The ((n, s), phi) ->
+      let {per=(x,y,p); ty=t} = translateSet ctx s in
+      let (v,z,q) = translateProp ctx phi in
+      let n' = fresh [n] [n] ctx in
+      let z' = fresh [z] [n;n'] ctx in
+	Obligation ((n, t), True,
+		    Obligation ((z',v),
+				And [substProp ctx [(z, toId z')] q;
+				     Forall ((n',t),
+					     Imply (substProp ctx [(n, toId n'); (z, toId z')] q,
+						    substProp ctx [(x, toId n); (y, toId n')] p))], toId n)
+		   )
 
   | L.Inj (lb, None) -> Inj (lb, None)
 

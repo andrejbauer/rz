@@ -156,6 +156,7 @@ and fvTerm' flt acc = function
       List.fold_left
       (fun a (_, bnd, t) -> fvTerm' (match bnd with None -> flt | Some (n, _) -> n::flt) a t)
       (fvTerm' flt acc t) lst
+  | Obligation ((n, s), p, t) -> fvTerm' (n::flt) (fvProp' (n::flt) acc p) t
 
 and fvProp' flt acc = function
     True -> acc
@@ -170,6 +171,11 @@ and fvProp' flt acc = function
   | Imply (u, v) -> fvProp' flt (fvProp' flt acc v) u
   | Forall ((n, _), p) -> fvProp' (n::flt) acc p
   | ForallTotal ((n, _), p) -> fvProp' (n::flt) acc p
+  | Cexists ((n, _), p) -> fvProp' (n::flt) acc p
+  | Not p -> fvProp' flt acc p
+  | Iff (p, q) -> fvProp' flt (fvProp' flt acc p) q
+  | NamedProp (_, t, lst) -> List.fold_left (fvTerm' flt) (fvTerm' flt acc t) lst
+
 
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
