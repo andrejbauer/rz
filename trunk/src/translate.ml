@@ -1,5 +1,3 @@
-(* random stuff, probably wrong *)
-
 module L = Logic
 module S = Syntax
 open Outsyn 
