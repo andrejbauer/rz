@@ -313,7 +313,7 @@ term:
   | LABEL                       { Inj ($1, None) }
   | term EQUAL term             { Equal (None, $1, $3) }
   | LPAREN term EQUAL term IN set RPAREN   { Equal (Some $6 , $2, $4) }
-  | LET name_typed EQUAL term IN term { Let ($2, $4, $6) }
+  | LET name_typed EQUAL term IN term { Let ($2, $4, $6, None) }
   | LET LBRACK name_typed RBRACK EQUAL term IN term { RzChoose ($3, $6, $8) }
   | LET name_typed PERCENT longtermname EQUAL term IN term { Choose ($2, $4, $6, $8) }
   | and_term                    { And $1 }

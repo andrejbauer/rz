@@ -96,7 +96,7 @@ and term =
   | RzChoose of binding * term * term
   | Quot   of term * longname
   | Choose of binding * set_longname * term * term
-  | Let    of binding * term * term
+  | Let    of binding * term * term * set  (** set is type of the whole let *)
   | Subin  of term * set
   | Subout of term * set
 
@@ -179,9 +179,10 @@ and subst x t =
         | App (t1,t2)       -> App (sub t1, sub t2)
         | Inj (l,t1)        -> Inj (l, sub t1)
         | Case (t1,arms)    -> Case (t1, subarms arms)
-        | Let ((y,s),t1,t2) -> Let((y,substSet x t s),
-			   sub t1, 
-				   if (x=y) then t2 else sub t2)
+        | Let ((y,s),t1,t2,s2) -> Let((y,substSet x t s),
+                                      sub t1, 
+				      if (x=y) then t2 else sub t2,
+                                      substSet x t s2)
 (*
         | Choose((y,s),t1,t2) ->
             Choose((y,substSet x t s),
@@ -334,7 +335,9 @@ and make_term = function
   | S.RzQuot t -> RzQuot (make_term t)
   | S.RzChoose ((n, Some s), t, u) -> RzChoose ((n, make_set s), make_term t, make_term u)
   | S.Choose ((n, Some s), r, t, u) -> Choose ((n, make_set s), ln_of_term r, make_term t, make_term u)
-  | S.Let (n, t, u) -> failwith "Let not impliemented"
+  | S.Let ((nm, Some st1), trm1, trm2, Some st2) -> 
+      Let((nm, make_set st1), make_term trm1, make_term trm2,
+	  make_set st2)
   | trm -> (print_string "unrecognized term: ";
 	    print_string (S.string_of_term trm);
 	  raise HOL)

@@ -69,7 +69,7 @@ and term =
   | Or     of term list
   | Not    of term
   | Equal  of set option * term * term
-  | Let    of binding * term * term
+  | Let    of binding * term * term * set option
   | Lambda of binding * term
   | Forall of binding * term
   | Exists of binding * term
@@ -190,9 +190,12 @@ and string_of_term trm =
     | Equal(Some set, trm1, trm2) -> 
           "(" ^ toStr trm1 ^ " = " ^ toStr trm2 ^ 
 	  " in " ^ string_of_set set ^ ")"
-    | Let(bnd,trm1,trm2) ->
+    | Let(bnd,trm1,trm2,None) ->
 	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
 	" in " ^ toStr trm2 ^ ")"
+    | Let(bnd,trm1,trm2,Some st) ->
+	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
+	" in " ^ toStr trm2 ^ " : " ^ string_of_set st ^ ")"
     | Lambda(bnd,trm) ->
 	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Forall(bnd,trm) ->
@@ -282,10 +285,11 @@ let rec subst (substitution : subst) =
         | Not t         -> Not(sub t)
         | Equal(sopt,t1,t2) -> Equal(substSetOption substitution sopt,
                                          sub t1, sub t2)
-        | Let((y,sopt),t1,t2) ->
-            Let((y,substSetOption substitution sopt),
+        | Let((y,stopt),t1,t2,stopt2) ->
+            Let((y,substSetOption substitution stopt),
                   sub t1, 
-		  subst (insertTermvar substitution y (Var y)) t2)
+		  subst (insertTermvar substitution y (Var y)) t2,
+	        substSetOption substitution stopt2)
         | Forall((y,sopt),t1) -> 
             Forall((y,substSetOption substitution sopt),
 		  subst (insertTermvar substitution y (Var y)) t1)

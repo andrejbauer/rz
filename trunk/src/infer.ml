@@ -1007,14 +1007,24 @@ and annotateTerm cntxt =
 	     failwith "type mismatch in let % = "),
 	   ty2	 
         
-     | Let(bnd,t1,t2) ->
+     | Let(bnd,t1,t2,None) ->
          let    (t1', ty1) = ann t1
          in let (bnd',cntxt') = annotateBindingWithDefault cntxt ty1 bnd
          in let (t2', ty2) = annotateTerm cntxt' t2
          in ((try (ignore(annotateSet cntxt ty2)) with
                _ -> tyGenericError ("Inferred let-body type depends on local " ^ 
                             "defns; maybe add a constraint?"));
-             (Let(bnd',t1',t2'), ty2))
+             (Let(bnd',t1',t2',Some ty2), ty2))
+
+     | Let(bnd,t1,t2,Some st) ->
+         let    (t1', ty1) = ann t1
+         in let (bnd',cntxt') = annotateBindingWithDefault cntxt ty1 bnd
+         in let (t2', ty2) = annotateTerm cntxt' t2
+	 in let st' = annotateSet cntxt st
+         in if (subSet cntxt' ty2 st') then
+             (Let(bnd',t1',t2',Some st'), st')
+	   else
+             tyGenericError ("Inferred let-body type doesn;t match annotation")
 
      | Lambda(bnd,t) ->
          let    ((_,Some ty1) as bnd', cntxt') = annotateBinding cntxt bnd

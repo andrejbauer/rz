@@ -332,7 +332,7 @@ and translateTerm ctx = function
   | L.Choose ((n, s), r, t, u) ->
       Let (n, translateTerm ctx t, translateTerm (addTerm n t ctx) u)
 
-  | L.Let ((n, s), u, v) ->
+  | L.Let ((n, s), u, v,_) ->
       Let (n, translateTerm ctx u, translateTerm (addTerm n u ctx) v)
 
   | L.Subin (t, sb) ->
