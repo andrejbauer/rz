@@ -38,7 +38,7 @@ and term =
   | Inj of label * term option
   | Case of term * (label * binding option * term) list
   | Let of name * term * term
-  | Obligation of binding * proposition
+  | Obligation of binding * proposition * term
 
 (** specifications are expressed in classical logic
     (negative fragment to be exact)
@@ -243,8 +243,9 @@ and substTerm ctx s = function
 			     let n' = fresh [n] (fvSubst s') ctx in
 			       (lb, Some (n', ty), substTerm ctx (substAdd (n,n') s') t)
 		      ) lst)
-  | Obligation ((x, ty), p) ->
-	Obligation ((x, ty), substProp ctx (substRemove x s) p)
+  | Obligation ((x, ty), p, trm) ->
+      let s' = substRemove x s in
+	Obligation ((x, ty), substProp ctx s' p, substTerm ctx s' trm)
 
 
 and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
@@ -256,7 +257,7 @@ and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
 	     (y',z', substProp ctx (substAdd (y,y') (substAdd (z,z') s)) q));
   }
 
-
+(*
 let rec namesLNSubst = function
     [] -> []
   | (_, Logic.LN(n,[],t)) :: s -> Syntax.N(n,t) :: (namesLNSubst s)
@@ -380,7 +381,7 @@ and substTYType ctx s = function
   | TupleTy lst -> TupleTy (List.map (substTYType ctx s) lst)
   | ArrowTy (u, v) -> ArrowTy (substTYType ctx s u, substTYType ctx s v)
   | TYPE -> TYPE
-
+*)
 
 let string_of_ln = Logic.string_of_ln
 
@@ -461,10 +462,10 @@ let rec string_of_term' level t =
     | Let (n, t, u) ->
 	(13, "let " ^ (Syntax.string_of_name n) ^ " = " ^
 	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
-    | Obligation ((n, ty), p) ->
+    | Obligation ((n, ty), p, trm) ->
 	(12,
-	 "[? " ^ (Syntax.string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
-	 (string_of_proposition p) ^ "]")
+	 "assure " ^ (Syntax.string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
+	 (string_of_proposition p) ^ " in " ^ (string_of_term trm))
   in
     if level' > level then "(" ^ str ^ ")" else str
 

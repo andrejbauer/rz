@@ -282,12 +282,13 @@ let rec optTerm ctx = function
      in let (ty2, term2', ty2') = optTerm ctx' term2
      in (ty2, Let(name1, term1', term2'), ty2')
 
- | Obligation((name,ty), prop) ->
+ | Obligation((name,ty), prop, trm) ->
      let    ty'  = optTy ctx ty
      in let ctx' = insertType ctx name ty
      in let prop' = optProp ctx' prop
+     in let ty2', trm', ty2 = optTerm ctx' trm
      (** XXX: Is this the right typing rule for obligations? *)
-     in (ty, Obligation((name,ty'), prop'), ty')
+     in (ty2', Obligation((name,ty'), prop', trm'), ty2)
 
 
 

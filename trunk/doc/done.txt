@@ -1,3 +1,15 @@
+- DONE (2004-06-30)
+  BUG (2004-06-17) [Andrej]:
+  when a parametrized axiom is translated, some assertions are
+  missing in the hypotheses (the "trivial" ones)
+
+  [Parametrized axioms are now translated into functors.]
+
+
+- DONE (2004-06-30)
+  NEW (2004-06-17) [Andrej & Chris]:
+  Copy comments from the theory files to the output.
+
 - DONE [2004-06-18]
   BUG (2004-06-17) [Andrej]:
   a realizer for an axiom is not applied to the correct

@@ -46,9 +46,9 @@ and output_term_12 ppf = function
     Lambda ((n, ty), t) ->
       fprintf ppf "fun (%a : %a) ->@ %a" 
         output_name n  output_ty ty  output_term_12 t
-  | Obligation ((n, ty), p) ->
-      fprintf ppf "[? %a : %a . %a]" 
-        output_name n  output_ty ty  output_prop p
+  | Obligation ((n, ty), p, trm) ->
+      fprintf ppf "assure %a : %a . %a in %a" 
+        output_name n  output_ty ty  output_prop p  output_term_5 trm
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function

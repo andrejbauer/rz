@@ -3,10 +3,6 @@
   called < as well. Should be something like lt.
 
 - BUG (2004-06-17) [Andrej]:
-  when a parametrized axiom is translated, some assertions are
-  missing in the hypotheses (the "trivial" ones)
-
-- BUG (2004-06-17) [Andrej]:
   missing obligations in output code for "let [x] = p in e"
   and "let x % r = p in e ".
 
@@ -50,9 +46,6 @@
 
 - NEW (2004-06-17):
   Add inductively defined sets which translate to (nice) recursive types.
-
-- NEW (2004-06-17) [Andrej & Chris]:
-  Copy comments from the theory files to the output.
 
 - IMPROVEMENT (2004-06-17):
   Improve the toplevel program.

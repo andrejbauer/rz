@@ -144,7 +144,7 @@ thy
 
   axiom cauchy (a : N.nat -> r) =
   begin
-    all (n : N.nat) . (abs (a (N.succ n) - a n) < halfTo n)
+    (all (n : N.nat) . (abs (a (N.succ n) - a n) < halfTo n))
     =>
     some (x : r) . all (n : N.nat) . (
       abs (x - a (N.succ n)) < halfTo n

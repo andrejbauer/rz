@@ -318,7 +318,14 @@ and translateTerm ctx = function
   | L.RzQuot t -> translateTerm ctx t
 
   | L.RzChoose ((n, s), t, u) ->
-      Let (n, translateTerm ctx t, translateTerm (addTerm n t ctx) u)
+      let {ty=ty; per=(x,y,p)} = translateSet ctx s in
+      let n' = fresh [n] [n] ctx in
+      let v = translateTerm (addTerm n t ctx) u in
+      let v' = v in
+	Let (n, translateTerm ctx t,
+	     Obligation ((any, TopTy),
+			 Forall ((n', ty), Imply (substProp ctx [(x, toId n); (y, toId n')] p, Equal (v, v'))),
+			 v))
 
   | L.Quot (t, _) -> translateTerm ctx t
 
@@ -333,7 +340,7 @@ and translateTerm ctx = function
       let (ty, y, p') = translateProp (addBind x s ctx) p in
       let t' = translateTerm ctx t in
       let y' = fresh [y; mk_word "v"; mk_word "u"; mk_word "t"] [] ctx in
-	Tuple [t'; Obligation ((y', ty), substProp ctx [(y, toId y'); (x,t')] p')]
+	Obligation ((y', ty), substProp ctx [(y, toId y'); (x,t')] p', Tuple [t'; toId y'])
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
 			     
@@ -521,72 +528,6 @@ and translateTheoryElement ctx = function
 	  else
 	    [ StructureSpec (String.capitalize (Syntax.string_of_name nm), strctbind, Signat elems) ]
       end, ctx
-(***
-      begin
-	let prep m (Syntax.N(s,t)) = Syntax.LN(m,[s],t) in
-	let rec extract (bad, bind, varsubst, setsubst, precond) = function
-	    [] -> bad, bind, varsubst, setsubst, precond
-	  | (m, sg) :: rest ->
-	      let (bad', bind', varsubst', setsubst', _, precond') =
-		List.fold_left
-		  (fun (bad, bind, varsubst, setsubst, sb, precond) -> function
-		       ValSpec (n, ty) ->
-			 let n' = fresh [n] bad ctx in
-			   (n'::bad, (n', substTYType ctx sb ty)::bind,
-			    (prep m n, Syntax.toLN(n'))::varsubst,
-			    setsubst, sb,
-			    precond)
-		     | AssertionSpec (str, bnd, p) ->
-			 let p' = List.fold_right (
-			   fun (n,ty) q -> 
-			     let n' = fresh [n] bad ctx in
-			       substTYProp ctx sb
-				 (Forall ((n', ty), substProp ctx [(n, toId n')] q))) bnd p
-			 in
-			   (bad, bind, varsubst, setsubst, sb, p' :: precond)
-		     | TySpec (s, None) -> 
-			 let s' = fresh [s] bad ctx in
-			   (s'::bad, bind, varsubst,
-			    (prep m s, mk_poly s') :: setsubst,
-			    (Syntax.toLN(s), mk_poly s') :: sb,
-			    precond)
-		     | TySpec (s, Some t) ->
-			 failwith "Type definitions in arguments not implemented"
-		  ) (bad, bind, varsubst, setsubst, [], precond) sg
-	      in
-		extract (bad', bind', varsubst', setsubst', precond') rest
-	in
-	let (_, bind', varsubst, setsubst, precond) =
-	  extract ([], translateBinding ctx bind, [], [], []) (fst (processModelBinding ctx mbind)) in
-	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in
-	let (ty, x, p') = translateProp ctx' p in
-	let p'' =
-	  substTYProp ctx setsubst (
-	    substLNProp ctx varsubst (
-	      substProp ctx' [(x, App (toId n, Tuple
-					 (List.map (fun (x,_) -> toId x) bind')))] p'
-	  ))
-	in
-	let rec fold cx tots = function
-	    [] -> [],
-	      (match precond @ (List.rev tots) with
-		   [] -> p''
-		 | [q] -> Imply (q, p'')
-		 | qs -> Imply (And qs, p'')
-	      )
-	  | (x, s) :: bs ->
-	      let {ty=t; tot=(y,q)} = translateSet cx s in
-	      let (cx, r) = fold (addBind x s cx) ((substProp cx [(y, toId x)] q)::tots) bs in
-		((x,t)::cx), r
-	in
-	let (b, r) = fold ctx [] bind in 
-	let b' = bind' @ b in
-	  [ ValSpec (n, substTYType ctx setsubst (ArrowTy (TupleTy (List.map snd b'), ty)));
-	    AssertionSpec ((Syntax.string_of_name n) ^ "_rz", b', r)
-	  ]
-      end,
-      addProp n (Syntax.Unstable, Some (bind, p)) ctx
-**)
 
 and translateModelBinding ctx = function
     [] -> [], ctx
