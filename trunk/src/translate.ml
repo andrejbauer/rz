@@ -28,12 +28,15 @@ and theorySummary =
 
 let emptyCtx = []
 
-let clash str = function
-    CtxBind (Syntax.N(nm,_), _) -> nm = str
-  | CtxSet (nm, _) -> nm = str
-  | CtxProp (Syntax.N(nm,_), _) -> nm = str
-  | CtxModel (nm, _) -> nm = str
-  | CtxTheory (nm, _) -> nm = str
+let occursCtx ctx str =
+  List.exists
+    (function
+	 CtxBind (Syntax.N(nm,_), _) -> nm = str
+       | CtxSet (nm, _) -> nm = str
+       | CtxProp (Syntax.N(nm,_), _) -> nm = str
+       | CtxModel (nm, _) -> nm = str
+       | CtxTheory (nm, _) -> nm = str
+    ) ctx
 
 let addBind  n s ctx = CtxBind(n,s) :: ctx
 let addSet   n s ctx = CtxSet(n,s) :: ctx

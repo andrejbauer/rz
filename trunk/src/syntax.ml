@@ -131,6 +131,58 @@ module NameSet = Set.Make(NameOrder)
 
 module StringSet = Set.Make(StringOrder)
 
+let stringSubscript s =
+  try
+    let k = String.rindex s '_' in
+      String.sub s 0 k, Some (String.sub s (k+1) (String.length s - k - 1))
+  with Not_found -> s, None
+
+let stringPrime s =
+  try
+    let k = String.index s '\'' in
+      String.sub s 0 k, Some (String.sub s k (String.length s - k))
+  with Not_found -> s, None
+
+let splitString n =
+  let m, p = stringPrime n in
+  let r, s = stringSubscript m in
+    r, s, p
+
+let nextString n =
+  let r, s, p = splitString n in
+    r ^ (match s, p with
+	     None, None -> "'"
+	   | None, Some "'" -> "''"
+	   | None, Some p -> "_1"
+	   | Some s, _ ->
+	       "_" ^ (
+		 try
+		   string_of_int (1 + int_of_string s)
+		 with
+		     Failure "int_of_string" -> "1"
+	       )
+	)
+
+let freshString good bad occurs =
+  let rec find g =
+    try
+      List.find (fun x -> not (List.mem x bad) && not (occurs x)) g
+    with Not_found -> find (List.map nextString g)
+  in
+    find good
+
+let nextName = function
+    N(nm, Word) -> N(nextString nm, Word)
+  | _ -> N(nextString "op", Word)
+
+let freshName good bad occurs =
+  let rec find g =
+    try
+      List.find (fun ((N(x,_)) as nm) -> not (List.mem nm bad) && not (occurs x)) g
+    with Not_found -> find (List.map nextName g)
+  in
+    find good
+
 let rec string_of_name = function 
     N(str,Word) -> str
   | N("*",_) -> "( * )"
@@ -292,6 +344,7 @@ let rec subst (substitution : subst) =
         | Tuple ts      -> Tuple(List.map sub ts)
         | Proj(n,t1)    -> Proj(n, sub t1)
         | App(t1,t2)    -> App(sub t1, sub t2)
+	| Lambda _      -> failwith "Syntax.subst: Kaboooom!"
         | Inj(l,termopt)     -> Inj(l, substTermOption substitution termopt)
         | Case(t1,arms) -> Case(t1,subarms arms)
 	| RzQuot t -> RzQuot (sub t)

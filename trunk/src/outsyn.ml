@@ -100,6 +100,8 @@ let tln_of_tyname nm = TLN (None, nm)
 let ln_of_name nm = LN (None, nm)
 let string_of_name = Syntax.string_of_name
 
+let id nm = Id (ln_of_name nm)
+
 let mk_word str = Syntax.N(str, Syntax.Word)
 let mk_id str = Id (LN(None, Syntax.N(str,Syntax.Word)))
 let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
@@ -209,20 +211,20 @@ let occursSubst sbst str =
   (try ignore (TyNameMap.find str sbst.tys) ; true with Not_found -> false) ||
   (try ignore (ModulNameMap.find str sbst.moduls) ; true with Not_found -> false)
 
-let freshName good bad ?occurs sbst =
-  match occurs with
-      None -> Syntax.fresh good bad (occursSubst sbst)
-    | Some occ -> Syntax.fresh good bad (fun n -> occ n || occursSubst sbst n)
+let freshName good bad ?occ sbst =
+    match occ with
+	None -> Syntax.freshName good bad (occursSubst sbst)
+      | Some occ -> Syntax.freshName good bad (fun n -> occ n || occursSubst sbst n)
 
-let freshTyName good bad ?occurs sbst =
-  match occurs with
-      None -> Syntax.fresh good bad (occursSubst sbst)
-    | Some occ -> Syntax.fresh good bad (fun n -> occ n || occursSubst sbst n)
+let freshTyName good bad ?occ sbst =
+  match occ with
+      None -> Syntax.freshString good bad (occursSubst sbst)
+    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubst sbst n)
 
-let freshModulName good bad ?occurs sbst =
-  match occurs with
-      None -> Syntax.fresh good bad (occursSubst sbst)
-    | Some occ -> Syntax.fresh good bad (fun n -> occ n || occursSubst sbst n)
+let freshModulName good bad ?occ sbst =
+  match occ with
+      None -> Syntax.freshString good bad (occursSubst sbst)
+    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubst sbst n)
 
 (** The substitution functions accept an optional occ argument which is
     used for extra occur checks (for example in a context). The occ function
@@ -231,88 +233,101 @@ let freshModulName good bad ?occurs sbst =
 
 let rec substLN ?occ sbst = function
     (LN (None, _)) as ln -> ln
-  | LN (Some mdl, nm) -> LN (Some (substModel ?occ sbst mdl), nm)
+  | LN (Some mdl, nm) -> LN (Some (substModul ?occ sbst mdl), nm)
 
-let rec substTLN ?occ sbst = function
+and substTLN ?occ sbst = function
     (TLN (None, _)) as tln -> tln
-  | TLN (Some mdl, nm) -> TLN (Some (substModel ?occ sbst mdl), nm)
+  | TLN (Some mdl, nm) -> TLN (Some (substModul ?occ sbst mdl), nm)
 
-and substModel ?occ sbst = function
-    ModelName nm -> ModelName (getModulvar sbst nm)
-  | ModelProj (mdl, nm) -> ModelProj (substModel ?occ sbst mdl, nm)
-  | ModelApp (mdl1, mdl2) -> Modelapp (substModel ?occ sbst mdl1, substModel ?occ sbst mdl2)
+and substModul ?occ sbst = function
+    ModulName nm -> getModulvar sbst nm
+  | ModulProj (mdl, nm) -> ModulProj (substModul ?occ sbst mdl, nm)
+  | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, substModul ?occ sbst mdl2)
 
 and substProp ?occ sbst = function
     True -> True
   | False -> False
   | IsPer nm -> IsPer nm
   | IsPredicate prdct -> IsPredicate prdct
-  | NamedTotal (tln, t) -> NamedTotal (substTLN ?occurs sbst ln, substTerm ?occurs s t)
-  | NamedPer (tln, u, v) -> NamedPer (substTLN ?occurs sbst ln, substTerm ?occ s u, substTerm ?occ s v)
-  | NamedProp (ln, u, vs) -> NamedProp (substLN ?occurs sbst ln, substTerm ?occ s u, List.map (substTerm ?occ s) vs)
-  | Equal (u, v) -> Equal (substTerm ?occ s u, substTerm ?occ s v)
-  | And lst -> And (List.map (substProp ?occ s) lst)
-  | Cor lst -> Cor (List.map (substProp ?occ s) lst)
-  | Imply (p, q) -> Imply (substProp ?occ s p, substProp ?occ s q)
-  | Iff (p, q) -> Iff (substProp ?occ s p, substProp ?occ s q)
-  | Not p -> Not (substProp ?occ s p)
+  | NamedTotal (tln, t) -> NamedTotal (substTLN ?occ sbst tln, substTerm ?occ sbst t)
+  | NamedPer (tln, u, v) -> NamedPer (substTLN ?occ sbst tln, substTerm ?occ sbst u, substTerm ?occ sbst v)
+  | NamedProp (ln, u, vs) ->
+      NamedProp (substLN ?occ sbst ln, substTerm ?occ sbst u, List.map (substTerm ?occ sbst) vs)
+  | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
+  | And lst -> And (List.map (substProp ?occ sbst) lst)
+  | Cor lst -> Cor (List.map (substProp ?occ sbst) lst)
+  | Imply (p, q) -> Imply (substProp ?occ sbst p, substProp ?occ sbst q)
+  | Iff (p, q) -> Iff (substProp ?occ sbst p, substProp ?occ sbst q)
+  | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [n] ?occ sbst in
-	Forall ((n', ty), substProp ?occ (insertTermVar n (id n') s') q)
+      let n' = freshName [n] [] ?occ sbst in
+	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst' n (id n')) q)
   | ForallTotal ((n, ty), q) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [n] ?occ sbst in
-	ForallTotal ((n', ty), substProp ?occ (insertTermVar n (id n') s') q)
+      let n' = freshName [n] [] ?occ sbst in
+	ForallTotal ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst' n (id n')) q)
   | Cexists ((n, ty), q) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [n] ?occ sbst in
-	Cexists ((n', ty), substProp ?occ (insertTermVar n (id n') s') q)
+      let n' = freshName [n] [] ?occ sbst in
+	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst' n (id n')) q)
 
 and substTerm ?occ sbst = function
-    Id ln -> Id (substLN ?occ sbst ln)
+    Id (LN (None, nm)) -> getTermvar sbst nm
+  | Id (LN (Some mdl, nm)) -> Id (LN (Some (substModul ?occ sbst mdl), nm))
   | Star -> Star
   | Dagger -> Dagger
-  | App (t, u) -> App (substTerm ctx sbst t, substTerm ctx sbst u)
+  | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
   | Lambda ((n, ty), t) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [n] ?occ sbst in
-	Forall ((n', ty), substProp ?occ (insertTermVar n (id n') s') q)
-
-
-      let s' = substRemove n s in
-      let n' = fresh [n] (fvSubst s') ctx in
-	Lambda ((n', ty), substTerm ctx (substAdd (n,n') s') t)
+      let n' = freshName [n] [] ?occ sbst in
+	Lambda ((n', substTy ?occ sbst ty), substTerm ?occ (insertTermvar sbst' n (id n')) t)
   | Let (n, t, u) ->
-      let s' = substRemove n s in
-      let n' = fresh [n] (fvSubst s') ctx in
-	Let (n', substTerm ctx sbst t, substTerm ctx (substAdd (n,n') s') u)
-  | Tuple lst -> Tuple (List.map (substTerm ctx sbst) lst)
-  | Proj (k, t) -> Proj (k, substTerm ctx sbst t)
+      let sbst' = insertTermvar sbst n (id n) in
+      let n' = freshName [n] [] ?occ sbst in
+	Let (n', substTerm ?occ sbst' t, substTerm ?occ (insertTermvar sbst' n (id n')) u)
+  | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
+  | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
   | Inj (k, None) -> Inj (k, None)
-  | Inj (k, Some t) -> Inj (k, Some (substTerm ctx sbst t))
+  | Inj (k, Some t) -> Inj (k, Some (substTerm ?occ sbst t))
   | Case (t, lst) -> 
-      Case (substTerm ctx sbst t,
+      Case (substTerm ?occ sbst t,
 	     List.map (function
-			   (lb, None, t) -> (lb, None, substTerm ctx sbst t)
+			   (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
 			 | (lb, Some (n, ty), t) ->
-			     let s' = substRemove n s in
-			     let n' = fresh [n] (fvSubst s') ctx in
-			       (lb, Some (n', ty), substTerm ctx (substAdd (n,n') s') t)
-		      ) lst)
+			     let sbst' = insertTermvar sbst n (id n) in
+			     let n' = freshName [n] [] ?occ sbst in
+			       (lb,
+				Some (n', substTy ?occ sbst ty),
+				substTerm ?occ (insertTermvar sbst' n (id n')) t)
+		      )
+	       lst)
   | Obligation ((n, ty), p, trm) ->
-      let s' = substRemove n s in
-      let n' = fresh [n] (fvSubst s') ctx in
-      let s'' = substAdd (n,n') s' in
-	Obligation ((n', ty), substProp ctx sbst'' p, substTerm ctx sbst'' trm)
+      let sbst' = insertTermvar sbst n (id n) in
+      let n' = freshName [n] [] ?occ sbst in
+      let sbst'' = insertTermvar sbst' n (id n') in
+	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst'' p, substTerm ?occ sbst'' trm)
 
-and substModest ctx sbst {ty=t; tot=(x,p); per=(y,z,q)} =
-  { ty = t;
-    tot = (let x' = fresh [x] [] s in
-	     (x', substProp ctx (substAdd (x,x') s) p));
-    per = (let y' = fresh [y] [] s in
-	   let z' = fresh [z] [y'] s in
-	     (y',z', substProp ctx (substAdd (y,y') (substAdd (z,z') s)) q));
+and substTy ?occ sbst = function
+    NamedTy (TLN (None, tynm)) -> getTyvar sbst tynm
+  | NamedTy (TLN (Some mdl, tynm)) -> NamedTy (TLN (Some (substModul ?occ sbst mdl), tynm))
+  | UnitTy -> UnitTy
+  | VoidTy -> VoidTy
+  | TopTy -> TopTy
+  | SumTy lst -> SumTy (List.map (function
+				      (lbl, None) -> (lbl, None)
+				    | (lbl, Some ty) -> (lbl, Some (substTy ?occ sbst ty))) lst)
+  | TupleTy lst -> TupleTy (List.map (substTy ?occ sbst) lst)
+  | ArrowTy (ty1, ty2) -> ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
+  | TYPE -> TYPE
+
+and substModest ?occ sbst {ty=ty; tot=(x,p); per=(y,z,q)} =
+  { ty = substTy ?occ sbst ty;
+    tot = (let x' = freshName [x] [] ?occ sbst in
+	     (x', substProp ?occ (insertTermvar sbst x (id x')) p));
+    per = (let y' = freshName [y] [] ?occ sbst in
+	   let z' = freshName [z] [y'] ?occ sbst in
+	     (y',z', substProp ?occ (insertTermvar (insertTermvar sbst y (id y')) z (id z')) q));
   }
 
 
@@ -513,10 +528,10 @@ let display_subst sbst =
   in let do_ty tynm ty = print_string ("[" ^ tynm ^ "~>" ^ 
 					string_of_ty ty ^ "]")
   in let do_modul mdlnm mdl = print_string ("[" ^ mdlnm ^ "~>" ^ 
-					    string_of_mudel mdl ^ "]")
+					    string_of_modul mdl ^ "]")
   in  (print_string "Terms: ";
        NameMap.iter do_term sbst.terms;
        print_string "\nTypes: ";
        TyNameMap.iter do_ty sbst.tys;
        print_string "\nModuls: ";
-       ModuleNameMap.iter do_modul sbst.moduls)
+       ModulNameMap.iter do_modul sbst.moduls)
