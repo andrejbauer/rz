@@ -86,6 +86,7 @@ and signat =
     SignatName of signat_name
   | Signat of signat_element list
   | SignatFunctor of struct_binding list * signat
+  | SignatAnnotated of string * signat
 
 and struct_binding = modul_name * signat
 
@@ -473,6 +474,7 @@ and string_of_signat = function
 	      (fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n")
 	      args)) ^
       (string_of_signat body) ^ "\n"
+  | SignatAnnotated (cmmnt, sgntr) -> "(**" ^ cmmnt ^ "*) " ^ (string_of_signat sgntr)
 
 let string_of_toplevel = function
     (Signatdef (s, signat)) ->
