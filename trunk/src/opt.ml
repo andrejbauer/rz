@@ -86,13 +86,21 @@ let rec optTerm ctx = function
      in let rec loop = function
          (ty::tys, UnitTy::tys', nonunits, index) ->
          if index == n then
-           (* Projection can be eliminated entirely *)
+           (* Projection is unit-like and can be eliminated entirely *)
            (ty, Star, UnitTy)
 	 else
 	   loop(tys, tys', nonunits, index+1)
        | (ty::tys, ty'::tys', nonunits, index) ->
 	 if index = n then
-	   (ty, Proj(nonunits, e'), ty')
+           (* Projection returns some interesting value.
+              Check if it's the only interesting value in the tuple. *)
+           if (nonunits = 0 && List.length(List.filter notUnitTy tys')=0) then
+              (* Yes; there were no non-unit types before or after. *)
+	     (ty, e, ty')
+           else
+              (* Nope; there are multiple values so the tuple is 
+                 still a tuple and this projection is still a projection *)
+	     (ty, Proj(nonunits, e'), ty')
 	 else
 	   loop(tys, tys', nonunits+1, index+1)
        | (tys,tys',_,index) -> (print_string (string_of_int (List.length tys));
