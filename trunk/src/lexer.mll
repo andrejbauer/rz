@@ -71,6 +71,8 @@ rule token = parse
 			LABEL (String.sub w 1 (String.length w - 1))
 		    }
   | ':'             { COLON }
+  | ":>"            { SUBIN }
+  | ":<"            { SUBOUT }
   | '.'             { PERIOD }
   | ','             { COMMA }
   | '('             { LPAREN }

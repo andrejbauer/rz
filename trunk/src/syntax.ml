@@ -45,6 +45,8 @@ and term =
   | Case   of term  * (label * binding option * term) list
   | Quot   of term  * term (** quotient under equivalence relation *)
   | Choose of binding * term * term (** elimination of equivalence class *)
+  | Subin  of term * set
+  | Subout of term * set
   | And    of term list
   | Imply  of term  * term
   | Iff    of term  * term

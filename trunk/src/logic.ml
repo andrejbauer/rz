@@ -206,6 +206,7 @@ and make_proposition = function
     S.False -> False
   | S.True -> True
   | S.App (S.Var n, t) -> Atomic (n, make_term t)
+  | S.App (S.App (S.Var n, u), v) -> Atomic (n, Tuple [make_term u; make_term v])
   | S.App (_, _) -> (print_string "Application of non-variable\n";
                      raise Unimplemented)
   | S.And lst -> And (List.map make_proposition lst)

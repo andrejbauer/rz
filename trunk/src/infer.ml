@@ -78,7 +78,11 @@ let tyError s = (print_string ("TYPE ERROR: " ^ s ^ "\n");
 
 let eqSet   ctx s1 s2 = (s1 = s2)   (* too strict *)
 
-let subSet  ctx s1 s2 = (s1 = s2)  (* way too strict *)
+let subSet  ctx s1 s2 =
+  (s1 = s2) or (match s1 with
+		    Subset ((_, Some t), _) -> eqSet ctx t s2
+		  | _ -> false)
+			
 let joinSet ctx s1 s2 = if (eqSet ctx s1 s2) then s1 else (tyError "No Join")
 
 (* toProduct : ctx -> Syntax.set -> Syntax.set
@@ -169,10 +173,10 @@ and annotateProp ctx =
             let    ty = annotateSet ctx s
             in let (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
-            in if (subSet ctx ty1 ty && subSet ctx ty2 ty) then
-                  Equal(Some ty, t1', t2')
-               else
-                  tyError "Operands of equality don't match constraint"
+            in if (eqSet ctx ty1 ty) then
+                Equal(Some ty, t1', t2')
+              else
+                tyError "Operands of equality don't match constraint"
         | Forall(bnd, p) ->
             let (bnd',ctx') = annotateBinding ctx bnd
             in Forall(bnd', annotateProp ctx' p)
@@ -210,7 +214,7 @@ and annotateTerm ctx =
      | Constraint(t,s) ->
         let    (t',ty) = ann t
         in let s' = annotateSet ctx s
-        in if subSet ctx ty s' then
+        in if eqSet ctx ty s' then
               (Constraint(t',s'), s')
            else
               tyError "Invalid constraint"
@@ -225,11 +229,11 @@ and annotateTerm ctx =
               (Proj(n,t'), List.nth tys (n+1))
            else
               tyError ("Projection " ^ string_of_int n ^ " out of bounds")
-     | App(t1, t2) ->
+     | App (t1, t2) ->
         let    (t1', ty1) = ann t1
         in let (t2', ty2) = ann t2
         in let Exp(ty3,ty4) = toExp ctx ty1
-        in if (subSet ctx ty2 ty3) then
+        in if (eqSet ctx ty2 ty3) then
               (App (t1', t2'), ty4)
            else
               tyError "Application has invalid argument"
@@ -264,6 +268,21 @@ and annotateTerm ctx =
          in let (t', ty2) = annotateTerm ctx' t
          in (Lambda(bnd',t'), Exp(ty1, ty2))
 
+     | Subin (t, s) ->
+	 let s' = annotateSet ctx s in
+	 let (t', ty) = annotateTerm ctx t in
+	   if subSet ctx s' ty then
+	     (Subin (t', s'), s')
+	   else tyError("Subset mismatch :>")
+
+     | Subout (t, s) ->
+	 let s' = annotateSet ctx s in
+	 let (t', ty) = annotateTerm ctx t in
+	   if subSet ctx ty s' then
+	     (Subout (t', s'), s')
+	   else tyError ("Subset mismatch :<")
+
+
      | _ -> tyError "Proposition found where a term was expected"
    in ann)
 
@@ -288,6 +307,14 @@ and annotateTheoryElem ctx =
            in let p' = annotateProp ctx' p
            in (Sentence(sort, n, bnds', p'),
                ctx)   (* XXX:  Cannot refer to previous axioms!? *)
+       | Predicate ((_, (Infix0|Infix1|Infix3|Infix4)) as n, stab, s) ->
+	   begin
+	     match toProduct ctx s with
+		 Product [s1; s2] ->
+		   (Predicate (n, stab, s),
+		    insertType ctx n (Exp (s1, Exp (s2, Prop))))
+	       | _ -> tyError "Infix names can only be used for binary relations"
+	   end
        | Predicate (n, stab, s) ->
            let s' = annotateSet ctx s
            in

@@ -64,6 +64,8 @@
 %token RZ
 %token SET
 %token SLASH
+%token SUBIN
+%token SUBOUT
 %token STABLE
 %token STAR
 %token STRUCTURE
@@ -94,6 +96,7 @@
 %left AND
 
 %nonassoc EQUAL 
+%nonassoc SUBIN SUBOUT
 %right    COMMA
 %left     INFIXOP0
 %right    INFIXOP1
@@ -197,10 +200,17 @@ simple_set:
   | BOOL                        { Bool }
   | NAME                        { Set_name $1 }
   | LPAREN set RPAREN           { $2 }
-  | LBRACE name BAR term RBRACE { Subset (($2, None), $4) }
-  | LBRACE name COLON set BAR term RBRACE { Subset (($2, Some $4), $6) }
+  | subset                      { $1 }
   | simple_set SLASH term       { Quotient ($1, $3) }
   | RZ simple_set               { RZ $2 }
+
+subset:
+    LBRACE name BAR term RBRACE { Subset (($2, None), $4) }
+  | LBRACE name COLON set BAR term RBRACE { Subset (($2, Some $4), $6) }
+
+subset_or_name:
+    subset  { $1 }
+  | NAME    { Set_name $1 }
 
 product:
     simple_set STAR simple_set        { [$1; $3] }
@@ -222,6 +232,8 @@ simple_term:
     TRUE                        { True }
   | FALSE                       { False }
   | name                        { Var $1 }
+  | ZERO                        { Var ("0", Word) }
+  | ONE                         { Var ("1", Word) }
   | LPAREN term COLON set RPAREN { Constraint ($2, $4) }
   | LPAREN RPAREN               { Star }
   | LPAREN term_seq RPAREN      { Tuple $2 }
@@ -263,6 +275,8 @@ term:
   | term SLASH term             { App (App (Var ("/", Infix3), $1), $3) }
   | term INFIXOP4 term          { App (App (Var ($2, Infix4), $1), $3) }
   | term PERCENT term           { Quot ($1, $3) }
+  | term SUBIN subset_or_name   { Subin ($1, $3) }
+  | term SUBOUT subset_or_name  { Subout ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }
   | LAMBDA name_typed PERIOD term { Lambda ($2, $4) }
   | FORALL name_typed PERIOD term { Forall ($2, $4) }

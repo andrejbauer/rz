@@ -1,4 +1,3 @@
-
 theory DenseLinearOrder =
 thy
   set s
