@@ -87,6 +87,39 @@ let topTyize = function
       TupleTy [] -> TopTy
     | ty -> ty
 
+let joinTy ctx s1 s2 = 
+   if (s1 = s2) then
+      (* Short circuting *)
+      s1
+   else
+      let    s1' = hnfTy ctx s1
+      in let s2' = hnfTy ctx s2
+
+      in let rec joinSums = function 
+	  ([], s2s) -> s2s
+        | ((l1,None)::s1s, s2s) ->
+	    (if (List.mem_assoc l1 s2s) then
+	      try
+		let None = List.assoc l1 s2s
+		in (l1,None) :: joinSums(s1s, s2s)
+              with _ -> raise Impossible
+	    else (l1,None) :: joinSums(s1s, s2s))
+        | ((l1,Some s1)::s1s, s2s) ->
+	    (if (List.mem_assoc l1 s2s) then
+	      try
+		let Some s2 = List.assoc l1 s2s
+		in (** Assume input to optimizer typechecks *)
+		   (l1,None) :: joinSums(s1s, s2s)
+              with _ -> raise Impossible
+	    else (l1,None) :: joinSums(s1s, s2s))
+
+
+      in match (s1',s2') with
+        | (SumTy lsos1, SumTy lsos2) -> SumTy (joinSums (lsos1, lsos2))
+        | _ -> s1' (** We're assuming the input to the optimizer
+                       typechecks! *)
+
+
 (* optTy : ty -> ty
 
      Never returns TupleTy []
@@ -131,6 +164,15 @@ let rec optTerm ctx = function
                             ((oldty, e1', ty1'))
          | (ty', _)    -> (* Both parts matter *)
                             ((oldty, App(e1', e2'), ty')))
+ | Lambda((name1, ty1), term2) ->
+    (let    ty1' = optTy ctx ty1
+     in let ctx' = insertType ctx name1 ty1
+     in let (ty2, term2', ty2') = optTerm ctx' term2
+     in let oldty = ArrowTy(ty1,ty2)
+     in match (hnfTy ctx ty1', hnfTy ctx ty2') with
+       (_,TopTy) -> (oldty, Dagger, TopTy)
+     | (TopTy,_) -> (oldty, term2', ty2')
+     | (_,_)     -> (oldty, Lambda((name1,ty1'),term2'), ArrowTy(ty1',ty2')))
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
      in (topTyize (TupleTy ts), Tuple es', topTyize (TupleTy ts'))
@@ -173,9 +215,44 @@ let rec optTerm ctx = function
  | Inj (lbl, Some e) ->
      let (ty, e', ty') = optTerm ctx e
      in  (SumTy [(lbl,Some ty)], Inj(lbl, Some e'), SumTy[(lbl, Some ty')])
- | e -> (** XXX: Way wrong! *)
-     print_endline "WAY WRONG!";
-        (NamedTy (mk_word "unknown"), e, NamedTy (mk_word "unknown"))
+ | Case (e, arms) ->
+     let (ty, e', ty') = optTerm ctx e
+     in let doArm = function
+	 (lbl, Some (name2,ty2),  e3) -> 
+	   let ty2' = optTy ctx ty2 
+	   in let ctx' = insertType ctx name2 ty
+	   in let (ty3, e3', ty3') = optTerm ctx' e3
+	   in (ty3, (lbl, Some (name2, ty2'), e3'), ty3')
+       | (lbl, None,  e3) -> 
+	   let (ty3, e3', ty3') = optTerm ctx e3
+	   in (ty3, (lbl, None, e3'), ty3')
+     in let rec doArms = function
+	 [] -> raise Impossible
+       | [arm] -> let (tyarm, arm', tyarm') = doArm arm
+	          in (tyarm, [arm'], tyarm')
+       | arm::arms -> let (tyarm, arm', tyarm') = doArm arm
+                      in let (tyarms, arms', tyarms') = doArms arms
+		      in (joinTy ctx tyarm tyarms,
+			  arm' :: arms',
+			  (* XXX: doublecheck invariant that the 
+			     thinned type never has a toplevel defn. *)
+			  joinTy emptyCtx tyarm' tyarms')
+     in let (tyarms, arms', tyarms') = doArms arms
+     in (tyarms, Case(e',arms'), tyarms')
+
+ | Let(name1, term1, term2) ->
+     let    (ty1, term1', ty1') = optTerm ctx term1
+     in let ctx' = insertType ctx name1 ty1
+     in let (ty2, term2', ty2') = optTerm ctx' term2
+     in (ty2, Let(name1, term1', term2'), ty2')
+
+ | Obligation((name,ty), prop) ->
+     let    ty'  = optTy ctx ty
+     in let ctx' = insertType ctx name ty
+     in let prop' = optProp ctx' prop
+     (** XXX: Is this the right typing rule for obligations? *)
+     in (ty, Obligation((name,ty'), prop'), ty')
+
 
 
 and optTerms ctx = function 
