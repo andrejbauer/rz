@@ -306,6 +306,8 @@ and optTerm' ctx e =
 and optProp ctx = function
     True -> True
   | False -> False
+  | IsPer nm -> IsPer nm
+  | IsPredicate nm -> IsPredicate nm
   | NamedTotal(str, e) -> NamedTotal(str, optTerm' ctx e)
   | NamedPer(str, e1, e2) -> NamedPer(str, optTerm' ctx e1, optTerm' ctx e2)
   | NamedProp(str, e1, e2) -> NamedProp(str, optTerm' ctx e1, optTerm' ctx e2)

@@ -2,8 +2,6 @@ module L = Logic
 module S = Syntax
 open Outsyn 
 
-let skipTrivial = ref true
-
 exception Unimplemented
 
 (** contexts (environments)
@@ -446,25 +444,8 @@ and translateBinding ctx bind =
 
 and translateTheoryElement ctx = function
     L.Set n -> 
-      [TySpec (n, None)] @ (
-	if !skipTrivial then [] else
-	  [
-	    (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	       AssertionSpec ((Syntax.string_of_name n)  ^ "_strict",
-			      [(x, NamedTy (toLN n))],
-			      Imply (NamedPer (toLN n, toId x, toId x), NamedTotal (toLN n, toId x))));
-	    (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	     let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
-	       AssertionSpec ((Syntax.string_of_name n) ^ "_symmetric", [(x, NamedTy (toLN n)); (x', NamedTy (toLN n))],
-			      Imply (NamedPer (toLN n, toId x, toId x'), NamedPer (toLN n, toId x', toId x))));
-	    (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	     let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
-	     let x''= fresh [mk_word "x"; mk_word "y"; mk_word "z"; mk_word "v"] [x;x'] ctx in
-	       AssertionSpec ((Syntax.string_of_name n) ^ "_transitive",
-			      [(x, NamedTy (toLN n)); (x', NamedTy (toLN n)); (x'', NamedTy (toLN n))],
-			      Imply (And [NamedPer (toLN n, toId x, toId x'); NamedPer (toLN n, toId x', toId x'')],
-				     NamedPer (toLN n, toId x, toId x''))))
-	  ]),
+      [TySpec (n, None); 
+       AssertionSpec ("per_" ^ (Syntax.string_of_name n), [], IsPer n)],
       addBind n L.SET ctx
 
   | L.Let_set (n, s) ->
@@ -490,38 +471,7 @@ and translateTheoryElement ctx = function
 	    []
 	  else
 	    [TySpec (n, None)])) @
-	(if !skipTrivial then [] else	  
-	[(
-	   let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
-	   let _, bind, app, tots =
-	     List.fold_left
-	       (fun (bad, bind, app, tots) d ->
-		  let {ty=t; tot=(x,p)} = translateSet ctx d in
-		  let x' = fresh [x] bad ctx in
-		    (x'::bad, (x',t)::bind, (toId x')::app, (substProp ctx [(x, toId x')] p)::tots))
-	       ([r; n],[],[],[]) (domain s)
-	   in
-	     AssertionSpec ((Syntax.string_of_name n) ^ "_strict",
-	       (r, ty)::bind,
-	       Imply (NamedProp (toLN n, toId r, tuplify app),
-		      And tots)));
-	 (let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
-	  let _, bind, app1, app2, eqs =
-	    List.fold_left
-	      (fun (bad, bind, app1, app2, eqs) d ->
-		 let {ty=t; per=(x,y,p)} = translateSet ctx d in
-		 let x' = fresh [x] bad ctx in
-		 let y' = fresh [y] (x'::bad) ctx in
-		   (x'::y'::bad, (x',t)::(y',t)::bind,
-		    (toId x')::app1, (toId y')::app2,
-		    (substProp ctx [(x, toId x'); (y, toId y')] p)::eqs))
-	      ([r;n], [], [], [], []) (domain s)
-	  in
-	    AssertionSpec ((Syntax.string_of_name n) ^ "_extensional",
-			   (r, ty)::bind, Imply (
-		And ((NamedProp (toLN n, toId r, tuplify app1))::eqs),
-		NamedProp (toLN n, toId r, tuplify app2)
-	      )))]),
+	[AssertionSpec ("predicate_" ^ (Syntax.string_of_name n), [], IsPredicate n)],
 	addProp n (stab, None) ctx
     end
 
@@ -548,14 +498,16 @@ and translateTheoryElement ctx = function
 
   | L.Value (n, s) ->
       let {ty=t; tot=(x,p)} = translateSet ctx s in
-      [ValSpec (n, t)] @
-	(if !skipTrivial then [] else [
-	   AssertionSpec ((Syntax.string_of_name n) ^ "_total", [],
-			  substProp ctx [(x, toId n)] p)
-	 ]),
+      [ValSpec (n, t);
+       AssertionSpec ((Syntax.string_of_name n) ^ "_total", [],
+		      substProp ctx [(x, toId n)] p)],
       addBind n s ctx
 
-  | L.Sentence (_, n, mbind, bind, p) ->
+  | L.Sentence (_, nm, mbind, bind, p) ->
+      let args, ctx' = processModelBinding ctx mbind in
+	StructureSpec 
+
+(*
       begin
 	let prep m (Syntax.N(s,t)) = Syntax.LN(m,[s],t) in
 	let rec extract (bad, bind, varsubst, setsubst, precond) = function
@@ -620,6 +572,7 @@ and translateTheoryElement ctx = function
 	  ]
       end,
       addProp n (Syntax.Unstable, Some (bind, p)) ctx
+*)
 
 and translateModelBinding ctx = function
     [] -> [], ctx

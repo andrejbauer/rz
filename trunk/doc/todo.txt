@@ -1,8 +1,4 @@
 - BUG (2004-06-17) [Andrej]:
-  a realizer for an axiom is not applied to the correct
-  arguments in the corresponding assertion (some are missing)
-
-- BUG (2004-06-17) [Andrej]:
   when a parametrized axiom is translated, some assertions are
   missing in the hypotheses (the "trivial" ones)
 

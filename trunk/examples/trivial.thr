@@ -2,8 +2,11 @@ theory Trivial =
 thy
  set s
 
- predicate phi : s * s
-
- axiom foo (x : s) (y : s) = some (y : s) . phi (x, y)
+ axiom foo
+   [M : thy
+          set t
+          axiom bar [N : thy set u end] = (all (x : N.u) . some (y : N.u) . x = y)
+        end] =
+   all (a : M.t) . some (b : M.t) . (a = b)
 
 end

@@ -45,6 +45,8 @@ and term =
 and proposition =
   | True
   | False
+  | IsPer of set_name
+  | IsPredicate of name
   | NamedTotal of set_longname * term
   | NamedPer of set_longname * term * term
   | NamedProp of longname * term * term
@@ -59,16 +61,17 @@ and proposition =
 
 type signat_element =
     ValSpec of name * ty
+  | StructureSpec of name * struct_binding list * signat
   | AssertionSpec of string * binding list * proposition
   | TySpec of set_name * ty option
 
-type signat =
+and signat =
     SignatID of string
   | Signat of signat_element list
 
-type struct_binding = string * signat
+and struct_binding = string * signat
 
-type signatdef = Signatdef of string * struct_binding list * signat
+and signatdef = Signatdef of string * struct_binding list * signat
     
 
 let mk_word str = Syntax.N(str, Syntax.Word)
@@ -149,6 +152,8 @@ and fvTerm' flt acc = function
 and fvProp' flt acc = function
     True -> acc
   | False -> acc
+  | IsPer _ -> acc
+  | IsPredicate _ -> acc
   | NamedTotal (s, t) -> fvTerm' flt acc t
   | NamedPer (s, u, v) -> fvTerm' flt (fvTerm' flt acc v) u
   | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -171,6 +176,8 @@ let substAdd (n, (Syntax.N(s,sort) as n')) subst = (if n = n' then subst else (n
 let rec substProp ctx s = function
     True -> True
   | False -> False
+  | IsPer nm -> IsPer nm
+  | IsPredicate prdct -> IsPredicate prdct
   | NamedTotal (r, t) -> NamedTotal (r, substTerm ctx s t)
   | NamedPer (r, u, v) -> NamedPer (r, substTerm ctx s u, substTerm ctx s v)
   | NamedProp (n, u, v) -> NamedProp (n, substTerm ctx s u, substTerm ctx s v)
@@ -282,6 +289,8 @@ let rec substLNTerm ctx s = function
 and substLNProp ctx s = function
   | True -> True
   | False -> False
+  | IsPer nm -> IsPer nm
+  | IsPredicate prdct -> IsPredicate prdct
   | NamedTotal (r, t) -> NamedTotal (r, substLNTerm ctx s t)
   | NamedPer (r, u, v) -> NamedPer (r, substLNTerm ctx s u, substLNTerm ctx s v)
   | NamedProp (n, u, v) -> NamedProp (n, substLNTerm ctx s u, substLNTerm ctx s v)
@@ -324,9 +333,11 @@ let rec substTYTerm ctx s = function
 and substTYProp ctx s = function
   | True -> True
   | False -> False
-  | NamedTotal (r, t) -> NamedTotal (replaceType s r, substTYTerm ctx s t)
+  | IsPer nm -> IsPer (replaceType s nm)
+  | IsPredicate prdct -> IsPredicate prdct
+  | NamedTotal (r, t) -> NamedTotal (r, substTYTerm ctx s t)
   | NamedPer (r, u, v) ->
-      NamedPer (replaceType s r, substTYTerm ctx s u, substTYTerm ctx s v)
+      NamedPer (r, substTYTerm ctx s u, substTYTerm ctx s v)
   | NamedProp (n, u, v) -> NamedProp (n, substTYTerm ctx s u, substTYTerm ctx s v)
   | Equal (u, v) -> Equal (substTYTerm ctx s u, substTYTerm ctx s v)
   | And lst -> And (List.map (substTYProp ctx s) lst)
@@ -458,6 +469,8 @@ and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
+    | IsPer nm -> (0, "PER(=_" ^ (string_of_name nm) ^ ")")
+    | IsPredicate prdct -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ")")
     | NamedTotal (n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_longname n) ^ "||")
     | NamedPer (n, t, u) -> (9, (string_of_term' 9 t) ^ " =_" ^
 			       (string_of_longname n) ^ " " ^ (string_of_term' 9 u))
