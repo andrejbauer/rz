@@ -136,54 +136,54 @@ let fvProp = fvProp' [] []
 
 let substRemove n subst = List.filter (fun (m,_) -> n <> m) subst
 
-let substAdd (n,n') s = (if n = n' then s else (n, Id n')::s)
+let substAdd (n, n') s = (if n = n' then s else (n, Id n')::s)
 
-let rec substProp s = function
+let rec substProp ctx s = function
     True -> True
   | False -> False
-  | NamedTotal (r, t) -> NamedTotal (r, substTerm s t)
-  | NamedPer (r, u, v) -> NamedPer (r, substTerm s u, substTerm s v)
-  | NamedProp (n, u, v) -> NamedProp (n, substTerm s u, substTerm s v)
-  | Equal (u, v) -> Equal (substTerm s u, substTerm s v)
-  | And lst -> And (List.map (substProp s) lst)
-  | Cor lst -> Cor (List.map (substProp s) lst)
-  | Imply (p, q) -> Imply (substProp s p, substProp s q)
-  | Iff (p, q) -> Iff (substProp s p, substProp s q)
-  | Not p -> Not (substProp s p)
+  | NamedTotal (r, t) -> NamedTotal (r, substTerm ctx s t)
+  | NamedPer (r, u, v) -> NamedPer (r, substTerm ctx s u, substTerm ctx s v)
+  | NamedProp (n, u, v) -> NamedProp (n, substTerm ctx s u, substTerm ctx s v)
+  | Equal (u, v) -> Equal (substTerm ctx s u, substTerm ctx s v)
+  | And lst -> And (List.map (substProp ctx s) lst)
+  | Cor lst -> Cor (List.map (substProp ctx s) lst)
+  | Imply (p, q) -> Imply (substProp ctx s p, substProp ctx s q)
+  | Iff (p, q) -> Iff (substProp ctx s p, substProp ctx s q)
+  | Not p -> Not (substProp ctx s p)
   | Forall ((n, ty), q) as p ->
-      let s = substRemove n s in
-      let n' = fresh [n] [] s in
-	Forall ((n', ty), substProp (substAdd (n,n') s) q)
+      let n' = fresh [n] (List.map fst s) ctx in
+      let s' = substAdd (n,n') (substRemove n s) in
+	Forall ((n, ty), substProp ctx s' q)
 
-and substTerm s = function
+and substTerm ctx s = function
     Id n ->
       (try List.assoc n s with Not_found -> Id n)
   | Star -> Star
-  | App (t, u) -> App (substTerm s t, substTerm s u)
+  | App (t, u) -> App (substTerm ctx s t, substTerm ctx s u)
   | Lambda ((n, ty), t) ->
       let s = substRemove n s in
       let n' = fresh [n] [] s in
-	Lambda ((n, ty), substTerm (substAdd (n,n') s) t)
-  | Tuple lst -> Tuple (List.map (substTerm s) lst)
-  | Proj (k, t) -> Proj (k, substTerm s t)
-  | Inj (k, t) -> Inj (k, substTerm s t)
+	Lambda ((n, ty), substTerm ctx (substAdd (n,n') s) t)
+  | Tuple lst -> Tuple (List.map (substTerm ctx s) lst)
+  | Proj (k, t) -> Proj (k, substTerm ctx s t)
+  | Inj (k, t) -> Inj (k, substTerm ctx s t)
   | Cases (t, lst) -> 
-      Cases (substTerm s t,
+      Cases (substTerm ctx s t,
 	     List.map (fun (lb, (n, ty), t) ->
 			 let s = substRemove n s in
 			 let n' = fresh [n] [] s in
-			 (lb, (n', ty), substTerm (substAdd (n,n') s) t)
+			 (lb, (n', ty), substTerm ctx (substAdd (n,n') s) t)
 		      ) lst)
   | Obligation ((x, ty), p) ->
-	Obligation ((x, ty), substProp (substRemove x s) p)
+	Obligation ((x, ty), substProp ctx (substRemove x s) p)
 
-and substModest s {ty=t; tot=(x,p); per=(y,z,q)} =
+and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
   { ty = t;
     tot = (let x' = fresh [x] [] s in
-	     (x', substProp (substAdd (x,x') s) p));
+	     (x', substProp ctx (substAdd (x,x') s) p));
     per = (let y' = fresh [y] [] s in
 	   let z' = fresh [z] [y'] s in
-	     (y',z', substProp (substAdd (y,y') (substAdd (z,z') s)) q));
+	     (y',z', substProp ctx (substAdd (y,y') (substAdd (z,z') s)) q));
   }
 
 let string_of_name = function
@@ -224,15 +224,15 @@ let rec string_of_term' level t =
       Id n -> (0, string_of_name n)
     | Star -> (0, "()")
     | App (App (Id (n, Syntax.Infix0), t), u) -> 
-	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 9 u))
+	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 8 u))
     | App (App (Id (n, Syntax.Infix1), t), u) -> 
-	(8, (string_of_term' 8 t) ^ " " ^ n ^ " " ^ (string_of_term' 8 u))
+	(8, (string_of_term' 8 t) ^ " " ^ n ^ " " ^ (string_of_term' 7 u))
     | App (App (Id (n, Syntax.Infix2), t), u) -> 
-	(7, (string_of_term' 7 t) ^ " " ^ n ^ " " ^ (string_of_term' 7 u))
+	(7, (string_of_term' 7 t) ^ " " ^ n ^ " " ^ (string_of_term' 6 u))
     | App (App (Id (n, Syntax.Infix3), t), u) -> 
-	(6, (string_of_term' 6 t) ^ " " ^ n ^ " " ^ (string_of_term' 6 u))
+	(6, (string_of_term' 6 t) ^ " " ^ n ^ " " ^ (string_of_term' 5 u))
     | App (App (Id (n, Syntax.Infix4), t), u) -> 
-	(5, (string_of_term' 5 t) ^ " " ^ n ^ " " ^ (string_of_term' 5 u))
+	(5, (string_of_term' 5 t) ^ " " ^ n ^ " " ^ (string_of_term' 4 u))
     | App (t, u) -> 
 	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
     | Lambda ((n, ty), t) ->
@@ -277,20 +277,20 @@ and string_of_prop level p =
     | Imply (p, q) -> (13, (string_of_prop 12 p) ^ " ==> " ^ (string_of_prop 13 q))
     | Iff (p, q) -> (13, (string_of_prop 12 p) ^ " <=> " ^ (string_of_prop 12 q))
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
-    | Forall ((n, ty), p) -> (14, "forall (" ^ (string_of_name n) ^ " : " ^
+    | Forall ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
   in
     if level' > level then "(" ^ str ^ ")" else str
     
 and string_of_proposition p = string_of_prop 999 p
 
-let string_of_spec = function
+let string_of_spec ctx = function
       ValSpec (name, {ty=t; tot=(x,p); per=(y,z,q)}, v) ->
 	"val " ^ (string_of_name name) ^ " : " ^ (string_of_ty t) ^ "\n" ^
-	"(** " ^ (string_of_proposition (substProp [(x, Id name)] p)) ^ " *)" ^
+	"(** " ^ (string_of_proposition (substProp ctx [(x, Id name)] p)) ^ " *)" ^
 	(match v with
 	     None -> ""
-	   | Some v -> " (** " ^ (string_of_proposition (substProp [(y, Id name); (z, v)] q)) ^ " *)\n"
+	   | Some v -> " (** " ^ (string_of_proposition (substProp ctx [(y, Id name); (z, v)] q)) ^ " *)\n"
 	)
     | TySpec  (name, None) ->
 	"type " ^ name
@@ -306,14 +306,14 @@ let string_of_spec = function
 	in
 	  "val " ^ (string_of_name name) ^ " : " ^ (string_of_ty u) ^ "\n(** " ^
 	  (string_of_term tp) ^ " : " ^
-	  (string_of_proposition (substProp [(n, App (Id name, tp))] p)
+	  (string_of_proposition (substProp ctx [(n, App (Id name, tp))] p)
 	  ) ^ " *)"
 
 let string_of_signat { s_name = s; s_arg = arg; s_body = body } = 
   "module type " ^ s ^
   (match arg with
        None -> ""
-     | Some a -> "(\n" ^ (String.concat "\n\t" (List.map string_of_spec a)) ^ "\n)"
+     | Some a -> "(\n" ^ (String.concat "\n\t" (List.map (string_of_spec []) a)) ^ "\n)"
   ) ^ " =\n" ^ "sig\n" ^
-  (String.concat "\n\n" (List.map string_of_spec body)) ^
+  (String.concat "\n\n" (List.map (string_of_spec []) body)) ^
   "\nend\n"

@@ -124,7 +124,8 @@ let rec translateSet ctx = function
 	      (t, And (
 		 let k = ref 0 in
 		   List.map (fun {tot=(x,p)} ->
-			       let q = substProp [(x, Proj (!k, Id t))] p in incr k ; q) us
+			       let q = substProp ctx [(x, Proj (!k, Id t))] p in
+				 incr k ; q) us
 	       )
 	      )
 	  );
@@ -134,7 +135,7 @@ let rec translateSet ctx = function
 	      (t, u, And (
 		 let k = ref 0 in
 		   List.map (fun {per=(x,y,p)} ->
-			       let q = substProp [(x, Proj (!k, Id t)); (y, Proj (!k, Id u))] p in
+			       let q = substProp ctx [(x, Proj (!k, Id t)); (y, Proj (!k, Id u))] p in
 				 incr k; q
 			    ) us
 	       )
@@ -144,8 +145,8 @@ let rec translateSet ctx = function
   | L.Exp (s, t) ->
       let {ty=u; per=(x,x',p)} = translateSet ctx s in
       let {ty=v; per=(y,y',q)} = translateSet ctx t in
-      let z = fresh [x; mk_word "x"; mk_word "y"] [] ctx in
-      let z' = fresh [x'; mk_word "x'"; mk_word "y'"] [z] ctx in
+      let z = fresh [x] [] ctx in
+      let z' = fresh [x'] [z] ctx in
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"] [z;z'] ctx in
       let g = fresh [mk_word "g"; mk_word "h"; mk_word "k"] [f;z;z'] ctx in
 	{ ty = ArrowTy (u, v);
@@ -153,8 +154,8 @@ let rec translateSet ctx = function
 	      (f,
 	       Forall ((z, u),
 	       Forall ((z', u),
-	         Imply (substProp [(x, Id z); (x', Id z')] p,
-			substProp [(y, App (Id f, Id x)); (y', App (Id f, Id x'))] q)
+	         Imply (substProp ctx [(x, Id z); (x', Id z')] p,
+			substProp ctx [(y, App (Id f, Id x)); (y', App (Id f, Id x'))] q)
 		      ))
 	      )
 	  );
@@ -162,8 +163,8 @@ let rec translateSet ctx = function
 	      (f, g,
 	       Forall ((z,u),
                Forall ((z',u),
-                 Imply (substProp [(x, Id z); (x', Id z')] p,
-			substProp [(y, App (Id f, Id x)); (y', App (Id g, Id x'))] q)
+                 Imply (substProp ctx [(x, Id z); (x', Id z')] p,
+			substProp ctx [(y, App (Id f, Id x)); (y', App (Id g, Id x'))] q)
 		      ))
 	      )
 	  )
@@ -177,14 +178,14 @@ let rec translateSet ctx = function
 	  tot = (
 	    let k = fresh [mk_word "k"; mk_word "j"; mk_word "x"] [] ctx in
 	      (k,
-	       And [substProp [(x, Proj (1, Id k))] p;
-		    substProp [(z, Proj (2, Id k))] r]
+	       And [substProp ctx [(x, Proj (1, Id k))] p;
+		    substProp ctx [(z, Proj (2, Id k))] r]
 	      )
 	  );
 	  per = (
 	    let w  = fresh [y; mk_word "w"] [] ctx in
 	    let w' = fresh [y'; mk_word "w'"] [w] ctx in
-	      (w, w', substProp [(y, Proj (1, Id w)); (y', Proj (1, Id w'))] q)
+	      (w, w', substProp ctx [(y, Proj (1, Id w)); (y', Proj (1, Id w'))] q)
 	  )
 	}
 
@@ -233,7 +234,7 @@ and translateTerm ctx = function
       let (ty, y, p') = translateProp (addBind x s ctx) p in
       let t' = translateTerm ctx t in
       let y' = fresh [y; mk_word "v"; mk_word "u"; mk_word "t"] [] ctx in
-	Tuple [t'; Obligation ((y', ty), substProp [(y, Id y'); (x,t')] p')]
+	Tuple [t'; Obligation ((y', ty), substProp ctx [(y, Id y'); (x,t')] p')]
   | L.Subout (t, _) -> Proj (1, translateTerm ctx t)
 
 			     
@@ -255,7 +256,7 @@ and translateProp ctx = function
 	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
 		List.map (fun (_, x, p) ->
-			    let q = substProp [(x, Proj (!k, Id t))] p in incr k ; q)
+			    let q = substProp ctx [(x, Proj (!k, Id t))] p in incr k ; q)
 		  lst')
 	)
 
@@ -266,8 +267,8 @@ and translateProp ctx = function
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x'] ctx in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x', t), Imply (substProp [(x, Id x')] p',
-				 substProp [(y, App (Id f, Id x'))] q')))
+	 Forall ((x', t), Imply (substProp ctx [(x, Id x')] p',
+				 substProp ctx [(y, App (Id f, Id x'))] q')))
 
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProp ctx p in
@@ -278,10 +279,10 @@ and translateProp ctx = function
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
 	 f,
 	 And [
-	   Forall ((x', t), Imply (substProp [(x, Id x')] p',
-				   substProp [(y, App (Proj (0, Id f), Id x))] q'));
-	   Forall ((y', u), Imply (substProp [(y, Id y')] q',
-				   substProp [(x, App (Proj (1, Id f), Id y))] p'))
+	   Forall ((x', t), Imply (substProp ctx [(x, Id x')] p',
+				   substProp ctx [(y, App (Proj (0, Id f), Id x))] q'));
+	   Forall ((y', u), Imply (substProp ctx [(y, Id y')] q',
+				   substProp ctx [(x, App (Proj (1, Id f), Id y))] p'))
 	 ]
 	)
 
@@ -299,7 +300,7 @@ and translateProp ctx = function
 	   List.map2
 		(fun lb (t,x,p) ->
 		   let x' = fresh [x] [u] ctx in
-		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Id x')), substProp [(x, Id x')] p)))
+		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Id x')), substProp ctx [(x, Id x')] p)))
 		lbs lst'
 	 ))
 
@@ -311,19 +312,19 @@ and translateProp ctx = function
       in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x',t), Imply (substProp [(x, Id x')] q,
-				substProp [(n, Id x'); (y, App (Id f, Id x'))] p'))
+	 Forall ((x',t), Imply (substProp ctx [(x, Id x')] q,
+				substProp ctx [(n, Id x'); (y, App (Id f, Id x'))] p'))
 	)
 
   | L.Exists ((n, s), p) -> 
       let {ty=t; tot=(x,q)} = translateSet ctx s in
-      let (u, y, p') = translateProp ctx p in
+      let (u, y, p') = translateProp (addBind n s ctx) p in
       let w = fresh [mk_word "w"; mk_word "u"; mk_word "p"; mk_word "t"] [] ctx
       in
 	(TupleTy [t; u], w,
 	 And [
-	   substProp [(x, Proj (1, Id w))] q;
-	   substProp [(n, Proj (1, Id w)); (y, Proj (2, Id w))] p'
+	   substProp ctx [(x, Proj (1, Id w))] q;
+	   substProp ctx [(n, Proj (1, Id w)); (y, Proj (2, Id w))] p'
 	 ])
 
   | L.Not p ->
@@ -334,7 +335,7 @@ and translateProp ctx = function
       let {per=(x,y,p)} = translateSet ctx s in
       let t' = translateTerm ctx t in
       let u' = translateTerm ctx u in
-	(UnitTy, any, substProp [(x,t'); (y,u')] p)
+	(UnitTy, any, substProp ctx [(x,t'); (y,u')] p)
 
 let translateBinding ctx (n, s) = (n, (translateSet ctx s).ty)
 
