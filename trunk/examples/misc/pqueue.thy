@@ -1,4 +1,4 @@
-theory Queue =
+theory PriorityQueue =
 thy
   set a (* elements of queues *)
 

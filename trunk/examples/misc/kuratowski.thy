@@ -1,6 +1,6 @@
 # Kuratowski finite sets over a set
 
-theory Semilattice =
+theory SemiLattice =
 thy
   set s
   const zero : s
@@ -32,11 +32,8 @@ thy
   axiom idempotent x = (union x x = x)
   axiom bottom (x : fin) =  (union x empty = x)
 
-  # we really want unique existence, but we don't have the some1
-  # quantifier yet
-
-  axiom initial [S : Semilattice] (f : A.a -> S.s) =
-    some (g : fin -> S.s) . (
+  axiom initial [S : SemiLattice] (f : A.a -> S.s) =
+    some1 (g : fin -> S.s) . (
       g empty = S.zero and
         all (x : A.a) . (f x = g (singleton x)) and
         all (u : fin) . all (v : fin) . (

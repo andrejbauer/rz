@@ -13,14 +13,11 @@ thy
   const zero : nat
   const succ : nat -> nat
 
-  # the existential in the following axiom should really
-  # be unique existential, which we don't have right now
-
   axiom initial [I : thy set a
                          const x : a
                          const s : a -> a
                      end] =
-    some (f : nat -> I.a) . (
+    some1 (f : nat -> I.a) . (
       f zero = I.x and
       (all (n : nat) . f (succ n) = I.s (f n))
       and

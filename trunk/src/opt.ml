@@ -399,8 +399,21 @@ and optProp ctx = function
       in let e2' = optTerm' ctx e2
       in (match (hnfTy ctx ty1') with
             TopTy -> True
-(* AB:          | UnitTy -> True *)
 	  | VoidTy -> True
+	  | SumTy _ ->
+	      (match e1', e2' with
+		   Inj (lbl1, None), Inj (lbl2, None) ->
+		     if lbl1 = lbl2 then True else False
+		 | Inj (lbl1, Some t1), Inj (lbl2, Some t2) ->
+		     if lbl1 = lbl2 then
+		       Equal (t1, t2)
+		       (* optProp ctx (Equal (t1, t2)) *)
+		     else
+		       False
+		 | Inj (_, None), Inj (_, Some _)
+		 | Inj (_, Some _), Inj (_, None) -> False
+		 | _ -> Equal (e1', e2')
+	      )
           | _ -> Equal(e1',e2'))
   | And ps ->
       let rec loop = function
@@ -442,6 +455,7 @@ and optProp ctx = function
   | Not p -> (match optProp ctx p with
       True  -> False
     | False -> True
+    | Not (Not p') -> Not p'
     | p'    -> Not p')
 
   | Forall((n,ty), p) ->
@@ -462,7 +476,7 @@ and optProp ctx = function
  
   | Cexists ((n, ty), p) ->
       let p' = optProp (insertType ctx n ty) p in
-	(match optTy ctx ty, p with
+	(match optTy ctx ty, p' with
 	     (_, False) -> False
 	   | (TopTy, _) -> p'
 	   | (ty', _) -> Cexists((n, ty'), p'))

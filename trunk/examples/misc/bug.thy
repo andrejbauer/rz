@@ -1,16 +1,11 @@
-theory Real =
+theory T =
 thy
-  set r
+  set s
+  stable relation p : s * s
 
-  # if you remove "stable" from phi it works
-  stable predicate phi : r
+  implicit x : s
 
-  set r' = { x : r | phi(x) }
-
-  constant f : r' -> r'
-  constant g : r -> r
-
-  constant x : r
-  constant y = g (f x)
+  axiom foo = true and all x .
+    (p (x, x) and p (x, x) => p (x, x))
 
 end

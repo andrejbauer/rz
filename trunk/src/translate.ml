@@ -203,7 +203,7 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (t, And (
 		 let k = ref 0 in
 		   List.map (fun {tot=(x,p)} ->
-			       let q = sbp ctx [x, (Proj (!k, id t))] p in
+			       let q = sbp ctx ~bad:[t] [x, (Proj (!k, id t))] p in
 				 incr k ; q) us
 	       )
 	      )
@@ -214,7 +214,8 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (t, u, And (
 		 let k = ref 0 in
 		   List.map (fun {per=(x,y,p)} ->
-			       let q = sbp ctx [(x, Proj (!k, id t)); (y, Proj (!k, id u))] p in
+			       let q = sbp ctx ~bad:[t;u]
+					 [(x, Proj (!k, id t)); (y, Proj (!k, id u))] p in
 				 incr k; q
 			    ) us
 	       )
@@ -233,8 +234,8 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (f,
 	       Forall ((z, u),
 	       Forall ((z', u),
-	         Imply (sbp ctx ~bad:[z;z'] [(x, id z); (x', id z')] p,
-			sbp ctx ~bad:[z;z'] [(y, App (id f, id z)); (y', App (id f, id z'))] q)
+	         Imply (sbp ctx ~bad:[z;z';f] [(x, id z); (x', id z')] p,
+			sbp ctx ~bad:[z;z';f] [(y, App (id f, id z)); (y', App (id f, id z'))] q)
 		      ))
 	      )
 	  );
@@ -242,8 +243,8 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (f, g,
 	       Forall ((z,u),
                Forall ((z',u),
-                 Imply (sbp ctx ~bad:[z;z'] [(x, id z); (x', id z')] p,
-			sbp ctx ~bad:[z;z'] [(y, App (id f, id x)); (y', App (id g, id x'))] q)
+                 Imply (sbp ctx ~bad:[z;z';f;g] [(x, id z); (x', id z')] p,
+			sbp ctx ~bad:[z;z';f;g] [(y, App (id f, id x)); (y', App (id g, id x'))] q)
 		      ))
 	      )
 	  )
@@ -257,14 +258,14 @@ let rec translateSet (ctx : ctxElement list) = function
 	  tot = (
 	    let k = fresh [mk_word "k"; mk_word "j"; mk_word "x"] [] ctx in
 	      (k,
-	       And [sbp ctx [(x, Proj (0, id k))] p;
-		    sbp ctx [(n, Proj (0, id k)); (z, Proj (1, id k))] r]
+	       And [sbp ctx ~bad:[k] [(x, Proj (0, id k))] p;
+		    sbp ctx ~bad:[k] [(n, Proj (0, id k)); (z, Proj (1, id k))] r]
 	      )
 	  );
 	  per = (
 	    let w  = fresh [y; mk_word "w"] [] ctx in
 	    let w' = fresh [y'; mk_word "w'"] [w] ctx in
-	      (w, w', sbp ctx [(y, Proj (0, id w)); (y', Proj (0, id w'))] q)
+	      (w, w', sbp ctx ~bad:[w;w'] [(y, Proj (0, id w)); (y', Proj (0, id w'))] q)
 	  )
 	}
   | L.Quotient (s, r) ->
@@ -301,15 +302,15 @@ let rec translateSet (ctx : ctxElement list) = function
 			 let x'' = fresh [x'] [x] ctx in
 			   Cexists ((x'', u),
 				   And [Equal (id x, Inj (lb, Some (id x'')));
-					sbp ctx ~bad:[x''] [(x', id x'')] p]))
+					sbp ctx ~bad:[x;x''] [(x', id x'')] p]))
 		   lst')
 	  );
 	  per = (
 	    y, y',
 	    Cor (List.map (
 		   function
-		       (lb, None) -> And [Equal (id y, Inj (lb, None));
-					  Equal (id y, Inj (lb, None))]
+		       (lb, None) -> And [Equal (id y,  Inj (lb, None));
+					  Equal (id y', Inj (lb, None))]
 		     | (lb, Some {ty=u; per=(z,z',q)}) ->
 			 let w =  fresh [z] [y;y'] ctx in
 			 let w' = fresh [z'] [w;y;y'] ctx in
@@ -317,7 +318,7 @@ let rec translateSet (ctx : ctxElement list) = function
 		           Cexists ((w',u),
 				    And [Equal (id y, Inj (lb, Some (id w)));
 					 Equal (id y', Inj (lb, Some (id w')));
-					 sbp ctx ~bad:[w;w'] [(z, id w); (z', id w')] q])))
+					 sbp ctx ~bad:[y;y';w;w'] [(z, id w); (z', id w')] q])))
 		   lst')
 	  )
 	}
@@ -436,7 +437,7 @@ and translateProp ctx = function
 	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
 		List.map (fun (_, x, p) ->
-			    let q = sbp ctx [(x, Proj (!k, id t))] p in incr k ; q)
+			    let q = sbp ctx ~bad:[t] [(x, Proj (!k, id t))] p in incr k ; q)
 		  lst')
 	)
 
@@ -447,8 +448,8 @@ and translateProp ctx = function
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x'] ctx in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x', t), Imply (sbp ctx ~bad:[x'] [(x, id x')] p',
-				 sbp ctx ~bad:[x'] [(y, App (id f, id x'))] q')))
+	 Forall ((x', t), Imply (sbp ctx ~bad:[x';f] [(x, id x')] p',
+				 sbp ctx ~bad:[x';f] [(y, App (id f, id x'))] q')))
 
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProp ctx p in
@@ -459,10 +460,10 @@ and translateProp ctx = function
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
 	 f,
 	 And [
-	   Forall ((x', t), Imply (sbp ctx ~bad:[x'] [(x, id x')] p',
-				   sbp ctx ~bad:[x'] [(y, App (Proj (0, id f), id x))] q'));
-	   Forall ((y', u), Imply (sbp ctx ~bad:[y'] [(y, id y')] q',
-				   sbp ctx ~bad:[y'] [(x, App (Proj (1, id f), id y))] p'))
+	   Forall ((x', t), Imply (sbp ctx ~bad:[x';f] [(x, id x')] p',
+				   sbp ctx ~bad:[x';f] [(y, App (Proj (0, id f), id x))] q'));
+	   Forall ((y', u), Imply (sbp ctx ~bad:[y';f] [(y, id y')] q',
+				   sbp ctx ~bad:[y';f] [(x, App (Proj (1, id f), id y))] p'))
 	 ]
 	)
 
@@ -481,7 +482,7 @@ and translateProp ctx = function
 		(fun lb (t,x,p) ->
 		   let x' = fresh [x] [u] ctx in
 		     Cexists ((x',t), And [Equal(id u, Inj (lb, Some (id x')));
-					   sbp ctx ~bad:[x'] [(x, id x')] p]))
+					   sbp ctx ~bad:[x';u] [(x, id x')] p]))
 		lbs lst'
 	 ))
 
@@ -493,8 +494,8 @@ and translateProp ctx = function
       in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x',t), Imply (sbp ctx ~bad:[x'] [(x, id x')] q,
-				sbp ctx ~bad:[x'] [(n, id x'); (y, App (id f, id x'))] p'))
+	 Forall ((x',t), Imply (sbp ctx ~bad:[x';f] [(x, id x')] q,
+				sbp ctx ~bad:[x';f] [(n, id x'); (y, App (id f, id x'))] p'))
 	)
 
   | L.Exists ((n, s), p) -> 
@@ -504,8 +505,8 @@ and translateProp ctx = function
       in
 	(TupleTy [t; u], w,
 	 And [
-	   sbp ctx [(x, Proj (0, id w))] q;
-	   sbp ctx [(n, Proj (0, id w)); (y, Proj (1, id w))] p'
+	   sbp ctx ~bad:[w] [(x, Proj (0, id w))] q;
+	   sbp ctx ~bad:[w] [(n, Proj (0, id w)); (y, Proj (1, id w))] p'
 	 ])
 
   | L.Unique ((n, s), p) -> 
@@ -515,14 +516,14 @@ and translateProp ctx = function
       let w' = fresh [mk_word "u"; mk_word "p"; mk_word "t"] [w] ctx in
 	(TupleTy [t; u], w,
 	 And [
-	   sbp ctx [(x, Proj (0, id w))] q;
-	   sbp ctx [(n, Proj (0, id w)); (y, Proj (1, id w))] p';
+	   sbp ctx ~bad:[w] [(x, Proj (0, id w))] q;
+	   sbp ctx ~bad:[w] [(n, Proj (0, id w)); (y, Proj (1, id w))] p';
 	   Forall ((w', TupleTy [t; u]),
 		   Imply (
-		     sbp ctx ~bad:[w'] [(x, Proj (0, id w'))] q,
+		     sbp ctx ~bad:[w;w'] [(x, Proj (0, id w'))] q,
 		     Imply (
-		       sbp ctx ~bad:[w'] [(n, Proj (0, id w')); (y, Proj (1, id w'))] p',
-		       sbp ctx ~bad:[w'] [(z,Proj(0, id w)); (z',Proj(0,id w'))] pr
+		       sbp ctx ~bad:[w;w'] [(n, Proj (0, id w')); (y, Proj (1, id w'))] p',
+		       sbp ctx ~bad:[w;w'] [(z,Proj(0, id w)); (z',Proj(0,id w'))] pr
 		     )
 		   )
 		  )
@@ -582,7 +583,7 @@ and translateTheoryElements ctx = function
 		   [((S.string_of_name n) ^ "_def",
 		     (r',ty) :: bind',
 		     Iff (NamedProp (ln_of_name n, id r', List.map (fun (y,_) -> id y) bind),
-			  sbp ctx ([(r, id r')]) p'))])
+			  sbp ctx ~bad:[r'] ([(r, id r')]) p'))])
 	) :: sgnt,
 	addProp n stab smmry
 

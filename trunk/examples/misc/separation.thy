@@ -1,7 +1,7 @@
 theory SetSeparation =
 thy
-  set v                  (* the "meta-set" of all sets *)
-  relation elem : v * v  (* the element-hood relation *)
+  set v                           (* the "meta-set" of all sets *)
+  relation elem : v -> v -> Prop  (* the element-hood relation *)
 
   const x : v
   predicate p : v
@@ -14,10 +14,10 @@ end
 theory BoundedSetSeparation =
 thy
   set v
-  relation elem : v * v
+  relation elem : v -> v -> Prop
 
   const x : v
-  set extension_x = { t : v | elem x v }
+  set extension_x = { t : v | elem x t }
 
   predicate p : extension_x
 

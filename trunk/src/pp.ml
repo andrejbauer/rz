@@ -164,6 +164,17 @@ and output_binds ppf lst =
       in
 	output_loop ppf lst
 
+and output_assertion_binds ppf lst =
+      let outputer ppf (n,t) = 
+	fprintf ppf "%s:||%a||" (Syntax.string_of_name n)  output_ty t
+      in let rec output_loop ppf = function
+	    [] -> ()
+	| [trm] -> outputer ppf trm
+	| trm::trms -> fprintf ppf "%a%s@,%a"
+	    outputer trm  ", "  output_loop trms
+      in
+	output_loop ppf lst
+
 and output_totalbinds ppf lst =
       let outputer ppf (n,t) = 
 	fprintf ppf "%s:||%a||" (Syntax.string_of_name n)  output_ty t
@@ -332,7 +343,7 @@ and output_assertion ppf = function
       fprintf ppf "@[<hov 2>Assertion %s = @ %a@]"  nm   output_prop p
   | (nm, binds, p) ->
       fprintf ppf "@[<hov 7>Assertion %s (%a) = @ %a@]" 
-	nm   output_binds binds   output_prop p
+	nm   output_assertion_binds binds   output_prop p
 
 and output_assertions ppf = function
     [] -> ()

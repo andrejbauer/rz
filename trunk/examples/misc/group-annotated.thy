@@ -1,14 +1,14 @@
-(* Version of Group.thr where all the variables
+(* Version of Group.thy where all the variables
    and all the equality comparisons are explicitly 
    annotated with types; for testing purposes until
    some sort of type inference is implemented.
 *)
 
-theory Group =
+theory GroupAnnotated =
 thy
   set g  
   const e : g
-  const ( * ) : g * g -> g
+  const ( * ) : g -> g -> g
   const i : g -> g
 
   axiom useless (x : g) = (x = x in g)
