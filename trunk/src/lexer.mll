@@ -56,7 +56,7 @@ let symbolchar =
 rule token = parse
     '#' [^'\n']* '\n' { incr Message.lineno; token lexbuf }
   | '\n'            { incr Message.lineno; token lexbuf }
-  | [' ' '\t']      { token lexbuf }
+  | [' ' '\t' '\r']      { token lexbuf }
   | ['0'-'9']+      { match (int_of_string(Lexing.lexeme lexbuf)) with
 			  0 -> ZERO
 			| 1 -> ONE

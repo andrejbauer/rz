@@ -9,6 +9,7 @@
 open Syntax
 
 exception Unimplemented
+exception Impossible
 
 (*************************************)
 (** {2 Lookup Tables (Environments)} *)
@@ -56,6 +57,10 @@ let lookupTydef    ctx str = lookup (str, ctx.tydefs)
 let lookupSet      ctx str = if (List.mem str ctx.sets) then
                                    ()
                              else raise NotFound
+
+let peekTydef ctx s = try Some(lookupTydef ctx s) with
+                        NotFound -> None
+
 let insertImplicit ({implicits=implicits} as ctx) str ty = 
        {ctx with implicits = insert(str,ty,implicits)}
 let insertType ({types=types} as ctx) n ty = 
@@ -76,10 +81,71 @@ exception TypeError
 let tyError s = (print_string ("TYPE ERROR: " ^ s ^ "\n");
                  raise TypeError)
 
-let eqSet   ctx s1 s2 = (s1 = s2)   (* too strict *)
+
+(** Expand out any top-level definitions for a set *)
+let rec hnfSet ctx = function
+    Set_name n ->
+      (match (peekTydef ctx n) with
+        Some s' -> hnfSet ctx s'
+      | None -> Set_name n)
+  | s -> s
+
+let eqSet   ctx s1 s2 = 
+   if (s1 = s2) then
+      (* Short circuting for common case *)
+      true
+   else
+      let    s1' = hnfSet ctx s1
+      in let s2' = hnfSet ctx s2
+   
+      in let rec cmp = function
+          (Empty, Empty) -> true
+        | (Unit, Unit) -> true
+	| (Bool, Bool) -> true       (* Bool <> Sum() for now *)
+        | (Set_name n1, Set_name n2) -> (n1 = n2)
+	| (Product ss1, Product ss2) -> cmps (ss1,ss2)
+        | (Sum lsos1, Sum lsos2) -> cmpsum (lsos1, lsos2)
+        | (Exp(s3,s4), Exp(s5,s6)) -> cmp (s3,s5) && cmp (s4,s6)
+	| (Subset(b1,p1), Subset(b2,p2)) -> 
+            cmpbnd(b1,b2) && if (p1=p2) then
+                                true 
+		             else
+                                (print_string 
+		                   ("WARNING: not guaranteeing " ^ 
+                                    "proposition equality\n");
+				 true)
+        | (Quotient(s3,t3), Quotient(s4,t4)) ->
+            cmp(s3,s4) && if (t3=t4) then
+                                true 
+		             else
+                                (print_string 
+		                   ("WARNING: not guaranteeing " ^ 
+                                    "equivalence-relation equality\n");
+				 true)
+        | (RZ s3, RZ s4) -> cmp(s3, s4)
+        | (Prop,Prop) -> raise Unimplemented (* Shouldn't occur without HOL *)
+        | (_,_) -> false
+      and cmps = function
+          ([], []) -> true
+	| (s1::s1s, s2::s2s) -> cmp(s1,s2) && cmps(s1s,s2s)
+        | (_,_) -> false
+      and cmpsum = function
+          ([], []) -> true
+	| ((l1,None)::s1s, (l2,None)::s2s) -> (l1=l2) && cmpsum(s1s,s2s)
+	| ((l1,Some s1)::s1s, (l2,Some s2)::s2s) -> 
+                                (l1=l2) && cmp(s1,s2) && cmpsum(s1s,s2s)
+        | (_,_) -> false
+      and cmpbnd = function
+	  (* Since we're not verifying equivalence of propositions,
+	     we don't have to worry about the bound variable *)
+          ((_, None),(_,None)) -> true
+        | ((_, Some s1), (_,Some s2)) -> cmp(s1,s2)
+        | (_,_) -> false
+
+      in cmp(s1', s2')
 
 let subSet  ctx s1 s2 =
-  (s1 = s2) or (match s1 with
+  (s1 = s2) || (match (hnfSet ctx s1) with
 		    Subset ((_, Some t), _) -> eqSet ctx t s2
 		  | _ -> false)
 			
@@ -298,7 +364,7 @@ and annotateTheoryElem ctx =
        | Let_term(bnd,t) ->
            let    (t', ty1) = annotateTerm ctx t
            in let ((_,Some ty2) as bnd', ctx') = annotateBinding ctx bnd
-           in if (subSet ctx ty1 ty2) then
+           in if (eqSet ctx ty1 ty2) then
                 (Let_term(bnd',t'), ctx')
               else
                 tyError "Term definition doesn't match constraint"
@@ -320,6 +386,7 @@ and annotateTheoryElem ctx =
            in
 	     (Predicate (n, stab, s'),
               insertType ctx n (Exp (s', Prop)))
+       | Implicit(_,_) -> raise Impossible (* see below *)
     in
       ann
 

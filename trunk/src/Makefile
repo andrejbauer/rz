@@ -8,7 +8,7 @@ OCAMLYFLAGS = -v
 
 INCLUDES =
 
-OCAMLFLAGS = $(INCLUDES)
+OCAMLFLAGS = $(INCLUDES) -g
 OCAMLCPFLAGS =
 OCAMLOPTFLAGS = -w p $(INCLUDES) -unsafe -inline 5 
 
@@ -31,6 +31,8 @@ LIB_OPT_OBJS = $(subst .cma,.cmxa,$(subst .cmo,.cmx,$(LIB_OBJS)))
 TARGETS = toplevel
 
 OPT_TARGETS = $(addsuffix .opt,$(TARGETS))
+
+default: $(TARGETS)
 
 all: $(TARGETS) $(OPT_TARGETS)
 	echo $(OPT_TARGETS); echo $(TARGETS)

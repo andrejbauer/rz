@@ -225,7 +225,10 @@ and make_proposition = function
   | S.Exists ((_, None), _) -> 
                             (print_string "Exists missing type annotation\n";
                             raise Unimplemented)
-  | _ -> raise HOL
+  | S.Subin -> raise Unimplemented
+  | S.Subout -> raise Unimplemented
+  | _ -> (print_string "unrecognized proposition\n";
+	  raise HOL)
 
 and make_term = function
     S.Var n -> Var n
@@ -242,7 +245,8 @@ and make_term = function
 			       lst)
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
   | S.Choose (_,_,_) -> raise Unimplemented
-  | _ -> raise HOL
+  | _ -> (print_string "unrecognized term\n";
+	  raise HOL)
 
 and make_theory_element = function
     S.Set (n, None)-> Set n
