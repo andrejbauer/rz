@@ -536,7 +536,7 @@ and translateBinding ctx bind =
 
 and translateTheoryElements ctx = function
     [] -> [], emptyCtx
-  | (L.Set n) :: rest -> 
+  | L.Set n :: rest -> 
       let sgnt, smmry = translateTheoryElements (addSet n L.SET ctx) rest in
 	(TySpec (n, None, [("per_" ^ n, [], IsPer n)])) :: sgnt,
 	(addSet n L.SET smmry)
@@ -621,6 +621,13 @@ and translateTheoryElements ctx = function
 		ModulSpec (String.capitalize (string_of_name nm), fnctr)
 	end :: sgnt,
 	smmry
+
+  | L.Model (mdlnm, thr) :: rest ->
+      let sgnt, smmry = translateTheory ctx thr in
+      let sgnt', smmry' = translateTheoryElements (addModel mdlnm smmry ctx) rest in
+	ModulSpec (mdlnm, sgnt) :: sgnt',
+	(addModel mdlnm smmry smmry')
+
 
 and translateSLN = function
     L.SLN (None, nm) -> TLN (None, nm)
