@@ -96,6 +96,9 @@ and toplevel =
   | TopModul   of modul_name  * signat
     
 
+let tln_of_setname nm = TLN (None, nm)
+let ln_of_name nm = LN (None, nm)
+
 let mk_word str = Syntax.N(str, Syntax.Word)
 let mk_id str = Id (LN(None, Syntax.N(str,Syntax.Word)))
 let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
@@ -135,7 +138,6 @@ module NameSet = Set.Make(NameOrder)
 module TyNameSet = Set.Make(TyNameOrder)
 
 module StringSet = Set.Make(StringOrder)
-
 
 let nameSubscript s =
   try

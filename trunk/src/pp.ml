@@ -373,18 +373,9 @@ and output_signat ppf = function
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
 
 and output_toplevel ppf = function
-    Signatdef (s, args, body) ->
-      let rec output_args ppf = function
-	  [] -> ()
-	| [(n,t)] -> 
-	    fprintf ppf "functor (%s : %a) ->@," 
-	      n   output_signat t 
-	| (n,t)::args -> 
-	    fprintf ppf "functor (%s : %a) ->@, %a" 
-	      n   output_signat t   output_args args
-      in
-	fprintf ppf "@[<v>module type %s = @[<v>%a@]@,   @[<v>%a@]@]@.@."  
-	  s   output_args args   output_signat body
+    Signatdef (nm, signat) ->
+      fprintf ppf "@[<v>module type %s = @,@[<v>%a@]@]@.@."  
+	  nm   output_signat signat
   | TopComment cmmnt -> 
       fprintf ppf "@[(**%s*)@]@." cmmnt
   | TopModul (mdlnm, signat) ->

@@ -28,6 +28,13 @@ and theorySummary =
 
 let emptyCtx = []
 
+let clash str = function
+    CtxBind (Syntax.N(nm,_), _) -> nm = str
+  | CtxSet (nm, _) -> nm = str
+  | CtxProp (Syntax.N(nm,_), _) -> nm = str
+  | CtxModel (nm, _) -> nm = str
+  | CtxTheory (nm, _) -> nm = str
+
 let addBind  n s ctx = CtxBind(n,s) :: ctx
 let addSet   n s ctx = CtxSet(n,s) :: ctx
 let addProp  n stb ctx = CtxProp(n,stb) :: ctx
@@ -107,10 +114,20 @@ let rec normalizeModel ctx = function
 
 let rec getLong getter ctx ln =
   let rec find = function
-      L.LN(None, nm) -> getter ctx nm
+      L.LN(None, nm) -> getter nm ctx
     | L.LN(Some mdl, nm) ->
 	(match normalizeModel ctx mdl with
-	     Ctx elems -> getter elems nm
+	     Ctx elems -> getter nm elems
+	   | CtxParam _ -> failwith "getLong: cannot project from a functor")
+  in 
+    find ln
+
+let rec getLongSet getter ctx ln =
+  let rec find = function
+      L.SLN(None, nm) -> getter nm ctx
+    | L.SLN(Some mdl, nm) ->
+	(match normalizeModel ctx mdl with
+	     Ctx elems -> getter nm elems
 	   | CtxParam _ -> failwith "getLong: cannot project from a functor")
   in 
     find ln
@@ -120,18 +137,16 @@ let rec getLong getter ctx ln =
 
 let rec toSubset ctx = function
     L.Subset ((x,s), p) -> ((x, s), p)
-  | L.Basic b -> toSubset ctx (getLong getSet ctx b)
+  | L.Basic ln -> toSubset ctx (getLongSet getSet ctx ln)
   | _ -> failwith "not a subset"
 
 let any = mk_word "_"
 
 (** translation functions *)
 
-let toLN = Logic.ln_of_name
-let toId nm = Id (toLN nm)
-let ln_of_string = Logic.ln_of_string
+let toId nm = Id (ln_of_name nm)
 
-let rec translateSet (ctx : context) = function
+let rec translateSet (ctx : ctxElement list) = function
     L.Empty -> 
       { ty = VoidTy;
 	tot = (any, False);
@@ -146,17 +161,18 @@ let rec translateSet (ctx : context) = function
   | L.Bool ->
       let x = fresh [mk_word "x"; mk_word "u"] [] ctx in
       let y = fresh [mk_word "y"; mk_word "v"] [x] ctx in
-	{ ty = NamedTy (mk_longword "bool");
+	{ ty = NamedTy (tln_of_setname "bool");
 	  tot = (x, (Cor [Equal (toId x, mk_id "true");
                           Equal (toId x, mk_id "false")]));
 	  per = (x, y, Equal (toId x, toId y))
       }
   | L.Basic s ->
+      let s' = translateSLN ctx s in
       let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "a"] [] ctx in
       let y = fresh [mk_word "y"; mk_word "v"; mk_word "b"] [x] ctx in
-	{ ty = NamedTy (L.typename_of_longname s);
-	  tot = (x, NamedTotal (s, toId x));
-	  per = (x, y, NamedPer (s, toId x, toId y))
+	{ ty = NamedTy s';
+	  tot = (x, NamedTotal (s', toId x));
+	  per = (x, y, NamedPer (s', toId x, toId y))
 	}
   | L.Product lst ->
       let us = List.map (translateSet ctx) lst in
@@ -513,8 +529,9 @@ and translateTheoryElement ctx = function
   | L.Let_set (n, s) ->
       (let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
 	[TySpec (n, Some t,
-	 [(n ^ "_def_total", [(x,t)], Iff (NamedTotal (ln_of_string n, toId x), p));
-	  (n ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (ln_of_string n, toId y, toId y'), q))])
+	 [(n ^ "_def_total", [(x,t)], Iff (NamedTotal (tln_of_setname n, toId x), p));
+	  (n ^ "_def_per", [(y,t); (y',t)],
+	   Iff (NamedPer (tln_of_setname n, toId y, toId y'), q))])
 	]
       ),
       addSet (S.N(n, S.Word)) s ctx
@@ -540,7 +557,7 @@ and translateTheoryElement ctx = function
 	[TySpec (L.typename_of_name n, Some ty,
 	 [((S.string_of_name n) ^ "_def",
 	   (r',ty) :: bind',
-	   Iff (NamedProp (toLN n, toId r', List.map (fun (y,_) -> toId y) bind),
+	   Iff (NamedProp (ln_of_name n, toId r', List.map (fun (y,_) -> toId y) bind),
 		substProp ctx ([(r, toId r')]) p'))])]
 	,
 	addProp n stab ctx
@@ -578,6 +595,10 @@ and translateTheoryElement ctx = function
 	  else
 	    [ StructureSpec (String.capitalize (string_of_name nm), strctbind, Signat elems) ]
       end, ctx
+
+and translateSLN ctx = function
+    L.SLN (None, nm) -> TLN (None, nm)
+  | L.SLN (Some mdl, nm) -> TLN (Some (translateModel ctx mdl), nm)
 
 and translateModelBinding ctx = function
     [] -> [], ctx
