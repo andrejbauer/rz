@@ -118,7 +118,7 @@ let rec optTerm ctx = function
                    TopTy -> (oldty, Dagger, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
  | Star -> (UnitTy, Star, UnitTy)
- | Dagger -> (print_string "Is this a Dagger I see before me?\n";
+ | Dagger -> (print_string "Is this a Dagger which I see before me?\n";
 	      (UnitTy, Dagger, UnitTy))
  | App(e1,e2) -> 
      let    (ArrowTy(ty2, oldty), e1', ty1') = optTerm ctx e1
