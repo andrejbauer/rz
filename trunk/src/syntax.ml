@@ -58,17 +58,21 @@ and term =
 
 type sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 
+(* Unstable here really means that we're not guaranteed the relation
+   is stable, not that it is definitely not stable.  Perhaps
+   "Nonstable" would be less pejorative?
+*)
+type stability = Stable | Unstable
+
 type theory_element =
-    Set of set_name
-  | Let_set of set_name * set
-  | Predicate of name * set
-  | StPredicate of name * set
-  | Let_predicate of name * binding list * term
-  | Let_stpredicate of name * binding list * term
+    Set of set_name * set option
+  | Predicate of name * stability * set
+  | Let_predicate of name * stability * binding list * term
   | Let_term of binding * term
   | Value of name * set
   | Variable of name * set
-  | Define of name * term
+  | Define of name * term       (* CS: what's the semantic difference
+                                   between Let_term and Define? *)
   | Sentence of sentence_type * name * binding list * term
   | Model of string * theory
   | Subtheory of theoryspec

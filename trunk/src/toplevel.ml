@@ -1,9 +1,10 @@
 open Message
 
 let read fn =
-  let _ = print_string ("parsing " ^ fn ^ "\n") in
+  let _ = print_string ("Parsing " ^ fn ^ "\n") in
   let fin = open_in fn in
   let e = Parser.theoryspecs Lexer.token (Lexing.from_channel fin) in
+  let _ = print_string ("Successfully parsed.\n") in
     close_in fin ;
     e
 

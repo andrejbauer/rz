@@ -242,11 +242,11 @@ let yysindex = "\010\000\
 \022\007\022\007\022\007\022\007\005\000\230\255\022\007\022\007\
 \132\010\132\010\132\010\132\010\132\010\236\255\022\007\236\255\
 \022\007\132\010\215\255\000\000\000\000\237\255\022\007\077\004\
-\000\000\236\255\234\010\237\255\237\255\025\000\000\000\022\007\
+\000\000\236\255\009\011\237\255\237\255\025\000\000\000\022\007\
 \022\007\022\007\250\255\022\007\077\004\022\007\000\000\000\000\
-\016\000\208\010\125\007\132\010\132\010\159\007\159\007\247\254\
-\004\000\185\010\000\000\247\254\004\000\004\000\000\000\208\010\
-\185\010\132\010\132\010\212\007\088\255\135\004\132\010\132\010\
+\016\000\226\010\125\007\187\010\187\010\159\007\159\007\247\254\
+\004\000\222\010\000\000\247\254\004\000\004\000\000\000\226\010\
+\222\010\132\010\132\010\212\007\088\255\135\004\132\010\132\010\
 \132\010\031\000\250\007\016\255\020\008\000\000\037\255\034\000\
 \000\000\022\007\237\255\022\007\022\007\000\000\022\007\045\000\
 \000\000\058\008\096\008\132\010\122\008\022\007\000\000\022\007\
@@ -280,7 +280,7 @@ let yyrindex = "\000\000\
 \000\000\057\010\026\000\000\000\000\000\013\006\000\000\000\000\
 \000\000\140\007\197\005\069\006\085\006\141\006\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-\000\000\005\003\062\003\087\004\143\004\147\002\204\002\033\002\
+\000\000\005\003\062\003\143\004\087\004\147\002\204\002\033\002\
 \118\001\231\003\000\000\090\002\175\001\232\001\000\000\119\003\
 \031\004\086\010\113\010\000\000\000\000\000\000\199\004\255\004\
 \055\005\000\000\000\000\000\000\028\000\000\000\000\000\000\000\
@@ -293,7 +293,7 @@ let yygindex = "\000\000\
 \199\255\022\003\034\001\211\000\163\255\000\000\000\000\183\255\
 \138\000\000\000\000\000\000\000\135\255"
 
-let yytablesize = 3091
+let yytablesize = 3122
 let yytable = "\007\000\
 \003\000\031\000\033\000\035\000\036\000\148\000\038\000\039\000\
 \040\000\034\000\001\000\149\000\045\000\028\000\175\000\009\000\
@@ -466,21 +466,21 @@ let yytable = "\007\000\
 \000\000\082\000\000\000\000\000\000\000\000\000\082\000\000\000\
 \000\000\000\000\082\000\000\000\082\000\082\000\000\000\082\000\
 \082\000\000\000\082\000\093\000\082\000\000\000\082\000\082\000\
-\086\000\086\000\086\000\000\000\082\000\000\000\086\000\086\000\
-\086\000\086\000\086\000\000\000\000\000\000\000\000\000\094\000\
-\000\000\095\000\086\000\000\000\000\000\096\000\000\000\000\000\
-\097\000\000\000\098\000\000\000\000\000\086\000\000\000\000\000\
-\000\000\086\000\000\000\000\000\000\000\000\000\000\000\099\000\
-\000\000\000\000\086\000\000\000\086\000\086\000\000\000\086\000\
-\086\000\100\000\086\000\101\000\086\000\093\000\086\000\086\000\
-\085\000\085\000\085\000\000\000\086\000\000\000\085\000\085\000\
-\085\000\085\000\085\000\000\000\000\000\000\000\000\000\000\000\
-\000\000\000\000\085\000\095\000\000\000\000\000\000\000\096\000\
-\000\000\000\000\097\000\000\000\098\000\085\000\000\000\000\000\
-\000\000\085\000\000\000\000\000\000\000\000\000\000\000\000\000\
-\106\000\099\000\085\000\000\000\085\000\085\000\000\000\085\000\
-\085\000\108\000\085\000\100\000\085\000\101\000\085\000\085\000\
-\104\000\104\000\104\000\000\000\085\000\000\000\104\000\104\000\
+\085\000\085\000\085\000\000\000\082\000\000\000\085\000\085\000\
+\085\000\085\000\085\000\000\000\000\000\000\000\000\000\094\000\
+\085\000\095\000\085\000\000\000\000\000\096\000\000\000\000\000\
+\097\000\000\000\098\000\000\000\000\000\085\000\000\000\000\000\
+\000\000\085\000\000\000\000\000\000\000\000\000\000\000\099\000\
+\000\000\000\000\085\000\000\000\085\000\085\000\000\000\085\000\
+\085\000\100\000\085\000\101\000\085\000\093\000\085\000\085\000\
+\086\000\086\000\086\000\000\000\085\000\000\000\086\000\086\000\
+\086\000\086\000\086\000\000\000\000\000\000\000\000\000\000\000\
+\000\000\000\000\086\000\095\000\000\000\000\000\000\000\096\000\
+\000\000\000\000\097\000\000\000\098\000\086\000\000\000\000\000\
+\000\000\086\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\106\000\099\000\086\000\000\000\086\000\086\000\000\000\086\000\
+\086\000\108\000\086\000\100\000\086\000\101\000\086\000\086\000\
+\104\000\104\000\104\000\000\000\086\000\000\000\104\000\104\000\
 \104\000\104\000\104\000\113\000\000\000\000\000\030\000\115\000\
 \000\000\000\000\104\000\000\000\000\000\000\000\000\000\116\000\
 \000\000\000\000\000\000\000\000\084\000\104\000\000\000\000\000\
@@ -670,18 +670,22 @@ let yytable = "\007\000\
 \000\000\020\000\020\000\000\000\020\000\000\000\020\000\000\000\
 \020\000\020\000\014\000\176\000\177\000\000\000\178\000\000\000\
 \000\000\015\000\016\000\000\000\000\000\000\000\000\000\000\000\
-\179\000\168\000\180\000\000\000\000\000\000\000\000\000\000\000\
-\000\000\000\000\000\000\000\000\000\000\169\000\017\000\000\000\
-\000\000\000\000\018\000\000\000\000\000\172\000\173\000\174\000\
-\175\000\000\000\000\000\019\000\000\000\020\000\000\000\000\000\
-\021\000\000\000\000\000\022\000\169\000\023\000\000\000\024\000\
-\025\000\177\000\000\000\178\000\172\000\173\000\174\000\175\000\
-\000\000\000\000\168\000\000\000\000\000\179\000\000\000\180\000\
-\000\000\000\000\000\000\000\000\000\000\000\000\169\000\000\000\
-\177\000\000\000\178\000\170\000\171\000\000\000\172\000\173\000\
-\174\000\175\000\000\000\000\000\179\000\000\000\180\000\000\000\
+\179\000\000\000\180\000\168\000\000\000\000\000\000\000\000\000\
+\000\000\000\000\000\000\000\000\000\000\000\000\017\000\169\000\
+\000\000\000\000\018\000\000\000\000\000\171\000\000\000\172\000\
+\173\000\174\000\175\000\019\000\000\000\020\000\000\000\000\000\
+\021\000\000\000\000\000\022\000\000\000\023\000\168\000\024\000\
+\025\000\000\000\176\000\177\000\000\000\178\000\000\000\000\000\
+\000\000\000\000\169\000\000\000\000\000\000\000\169\000\179\000\
+\000\000\180\000\172\000\173\000\174\000\175\000\172\000\173\000\
+\174\000\175\000\000\000\000\000\000\000\000\000\000\000\000\000\
+\000\000\000\000\000\000\000\000\000\000\000\000\177\000\000\000\
+\178\000\168\000\177\000\000\000\178\000\000\000\000\000\000\000\
+\000\000\000\000\179\000\000\000\180\000\169\000\179\000\000\000\
+\180\000\000\000\170\000\171\000\000\000\172\000\173\000\174\000\
+\175\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
 \000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\000\
-\000\000\176\000\177\000"
+\176\000\177\000"
 
 let yycheck = "\012\001\
 \000\000\014\000\015\000\016\000\017\000\099\000\019\000\020\000\
@@ -857,7 +861,7 @@ let yycheck = "\012\001\
 \050\001\255\255\052\001\007\001\054\001\255\255\056\001\057\001\
 \002\001\003\001\004\001\255\255\062\001\255\255\008\001\009\001\
 \010\001\011\001\012\001\255\255\255\255\255\255\255\255\027\001\
-\255\255\029\001\020\001\255\255\255\255\033\001\255\255\255\255\
+\018\001\029\001\020\001\255\255\255\255\033\001\255\255\255\255\
 \036\001\255\255\038\001\255\255\255\255\031\001\255\255\255\255\
 \255\255\035\001\255\255\255\255\255\255\255\255\255\255\051\001\
 \255\255\255\255\044\001\255\255\046\001\047\001\255\255\049\001\
@@ -1059,18 +1063,22 @@ let yycheck = "\012\001\
 \255\255\049\001\050\001\255\255\052\001\255\255\054\001\255\255\
 \056\001\057\001\003\001\040\001\041\001\255\255\043\001\255\255\
 \255\255\010\001\011\001\255\255\255\255\255\255\255\255\255\255\
-\053\001\001\001\055\001\255\255\255\255\255\255\255\255\255\255\
-\255\255\255\255\255\255\255\255\255\255\013\001\031\001\255\255\
-\255\255\255\255\035\001\255\255\255\255\021\001\022\001\023\001\
-\024\001\255\255\255\255\044\001\255\255\046\001\255\255\255\255\
-\049\001\255\255\255\255\052\001\013\001\054\001\255\255\056\001\
-\057\001\041\001\255\255\043\001\021\001\022\001\023\001\024\001\
-\255\255\255\255\001\001\255\255\255\255\053\001\255\255\055\001\
-\255\255\255\255\255\255\255\255\255\255\255\255\013\001\255\255\
-\041\001\255\255\043\001\018\001\019\001\255\255\021\001\022\001\
-\023\001\024\001\255\255\255\255\053\001\255\255\055\001\255\255\
+\053\001\255\255\055\001\001\001\255\255\255\255\255\255\255\255\
+\255\255\255\255\255\255\255\255\255\255\255\255\031\001\013\001\
+\255\255\255\255\035\001\255\255\255\255\019\001\255\255\021\001\
+\022\001\023\001\024\001\044\001\255\255\046\001\255\255\255\255\
+\049\001\255\255\255\255\052\001\255\255\054\001\001\001\056\001\
+\057\001\255\255\040\001\041\001\255\255\043\001\255\255\255\255\
+\255\255\255\255\013\001\255\255\255\255\255\255\013\001\053\001\
+\255\255\055\001\021\001\022\001\023\001\024\001\021\001\022\001\
+\023\001\024\001\255\255\255\255\255\255\255\255\255\255\255\255\
+\255\255\255\255\255\255\255\255\255\255\255\255\041\001\255\255\
+\043\001\001\001\041\001\255\255\043\001\255\255\255\255\255\255\
+\255\255\255\255\053\001\255\255\055\001\013\001\053\001\255\255\
+\055\001\255\255\018\001\019\001\255\255\021\001\022\001\023\001\
+\024\001\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
 \255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\255\
-\255\255\040\001\041\001"
+\040\001\041\001"
 
 let yynames_const = "\
   AND\000\
@@ -1146,19 +1154,19 @@ let yyact = [|
   (fun _ -> failwith "parser")
 ; (fun parser_env ->
     Obj.repr((
-# 115 "parser.mly"
+# 116 "parser.mly"
                                   [] ) : Syntax.theoryspec list))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'theoryspec) in
     let _2 = (peek_val parser_env 0 : Syntax.theoryspec list) in
     Obj.repr((
-# 116 "parser.mly"
+# 117 "parser.mly"
                                   _1 :: _2 ) : Syntax.theoryspec list))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : string) in
     let _4 = (peek_val parser_env 0 : 'theory) in
     Obj.repr((
-# 121 "parser.mly"
+# 122 "parser.mly"
                                   {t_arg = None; 
                                    t_name = _2; 
                                    t_body = _4} ) : 'theoryspec))
@@ -1167,596 +1175,596 @@ let yyact = [|
     let _4 = (peek_val parser_env 3 : 'theory_body) in
     let _7 = (peek_val parser_env 0 : 'theory) in
     Obj.repr((
-# 125 "parser.mly"
+# 126 "parser.mly"
                                   {t_arg = Some _4;
                                    t_name = _2;
                                    t_body = _7} ) : 'theoryspec))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'theory_body) in
     Obj.repr((
-# 131 "parser.mly"
+# 132 "parser.mly"
                                   Theory _2 ) : 'theory))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : string) in
     Obj.repr((
-# 132 "parser.mly"
+# 133 "parser.mly"
                                   TheoryID _1 ) : 'theory))
 ; (fun parser_env ->
     Obj.repr((
-# 135 "parser.mly"
+# 136 "parser.mly"
                                   [] ) : 'theory_body))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'theory_element) in
     let _2 = (peek_val parser_env 0 : 'theory_body) in
     Obj.repr((
-# 136 "parser.mly"
+# 137 "parser.mly"
                                  _1 :: _2 ) : 'theory_body))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 0 : string) in
     Obj.repr((
-# 139 "parser.mly"
-                   Set _2 ) : 'theory_element))
+# 140 "parser.mly"
+                   Set (_2, None) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : string) in
     let _4 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 140 "parser.mly"
-                          Let_set (_2, _4) ) : 'theory_element))
+# 141 "parser.mly"
+                          Set (_2, Some _4) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name) in
     let _4 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 141 "parser.mly"
+# 142 "parser.mly"
                               Value (_2, _4) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 142 "parser.mly"
+# 143 "parser.mly"
                                      Let_term (_2, _4) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name) in
     let _4 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 143 "parser.mly"
-                                  Predicate (_2, _4) ) : 'theory_element))
+# 144 "parser.mly"
+                                  Predicate (_2, Unstable, _4) ) : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 2 : 'name) in
     let _5 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 144 "parser.mly"
-                                         StPredicate (_3, _5) ) : 'theory_element))
+# 145 "parser.mly"
+                                         Predicate (_3, Stable, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name) in
     let _4 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 145 "parser.mly"
-                                  Predicate (_2, _4) ) : 'theory_element))
+# 146 "parser.mly"
+                                  Predicate (_2, Unstable, _4) ) : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 2 : 'name) in
     let _5 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 146 "parser.mly"
-                                         StPredicate (_3, _5) ) : 'theory_element))
+# 147 "parser.mly"
+                                         Predicate (_3, Stable, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
-# 147 "parser.mly"
-                                     Let_predicate (_2, _3, _5) ) : 'theory_element))
-; (fun parser_env ->
-    let _3 = (peek_val parser_env 3 : 'name) in
-    let _4 = (peek_val parser_env 2 : 'args) in
-    let _6 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
 # 148 "parser.mly"
-                                            Let_stpredicate (_3, _4, _6) ) : 'theory_element))
-; (fun parser_env ->
-    let _2 = (peek_val parser_env 3 : 'name) in
-    let _3 = (peek_val parser_env 2 : 'args) in
-    let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
-# 149 "parser.mly"
-                                    Let_predicate (_2, _3, _5) ) : 'theory_element))
+                                     Let_predicate (_2, Unstable, _3, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 2 : 'args) in
     let _6 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 150 "parser.mly"
-                                           Let_stpredicate (_3, _4, _6) ) : 'theory_element))
+# 149 "parser.mly"
+                                            Let_predicate (_3,Stable, _4, _6) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
+# 150 "parser.mly"
+                                    Let_predicate (_2, Unstable, _3, _5) ) : 'theory_element))
+; (fun parser_env ->
+    let _3 = (peek_val parser_env 3 : 'name) in
+    let _4 = (peek_val parser_env 2 : 'args) in
+    let _6 = (peek_val parser_env 0 : 'term) in
+    Obj.repr((
 # 151 "parser.mly"
-                                   Sentence (Axiom, _2, _3, _5) ) : 'theory_element))
+                                           Let_predicate (_3, Stable, _4, _6) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
 # 152 "parser.mly"
-                                   Sentence (Theorem, _2, _3, _5) ) : 'theory_element))
+                                   Sentence (Axiom, _2, _3, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
 # 153 "parser.mly"
-                                       Sentence (Lemma, _2, _3, _5) ) : 'theory_element))
+                                   Sentence (Theorem, _2, _3, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
 # 154 "parser.mly"
-                                       Sentence (Proposition, _2, _3, _5) ) : 'theory_element))
+                                       Sentence (Lemma, _2, _3, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
 # 155 "parser.mly"
+                                       Sentence (Proposition, _2, _3, _5) ) : 'theory_element))
+; (fun parser_env ->
+    let _2 = (peek_val parser_env 3 : 'name) in
+    let _3 = (peek_val parser_env 2 : 'args) in
+    let _5 = (peek_val parser_env 0 : 'term) in
+    Obj.repr((
+# 156 "parser.mly"
                                        Sentence (Corollary, _2, _3, _5) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : string) in
     let _4 = (peek_val parser_env 0 : 'theory) in
     Obj.repr((
-# 156 "parser.mly"
+# 157 "parser.mly"
                                    Model(_2, _4) ) : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : string) in
     let _4 = (peek_val parser_env 0 : 'theory) in
     Obj.repr((
-# 157 "parser.mly"
+# 158 "parser.mly"
                                        Model(_2, _4) ) : 'theory_element))
 ; (fun parser_env ->
     Obj.repr((
-# 160 "parser.mly"
+# 161 "parser.mly"
                                   [] ) : 'args))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'args_curried) in
     Obj.repr((
-# 161 "parser.mly"
+# 162 "parser.mly"
                     _1 ) : 'args))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'arg_list) in
     Obj.repr((
-# 162 "parser.mly"
+# 163 "parser.mly"
                              _2 ) : 'args))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'name_typed) in
     Obj.repr((
-# 165 "parser.mly"
+# 166 "parser.mly"
                                   [_1] ) : 'args_curried))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'name_typed) in
     let _2 = (peek_val parser_env 0 : 'args_curried) in
     Obj.repr((
-# 166 "parser.mly"
+# 167 "parser.mly"
                                   _1 :: _2 ) : 'args_curried))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'name_typed) in
     let _3 = (peek_val parser_env 0 : 'name_typed) in
     Obj.repr((
-# 169 "parser.mly"
+# 170 "parser.mly"
                                   [_1; _3] ) : 'arg_list))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'name_typed) in
     let _3 = (peek_val parser_env 0 : 'arg_list) in
     Obj.repr((
-# 170 "parser.mly"
+# 171 "parser.mly"
                                 _1 :: _3 ) : 'arg_list))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : string) in
     Obj.repr((
-# 173 "parser.mly"
+# 174 "parser.mly"
                                     (_1, Word) ) : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
     Obj.repr((
-# 174 "parser.mly"
+# 175 "parser.mly"
                                     (_2, Prefix) ) : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
     Obj.repr((
-# 175 "parser.mly"
+# 176 "parser.mly"
                                     (_2, Infix0) ) : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
     Obj.repr((
-# 176 "parser.mly"
+# 177 "parser.mly"
                                     (_2, Infix1) ) : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
     Obj.repr((
-# 177 "parser.mly"
+# 178 "parser.mly"
                                     (_2, Infix2) ) : 'name))
 ; (fun parser_env ->
     Obj.repr((
-# 178 "parser.mly"
+# 179 "parser.mly"
                                     ("+", Infix2) ) : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
     Obj.repr((
-# 179 "parser.mly"
+# 180 "parser.mly"
                                     (_2, Infix3) ) : 'name))
 ; (fun parser_env ->
     Obj.repr((
-# 180 "parser.mly"
+# 181 "parser.mly"
                                     ("*", Infix3) ) : 'name))
 ; (fun parser_env ->
     Obj.repr((
-# 181 "parser.mly"
+# 182 "parser.mly"
                                     ("/", Infix3) ) : 'name))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'name) in
     Obj.repr((
-# 184 "parser.mly"
+# 185 "parser.mly"
                                    (_1, None) ) : 'name_typed))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 1 : 'set) in
     Obj.repr((
-# 185 "parser.mly"
+# 186 "parser.mly"
                                    (_2, Some _4) ) : 'name_typed))
 ; (fun parser_env ->
     Obj.repr((
-# 188 "parser.mly"
+# 189 "parser.mly"
               Empty ) : 'simple_set))
 ; (fun parser_env ->
     Obj.repr((
-# 189 "parser.mly"
+# 190 "parser.mly"
                      Empty ) : 'simple_set))
 ; (fun parser_env ->
     Obj.repr((
-# 190 "parser.mly"
-             Unit ) : 'simple_set))
-; (fun parser_env ->
-    Obj.repr((
 # 191 "parser.mly"
-                                  Bool ) : 'simple_set))
+             Unit ) : 'simple_set))
 ; (fun parser_env ->
     Obj.repr((
 # 192 "parser.mly"
                                   Bool ) : 'simple_set))
 ; (fun parser_env ->
-    let _1 = (peek_val parser_env 0 : string) in
     Obj.repr((
 # 193 "parser.mly"
+                                  Bool ) : 'simple_set))
+; (fun parser_env ->
+    let _1 = (peek_val parser_env 0 : string) in
+    Obj.repr((
+# 194 "parser.mly"
                                   Set_name _1 ) : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'set) in
     Obj.repr((
-# 194 "parser.mly"
+# 195 "parser.mly"
                                   _2 ) : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 1 : 'term) in
     Obj.repr((
-# 195 "parser.mly"
+# 196 "parser.mly"
                                   Subset ((_2, None), _4) ) : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 5 : 'name) in
     let _4 = (peek_val parser_env 3 : 'set) in
     let _6 = (peek_val parser_env 1 : 'term) in
     Obj.repr((
-# 196 "parser.mly"
+# 197 "parser.mly"
                                             Subset ((_2, Some _4), _6) ) : 'simple_set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'simple_set) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 197 "parser.mly"
+# 198 "parser.mly"
                                   Quotient (_1, _3) ) : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 0 : 'simple_set) in
     Obj.repr((
-# 198 "parser.mly"
+# 199 "parser.mly"
                                   RZ _2 ) : 'simple_set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'simple_set) in
     let _3 = (peek_val parser_env 0 : 'simple_set) in
     Obj.repr((
-# 201 "parser.mly"
+# 202 "parser.mly"
                                         [_1; _3] ) : 'product))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'product) in
     let _3 = (peek_val parser_env 0 : 'simple_set) in
     Obj.repr((
-# 202 "parser.mly"
+# 203 "parser.mly"
                                         _1 @ [_3] ) : 'product))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : string) in
     let _3 = (peek_val parser_env 0 : 'simple_set) in
     Obj.repr((
-# 205 "parser.mly"
+# 206 "parser.mly"
                                          [(_1, Some _3)] ) : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : string) in
     Obj.repr((
-# 206 "parser.mly"
+# 207 "parser.mly"
                                          [(_1, None)] ) : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'sum) in
     let _3 = (peek_val parser_env 0 : string) in
     Obj.repr((
-# 207 "parser.mly"
+# 208 "parser.mly"
                                          _1 @ [(_3, None)] ) : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 4 : 'sum) in
     let _3 = (peek_val parser_env 2 : string) in
     let _5 = (peek_val parser_env 0 : 'simple_set) in
     Obj.repr((
-# 208 "parser.mly"
+# 209 "parser.mly"
                                          _1 @ [(_3, Some _5)] ) : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'simple_set) in
     Obj.repr((
-# 211 "parser.mly"
+# 212 "parser.mly"
                                   _1 ) : 'set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'product) in
     Obj.repr((
-# 212 "parser.mly"
+# 213 "parser.mly"
                                   Product _1 ) : 'set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'sum) in
     Obj.repr((
-# 213 "parser.mly"
+# 214 "parser.mly"
                                   Sum _1 ) : 'set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'set) in
     let _3 = (peek_val parser_env 0 : 'set) in
     Obj.repr((
-# 214 "parser.mly"
+# 215 "parser.mly"
                                   Exp (_1, _3) ) : 'set))
 ; (fun parser_env ->
     Obj.repr((
-# 217 "parser.mly"
+# 218 "parser.mly"
                                   True ) : 'simple_term))
 ; (fun parser_env ->
     Obj.repr((
-# 218 "parser.mly"
+# 219 "parser.mly"
                                   False ) : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'name) in
     Obj.repr((
-# 219 "parser.mly"
+# 220 "parser.mly"
                                   Var _1 ) : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'term) in
     let _4 = (peek_val parser_env 1 : 'set) in
     Obj.repr((
-# 220 "parser.mly"
+# 221 "parser.mly"
                                    Constraint (_2, _4) ) : 'simple_term))
 ; (fun parser_env ->
     Obj.repr((
-# 221 "parser.mly"
+# 222 "parser.mly"
                                   Star ) : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'term_seq) in
     Obj.repr((
-# 222 "parser.mly"
-                                  Tuple _2 ) : 'simple_term))
-; (fun parser_env ->
-    let _2 = (peek_val parser_env 1 : 'term) in
-    Obj.repr((
 # 223 "parser.mly"
-                                  _2 ) : 'simple_term))
+                                  Tuple _2 ) : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'term) in
     Obj.repr((
 # 224 "parser.mly"
                                   _2 ) : 'simple_term))
 ; (fun parser_env ->
+    let _2 = (peek_val parser_env 1 : 'term) in
+    Obj.repr((
+# 225 "parser.mly"
+                                  _2 ) : 'simple_term))
+; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'simple_term) in
     let _3 = (peek_val parser_env 0 : int) in
     Obj.repr((
-# 225 "parser.mly"
+# 226 "parser.mly"
                                   Proj (_3, _1) ) : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : string) in
     let _2 = (peek_val parser_env 0 : 'simple_term) in
     Obj.repr((
-# 226 "parser.mly"
+# 227 "parser.mly"
                                   App (Var (_1, Prefix), _2) ) : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 0 : 'simple_term) in
     Obj.repr((
-# 227 "parser.mly"
+# 228 "parser.mly"
                                   Not _2 ) : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'simple_term) in
     Obj.repr((
-# 230 "parser.mly"
+# 231 "parser.mly"
                                    _1 ) : 'apply_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'apply_term) in
     let _2 = (peek_val parser_env 0 : 'simple_term) in
     Obj.repr((
-# 231 "parser.mly"
+# 232 "parser.mly"
                                    App (_1, _2) ) : 'apply_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'and_term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 234 "parser.mly"
+# 235 "parser.mly"
                                   _1 @ [_3] ) : 'and_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 235 "parser.mly"
+# 236 "parser.mly"
                                   [_1; _3] ) : 'and_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'or_term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 238 "parser.mly"
+# 239 "parser.mly"
                                  _1 @ [_3] ) : 'or_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 239 "parser.mly"
+# 240 "parser.mly"
                                  [_1; _3] ) : 'or_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'apply_term) in
     Obj.repr((
-# 242 "parser.mly"
+# 243 "parser.mly"
                                   _1 ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 243 "parser.mly"
+# 244 "parser.mly"
                                   Imply (_1, _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 244 "parser.mly"
+# 245 "parser.mly"
                                   Iff (_1, _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : string) in
     let _2 = (peek_val parser_env 0 : 'simple_term) in
     Obj.repr((
-# 245 "parser.mly"
+# 246 "parser.mly"
                                   Inj (_1, _2) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 246 "parser.mly"
+# 247 "parser.mly"
                                   Equal (None, _1, _3) ) : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 4 : 'name_typed) in
     let _4 = (peek_val parser_env 2 : 'term) in
     let _6 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 247 "parser.mly"
+# 248 "parser.mly"
                                         Let (_2, _4, _6) ) : 'term))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 5 : 'name_typed) in
     let _6 = (peek_val parser_env 2 : 'term) in
     let _8 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 248 "parser.mly"
+# 249 "parser.mly"
                                                       Choose (_3, _6, _8) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'and_term) in
     Obj.repr((
-# 249 "parser.mly"
+# 250 "parser.mly"
                                   And _1 ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'or_term) in
     Obj.repr((
-# 250 "parser.mly"
+# 251 "parser.mly"
                                   Or _1 ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 251 "parser.mly"
+# 252 "parser.mly"
                                   App (App (Var (_2, Infix0), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 252 "parser.mly"
+# 253 "parser.mly"
                                   App (App (Var (_2, Infix1), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 253 "parser.mly"
+# 254 "parser.mly"
                                   App (App (Var (_2, Infix2), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 254 "parser.mly"
+# 255 "parser.mly"
                                   App (App (Var ("+", Infix2), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 255 "parser.mly"
+# 256 "parser.mly"
                                   App (App (Var (_2, Infix3), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 256 "parser.mly"
+# 257 "parser.mly"
                                   App (App (Var ("*", Infix3), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 257 "parser.mly"
+# 258 "parser.mly"
                                   App (App (Var ("/", Infix3), _1), _3) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 258 "parser.mly"
+# 259 "parser.mly"
                                   Quot (_1, _3) ) : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'term) in
     let _4 = (peek_val parser_env 1 : 'cases) in
     Obj.repr((
-# 259 "parser.mly"
+# 260 "parser.mly"
                                   Case (_2, _4) ) : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 260 "parser.mly"
+# 261 "parser.mly"
                                     Lambda (_2, _4) ) : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 261 "parser.mly"
+# 262 "parser.mly"
                                     Forall (_2, _4) ) : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 262 "parser.mly"
+# 263 "parser.mly"
                                     Exists (_2, _4) ) : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 265 "parser.mly"
+# 266 "parser.mly"
                                   [_1; _3] ) : 'term_seq))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term_seq) in
     Obj.repr((
-# 266 "parser.mly"
+# 267 "parser.mly"
                                   _1 :: _3 ) : 'term_seq))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 3 : string) in
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 269 "parser.mly"
+# 270 "parser.mly"
                                              [_1, Some _2, _4] ) : 'cases))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
     Obj.repr((
-# 270 "parser.mly"
+# 271 "parser.mly"
                                              [_1, None, _3] ) : 'cases))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 5 : string) in
@@ -1764,14 +1772,14 @@ let yyact = [|
     let _4 = (peek_val parser_env 2 : 'term) in
     let _6 = (peek_val parser_env 0 : 'cases) in
     Obj.repr((
-# 271 "parser.mly"
+# 272 "parser.mly"
                                              (_1, Some _2, _4) :: _6 ) : 'cases))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 4 : string) in
     let _3 = (peek_val parser_env 2 : 'term) in
     let _5 = (peek_val parser_env 0 : 'cases) in
     Obj.repr((
-# 272 "parser.mly"
+# 273 "parser.mly"
                                              (_1, None, _3) :: _5 ) : 'cases))
 (* Entry theoryspecs *)
 ; (fun parser_env -> raise (YYexit (peek_val parser_env 0)))

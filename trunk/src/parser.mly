@@ -87,11 +87,12 @@
 
 %nonassoc LET IN
 %nonassoc PERIOD
-%right IMPLY IFF
+%nonassoc IFF
+%right IMPLY
 %left OR
 %left AND
 
-%nonassoc EQUAL
+%nonassoc EQUAL 
 %right    COMMA
 %left     INFIXOP0
 %right    INFIXOP1
@@ -136,18 +137,18 @@ theory_body:
   | theory_element theory_body	{ $1 :: $2 }
 
 theory_element:
-    SET NAME  			{ Set $2 }
-  | SET NAME EQUAL set		{ Let_set ($2, $4) }
+    SET NAME  			{ Set ($2, None) }
+  | SET NAME EQUAL set		{ Set ($2, Some $4) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
   | CONSTANT name_typed EQUAL term { Let_term ($2, $4) }
-  | PREDICATE name COLON set    { Predicate ($2, $4) }
-  | STABLE PREDICATE name COLON set    { StPredicate ($3, $5) }
-  | RELATION name COLON set     { Predicate ($2, $4) }
-  | STABLE RELATION name COLON set     { StPredicate ($3, $5) }
-  | PREDICATE name args EQUAL term { Let_predicate ($2, $3, $5) }
-  | STABLE PREDICATE name args EQUAL term { Let_stpredicate ($3, $4, $6) }
-  | RELATION name args EQUAL term { Let_predicate ($2, $3, $5) }
-  | STABLE RELATION name args EQUAL term { Let_stpredicate ($3, $4, $6) }
+  | PREDICATE name COLON set    { Predicate ($2, Unstable, $4) }
+  | STABLE PREDICATE name COLON set    { Predicate ($3, Stable, $5) }
+  | RELATION name COLON set     { Predicate ($2, Unstable, $4) }
+  | STABLE RELATION name COLON set     { Predicate ($3, Stable, $5) }
+  | PREDICATE name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
+  | STABLE PREDICATE name args EQUAL term { Let_predicate ($3,Stable, $4, $6) }
+  | RELATION name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
+  | STABLE RELATION name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
   | AXIOM name args EQUAL term   { Sentence (Axiom, $2, $3, $5) }
   | THEOREM name args EQUAL term { Sentence (Theorem, $2, $3, $5) }
   | LEMMA name args EQUAL term       { Sentence (Lemma, $2, $3, $5) }
