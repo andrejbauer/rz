@@ -1,3 +1,8 @@
+- NEW (2005-01-03) [Both]:
+
+  Add support for applications of parameterized theories and 
+  parameterized models (to model arguments).
+
 - IMPROVEMENT (2004-12-30) [Andrej]:
   Add a flag that disables use of the IsPer and IsPredicate abbreviations.
 
@@ -23,32 +28,20 @@
   reasonable example first.
 
 - IMPROVEMENT (2004-12-30):
-  Introduce _stable_ subsets with a syntax different from ordinary
-  subsets, e.g.,
 
-    { x : s | phi(x) }      stable
-    { x : s with phi(x) }   not stable
-
-  For stable subsets we could avoid coersions :> and <: (but would
+  Automatically insert coersions :> and <: (that 
   still generate obligations in the output).
 
   [ CS: 2004-12-30 
-      Started this, and added StableSubset up to and
-      including the translation to Logic, except that right
-      now subtyping only allows an implicit subout
-        (using a value of the subset as if it were a member
-         of the whole set)
-      and *not* implici subins.
-      
-      But when I started thinking about the translation I realized
-      that we probably need to insert the implicit subin and subout's,
-      in order for translation to work correctly and to generate
-      the appropriate obligations.  
 
-      Of course, we could have done the same insertion of implicit
-      subins and subouts for non-stable subset types, so I'm 
-      now rather confused as to why we only wanted to do this for 
-      stable subsets.
+      Mostly implemented.  It's a little bit ad-hoc in where it
+      chooses to insert coercions (for example, it will convert
+      explicit pairs of subset values to pairs of superset values, but
+      won't do the same conversion if the syntactic pair is replaced
+      by a variable).  This should be better documented, and probably
+      more aggressive about doing safe (out-of-subset) coercions.
+
+      There should also be a --nocoerce flag to turn this behavior off.
   ]
 
 
