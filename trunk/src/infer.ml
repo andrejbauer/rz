@@ -266,10 +266,10 @@ let toModel mdlnms =
   in loop (List.rev mdlnms)
 
 
-(** addSetToSubst : subst -> set_name -> model_name list -> subst
+(** addSetToSubst : subst -> set_name -> model -> subst
 
-    Given a substitution, a set name, and the sequence of model_names
-    representing the model where that set name occurs, extends the
+    Given a substitution, a set name, and the
+    model directly containing that set name, extends the
     substitution to replace all direct references to the set by the
     appropriate projection from models.  Of course if the set name is
     declared at top-level, this would be an identity and so so we
@@ -279,44 +279,40 @@ let toModel mdlnms =
     similarly, but are given a model name or a term name respectively.
  *)
 let addSetToSubst ( sub : subst ) ( stnm : set_name ) = function
-    []    -> sub
-  | mdls  -> ( (* print_string "inserting set ";
-	          print_string stnm;
-	           print_string "\n"; *)
-	       Syntax.insertSetvar sub stnm 
-                      ( Set_name ( Some ( toModel mdls ), stnm ) ) )
+    None      -> sub
+  | Some mdl  -> Syntax.insertSetvar sub stnm 
+                   ( Set_name ( Some mdl, stnm ) )
 
-(** addModelToSubst : subst -> model_name -> model_name list -> subst
+(** addModelToSubst : subst -> model_name -> model -> subst
   *)
 let addModelToSubst (sub : subst) mdlnm = function
-    []    -> sub
-  | mdls  -> Syntax.insertModelvar sub mdlnm 
-               ( ModelProj ( toModel mdls, mdlnm ) )
+    None      -> sub
+  | Some mdl  -> Syntax.insertModelvar sub mdlnm 
+                   ( ModelProj ( mdl, mdlnm ) )
 
-(** addTermToSubst : subst -> name -> model_name list -> subst
+(** addTermToSubst : subst -> name -> model -> subst
   *)
 let addTermToSubst (sub : subst) nm = function
-    []    -> sub
-  | mdls  -> Syntax.insertTermvar sub nm 
-               ( Var ( Some ( toModel mdls ), nm ) )
+    None      -> sub
+  | Some mdl  -> Syntax.insertTermvar sub nm 
+                   ( Var ( Some mdl, nm ) )
 
-(** addToSubst : subst -> model_name list -> theory_summary_item -> subst
+(** addToSubst : subst -> model -> theory_summary_item -> subst
 
     Generic function that updates a substitution as above to include the
     mapping for a single item in a theory. 
 *)
-let addToSubst sub pathtohere = function
-    TermSpec ( nm   , _ ) -> addTermToSubst  sub nm    pathtohere
-  | SetSpec  ( stnm , _ ) -> addSetToSubst   sub stnm  pathtohere
-  | ModelSpec( mdlnm, _ ) -> addModelToSubst sub mdlnm pathtohere
+let addToSubst sub whereami = function
+    TermSpec ( nm   , _ ) -> addTermToSubst  sub nm    whereami
+  | SetSpec  ( stnm , _ ) -> addSetToSubst   sub stnm  whereami
+  | ModelSpec( mdlnm, _ ) -> addModelToSubst sub mdlnm whereami
   | OtherSpec             -> sub    (** Parts never referenced in a theory *)
 
 
 (**  
     The key idea for lookup of long-names/module projections
     is to maintain two values as we go along:  
-    (1) where we are in reference to the top level
-        (a list of model_names representing the start of a path)
+    (1) where we are in reference to the top level (a model path)
     (2) a substitution mapping all theory-component names in scope to the
         paths that would be used to access these values from
         the top-level.  So, e.g., if we had
@@ -332,12 +328,21 @@ let addToSubst sub pathtohere = function
                 end
     end
 
-    and assuming we're looking for M::N::x, by the time we
+    and assuming we're looking for M.N.x, by the time we
     get to x the substitution (2) contains
       s -> s
-      t -> M::t
-      u -> M::N::u
-    and the "where am I" list (1) would be [M ; N].
+      t -> M.t
+      u -> M.N.u
+    and the "where am I" (1) would be M.N.
+
+    The naming convention is that the primed functions take a list of
+    (theory_summary) items (and in some cases an initial
+    substitution), while the unprimed functions take the whole
+    context and no substitution, and so should only be invoked on
+    the "top-level" context.
+
+    Also, "peek" functions never raise exceptions; they can be called
+    whether or not the thing being searched for exists.
 *)
 
 
@@ -362,73 +367,108 @@ let rec peekSet' items desired_stnm =
     | _ ::rest                         -> loop rest
   in loop items
    
-(* peekSet : context -> set_name -> bool.
+(* peekSet : cntxt -> set_name -> bool.
 
-   Like peekSet', but takes the whole context.
+   Like peekSet', but takes the whole context rather than just the
+   items.
  *)    
 let peekSet cntxt desired_stnm =  peekSet' cntxt.items desired_stnm
 
 
+(** peekTydef' : Syntax.subst -> items -> model -> set_name -> set option
 
-(** Given the guts of a context and a desired set name, determine
+    Given the items from a context and a desired set name, determine
     whether a set of that name exists (with or without a definition).
 
-    This function takes the items, rather than a whole context,
-    because this will also be used to search inside a model,
-    where there are no implicits around.
+    An initial substitution is passed in.  This is updated (using the
+    list of model_names, to tell us what model we are inside) as we enter
+    the scope of more module components, and finally applied to the
+    type being found (so that the type makes sense outside the enclosing 
+    modules).
+
  *)
-let rec peekTydef' subst0 cntxt pathtohere desired_stnm = 
+let rec peekTydef' subst0 items whereami desired_stnm = 
   let rec loop substitution = function
       [] -> None
     | SetSpec (stnm, sopt) :: rest -> 
 	if stnm = desired_stnm then
 	  substSetOption substitution sopt
 	else
-	  loop (addSetToSubst substitution stnm pathtohere) rest
-    | spc :: rest -> loop (addToSubst substitution pathtohere spc) rest
-  in loop subst0 cntxt 
-       
+	  loop (addSetToSubst substitution stnm whereami) rest
+    | spc :: rest -> loop (addToSubst substitution whereami spc) rest
+  in loop subst0 items
+
+(** peekTydef: cntxt -> set_name -> set option 
+  *)
 let peekTydef cntxt desired_stnm = 
-  peekTydef' emptysubst cntxt.items [] desired_stnm
+  peekTydef' emptysubst cntxt.items None desired_stnm
 
 
-(* Rather than apply the substitution to the returned list of
-   specs (describing the model's contents), we simply return
-   the specs and the substitution separately.  If we go on
-   to search inside the model, we can then pass in this
-   substitution for the subst0 parameter.
+(* peekTheoryof' : Syntax.subst -> items -> model_name list -> model_name 
+                         -> (Syntax.subst * theory_summary_item list) option
+
+    Given the items from a context and a desired model_name, find the
+    corresponding theory for that model in that context; returns None
+    if the model doesn't exist.
+
+    An initial substitution subst0 is passed in.  This is updated
+    (using the list of model_names, to tell us what model we were
+    searching to find these items came from) as we enter the scope of
+    more module components, and finally applied to the theory being
+    found (so that it makes sense outside the enclosing modules).
+
+    Rather than apply the substitution to the returned list of
+    specs (describing the model's contents), we simply return
+    the specs and the substitution separately.  If we go on
+    to search inside the model, we can then pass in this
+    substitution for the subst0 parameter.
 *)
-let rec peekTheoryof' subst0 cntxt pathtohere desired_mdlnm = 
+let rec peekTheoryof' subst0 cntxt whereami desired_mdlnm = 
   let rec loop substitution = function
       [] -> None
     | ModelSpec (mdlnm, theory) :: rest ->
         if mdlnm = desired_mdlnm then
           Some (theory, substitution)
         else
-          loop (addModelToSubst substitution mdlnm pathtohere) rest
-    | spc :: rest -> loop (addToSubst substitution pathtohere spc) rest
+          loop (addModelToSubst substitution mdlnm whereami) rest
+    | spc :: rest -> loop (addToSubst substitution whereami spc) rest
   in loop subst0 cntxt
 
+(** peekTheoryof : cntxt -> model_name
+                           -> (Syntax.subst * theory_summary_item list) option
+ *)
 let peekTheoryof cntxt desired_mdlnm = 
-  peekTheoryof' emptysubst cntxt.items [] desired_mdlnm
+  peekTheoryof' emptysubst cntxt.items None desired_mdlnm
 
 
-let rec peekTypeof' subst0 items pathtohere desired_nm = 
+(** peekTypeof' : Syntax.subst -> items -> model_name list -> name 
+                                                                 -> set option
+
+    Given the items from a context and a name, determine the set
+    containing the constant of that name, or None if no such
+    constant exists.
+
+    An initial substitution subst0 is passed in.  This is updated
+    (using the list of model_names, to tell us what model we are
+    inside) as we enter the scope of more module components, and
+    finally applied to the type being found (so that the type makes
+    sense outside the enclosing modules).
+ *)
+let rec peekTypeof' subst0 items whereami desired_nm = 
   let rec loop substitution = function
       [] -> None
     | TermSpec(nm, set) :: rest ->
 	if nm = desired_nm then 
-          (let answer = substSet substitution set
-	   in (* let _ = display_subst substitution 
-              in let _ = print_string ("answer= " ^ string_of_set answer ^ "\n") 
-              in *) Some answer)
+	   Some (substSet substitution set)
         else 
-	  (loop (addTermToSubst substitution nm pathtohere) rest)
-    | spc :: rest -> (loop (addToSubst substitution pathtohere spc) rest)
+	  (loop (addTermToSubst substitution nm whereami) rest)
+    | spc :: rest -> (loop (addToSubst substitution whereami spc) rest)
   in (loop subst0 items)
 
+(** peekTypeof : context -> name -> set option
+ *)
 let peekTypeof cntxt desired_nm = 
-  peekTypeof' emptysubst cntxt.items [] desired_nm
+  peekTypeof' emptysubst cntxt.items None desired_nm
 
 (*****************************)
 (** {3 Insertion Functions} **)
@@ -487,7 +527,7 @@ let insertImplicits cntxt (namestrings : string list) st =
 (** {2 Set Comparison Operations} *)
 (**********************************)
 
-(** We also put in the annotateModel function here because it's
+(** We put the annotateModel function here because it's
   used by hnfSet *)
 
 (** Given a context and a model, returns 
@@ -496,23 +536,22 @@ let insertImplicits cntxt (namestrings : string list) st =
      (b) the theory of the model 
      (c) A substitution that must be applied to the theory (b) in
          order for it to be well-formed
-     (d) The list of model names in the model path.
 *)
 let rec annotateModel cntxt = function
     ModelName mdlnm ->
      (match (peekTheoryof cntxt mdlnm) with
 	None -> tyGenericError ("Unknown Model " ^ mdlnm)
-     | Some (thr,_) -> (ModelName mdlnm, thr, emptysubst, [mdlnm]))
+     | Some (thr,_) -> (ModelName mdlnm, thr, emptysubst))
   | ModelProj (mdl, lbl) as main_mdl ->
-      let (mdl', thr', subst, pathtohere) = annotateModel cntxt mdl
-      in (match (peekTheoryof' subst cntxt.items pathtohere lbl) with
+      let (mdl' as whereami, thr', subst) = annotateModel cntxt mdl
+      in (match (peekTheoryof' subst cntxt.items (Some whereami) lbl) with
 	      None -> tyGenericError ("Unknown Model" ^ 
 				      string_of_model main_mdl)
 	    | Some (thr'',subst'') ->
-		(ModelProj(mdl',lbl), thr'', subst'', pathtohere @ [lbl]))
+		(ModelProj(mdl',lbl), thr'', subst''))
   | ModelApp (mdl1, mdl2) ->
-     let    (mdl1', thr1', subst1, pathtohere1) = annotateModel cntxt mdl1
-     in let (mdl1', thr1', subst2, pathtohere2) = annotateModel cntxt mdl2
+     let    (mdl1', thr1', subst1) = annotateModel cntxt mdl1
+     in let (mdl2', thr2', subst2) = annotateModel cntxt mdl2
      in raise Impossible
 
 (** Expand out any top-level definitions for a (well-formed) set 
@@ -524,8 +563,8 @@ let rec hnfSet cntxt = function
       | None -> Set_name ( None, stnm ) )
 
   | Set_name ( Some mdl, stnm ) -> 
-      let (_, thryspecs, subst, pathtohere) = annotateModel cntxt mdl
-      in (match (peekTydef' subst thryspecs pathtohere stnm) with
+      let (whereami, thryspecs, subst) = annotateModel cntxt mdl
+      in (match (peekTydef' subst thryspecs (Some whereami) stnm) with
 		 None    -> Set_name ( Some mdl, stnm ) 
 	       | Some st -> hnfSet cntxt st)
 
@@ -814,7 +853,7 @@ let rec annotateSet cntxt =
 		 orig_set
 	      else tyGenericError ("Set not found: " ^ stnm))
 	| Set_name (Some mdl, stnm) as orig_set -> 
-	    let (mdl', thryspecs, _, _) = annotateModel cntxt mdl
+	    let (mdl', thryspecs, _) = annotateModel cntxt mdl
 	    in if (peekSet' thryspecs stnm) then
 		 Set_name(Some mdl', stnm)
 	       else
@@ -1031,8 +1070,8 @@ and annotateTerm cntxt =
 	    | None -> tyUnboundError orig_trm)
 
      | Var (Some mdl, nm) as orig_trm -> 
-	 let (mdl', thryspecs, subst, pathtohere) = annotateModel cntxt mdl
-	 in (match (peekTypeof' subst thryspecs pathtohere nm)with
+	 let (mdl' as whereami, thryspecs, subst) = annotateModel cntxt mdl
+	 in (match (peekTypeof' subst thryspecs (Some whereami) nm)with
 		 None -> tyGenericError ("Unknown component " ^
 					 string_of_term orig_trm)
 	       | Some st -> (Var(Some mdl', nm), st))
