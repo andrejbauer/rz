@@ -357,10 +357,22 @@ and annotateBinding ctx = function
                      Some s -> annotateSet ctx s
                    | None   -> (try (lookupImplicit ctx x) with
                                   Not_found -> 
-                                   (tyGenericError ("Bound variable not annotated " ^
+                                   (tyGenericError ("Bound variable " ^ 
+						    string_of_name x ^ 
+						    " not annotated " ^
                                              "explicitly or implicitly."))))
          in let ctx' = insertType ctx x s'
          in ((x, Some s'), ctx')
+
+and annotateBindingWithDefault ctx defaultset = function
+      (x,sopt) -> 
+         let s' = (match sopt with
+                     Some s -> annotateSet ctx s
+                   | None   -> defaultset)
+         in let ctx' = insertType ctx x s'
+         in ((x, Some s'), ctx')
+
+
 
  (** XXX  Mildly bogus?:  allows the types to refer to variables bound
     earlier in the sequence. *)
@@ -468,7 +480,7 @@ and annotateTerm ctx =
         
      | Let(bnd,t1,t2) ->
          let    (t1', ty1) = ann t1
-         in let (bnd',ctx') = annotateBinding ctx bnd
+         in let (bnd',ctx') = annotateBindingWithDefault ctx ty1 bnd
          in let (t2', ty2) = annotateTerm ctx' t2
          in ((try (ignore(annotateSet ctx ty2)) with
                _ -> tyGenericError ("Inferred let-body type depends on local " ^ 
@@ -516,7 +528,8 @@ and annotateTheoryElem ctx =
            in (Value(n,ty1), ctx')
        | Let_term(bnd,t) ->
            let    (t', ty1) = annotateTerm ctx t
-           in let ((_,Some ty2) as bnd', ctx') = annotateBinding ctx bnd
+           in let ((_,Some ty2) as bnd', ctx') = 
+	                 annotateBindingWithDefault ctx ty1 bnd
            in if (subSet ctx ty1 ty2) then
                 (Let_term(bnd',t'), ctx')
               else
