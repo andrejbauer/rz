@@ -13,16 +13,4 @@ theory Foo =
 thy
   model N : Nat
   model R : Real
-
-  model F2 : Real(N)
-
-  set s = R(N).real
-
-  const x : R(N).real
-
-  const i = R(N).inject
-
-  (* Here is an application of theory to a model *)
-  model Q : Real(N)
-
 end

@@ -220,6 +220,8 @@ and string_of_bnd = function
 
 and string_of_model = function
     ModelName strng -> strng
+  | ModelApp (mdl1, mdl2) ->
+      string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
   | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
 
 

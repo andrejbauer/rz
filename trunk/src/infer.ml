@@ -256,17 +256,17 @@ let addSetToSubst (substitution : subst) (nm : set_name) = function
   | mdls  -> ((* print_string "inserting set ";
 	      print_string nm;
 	      print_string "\n"; *)
-	      Syntax.insertSetvar substitution nm (Set_mproj(toModel mdls, nm)))
+	      Syntax.insertSetvar substitution nm (Set_name(Some(toModel mdls), nm)))
 
 let addModelToSubst (substitution : subst) mdlnm = function
     [] -> substitution
   | mdls  -> Syntax.insertModelvar substitution mdlnm 
       (ModelProj(toModel mdls, mdlnm))
 
-let addTermToSubst (substitution : subst) (N(strng,fxty) as nm) = function
+let addTermToSubst (substitution : subst) nm = function
     [] -> substitution
   | mdls  -> Syntax.insertTermvar substitution nm 
-      (MProj(toModel mdls, strng, fxty))
+      (Var(Some(toModel mdls),nm))
 
 
 (**  
@@ -472,14 +472,14 @@ let rec annotateModel cntxt = function
 (** Expand out any top-level definitions for a (well-formed) set 
   *)
 let rec hnfSet cntxt = function
-    Set_name stnm ->
+    Set_name (None, stnm) ->
       (match (peekTydef cntxt stnm) with
-        Some st -> hnfSet cntxt st
-      | None -> Set_name stnm)
-  | Set_mproj (mdl, lbl) -> 
+           Some st -> hnfSet cntxt st
+	 | None -> Set_name (None, stnm))
+  | Set_name (Some mdl, lbl) -> 
       let (_, thryspecs, subst, pathtohere) = annotateModel cntxt mdl
       in (match (peekTydef' subst thryspecs pathtohere lbl) with
-		 None -> Set_mproj(mdl, lbl)
+		 None -> Set_name(Some mdl, lbl)
 	       | Some st -> hnfSet cntxt st)
   | set -> set
 
@@ -514,7 +514,7 @@ let rec eqSet' do_subset cntxt =
 
 	       | ( Bool, Bool )   -> true       (** Bool <> Sum() for now *)
 
-               | ( Set_name n1, Set_name n2 )  -> 
+               | ( Set_name(None,n1), Set_name(None,n2))  -> 
                     (n1 = n2)                 (** Neither has a definition *)
 
  	       | ( Product ss1, Product ss2 ) -> 
@@ -533,8 +533,8 @@ let rec eqSet' do_subset cntxt =
 	            (** Alpha-vary the propositions so that they're using the
                         same (fresh) variable name *)
                     && let nm3 = N(Syntax.freshNameString(), Word)
-                       in let sub1 = insertTermvar emptysubst nm1 (Var nm3)
-         	       in let sub2 = insertTermvar emptysubst nm2 (Var nm3)
+                       in let sub1 = insertTermvar emptysubst nm1 (Var(None,nm3))
+         	       in let sub2 = insertTermvar emptysubst nm2 (Var(None,nm3))
 	               in let p1' = subst sub1 p1
 	               in let p2' = subst sub2 p2
 	               in 
@@ -757,14 +757,14 @@ let rec annotateSet cntxt =
 			("Wrong domain for equivalence relation in " ^
 			 string_of_set (Quotient(st,trm))))
         | Rz st -> Rz (ann st)
-        | Set_name stnm ->
+        | Set_name(None,stnm) ->
              (if (peekSet cntxt stnm) then
-		 Set_name stnm
+		 Set_name(None,stnm)
 	      else tyGenericError ("Set not found: " ^ stnm))
-	| Set_mproj (mdl, lbl) as main_set -> 
+	| Set_name(Some mdl, stnm) as main_set -> 
 	    let (mdl', thryspecs, _, _) = annotateModel cntxt mdl
-	    in if (peekSet' thryspecs lbl) then
-		Set_mproj(mdl',lbl)
+	    in if (peekSet' thryspecs stnm) then
+		Set_name(Some mdl',stnm)
 	      else
 		tyGenericError ("Unknown component " ^ string_of_set main_set)
         | s -> s
@@ -973,17 +973,17 @@ and addMbindings cntxt = function
 *)
 and annotateTerm cntxt = 
   (let rec ann = function 
-       Var nm -> 
+       Var(None,nm) -> 
 	 (match (peekTypeof cntxt nm) with
-	      Some ty -> (Var nm, ty)
-	    | None -> tyUnboundError (Var nm))
+	      Some ty -> (Var(None,nm), ty)
+	    | None -> tyUnboundError (Var(None,nm)))
 
-     | MProj (mdl, lbl, fixity) as main_trm -> 
+     | Var(Some mdl, nm) as main_trm ->
 	 let (mdl', thryspecs, subst, pathtohere) = annotateModel cntxt mdl
-	 in (match (peekTypeof' subst thryspecs pathtohere (N(lbl,fixity)))with
+	 in (match (peekTypeof' subst thryspecs pathtohere nm) with
 		 None -> tyGenericError ("Unknown component " ^
 					 string_of_term main_trm)
-	       | Some st -> (MProj(mdl,lbl,fixity), st))
+	       | Some st -> (Var(Some mdl, nm), st))
 
      | Constraint(t,s) ->
          let    (t',ty) = ann t

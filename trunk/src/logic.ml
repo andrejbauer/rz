@@ -32,8 +32,8 @@ type name = S.name
 type model_name = S.model_name
 
 type model = 
-    Model of model_name
-  | ModelProj of model * label
+    ModelName of model_name
+  | ModelProj of model * model_name
   | ModelApp of model * model
 
 (** names of components inside models *)
@@ -209,17 +209,27 @@ and subst x t =
      in sub)
 *)
 
-let ln_of_string str = LN(None, S.N(str,S.Word))
+let string_of_name = S.string_of_name
+
+let rec string_of_model = function
+    ModelName strng -> strng
+  | ModelApp (mdl1, mdl2) ->
+      string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
+  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
 
 let rec string_of_ln = function
     LN (None, nm) -> string_of_name nm
   | LN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ (string_of_name nm)
 
+let rec string_of_sln = function
+    SLN (None, nm) -> nm
+  | SLN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ nm
+
 let rec string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
   | Bool -> "bool"
-  | Basic lname -> string_of_ln lname
+  | Basic lname -> string_of_sln lname
   | Product lst ->
       "(" ^ (String.concat " * " (List.map string_of_set lst)) ^ ")"
   | Exp (s, t) -> "(" ^ (string_of_set s) ^ " -> " ^ (string_of_set t) ^ ")"
@@ -269,16 +279,9 @@ let typename_of_name = function
     Syntax.N(n, Syntax.Word) -> n
   | Syntax.N(str, _) -> rename str
 
-let typename_of_longname = function
-    LN (_, _, S.Word) as n -> n
-  | LN (p, [], _) -> LN (rename p, [], S.Word)
-  | LN (p, ps, _) ->
-      let rec map_last f = function
-	  [] -> []
-	| [x] -> [f x]
-	| x :: xs -> x :: (map_last f xs)
-      in
-	LN (p, (map_last rename ps), S.Word)
+let typename_of_ln = function
+    LN (_, S.N(_, S.Word)) as n -> n
+  | LN (mdl, S.N(p, _)) -> LN (mdl, S.N(rename p, S.Word))
 
 (************************************)
 (* Translation from Syntax to Logic *)
@@ -297,8 +300,7 @@ let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
   | S.Bool -> Bool
-  | S.Set_name nm -> Basic nm
-  | S.Set_mproj (mdl, lbl) -> Basic (ln_of_modelproj mdl lbl S.Word)
+  | S.Set_name (mdl, nm) -> Basic (SLN (make_model_opt mdl, nm))
   | S.Product lst -> Product (List.map make_set lst)
   | S.Sum lst -> Sum (List.map
 			(function (lb, None) -> (lb, None) 
@@ -306,7 +308,11 @@ let rec make_set = function
                       lst)
   | S.Exp (s, t) -> Exp (make_set s, make_set t)
   | S.Subset ((n, Some s), phi) -> Subset ((n, make_set s), make_proposition phi)
-  | S.Quotient (s, r) -> Quotient (make_set s, r)
+  | S.Quotient (s, S.Var(mdl,nm)) ->
+      Quotient (make_set s, LN(make_model_opt mdl,nm))
+  | S.Quotient _ ->
+      print_string ("ERROR: Quotitent type by anonymous relation\n") ;
+      failwith "Logic.make_set"
   | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
   | S.EquivProp -> EQUIV
@@ -325,8 +331,8 @@ and make_proposition = function
 	  S.App (u1, u2) -> collect ((make_term u2)::acc) u1
 	| u -> u, List.rev acc
       in
-      let hd, apps = collect [] prop in
-	Atomic (hd, List.rev apps)
+      let S.Var(mdl,nm), apps = collect [] prop in
+	Atomic (LN(make_model_opt mdl, nm), List.rev apps)
   | S.And lst -> And (List.map make_proposition lst)
   | S.Imply (phi, psi) -> Imply (make_proposition phi, make_proposition psi)
   | S.Iff (phi, psi) -> Iff (make_proposition phi, make_proposition psi)
@@ -353,8 +359,7 @@ and make_proposition = function
 	  raise HOL)
 
 and make_term = function
-    S.Var n -> Var n
-  | S.MProj (mdl, nm, nmtyp) -> Var (ln_of_modelproj mdl nm nmtyp)
+    S.Var (mdl,n) -> Var(LN(make_model_opt mdl, n))
   | S.Constraint (t, _) -> make_term t
   | S.Star -> Star
   | S.Tuple lst -> Tuple (List.map make_term lst)
@@ -371,12 +376,16 @@ and make_term = function
   | S.The ((n, Some s), t) -> The ((n, make_set s), make_proposition t)
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
-  | S.Quot (t, r) -> Quot (make_term t, r)
+  | S.Quot (t, S.Var(mdl,r)) -> Quot (make_term t, LN(make_model_opt mdl,r))
+  | S.Quot _ ->
+      print_string "cannot form quotients by anonymous relations\n";
+      failwith "Logic.make_term"
   | S.RzQuot t -> RzQuot (make_term t)
   | S.RzChoose ((n, Some s), t, u, Some st) ->
       RzChoose ((n, make_set s), make_term t, make_term u, make_set st)
-  | S.Choose ((n, Some s), r, t, u, Some st) ->
-      Choose ((n, make_set s), r, make_term t, make_term u, make_set st)
+  | S.Choose ((n, Some s), S.Var(mdl,nm), t, u, Some st) ->
+      Choose ((n, make_set s), LN(make_model_opt mdl,nm),
+	      make_term t, make_term u, make_set st)
   | S.Let ((nm, Some st1), trm1, trm2, Some st2) -> 
       Let((nm, make_set st1), make_term trm1, make_term trm2,
 	  make_set st2)
@@ -408,5 +417,14 @@ and make_toplevel = function
       Theorydef (str, make_model_bindings args, make_theory thr)
   | S.TopComment cmmnt -> TopComment cmmnt
   | S.TopModel (mdlnm, thry) -> TopModel(mdlnm, make_theory thry)
+
+and make_model = function
+    S.ModelName mdl -> ModelName mdl
+  | S.ModelProj (mdl, lbl) -> ModelProj (make_model mdl, lbl)
+  | S.ModelApp (mdl1, mdl2) -> ModelApp (make_model mdl1, make_model mdl2)
+
+and make_model_opt = function
+    None -> None
+  | Some mdl -> Some (make_model mdl)
 
 and make_model_bindings bnd = List.map (fun (m,th) -> (m, make_theory th)) bnd

@@ -62,9 +62,10 @@ and proposition =
   | Cexists of binding * proposition (** classical existential *)
 
 type assertion = string * binding list * proposition
+
 type signat_element =
     ValSpec of name * ty * assertion list
-  | StructureSpec of structure_name * struct_binding list * signat
+  | StructureSpec of structure_name * signat
   | AssertionSpec of assertion
   | TySpec of set_name * ty option * assertion list
   | Comment of string
@@ -78,14 +79,11 @@ and struct_binding = string * signat
 and toplevel = 
     Signatdef of string * struct_binding list * signat
   | TopComment of string
-  | TopModule of string * signat
+  | TopStructure of string * signat
     
 
 let mk_word str = Syntax.N(str, Syntax.Word)
-let mk_longword = Logic.ln_of_string
-let ln_of_name = Logic.ln_of_name
-let mk_id str = Id (mk_longword str)
-let mk_poly (Syntax.N(str, _)) = mk_longword ("'" ^ str)
+let mk_id str = Id (Logic.LN(None,Syntax.N(str,Syntax.Word)))
 let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
 
 let tupleOrDagger = function
@@ -141,9 +139,8 @@ let rec fvModest flt acc {tot=(x,p); per=(u,v,q)} =
   fvProp' (u::v::flt) (fvProp' (x::flt) acc p) q
 
 and fvTerm' flt acc = function
-  | Id (Logic.LN(s,_,_)) -> 
-        let n = mk_word s in
-          if List.mem n flt then acc else n :: acc
+  | Id (Logic.LN(None,nm)) -> 
+      if List.mem nm flt then acc else nm :: acc
   | Star -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -187,7 +184,7 @@ let fvSubst subst = List.concat (List.map (fun (_, t) -> fvTerm t) subst)
 let substRemove n subst = List.filter (fun (m,_) -> n <> m) subst
 
 let substAdd (n, n') subst =
-  if n = n' then subst else (n, Id (ln_of_name n'))::subst
+  if n = n' then subst else (n, Id(Logic.LN(None,n')))::subst
 
 let rec substProp ctx s = function
     True -> True
@@ -217,15 +214,8 @@ let rec substProp ctx s = function
 	Cexists ((n', ty), substProp ctx (substAdd (n,n') s') q)
 
 and substTerm ctx s = function
-    Id (Logic.LN(str, labels, sort) as ln) ->
-      (try 
-          (match (List.assoc (Syntax.N(str,Syntax.Word)) s, labels)  with
-            (term',[]) -> term'
-          | (Id(Logic.LN(str',labels',sort')),_) ->
-               Id(Logic.LN(str',labels' @ labels, sort'))
-          | (_,_) -> raise BadSubst)  (* Can't replace a model variable *)
-                                      (* with anything other than a longname *)
-       with Not_found -> Id ln)
+    Id (Logic.LN(None, nm)) -> List.assoc nm s	   
+  | (Id (Logic.LN(Some _, _))) as id -> id
   | Star -> Star
   | Dagger -> Dagger
   | App (t, u) -> App (substTerm ctx s t, substTerm ctx s u)
@@ -256,7 +246,6 @@ and substTerm ctx s = function
       let s'' = substAdd (n,n') s' in
 	Obligation ((n', ty), substProp ctx s'' p, substTerm ctx s'' trm)
 
-
 and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
   { ty = t;
     tot = (let x' = fresh [x] [] s in
@@ -265,6 +254,7 @@ and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
 	   let z' = fresh [z] [y'] s in
 	     (y',z', substProp ctx (substAdd (y,y') (substAdd (z,z') s)) q));
   }
+
 
 (*
 let rec namesLNSubst = function
@@ -414,7 +404,7 @@ let rec string_of_ty' level t =
 		
   in let (level', str ) = 
        (match t with
-            NamedTy lname  -> (0, string_of_ln lname)
+            NamedTy lname  -> (0, Logic.string_of_sln lname)
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
 	  | SumTy ts       -> (1, makeSumTy ts)
@@ -432,7 +422,7 @@ let string_of_ty t = string_of_ty' 999 t
 
 let string_of_infix t op u =
   match op with
-      Logic.LN(str,[],_) -> t ^ " " ^ str ^ " " ^ u
+      Logic.LN(None, Syntax.N(str,_)) -> t ^ " " ^ str ^ " " ^ u
     | ln -> (string_of_ln ln) ^ " " ^ t ^ " " ^ u
 
 let rec string_of_term' level t =
@@ -440,15 +430,15 @@ let rec string_of_term' level t =
       Id ln -> (0, string_of_ln ln)
     | Star -> (0, "()")
     | Dagger -> (0, "DAGGER")
-    | App (App (Id (Logic.LN(_,_, Syntax.Infix0) as ln), t), u) -> 
+    | App (App (Id (Logic.LN(_,Syntax.N(_, Syntax.Infix0)) as ln), t), u) -> 
 	(9, string_of_infix (string_of_term' 9 t) ln (string_of_term' 8 u))
-    | App (App (Id (Logic.LN(_,_, Syntax.Infix1) as ln), t), u) -> 
+    | App (App (Id (Logic.LN(_,Syntax.N(_, Syntax.Infix1)) as ln), t), u) -> 
 	(8, string_of_infix (string_of_term' 8 t) ln (string_of_term' 7 u))
-    | App (App (Id (Logic.LN(_,_, Syntax.Infix2) as ln), t), u) -> 
+    | App (App (Id (Logic.LN(_,Syntax.N(_, Syntax.Infix2)) as ln), t), u) -> 
 	(7, string_of_infix (string_of_term' 7 t) ln (string_of_term' 6 u))
-    | App (App (Id (Logic.LN(_,_, Syntax.Infix3) as ln), t), u) -> 
+    | App (App (Id (Logic.LN(_,Syntax.N(_, Syntax.Infix3)) as ln), t), u) -> 
 	(6, string_of_infix (string_of_term' 6 t) ln (string_of_term' 5 u))
-    | App (App (Id (Logic.LN(_,_, Syntax.Infix4) as  ln), t), u) -> 
+    | App (App (Id (Logic.LN(_,Syntax.N(_, Syntax.Infix4)) as  ln), t), u) -> 
 	(5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
     | App (t, u) -> 
 	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
@@ -483,7 +473,7 @@ let rec string_of_term' level t =
 and string_of_term t = string_of_term' 999 t
 
 and string_of_app = function
-    (Logic.LN(_,_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)) as ln, [Tuple [u;v]]) ->
+    (Logic.LN(_,Syntax.N(_,(Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4))) as ln, [Tuple [u;v]]) ->
       string_of_infix (string_of_term u) ln (string_of_term v)
   | (ln, trms) -> (string_of_ln ln) ^ (String.concat " " (List.map string_of_term trms))
       
@@ -493,9 +483,9 @@ and string_of_prop level p =
     | False -> (0, "false")
     | IsPer nm -> (0, "PER(=_" ^ nm ^ ")")
     | IsPredicate prdct -> (0, "PREDICATE(" ^ (Syntax.string_of_name prdct) ^ ")")
-    | NamedTotal (n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_ln n) ^ "||")
+    | NamedTotal (n, t) -> (0, (string_of_term t) ^ " : ||" ^ (Logic.string_of_sln n) ^ "||")
     | NamedPer (n, t, u) -> (9, (string_of_term' 9 t) ^ " =_" ^
-			       (string_of_ln n) ^ " " ^ (string_of_term' 9 u))
+			       (Logic.string_of_sln n) ^ " " ^ (string_of_term' 9 u))
     | NamedProp (n, Dagger, us) -> (0, string_of_app (n, us))
     | NamedProp (n, t, u) -> (9, (string_of_term t) ^ " |= " ^ (string_of_app (n, u)))
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
@@ -539,13 +529,8 @@ let rec string_of_spec = function
 	string_of_assertions assertions
     | AssertionSpec assertion ->
 	string_of_assertion assertion
-    | StructureSpec (nm, [], sgntr) ->
+    | StructureSpec (nm, sgntr) ->
 	"module " ^ nm ^ " : " ^ (string_of_signat sgntr)
-    | StructureSpec (nm, mdlbind, sgntr) ->
-	"module " ^ nm ^ (String.concat " "
-			    (List.map (fun (nm, sgntr) ->
-					 "(" ^ nm ^ " : " ^ (string_of_signat sgntr) ^ ")")
-			       mdlbind)) ^ " : " ^ (string_of_signat sgntr)
     | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
 and string_of_signat = function
@@ -562,5 +547,5 @@ let string_of_toplevel = function
 	      args)) ^
       (string_of_signat body) ^ "\n"
   | TopComment cmmnt -> "(**" ^ cmmnt ^ "*)"
-  | TopModule (mdlnm, signat) ->
+  | TopStructure (mdlnm, signat) ->
       "module " ^ mdlnm ^ " : " ^ string_of_signat signat
