@@ -32,6 +32,7 @@ and term =
   | Inj of label * term
   | Cases of term * (label * binding * term) list
   | Let of name * term * term
+  | Questionmark (** used for unknown proofs *)
 
 (** specifications are expressed in classical logic
     (negative fragment to be exact)
@@ -156,6 +157,7 @@ let rec subst_proposition s = function
 and subst_term s = function
     Id n ->
       (try List.assoc n s with Not_found -> Id n)
+  | Questionmark -> Questionmark
   | Star -> Star
   | App (t, u) -> App (subst_term s t, subst_term s u)
   | Lambda ((n, ty), t) ->
@@ -218,6 +220,7 @@ let string_of_ty t = string_of_ty' 999 t
 let rec string_of_term' level t =
   let (level', str) = match t with
       Id n -> (0, string_of_name n)
+    | Questionmark -> (0, "?")
     | Star -> (0, "()")
     | App (App (Id (n, Syntax.Infix0), t), u) -> 
 	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 9 u))

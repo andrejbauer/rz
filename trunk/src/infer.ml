@@ -145,9 +145,9 @@ let eqSet   ctx s1 s2 =
       in cmp(s1', s2')
 
 let subSet  ctx s1 s2 =
-  (s1 = s2) || (match (hnfSet ctx s1) with
-		    Subset ((_, Some t), _) -> eqSet ctx t s2
-		  | _ -> false)
+  match hnfSet ctx s1 with
+      Subset ((_, Some t), _) -> eqSet ctx t s2
+    | _ -> false
 			
 let joinSet ctx s1 s2 = if (eqSet ctx s1 s2) then s1 else (tyError "No Join")
 

@@ -29,6 +29,17 @@ exception Unimplemented
 
 let any = mk_word "_"
 
+
+let make_type_name = function
+    (n, Syntax.Word) -> n
+  | ("<", _) -> "lt"
+  | (">", _) -> "gt"
+  | ("<=", _) -> "leq"
+  | (">=", _) -> "geq"
+  | ("=", _) -> "eq"
+  | ("<>", _) -> "neq"
+  | (s, _) -> s
+
 let rec translateSet = function
     L.Empty -> 
       { ty = VoidTy;
@@ -37,7 +48,7 @@ let rec translateSet = function
       }
   | L.Unit ->
       { ty = UnitTy;
-	tot = (any, Equal (mk_id "x", Star));
+	tot = (mk_word "x", Equal (mk_id "x", Star));
 	per = (any, any, True)
       }
   | L.Bool ->
@@ -104,14 +115,32 @@ let rec translateSet = function
 	  )
 	}
 
+  | L.Subset ((n, s), phi) ->
+      let {ty=u; tot=(x,p); per=(y,y',q)} = translateSet s in
+      let (v,z,r) = translateProposition [] phi in
+	{
+	  ty = TupleTy [u; v];
+	  tot = (
+	    let k = find_name [mk_word "k"; mk_word "j"; mk_word "x"] [] in
+	      (k,
+	       And [subst_proposition [(x, Proj (1, Id k))] p;
+		    subst_proposition [(z, Proj (2, Id k))] r]
+	      )
+	  );
+	  per = (
+	    let w  = find_name [y; y'; mk_word "w"] [] in
+	    let w' = find_name [w; y; y'; mk_word "w"] [] in
+	      (w, w', subst_proposition [(y, Proj (1, Id w)); (y', Proj (1, Id w'))] q)
+	  )
+	}
+
 (* remaining cases:
   | Sum of (label * set option) list
-  | Subset of binding * proposition
   | RZ of set
   | Quotient, if we add this to Logic
 *)
 
-let rec translateTerm = function
+and translateTerm = function
     L.Var n -> Id n
   | L.Star -> Star
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
@@ -128,20 +157,12 @@ let rec translateTerm = function
                                                (lb, (any, UnitTy), 
                                                 translateTerm t))
                                         lst)
-  | L.Let ((n,s), u, v) -> Let (n, translateTerm u, translateTerm v)
-
-let make_type_name = function
-    (n, Syntax.Word) -> n
-  | ("<", _) -> "lt"
-  | (">", _) -> "gt"
-  | ("<=", _) -> "leq"
-  | (">=", _) -> "geq"
-  | ("=", _) -> "eq"
-  | ("<>", _) -> "neq"
-  | (s, _) -> s
+  | L.Let ((n,_), u, v) -> Let (n, translateTerm u, translateTerm v)
+  | L.Subin (t, _) -> Tuple [translateTerm t; Questionmark]
+  | L.Subout (t, _) -> Proj (1, translateTerm t)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
-let rec translateProposition ctx = function
+and translateProposition ctx = function
     L.False -> (VoidTy, any, False)
 
   | L.True -> (UnitTy, any, True)

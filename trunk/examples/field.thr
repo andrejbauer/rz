@@ -29,4 +29,7 @@ thy
     x <> zero =>
       x * inv (x :> s') = one and inv (x :> s') * x = one
 
+  axiom testing x =
+    some (y : s') . (x + (y :< s) = zero => (y :< s) <> one)
+
 end

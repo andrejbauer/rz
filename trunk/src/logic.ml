@@ -69,7 +69,8 @@ and term =
   | Inj    of label * term
   | Case   of term * (label * binding option * term) list
   | Let    of binding * term * term
-(** missing terms for subsets *)
+  | Subin  of term * set
+  | Subout of term * set
 (** missing terms for realizers *)
 
 type sentence_type = Syntax.sentence_type
@@ -211,6 +212,7 @@ and make_proposition = function
                      raise Unimplemented)
   | S.And lst -> And (List.map make_proposition lst)
   | S.Imply (phi, psi) -> Imply (make_proposition phi, make_proposition psi)
+  | S.Iff (phi, psi) -> Iff (make_proposition phi, make_proposition psi)
   | S.Or lst -> Or (List.map make_proposition lst)
   | S.Not phi -> Not (make_proposition phi)
   | S.Equal (Some s, u, v) -> Equal (make_set s, make_term u, make_term v)
@@ -225,8 +227,6 @@ and make_proposition = function
   | S.Exists ((_, None), _) -> 
                             (print_string "Exists missing type annotation\n";
                             raise Unimplemented)
-  | S.Subin -> raise Unimplemented
-  | S.Subout -> raise Unimplemented
   | _ -> (print_string "unrecognized proposition\n";
 	  raise HOL)
 
@@ -245,6 +245,8 @@ and make_term = function
 			       lst)
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
   | S.Choose (_,_,_) -> raise Unimplemented
+  | S.Subin (t, s) -> Subin (make_term t, make_set s)
+  | S.Subout (t, s) -> Subout (make_term t, make_set s)
   | _ -> (print_string "unrecognized term\n";
 	  raise HOL)
 
