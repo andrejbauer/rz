@@ -1,7 +1,49 @@
 \documentclass{article}
 
 \usepackage{fullpage}
+\usepackage{times}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{theorem}
 
+%% MACROS
+
+\newcommand{\ut}[1]{|#1|}
+\newcommand{\tot}[1]{\|#1\|}
+\newcommand{\per}[1]{\approx_{#1}}
+\newcommand{\PL}{\mathcal{P}}
+\newcommand{\Mod}[1]{\mathsf{Mod}(#1)}
+\newcommand{\rz}{\Vdash}
+\newcommand{\note}[1]{\texttt{[#1]}}
+\newcommand{\fst}[1]{\texttt{fst}\,#1}
+\newcommand{\snd}[1]{\texttt{snd}\,#1}
+
+%% THEOREM-LIKE ENVIRONMENTS
+
+{
+  \theorembodyfont{\itshape}
+
+%  \newtheorem{theorem}{Theorem}[chapter]
+  \newtheorem{theorem}{Theorem}[section]
+  \newtheorem{Axiom}{Axiom}[section]
+  \newtheorem{lemma}[theorem]{Lemma}
+  \newtheorem{proposition}[theorem]{Proposition}
+  \newtheorem{corollary}[theorem]{Corollary}
+  \newtheorem{conjecture}[theorem]{Conjecture}
+%  \newtheorem{exercise}[theorem]{Exercise}
+
+{
+  \theorembodyfont{\rmfamily}
+  \newtheorem{definition}[theorem]{Definition}
+  \newtheorem{example}[theorem]{Example}
+  \newtheorem{remark}[theorem]{Remark}
+  \newtheorem{question}[theorem]{Question}
+  \newtheorem{problem}{Problem}
+}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
 \twocolumn
@@ -29,24 +71,32 @@
 \section{Introduction}
 \label{sec:introduction}
 
-In this paper we present a system, called \emph{RZ}, for automatic
-generation of program specifications from mathematical theories. We
-translate mathematical theories to specifications by computing their
+We present a system, called \emph{RZ}, for automatic generation of
+program specifications from mathematical theories. We translate
+mathematical theories to specifications by computing their
 realizability interpretations in an ML-like language augmented with
-assertions.
+assertions. While the system is best suited for descriptions of those
+programming tasks that can be easily described in mathematical
+language (e.g., algorithms on finitely presented groups, exact real
+arithmetic, algorithms on graphs, etc.), it also elucidates the
+relationship between data structures and constructive mathematics.
 
-While the system is best suited for those programming tasks that can
-be easily described in mathematical language (e.g., algorithms on
-finitely presented groups, exact real arithmetic, algorithms on
-graphs, etc.), it also 
+We assume throughout that we have chosen a fixed programming
+language~$\PL$. We only require that the language has product and
+function types. Any ML-like language will do~\note{reference to ML}.
+Our implementation of RZ uses ocaml~\note{reference to ocaml} but
+could easily be adopted to other variants of ML.
 
 
+Other points:
 
-Use realizability as a link between constructive mathematics and
-programming.
+As the realizability interpretation validates the laws of
+intuitionistic logic, rather than classical one, 
+
 
 Allow programmer to write the most efficient program. Contrast with
-extraction of programs from proofs.
+extraction of programs from proofs, where presently one cannot expect
+to get useful programs (also, who writes really long formal proofs?)
 
 Bring constructive reasoning closer to programmers.
 
@@ -55,44 +105,209 @@ Overview.
 \section{Realizability}
 \label{sec:realizability}
 
-Original number realizaiblity by Kleene.
+Kleene~\cite{KleeneSC:intint} introduced realizability as a model of
+intuitionistic arithmetic based on partial computable functions. The
+idea has been studied and generalized by various
+authors~\cite{TroelstraA:rea,HylandJ:efft,HylandJ:trit,OostenJ:exer}.
+We build on the idea of \emph{typed realizability} by
+Longley~\cite{Longley00}.
 
-Typed realizability (using ML). Modest sets.
+We briefly motivate the main idea of (typed) realizability. When we
+represent a set of mathematical objects~$S$ there are two natural
+steps to take: first choose an \emph{underlying datatype~$\ut{S}$} of
+representing values, and second specify how the values of
+type~$\ut{S}$ represent, or \emph{realize}, elements of the set~$S$.
+For example, consider how we might represent the set~$D$ of simple
+finite directed graphs (whose vertices are labeled by integers). As
+the underlying datatype we might choose $\ut{D} = \mathtt{int} \;
+\mathtt{list} * (\mathtt{int} * \mathtt{int}) \; \mathtt{list}$, and
+represent a graph~$G \in D$ as a pair of lists $(v,e)$ where $v =
+[x_1; \ldots; x_n]$ is the list of vertices and $e = [(x_{i_1},
+x_{j_1}); \ldots, x_{i_m}, x_{j_m}]$ is the list of edges, given as
+pairs of vertices. Formally, we write
+%
+\begin{equation*}
+  (v, e) \rz_D G
+\end{equation*}
+%
+and read it as ``$(v,e)$ realizes~$G \in D$''. Observe that each graph
+is realized by at least one pair of lists, and that no pair of lists
+represents more than one graph. This leads us to the definition given
+below. We shall abuse notation slightly and write $t \in \ut{S}$ to
+mean that $t$ is a closed expression of type $\ut{S}$.
 
-Point how this is what programmers naturally do informally.
+\begin{definition}
+  A \emph{modest set}\footnote{Modest sets were so named by Dana
+    Scott. They are ``modest'' because their size cannot exceed the
+    number of expressions of the underlying datatype.} is a triple
+  $(S, \ut{S}, {\rz_S})$ where $S$ is a set, $\ut{|S|}$ is a type and
+  $\rz_S$ is a relation between expressions of type~$\ut{|S|}$ and
+  elements of~$S$, satisfying:
+  % 
+  \begin{enumerate}
+  \item For every $x \in S$ there is $t \in \ut{S}$ such that $t \rz_S
+    x$.
+  \item If $t \rz_S x$ and $t \rz_S y$ then $x = y$.
+  \end{enumerate}
+  %
+  A \emph{realized function} $f : (S, \ut{S}, {\rz_S}) \to (T, \ut{T},
+  {\rz_T})$ between modest sets is a function $f : S \to T$ for which
+  there exists $u \in \ut{S} \to \ut{T}$ such that
+  %
+  \begin{equation*}
+    t \rz_S x \implies u\,t \rz_T f(x) \;.
+  \end{equation*}
+  %
+  We say that $u$ \emph{realizes} the function~$f$.
+\end{definition}
+
+The realizer~$u$ of a realized function~$f$ is what programmers would
+call an ``implementation of~$f$'' or an ``algorithm for
+computing~$f$''.
+
+Modest sets and realized functions form a category of \emph{modest
+  sets~$\Mod{\PL}$}. In realizability theory this is a well known
+category with good properties. It is regular and locally cartesian
+closed, which allows us to interpret first-order logic and a rich type
+theory. Here we only outline how first-order logic is interpreted, see
+e.g.~\cite{Bauer:00} for details. Each first-order formula~$\phi$ has
+an underlying type~$\ut{\phi}$ of realizers and a realizability
+relation~$\rz$. The type~$\ut{\phi}$ and~$\rz$ are defined inductively
+on the structure of the formula. For example, realizers for
+conjunction and implication are defined as follows:
+%
+\begin{align*}
+  \ut{\phi \land \psi} &= \ut{\phi} * \ut{\psi} \\
+  \ut{\phi \implies \psi} &= \ut{\phi} \to \ut{\psi} \\
+  t \rz \phi \land \psi &\iff \text{$\fst{t} \rz \phi$ and $\snd{t} \rz
+    \psi$} \\
+  u \rz \phi \implies \psi &\iff \text{if $t \rz \phi$ then $u\,t \rz
+    \psi$}
+  \;.
+\end{align*}
+%
+We shall not dwell any further on the technicalities involving the
+category of modest sets, but rather proceed to a concrete description
+of our relizability translation.
+
+There is one technical point, though, which we first take care of. A
+modest set is a triple $(S, \ut{S}, {\rz_S})$ in which~$S$ is an
+arbitrary set. For an automated system it would be convenient if it
+did not have to refer to arbitrary sets but rather just to ingridients
+that are already present in the programming language, such as types
+and sets of expressions. Up to isomorphism, a modest set can be
+construed as a triple $(\ut{S}, \tot{S}, {\per{S}})$ where
+$\ut{S}$ is a type, $\tot{S}$ is a subset of expressions of
+type~$\ut{S}$, called the \emph{total values},\footnote{We do
+  \emph{not} require that a total value must be a terminating
+  expression.} and $\per{S}$ is an equivalence relation on~$\ut{S}$.
+The relationship between this representation of a modest set and the
+original one is as follows:
+%
+\begin{itemize}
+\item $\tot{S}$ is the set of those expressions $t \in \ut{S}$ that
+  realize something, i.e., there is $x \in S$ such that $t \rz_S x$.
+\item $t \per{S} u$ if $t$ and $u$ realize the same element, i.e.,
+  there is $x \in S$ such that $t \rz_S x$ and $u \rz_S x$.
+\end{itemize}
+%
+The alternative view of a modest set $(\ut{S}, \tot{S}, {\per{S}})$
+only refers to objects and concepts from the programming language. It
+is better suited for our purposes.
+
+Note that the equivalence relation on~$\tot{S}$ is also a
+\emph{partial} equivalence relation on~$\ut{S}$, which shows that
+modest sets are in fact equivalent to PER models.
+
 
 \section{Theories and Signatures}
 \label{sec:theories-signatures}
 
-Theories: sets, constants, axioms.
+Explain the basic setup:
+%
+\begin{itemize}
+\item a set is interpreted as a modest set
+\item thre realizers of a first-order sentence (closed formula) are
+  interpreted as certain expressions of a suitable type.
+\end{itemize}
 
-What are signatures (ML signatures + assertions).
+Next level:
+%
+\begin{itemize}
+\item a first-order theory is given by a signature for sets and
+  constants of specified types together with axioms.
+\item such a first-order theory may be translated to a signature:
+  set is translated to a modest set, constant is translated to a total
+  value satisfying some assertion, axiom is translated to a realizer
+  of a suitable type satisfying some assertion.
+\end{itemize}
 
-Parametrized theories and functor signatures.
+Then go on to explaining what theories and signatures are.
 
+\subsection{Theories}
+\label{sec:theories}
+
+Describe what (non-parametrized) theories are: sets, constants, and
+sentences (axioms and theorems, really no difference between them as
+far as translation is concerned).
+
+
+\subsection{Signatures}
+\label{sec:signatures}
+
+
+Describe our notion of signatures (for structures), in particular, we
+have ML-like signatures with assertions. Assertions are written in
+ordinary classical first-order logic. Point out this is a plus since
+programmers typically are not trained in constructive logic.
+
+\subsection{Parametrized Theories and Functor Signatures}
+\label{sec:param-theor-funct}
+
+
+Mention that we can handle parametrized theories and functor
+signatures, but avoid explaining everything about them.
 
 \section{The Realizability Translation}
 \label{sec:real-transl}
 
+Here we provide more details about the translation.
 
 \section{Examples}
 \label{sec:examples}
 
-Decidable sets.
+Here are some possible examples.
 
-Group and groups.
+Decidable sets to point out the difference between a general modest
+set and one whose equality is actually computable.
 
-Finite sets.
+The difference between the theory of a group and theory of (finitely
+presentable) groups.
 
-Axiom of choice is not realizable. This is not propositions as types.
-But intensional axiom of choice is realized.
+Finite sets as the free join-semilattice.
 
-Real numbers and exact arithmetic.
+Axiom of choice is not realizable. This example is needed to point out
+that we are not doing propositions-as-types. But intensional axiom of
+choice is realized.
 
+Real numbers and exact arithmetic, if there is space.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
+We are the champions.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Bibliography
+
+\bibliographystyle{alpha}
+
+\bibliography{case}
 
 
 \end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
