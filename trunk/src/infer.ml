@@ -76,40 +76,41 @@ let emptyCtx = {implicits = NameMap.empty;
 (************************)
 
 exception TypeError
+exception SumError
 
-let tyGenericError msg = (print_string ("TYPE ERROR: " ^ msg ^ "\n");
+let tyGenericError msg = (print_string ("\nTYPE ERROR: " ^ msg ^ "\n\n");
                  raise TypeError)
 
 let tyMismatchError expr expected found =
-    (print_string "TYPE ERROR:  the expression ";
+    (print_string "\nTYPE ERROR:  the expression ";
      print_string (string_of_term expr);
      print_string "\nWas expected to have type: ";
      print_string (string_of_set expected);
      print_string "\nbut it actually has type: ";
      print_string (string_of_set found);
-     print_string "\n";
+     print_string "\n\n";
      raise TypeError)
 
 let tyJoinError ty1 ty2 =
-    (print_string "TYPE ERROR:  the types ";
+    (print_string "\nTYPE ERROR:  the types ";
      print_string (string_of_set ty1);
      print_string " and ";
      print_string (string_of_set ty2);
-     print_string " are incompatible\n";
+     print_string " are incompatible\n\n";
      raise TypeError)
 
+
+let tyCaseError expr term ty1 ty2 =
+    (print_string "\nTYPE ERROR:  The value ";
+     print_string (string_of_term term);
+     print_string " being analyzed has type  ";
+     print_string (string_of_set ty1);
+     print_string "\n but the patterns are expecting a value of type  ";
+     print_string (string_of_set ty2);
+     print_string "\n\n";
+     raise TypeError)
 
 (*
-let tyBinaryError expr ty1 ty2 =
-    (print_string "Type error in binary operator expression ";
-     print_string (string_of_term expr);
-     print_string "\nFirst operand has type: ";
-     print_string (string_of_set ty1);
-     print_string "\nand second operand has type: ";
-     print_string (string_of_set ty2);
-     print_string "\n";
-     raise TypeError)
-
 let tyCondError expr ty1 ty2 =
     (print_string "Type error in conditional expression: ";
      print_string (string_of_term expr);
@@ -117,25 +118,24 @@ let tyCondError expr ty1 ty2 =
      print_string (string_of_set ty1);
      print_string "\nand the second branch has type: ";
      print_string (string_of_set ty2);
-     print_string "\n";
+     print_string "\n\n";
      raise TypeError)
 *)
 
-
 let tyWrongSortError expr sort ty =
-    (print_string "TYPE ERROR: ";
+    (print_string "\nTYPE ERROR: ";
      print_string (string_of_term expr);
-     print_string " was expected to have a ";
+     print_string " is used as if it had a";
      print_string sort;
      print_string " type,\nbut it actually has type ";
      print_string (string_of_set ty);
-     print_string "\n";
+     print_string "\n\n";
      raise TypeError)
 
 let tyUnboundError name =
-    (print_string "ERROR:  Unbound variable ";
+    (print_string "\nTYPE ERROR:  Unbound variable ";
      print_string (string_of_name name);
-     print_string "\n";
+     print_string "\n\n";
      raise TypeError)
 
 
@@ -170,8 +170,9 @@ let eqSet' do_subtyping ctx s1 s2 =
 	| (Bool, Bool)   -> true       (** Bool <> Sum() for now *)
         | (Set_name n1, Set_name n2) -> (n1 = n2)
 	| (Product ss1, Product ss2) -> cmps (ss1,ss2)
-        | (Sum lsos1, Sum lsos2)     -> subsum (lsos1, lsos2) &&
-                                        (do_subtyping || subsum (lsos2, lsos1))
+        | (Sum lsos1, Sum lsos2)     -> 
+	      subsum (lsos1, lsos2) &&
+              (do_subtyping || subsum (lsos2, lsos1))
         | (Exp(s3,s4), Exp(s5,s6))   -> cmp (s5,s3) && cmp (s4,s6)
 	| (Subset(b1,p1), Subset(b2,p2)) -> 
             cmpbnd(b1,b2) && if (p1=p2) then
@@ -207,18 +208,11 @@ let eqSet' do_subtyping ctx s1 s2 =
        | ((l1,None   )::s1s, s2s) ->
 	     (try (let None = (List.assoc l1 s2s)
                    in subsum(s1s, s2s))
-	      with _ -> tyGenericError "Mismatch in sum types")
+	      with _ -> false)
        | ((l1,Some s1)::s1s, s2s) -> 
 	     (try (let Some s2 = (List.assoc l1 s2s)
                    in cmp(s1,s2) && subsum(s1s,s2s))
-	      with _ -> tyGenericError "Mismatch in sum types")
-
-      and cmpsum = function
-          ([], []) -> true
-	| ((l1,None   )::s1s, (l2,None   )::s2s) -> (l1=l2) && cmpsum(s1s,s2s)
-	| ((l1,Some s1)::s1s, (l2,Some s2)::s2s) -> 
-                                (l1=l2) && cmp(s1,s2) && cmpsum(s1s,s2s)
-        | (_,_) -> false
+	      with _ -> false)
 
       and cmpbnd = function
 	  (* Since we're not verifying equivalence of propositions,
@@ -404,7 +398,7 @@ and annotateTerm ctx =
         let    (t', tuplety) = ann t
         in let tys = (match (hnfSet ctx tuplety) with
 	                      Product tys -> tys
-	                    | _ -> tyWrongSortError t "tuple" tuplety)
+	                    | _ -> tyWrongSortError t " tuple" tuplety)
         in if (n >= 0 && n < List.length tys) then
               ((Proj(n,t'), List.nth tys n))
            else
@@ -414,7 +408,7 @@ and annotateTerm ctx =
         in let (t2', ty2) = ann t2
         in let (ty3,ty4) = (match (hnfSet ctx ty1) with
 	                      Exp(ty3,ty4) -> (ty3,ty4)
-	                    | _ -> tyWrongSortError t1 "function" ty1)
+	                    | _ -> tyWrongSortError t1 " function" ty1)
         in if (subSet ctx ty2 ty3) then
               (App (t1', t2'), ty4)
            else
@@ -446,10 +440,10 @@ and annotateTerm ctx =
          in let sum_set = Sum (List.map getSumPart l)
          in let return_set = joinSets ctx (List.map getReturn l)
 	 in
-	    if (subSet ctx sum_set ty) then
+	    if (eqSet ctx sum_set ty) then
 	      (newcase, return_set)
 	    else
-	      tyGenericError "patterns don't agree with type of matched value."
+	      tyCaseError ctx e ty sum_set
 
      | Quot(t, r) -> 
          (print_string "What is the type of an equivalence relation?";
@@ -459,7 +453,7 @@ and annotateTerm ctx =
 	 let (t', ty) = ann t in
 	   (match hnfSet ctx ty with
 		Rz ty' -> RzQuot t', ty'
-	      | _ -> tyGenericError "[] with a non-rz type")
+	      | _ -> tyWrongSortError t "n RZ" ty)
 
      | RzChoose (bnd, t1, t2) ->
 	 let (t1', ty1) = ann t1 in
