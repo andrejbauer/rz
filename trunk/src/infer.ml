@@ -78,7 +78,7 @@ let rec hnfSet ctx = function
       | None -> Set_name name)
   | set -> set
 
-let eqSet ctx s1 s2 = 
+let eqSet' do_subtyping ctx s1 s2 = 
    if (s1 = s2) then
       (* Short circuting for common case *)
       true
@@ -92,7 +92,8 @@ let eqSet ctx s1 s2 =
 	| (Bool, Bool)   -> true       (* Bool <> Sum() for now *)
         | (Set_name n1, Set_name n2) -> (n1 = n2)
 	| (Product ss1, Product ss2) -> cmps (ss1,ss2)
-        | (Sum lsos1, Sum lsos2)     -> cmpsum (lsos1, lsos2)
+        | (Sum lsos1, Sum lsos2)     -> subsum (lsos1, lsos2) &&
+                                        (do_subtyping || subsum (lsos2, lsos1))
         | (Exp(s3,s4), Exp(s5,s6))   -> cmp (s3,s5) && cmp (s4,s6)
 	| (Subset(b1,p1), Subset(b2,p2)) -> 
             cmpbnd(b1,b2) && if (p1=p2) then
@@ -123,6 +124,17 @@ let eqSet ctx s1 s2 =
 	| (s1::s1s, s2::s2s) -> cmp(s1,s2) && cmps(s1s,s2s)
         | (_,_) -> false
 
+      and subsum = function
+          ([], _) -> true
+       | ((l1,None   )::s1s, s2s) ->
+	     (try (let None = (List.assoc l1 s2s)
+                   in subsum(s1s, s2s))
+	      with _ -> tyError "Mismatch in sum types")
+       | ((l1,Some s1)::s1s, s2s) -> 
+	     (try (let Some s2 = (List.assoc l1 s2s)
+                   in cmp(s1,s2) && subsum(s1s,s2s))
+	      with _ -> tyError "Mismatch in sum types")
+
       and cmpsum = function
           ([], []) -> true
 	| ((l1,None   )::s1s, (l2,None   )::s2s) -> (l1=l2) && cmpsum(s1s,s2s)
@@ -139,11 +151,53 @@ let eqSet ctx s1 s2 =
 
       in cmp(s1', s2')
 
-let subSet  ctx s1 s2 =
-  match hnfSet ctx s1 with
-      Subset ((_, Some t), _) -> eqSet ctx t s2
-    | _ -> false
+let eqSet  = eqSet' false
+let subSet = eqSet' true
 
+let joinSet ctx s1 s2 = 
+   if (s1 = s2) then
+      (* Short circuting *)
+      s1
+   else
+      let    s1' = hnfSet ctx s1
+      in let s2' = hnfSet ctx s2
+
+      in let rec joinSums = function 
+	  ([], s2s) -> s2s
+        | ((l1,None)::s1s, s2s) ->
+	    (if (List.mem_assoc l1 s2s) then
+	      try
+		let None = List.assoc l1 s2s
+		in (l1,None) :: joinSums(s1s, s2s)
+              with _ -> tyError "Mismatch in sums [None/Some]"
+	    else (l1,None) :: joinSums(s1s, s2s))
+        | ((l1,Some s1)::s1s, s2s) ->
+	    (if (List.mem_assoc l1 s2s) then
+	      try
+		let Some s2 = List.assoc l1 s2s
+		in if eqSet ctx s1 s2 then
+		      (l1,None) :: joinSums(s1s, s2s)
+		else
+		    tyError "Mismatch in sums [Some/Some]"
+              with _ -> tyError "Mismatch in sums [Some/None]"
+	    else (l1,None) :: joinSums(s1s, s2s))
+
+
+      in match (s1',s2') with
+        | (Sum lsos1, Sum lsos2) -> Sum (joinSums (lsos1, lsos2))
+        | _ -> if eqSet ctx s1 s2 then
+                  s1
+       	       else
+	          tyError "Sets don't have a join"
+ 
+
+let joinSets ctx =
+  let rec loop = function
+      [] -> Unit
+    | [s] -> s
+    | s::ss -> joinSet ctx s (loop ss)
+  in
+    loop
 
 (*****************************************)
 (** {2 Typechecking/Type Reconstruction} *)
@@ -194,15 +248,13 @@ and annotateProp ctx =
         | Equal (None, t1, t2) ->
             let    (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
-            in if (eqSet ctx ty1 ty2) then
-                  Equal(Some ty1, t1', t2')
-               else
-                  tyError "Operands of equality in different sets"
+            in let ty3 = joinSet ctx ty1 ty2
+            in Equal(Some ty3, t1', t2')
         | Equal (Some s, t1, t2) ->
             let    ty = annotateSet ctx s
             in let (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
-            in if (eqSet ctx ty1 ty) && (eqSet ctx ty2 ty) then
+            in if (subSet ctx ty1 ty) && (subSet ctx ty2 ty) then
                 Equal(Some ty, t1', t2')
               else
                 tyError "Operands of equality don't match constraint"
@@ -244,7 +296,7 @@ and annotateTerm ctx =
      | Constraint(t,s) ->
         let    (t',ty) = ann t
         in let s' = annotateSet ctx s
-        in if eqSet ctx ty s' then
+        in if subSet ctx ty s' then
               (Constraint(t',s'), s')
            else
               tyError "Invalid constraint"
@@ -255,26 +307,46 @@ and annotateTerm ctx =
      | Proj (n, t) -> 
         let    (t', tuplety) = ann t
         in let Product tys = hnfSet ctx tuplety
-        in if (n >= 1 && n <= List.length tys) then
-              (Proj(n,t'), List.nth tys (n+1))
+        in if (n >= 0 && n < List.length tys) then
+              ((Proj(n,t'), List.nth tys n))
            else
               tyError ("Projection " ^ string_of_int n ^ " out of bounds")
      | App (t1, t2) ->
         let    (t1', ty1) = ann t1
         in let (t2', ty2) = ann t2
         in let Exp(ty3,ty4) = hnfSet ctx ty1
-        in if (eqSet ctx ty2 ty3) then
+        in if (subSet ctx ty2 ty3) then
               (App (t1', t2'), ty4)
            else
               tyError "Application has invalid argument"
 
-     | Inj(_,_) -> 
-         (print_string "Cannot typecheck Injections until they're annotated";
-          raise Unimplemented)
+     | Inj(l,e) -> 
+        let (e', ty)= ann e
+        in (Inj(l,e'), Sum [(l, Some ty)])
 
-     | Case(_,_) -> 
-         (print_string "No point in implementing Case until we have Inj";
-          raise Unimplemented)
+     | Case(e,arms) -> 
+	 let (e', ty) = ann e
+
+	 in let annArm = function
+             (l, None, e) -> 
+                let (e', ty2) = ann e
+		in ((l, None, e'), (l, None), ty2)
+           | (l, Some bnd, e) ->
+                let    ((_,Some ty1) as bnd', ctx') = annotateBinding ctx bnd
+		in let (e', ty2) = annotateTerm ctx' e
+		in ((l, Some bnd', e'), (l, Some ty1), ty2)
+         in let getArm = fun (arm,_,_) -> arm
+         in let getSumPart = fun (_,sp,_) -> sp
+         in let getReturn = fun (_,_,ret) -> ret
+	 in let l = List.map annArm arms
+	 in let newcase = Case(e', List.map getArm l)
+         in let sum_set = Sum (List.map getSumPart l)
+         in let return_set = joinSets ctx (List.map getReturn l)
+	 in
+	    if (subSet ctx sum_set ty) then
+	      (newcase, return_set)
+	    else
+	      tyError "patterns don't agree with type of matched value."
 
      | Quot(t, r) -> 
          (print_string "What is the type of an equivalence relation?";
@@ -301,17 +373,24 @@ and annotateTerm ctx =
      | Subin (t, s) ->
 	 let s' = annotateSet ctx s in
 	 let (t', ty) = annotateTerm ctx t in
-	   if subSet ctx s' ty then
-	     (Subin (t', s'), s')
-	   else tyError("Subset mismatch :>")
+	   (match hnfSet ctx s' with
+	     Subset ((_, Some t), _) -> 
+	       if (subSet ctx ty t) then
+		 (Subin (t', s'), s')
+	       else
+		 tyError("Subset mismatch :>")
+	   | _ -> tyError("Subset mismatch :>"))
 
      | Subout (t, s) ->
 	 let s' = annotateSet ctx s in
 	 let (t', ty) = annotateTerm ctx t in
-	   if subSet ctx ty s' then
-	     (Subout (t', s'), s')
-	   else tyError ("Subset mismatch :<")
-
+	   (match hnfSet ctx ty with
+	     Subset ((_, Some t), _) -> 
+	       if (subSet ctx t s') then
+		 (Subout (t', s'), s')
+	       else
+		 tyError("Subset mismatch :<")
+	   | _ -> tyError("Subset mismatch :<"))
 
      | _ -> tyError "Proposition found where a term was expected"
    in ann)
@@ -328,7 +407,7 @@ and annotateTheoryElem ctx =
        | Let_term(bnd,t) ->
            let    (t', ty1) = annotateTerm ctx t
            in let ((_,Some ty2) as bnd', ctx') = annotateBinding ctx bnd
-           in if (eqSet ctx ty1 ty2) then
+           in if (subSet ctx ty1 ty2) then
                 (Let_term(bnd',t'), ctx')
               else
                 tyError "Term definition doesn't match constraint"

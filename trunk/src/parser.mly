@@ -243,7 +243,10 @@ simple_term:
   | LPAREN term_seq RPAREN      { Tuple $2 }
   | LPAREN term RPAREN          { $2 }
   | BEGIN term END              { $2 }
-  | simple_term HASH INTEGER    { Proj ($3, $1) }
+  | simple_term PERIOD INTEGER    { Proj ($3, $1) }
+  | simple_term PERIOD ZERO       { Proj (0, $1) }
+  | simple_term PERIOD ONE        { Proj (1, $1) }
+  | simple_term PERIOD TWO        { Proj (2, $1) }
   | PREFIXOP simple_term        { App (Var ($1, Prefix), $2) }
   | NOT simple_term             { Not $2 }
 

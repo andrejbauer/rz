@@ -66,12 +66,12 @@ rule token = parse
 			| k -> INTEGER k
 		    }
   | '='             { EQUAL }
-  | '#'             { HASH }
   | '|'             { BAR }
   | "->"            { ARROW }
   | '`' ident       { let w = Lexing.lexeme lexbuf in
 			LABEL (String.sub w 1 (String.length w - 1))
 		    }
+
   | ':'             { COLON }
   | ":>"            { SUBIN }
   | ":<"            { SUBOUT }

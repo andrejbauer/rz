@@ -106,8 +106,8 @@ let rec optTy ctx ty =
     hnfTy ctx ans
 
 (* optTerm ctx e = (t, e', t')
-      where e' is the optimized version of e
-            t  is the original type of e under ctx
+      where t  is the original type of e under ctx
+            e' is the optimized version of e
             t' is the optimized type (i.e., the type of e')
 
       Never returns Tuple []
@@ -123,16 +123,14 @@ let rec optTerm ctx = function
  | App(e1,e2) -> 
      let    (ArrowTy(ty2, oldty), e1', ty1') = optTerm ctx e1
      in let (_, e2', ty2') = optTerm ctx e2
-     in (match (optTy ctx oldty, hnfTy ctx ty2') with
+     in let ty' = optTy ctx oldty
+     in (match (ty', hnfTy ctx ty2') with
            (TopTy, _) -> (* Application can be eliminated entirely *)
-                            (oldty, Dagger, TopTy)
+                            ((oldty, Dagger, TopTy))
          | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
-                            (oldty, e1', ty1')
+                            ((oldty, e1', ty1'))
          | (ty', _)    -> (* Both parts matter *)
-                            (oldty, App(e1', e2'), ty'))
-(** AB: Why doesn't this work as expected?
- | Tuple [] -> (TupleTy [], Dagger, TopTy)
-**)
+                            ((oldty, App(e1', e2'), ty')))
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
      in (topTyize (TupleTy ts), Tuple es', topTyize (TupleTy ts'))
@@ -157,7 +155,7 @@ let rec optTerm ctx = function
               Check if it's the only interesting value in the tuple. *)
            if (nonunits = 0 && List.length(List.filter notTopTy tys')=0) then
               (* Yes; there were no non-unit types before or after. *)
-	     (ty, e, ty')
+	     (ty, e', ty')
            else
               (* Nope; there are multiple values so the tuple is 
                  still a tuple and this projection is still a projection *)
@@ -223,8 +221,21 @@ and optProp ctx = function
       in loop(ps,[])
 
     (** XXX: Further simplifications possible *)
-  | Imply (p1, p2) -> Imply(optProp ctx p1, optProp ctx p2)
-  | Iff (p1, p2) -> Iff(optProp ctx p1, optProp ctx p2)
+  | Imply (p1, p2) -> 
+      (match (optProp ctx p1, optProp ctx p2) with
+        (True,  p2'  ) -> p2'
+      | (False, _    ) -> True
+      | (_,     True ) -> True
+      | (p1',   False) -> Not p1'
+      | (p1',   p2'  ) -> Imply(p1', p2'))
+
+  | Iff (p1, p2) -> 
+      (match (optProp ctx p1, optProp ctx p2) with
+        (True,  p2'  ) -> p2'
+      | (False, p2'  ) -> Not p2'
+      | (p1',   True ) -> p1'
+      | (p1',   False) -> Not p1'
+      | (p1',   p2'  ) -> Iff(p1', p2'))
 
   | Not p -> (match optProp ctx p with
       True -> False
@@ -233,7 +244,7 @@ and optProp ctx = function
 
   | Forall((n,ty), p) ->
       let p' = optProp (insertType ctx n ty) p
-      in (match optTy ctx ty with
+      in (match (optTy ctx ty) with
         TopTy -> p'
       | ty' -> Forall((n,ty'), p'))
 
