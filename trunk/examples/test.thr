@@ -1,0 +1,9 @@
+theory foo =
+thy
+  stable relation (~) f g =
+    (all (n : nat) . f n = false) <=> (all (n : nat). g n = false)
+
+  set t = (nat -> 2)/(~)
+
+  const p = match x x with `foo a -> g a | `bar b -> f b end
+end

@@ -1,0 +1,4 @@
+parser.cmo: message.cmo parser.cmi 
+parser.cmx: message.cmx parser.cmi 
+toplevel.cmo: message.cmo parser.cmi 
+toplevel.cmx: message.cmx parser.cmx 

@@ -1,0 +1,17 @@
+theory Real =
+thy
+  set r
+  relation apart : r * r
+
+  constant z : r
+  constant e : r
+  constant p : r * r -> r
+  constant m : r * r -> r
+  constant n : r * r -> r
+
+  set r_nonzero = { x : r | apart (x, r) }
+
+  const d : r * r_nonzero -> r
+
+  constant x = let y = let z = u in z in (y, y)
+end
