@@ -92,13 +92,13 @@ let make_type_name _ = function
 
 let rec translateSet ctx = function
     L.Empty -> 
-      { ty = VoidTy;
+      { ty = TopTy;
 	tot = (any, False);
 	per = (any, any, False)
       }
   | L.Unit ->
       let x = fresh [mk_word "x"] [] ctx in
-      { ty = UnitTy;
+      { ty = TopTy;
 	tot = (x, Equal (Id x, Star));
 	per = (any, any, True)
       }
@@ -242,9 +242,9 @@ and translateTerm ctx = function
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
 and translateProp ctx = function
-    L.False -> (VoidTy, any, False)
+    L.False -> (TopTy, any, False)
 
-  | L.True -> (UnitTy, any, True)
+  | L.True -> (TopTy, any, True)
 
   | L.Atomic (n, t) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
@@ -330,13 +330,13 @@ and translateProp ctx = function
 
   | L.Not p ->
       let (t, n, p') = translateProp ctx p in
-	(UnitTy, any, Forall ((n, t), Not p'))
+	(TopTy, any, Forall ((n, t), Not p'))
 
   | L.Equal (s, t, u) ->
       let {per=(x,y,p)} = translateSet ctx s in
       let t' = translateTerm ctx t in
       let u' = translateTerm ctx u in
-	(UnitTy, any, substProp ctx [(x,t'); (y,u')] p)
+	(TopTy, any, substProp ctx [(x,t'); (y,u')] p)
 
 let translateBinding ctx bind = List.map (fun (n, s) -> (n, (translateSet ctx s).ty)) bind
 

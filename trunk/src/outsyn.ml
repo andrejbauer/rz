@@ -5,7 +5,7 @@ type label = string
 type ty =
     NamedTy of string          (* 0 *)
   | UnitTy                     (* 0 *)
-  | VoidTy                     (* 0 *)
+  | TopTy                      (* 0 *)
   | ListTy of ty               (* 1 *)
   | SumTy of (label * ty) list (* 1 *)
   | TupleTy of ty list         (* 2 *)
@@ -208,7 +208,7 @@ let rec string_of_ty' level t =
        (match t with
             NamedTy name   -> (0, name)
 	  | UnitTy         -> (0, "unit")
-	  | VoidTy         -> (0, "void")
+	  | TopTy          -> (0, "top")
           | ListTy t       -> (1, (string_of_ty' 1 t) ^ "list")
 	  | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
