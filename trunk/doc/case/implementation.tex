@@ -37,7 +37,7 @@ to type check.  Thus, one can write
   set real
   set nz_real = {x:real | not (x=zero)}
   const one : real
-  const reciprocal: nz_real -> nz_real
+  const inv: nz_real -> nz_real
   const ( * ) : real * real -> real
 
   axiom field (x : real) =
@@ -54,10 +54,10 @@ In this case, since \Verb|:>| and \Verb|:<| has computational content
 (going into a subset involves pairing the item with the realizer of
 the proposition; going out of a subset is then a first projection),
 the typechecker rewrites the former version of \Verb|field| into the
-latter before passing it on to the translation phase.  If injections
+latter before passing it on to the translation phase. If injections
 into subsets are cannot be justified in the theory (e.g., if the
 \Verb|field| axiom lacked the premise \Verb|not (x=zero)|) then the
-theory will still translate, the generated assertions will not be
+theory will still translate, but the generated assertions will not be
 satisfied by any implementation.
 
 \subsection{Realizability Translation}
@@ -116,8 +116,8 @@ easily recognized syntactically: they are built from any combination
 of $\land$, $\implies$, $\forall$, $=$, and those basic predicates
 that are known to be stable, but $\exists$ and $\lor$ are only allowed
 to appear on the left side of an~$\implies$.\footnote{A
-  \emph{negative} formula is one that does not contain any $\exists$
-  and $\lor$ at all.}
+  \emph{negative} formula is one that does not contain $\exists$ and
+  $\lor$ at all.}
 
 The following theorem is a precise formulation of the claims we made
 in a paragraph above.
@@ -135,11 +135,30 @@ in the theorem is simply the set of terms of the underlying
 type~$\ut{\phi}$ of realizers, while the intuitive meaning of
 $\phi'(r)$ is ``$r$ realizes $\phi$''.
 
+RZ translates an axiom~$\phi$, or any other proposition it encounters,
+by computing its underlying type $\ut{\phi}$ and the almost negative
+formula $\phi'$ from the above theorem. In the output signature it
+then emits
+%
+\begin{align*}
+  & \mathtt{val}\ r : \ut{\phi} \\
+  & \text{(* Assertion $\phi'(r)$ *)}
+\end{align*}
+%
+This way the axiom~$\phi$ has been separated into its computational
+content~$r$ and a statement $\phi'$ which describes when~$r$ is a
+valid realizer of~$\phi$. Because $\phi'$ is almost negative it has no
+computational content, which means that its classical reading is the
+same as constructive reading. Therefore a constructive mathematician
+and a classical programmer will agree on the meaning of $\phi'(r)$.
 
-
-
+RZ recognizes almost negative formulas and optimizes away their
+realizers, as described in the next Subsection. In addition, the user
+may declare a basic predicate or relation to be stable, which will be
+taken into account by RZ during translation and optimization.
 
 \subsection{Optimization}
+
 Propositions without constructive content have trivial realizers, and
 so a final ``unit elimination'' pass both removes these and does 
 peephole simplification of the resulting signature.   Without an optimizer,
