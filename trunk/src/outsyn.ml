@@ -321,6 +321,10 @@ and substTy ?occ sbst = function
   | ArrowTy (ty1, ty2) -> ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
   | TYPE -> TYPE
 
+and substTyOption ?occ sbst = function
+    None -> None
+  | Some ty -> Some ( substTy ?occ sbst ty )
+
 and substModest ?occ sbst {ty=ty; tot=(x,p); per=(y,z,q)} =
   { ty = substTy ?occ sbst ty;
     tot = (let x' = freshName [x] [] ?occ sbst in
