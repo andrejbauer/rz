@@ -339,10 +339,33 @@ and annotateProp ctx =
         | Exists(bnd, p) ->
             let (bnd',ctx') = annotateBinding ctx bnd
             in Exists(bnd', annotateProp ctx' p)
+	| Case(e,arms) -> 
+	    let (e', ty) = annotateTerm ctx e
+
+	    in let annArm = function
+		(l, None, prop) -> 
+                  let prop' = ann prop
+		  in ((l, None, prop'), (l, None))
+              | (l, Some bnd, prop) ->
+                  let    ((_,Some ty1) as bnd', ctx') = annotateBinding ctx bnd
+		  in let prop' = annotateProp ctx' prop
+		  in ((l, Some bnd', prop'), (l, Some ty1))
+	    in let l = List.map annArm arms
+	    in let newcase = Case(e', List.map fst l)
+            in let sum_set = Sum (List.map snd l)
+	    in
+	    if (eqSet ctx sum_set ty) then
+	      newcase
+	    else
+	      tyCaseError ctx e ty sum_set
+
         | t -> (match annotateTerm ctx t with
                     (t', Prop) -> t'
                   | (t', StableProp) -> t'
-                  | _ -> tyGenericError "Term found where a proposition was expected")
+                  | _ -> tyGenericError ("Term " ^ 
+					 string_of_term t ^ 
+					 " found where a proposition" ^ 
+					 " was expected"))
     in ann)
            
 and annotateBinding ctx = function
