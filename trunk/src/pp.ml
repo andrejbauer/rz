@@ -301,20 +301,36 @@ and output_ty_0 ppf = function
   | typ        -> ((* print_string (string_of_ty typ); *)
 		   fprintf ppf "(%a)"  output_ty typ)
 
+and output_assertion ppf = function
+    (nm, [], p) ->
+      fprintf ppf "@[<hov 2>Assertion %s = @ %a@]"  nm   output_prop p
+  | (nm, binds, p) ->
+      fprintf ppf "@[<hov 7>Assertion %s (%a) = @ %a@]" 
+	nm   output_binds binds   output_prop p
+
+and output_assertions ppf = function
+    [] -> ()
+  | assertions ->
+      let rec loop ppf = function
+	  [] -> ()
+	| [assertion] ->
+	      output_assertion ppf assertion
+	| assertion::assertions -> 
+	    fprintf ppf "%a@, @,%a" 
+	      output_assertion assertion   loop assertions
+      in
+	fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
 
 and output_spec ppf = function
-    ValSpec (nm, ty) ->
-      fprintf ppf "@[val %s : %a@]" 
-      (string_of_name nm)   output_ty ty
-  | TySpec (tynm, None) -> 
-      fprintf ppf "@[type %s@]"  tynm
-  | TySpec (tynm, Some ty) -> 
-      fprintf ppf "@[type %s =@ %a@]"  tynm   output_ty ty
-  | AssertionSpec (nm, [], p) ->
-      fprintf ppf "@[<hov 2>(** Assertion %s =@ %a@ *)@]"  nm   output_prop p
-  | AssertionSpec (nm, binds, p) ->
-      fprintf ppf "@[<hov 7>(** Assertion %s (%a) =@\n%a@ *)@]" 
-	nm   output_binds binds   output_prop p
+    ValSpec (nm, ty, assertions) ->
+      fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
+      (string_of_name nm)   output_ty ty  output_assertions assertions
+  | TySpec (tynm, None, assertions) -> 
+      fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  tynm   output_assertions assertions
+  | TySpec (tynm, Some ty, assertions) -> 
+      fprintf ppf "@[<v>@[<hov 2>type %s =@ %a@]%a@]"  
+	tynm   output_ty ty   output_assertions assertions
+  | AssertionSpec assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
       fprintf ppf "(**%s*)" cmmnt
   | StructureSpec (nm, [], sgntr) ->
@@ -327,28 +343,31 @@ and output_spec ppf = function
 	    fprintf ppf "%s:%a,@ %a" 
 	      n   output_signat t   output_args args
       in
-	fprintf ppf "@[<v>module %s(%a) :@.    @[%a@]@]@."  
+	fprintf ppf "@[<v>module %s(%a) :@,    @[%a@]@]@,"  
 	  nm   output_args mdlbind   output_signat sgntr
 
 and output_specs ppf = function
     [] -> ()
   | [spec] -> output_spec ppf spec
   | spec::specs -> 
-      fprintf ppf "%a@,@,%a" output_spec spec output_specs specs
+      fprintf ppf "%a@, @,%a" output_spec spec output_specs specs
 
 and output_signat ppf = function
     SignatID s -> fprintf ppf "%s" s
-  | Signat body -> fprintf ppf "@[<v 2>sig@,%a@]@,end"  output_specs body
+  | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
 
 and output_toplevel ppf = function
     Signatdef (s, args, body) ->
       let rec output_args ppf = function
 	  [] -> ()
+	| [(n,t)] -> 
+	    fprintf ppf "functor (%s : %a) ->@," 
+	      n   output_signat t 
 	| (n,t)::args -> 
-	    fprintf ppf "@,functor (%s : %a) ->@ %a" 
+	    fprintf ppf "functor (%s : %a) ->@, %a" 
 	      n   output_signat t   output_args args
       in
-	fprintf ppf "@[<v>module type %s = %a@,%a@]@.@."  
+	fprintf ppf "@[<v>module type %s = @[<v>%a@]@,   @[<v>%a@]@]@.@."  
 	  s   output_args args   output_signat body
   | TopComment cmmnt -> 
       fprintf ppf "@[(**%s*)@]@." cmmnt

@@ -58,10 +58,6 @@ let rec string_of_ctx {types=types; tydefs=tydefs; models=models} =
   "  models = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) models)) ^ "],\n" ^
  "}"
 
-(** Determines whether a variable has an implicitly declared type.
-     @param ctx  The type reconstruction context
-     @param str  The (string) name of the variable.
-  *)
 let lookupType     ctx   n = lookupName (n, ctx.types)
 let lookupTydef    ctx str = lookup (str, ctx.tydefs)
 let lookupModel    ctx str = lookup (str, ctx.models)
@@ -386,23 +382,34 @@ and optProp ctx = function
 	   | (TopTy, _) -> p'
 	   | (ty', _) -> Cexists((n, ty'), p'))
 
-      
+and optAssertion ctx (name, bnds, prop) =
+      let ctx' = insertTypeBnds ctx bnds in
+      let bnds' = optBinds ctx bnds in
+      let prop' = optProp ctx' prop
+      in
+	(name, bnds', prop')
+
+
 and optElems ctx = function
     [] -> [], emptyCtx
-  |  ValSpec(name, ty) :: rest ->
-      let    ty'   = optTy ctx ty
-      in let rest', ctx' = optElems (insertType ctx name ty) rest in
+  |  ValSpec(name, ty, assertions) :: rest ->
+      let ty'  = optTy ctx ty in
+      let ctx' = insertType ctx name ty in
+      let assertions' = List.map (optAssertion ctx') assertions
+      in let (rest', ctx'') = optElems (insertType ctx name ty) rest in
 	(match ty' with
   	     TopTy -> 
-	       rest', ctx'
+	       (** Keep the (non-computational) assertions even if the 
+		 computational part is elided for being trivial *)
+	       (List.map (fun a -> AssertionSpec a) assertions' @ rest', ctx'')
 	   | ty' ->
-	       ValSpec (name, ty') :: rest', (insertType ctx' name ty'))
+	       (ValSpec (name, ty', assertions') :: rest', 
+		insertType ctx'' name ty'))
 	
-  |  AssertionSpec(name, bnds, prop) :: rest ->
-       let ctx' = insertTypeBnds ctx bnds in
-       let bnds' = optBinds ctx bnds in
-       let rest', ctx'' = optElems ctx rest in
-	 (AssertionSpec (name, bnds', optProp ctx' prop) :: rest'), ctx''
+  |  AssertionSpec assertion  ::  rest ->
+       let assertion' = optAssertion ctx assertion in
+       let (rest', ctx') = optElems ctx rest in
+	 (AssertionSpec assertion' :: rest'), ctx'
 
   | StructureSpec (name,sbnds,signat) :: rest -> 
       let (sbnds',ctx') = optStructBindings ctx sbnds
@@ -415,14 +422,21 @@ and optElems ctx = function
       in (StructureSpec (name, sbnds', signat') :: rest',
 	  ctx'''')
 
-  |  TySpec(nm, None) :: rest -> 
-       let rest', ctx' = optElems ctx rest in
-	 (TySpec (nm, None) :: rest'), insertTydef ctx' nm TYPE
+  |  TySpec(nm, None, assertions) :: rest -> 
+       (** We don't add nm to the input context of optAssertion
+       because we never need to know whether something is a type or
+       not; we're assuming that the input was well-formed *)
+       let assertions' = List.map (optAssertion ctx) assertions in
+       let rest', ctx'' = optElems ctx rest in
+	 (TySpec (nm, None, assertions') :: rest'), insertTydef ctx'' nm TYPE
 
-  |  TySpec(nm, Some ty) :: rest ->
+  |  TySpec(nm, Some ty, assertions) :: rest ->
        let ty' = optTy ctx ty in
-       let rest', ctx' = optElems (insertTydef ctx nm ty') rest in
-	 TySpec(nm, Some ty') :: rest', (insertTydef ctx' nm ty')
+	 (** We might care about expanding a definition for nm, though *)
+       let ctx' = insertTydef ctx nm ty'  in
+       let assertions' = List.map (optAssertion ctx') assertions in
+       let rest', ctx'' = optElems ctx'  rest in
+	 TySpec(nm, Some ty',assertions') :: rest', (insertTydef ctx'' nm ty')
 
   |  Comment cmmnt :: rest -> 
        let rest', ctx' = optElems ctx rest in

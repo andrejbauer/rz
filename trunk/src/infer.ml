@@ -506,7 +506,7 @@ let eqSet' do_subtyping cntxt s1 s2 =
 	      subsum (lsos1, lsos2) &&
               (do_subtyping || subsum (lsos2, lsos1))
         | (Exp(s3,s4), Exp(s5,s6))   -> cmp (s5,s3) && cmp (s4,s6)
-	| (Subset((nm1,_) as b1,p1), Subset((nm2,_) as b2,p2)) -> 
+	| (Subset((nm1,Some st1) as b1,p1),(Subset((nm2,_) as b2,p2) as st3))-> 
             cmpbnd(b1,b2) && 
 	    (** Alpha-vary the propositions so that they're using the
                 same (fresh) variable name *)
@@ -515,14 +515,21 @@ let eqSet' do_subtyping cntxt s1 s2 =
 	    in let sub2 = insertTermvar emptysubst nm2 (Var nm3)
 	    in let p1' = subst sub1 p1
 	    in let p2' = subst sub2 p2
-	    in p1' = p2'   (* Even if p1' and p2' are logically equivalent,
-			      their corresponding realizations may have
-			      different types and so the subsets are not
-			      *implicitly* convertible *)
+	    in if p1' = p2' then
+		true
+	      else
+		(** Even if p1' and p2' are *logically* equivalent,
+		  their corresponding realizations may have different
+		  types and so the subsets are not *implicitly*
+		  convertible *)
+		(** Try an implicit out-of-subset conversion, if
+		  we're doing subtyping *)
+		do_subtyping && cmp(st1,st3)
+		
         | (Subset((_,Some st1),prp1), st2) -> 
-	    cmp(st1,st2)  (** Will automatically coerce a subset value to a 
-			      NON-subset value.  For nested subsets you're
-                              on your own. *)
+	    (** Try an implicit out-of-subset conversion, if we're
+	      doing subtyping. *)
+	    do_subtyping  && cmp(st1,st2)  
         | (Quotient(s3,r3), Quotient(s4,r4)) -> r3 = r4 && cmp(s3,s4)
         | (Rz s3, Rz s4) -> cmp(s3, s4)
 
@@ -562,7 +569,9 @@ let eqSet' do_subtyping cntxt s1 s2 =
 let eqSet  = eqSet' false
 let subSet = eqSet' true
 
-(** Computes the join of the two sets s1 and s2 *)
+(** Computes the join of the two sets s1 and s2.
+   Unlike subtyping, join does *not* do implicit conversions
+   for subsets.  *)
 let joinSet cntxt s1 s2 = 
    if (s1 = s2) then
       (* Short circut *)

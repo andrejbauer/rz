@@ -452,15 +452,14 @@ and translateBinding ctx bind =
 
 and translateTheoryElement ctx = function
     L.Set n -> 
-      [TySpec (n, None); 
-       AssertionSpec ("per_" ^ n, [], IsPer n)],
+      [TySpec (n, None, [("per_" ^ n, [], IsPer n)])],
       addBind (Syntax.N(n, Syntax.Word)) L.SET ctx
 
   | L.Let_set (n, s) ->
       (let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
-	[TySpec (n, Some t);
-	 AssertionSpec (n ^ "_def_total", [(x,t)], Iff (NamedTotal (ln_of_string n, toId x), p));
-	 AssertionSpec (n ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (ln_of_string n, toId y, toId y'), q))
+	[TySpec (n, Some t,
+	 [(n ^ "_def_total", [(x,t)], Iff (NamedTotal (ln_of_string n, toId x), p));
+	  (n ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (ln_of_string n, toId y, toId y'), q))])
 	]
       ),
       addSet (Syntax.N(n, Syntax.Word)) s ctx
@@ -475,11 +474,11 @@ and translateTheoryElement ctx = function
 		  TopTy else
 		    NamedTy (toLN n))
       in
-	((if stab = Syntax.Stable or stab = Syntax.Equivalence then
-	    []
-	  else
-	    [TySpec (Syntax.string_of_name n, None)])) @
-	[AssertionSpec ("predicate_" ^ (Syntax.string_of_name n), [], IsPredicate n)],
+	[TySpec (Syntax.string_of_name n, None,
+		 if stab = Syntax.Stable or stab = Syntax.Equivalence then
+		   []
+		 else
+		   [("predicate_" ^ (Syntax.string_of_name n), [], IsPredicate n)])],
 	addProp n (stab, None) ctx
     end
 
@@ -488,27 +487,26 @@ and translateTheoryElement ctx = function
       let ctx' = addBinding bind ctx in
       let (ty, r, p') = translateProp ctx' p in
       let r' = fresh [r] (List.map fst bind) ctx in
-	[TySpec (Syntax.string_of_name n, Some ty);
-	 AssertionSpec ((Syntax.string_of_name n) ^ "_def",
+	[TySpec (Syntax.string_of_name n, Some ty,
+	 [((Syntax.string_of_name n) ^ "_def",
 	   (r',ty) :: bind',
 	   Iff (NamedProp (toLN n, toId r', List.map (fun (y,_) -> toId y) bind),
-		substProp ctx ([(r, toId r')]) p'))
-	],
+		substProp ctx ([(r, toId r')]) p'))])]
+	,
 	addProp n (stab, Some (bind, p)) ctx
 
   | L.Let_term (n, s, t) ->
       let {ty=u; per=(y,y',q)} = translateSet ctx s in
       let t' = translateTerm ctx t in
-      [ValSpec (n, u);
-       AssertionSpec((Syntax.string_of_name n) ^ "_def", [], substProp ctx [(y, toId n); (y', t')] q)
+      [ValSpec (n, u, [((Syntax.string_of_name n) ^ "_def", [], 
+			substProp ctx [(y, toId n); (y', t')] q)])
       ],
       addTerm n t (addBind n s ctx)
 
   | L.Value (n, s) ->
       let {ty=t; tot=(x,p)} = translateSet ctx s in
-      [ValSpec (n, t);
-       AssertionSpec ((Syntax.string_of_name n) ^ "_total", [],
-		      substProp ctx [(x, toId n)] p)],
+      [ValSpec (n, t, [((Syntax.string_of_name n) ^ "_total", [],
+		      substProp ctx [(x, toId n)] p)])],
       addBind n s ctx
 
   | L.Comment cmmnt -> ([Comment cmmnt], ctx)
@@ -520,8 +518,8 @@ and translateTheoryElement ctx = function
 	let bnd = translateBinding ctx' valbnd in
 	let (typ, x, prp') = translateProp ctx'' prp in
 	let elems =
-	  [ ValSpec (nm, typ);
-	    AssertionSpec (Syntax.string_of_name nm, bnd, substProp ctx'' [(x, toId nm)] prp') ]
+	  [ ValSpec (nm, typ, [(Syntax.string_of_name nm, bnd, 
+				substProp ctx'' [(x, toId nm)] prp')]) ]
 	in
 	  if mdlbind = [] then
 	    elems

@@ -61,11 +61,12 @@ and proposition =
   | ForallTotal of binding * proposition
   | Cexists of binding * proposition (** classical existential *)
 
+type assertion = string * binding list * proposition
 type signat_element =
-    ValSpec of name * ty
+    ValSpec of name * ty * assertion list
   | StructureSpec of structure_name * struct_binding list * signat
-  | AssertionSpec of string * binding list * proposition
-  | TySpec of set_name * ty option
+  | AssertionSpec of assertion
+  | TySpec of set_name * ty option * assertion list
   | Comment of string
 
 and signat =
@@ -509,15 +510,25 @@ and string_of_proposition p = string_of_prop 999 p
 let string_of_bind bind =
     String.concat ", " (List.map (fun (n,t) -> (Syntax.string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
 
+let string_of_assertion (nm, bind, p) =
+  "(** Assertion " ^ nm ^ ":\n" ^
+  (if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
+  (string_of_proposition p) ^ "\n*)"
+
+let string_of_assertions assertions = 
+  (String.concat "\n" (List.map string_of_assertion assertions))
+
 let rec string_of_spec = function
-    ValSpec (nm, ty) ->
-      "val " ^ (Syntax.string_of_name nm) ^ " : " ^ (string_of_ty ty)
-    | TySpec (nm, None) -> "type " ^ nm
-    | TySpec (nm, Some ty) -> "type " ^ nm ^ " = " ^ (string_of_ty ty)
-    | AssertionSpec (nm, bind, p) ->
-	"(** Assertion " ^ nm ^ ":\n" ^
-	(if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
-	(string_of_proposition p) ^ "\n*)"
+    ValSpec (nm, ty, assertions) ->
+      "val " ^ (Syntax.string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
+      ^ string_of_assertions assertions
+    | TySpec (nm, None, assertions) -> 
+	"type " ^ nm ^ "\n" ^ string_of_assertions assertions
+    | TySpec (nm, Some ty, assertions) -> 
+	"type " ^ nm ^ " = " ^ (string_of_ty ty) ^ "\n" ^ 
+	string_of_assertions assertions
+    | AssertionSpec assertion ->
+	string_of_assertion assertion
     | StructureSpec (nm, [], sgntr) ->
 	"module " ^ nm ^ " : " ^ (string_of_signat sgntr)
     | StructureSpec (nm, mdlbind, sgntr) ->
