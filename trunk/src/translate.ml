@@ -508,15 +508,18 @@ and translateTheoryElement ctx = function
 
   | L.Sentence (_, nm, mdlbind, valbnd, prp) ->
       begin
-	let (typ, x, prp') = translateProp ctx prp in
-	let bnd = translateBinding ctx valbnd in
+	let strctbind, ctx' = translateModelBinding ctx mdlbind in
+	let ctx'' = addBinding valbnd ctx' in
+	let bnd = translateBinding ctx' valbnd in
+	let (typ, x, prp') = translateProp ctx'' prp in
+	let elems =
+	  [ ValSpec (nm, typ);
+	    AssertionSpec (Syntax.string_of_name nm, bnd, substProp ctx'' [(x, toId nm)] prp') ]
+	in
 	  if mdlbind = [] then
-	    [
-	      ValSpec (nm, typ);
-	      AssertionSpec (Syntax.string_of_name nm, bnd, substProp ctx [(x, toId nm)] prp')
-	    ]
+	    elems
 	  else
-	    failwith "translation of parametrized axioms not implemented"
+	    [ StructureSpec (String.capitalize (Syntax.string_of_name nm), strctbind, Signat elems) ]
       end, ctx
 (***
       begin
@@ -605,7 +608,7 @@ and translateTheory ctx = function
 	Signat body', ctx'
   | L.TheoryID id -> SignatID id, ctx
 
-
+(*
 and processModelBinding ctx = function
     [] -> [], emptyCtx
   | (m, th) :: rest ->
@@ -624,7 +627,7 @@ and processTheory ctx = function
 	else
 	  let body', ctx' = processTheory ctx body in
 	    body', ctx'
-
+*)
 
 let translateToplevel ctx = function
     (L.Theorydef (n, args, th)) -> 

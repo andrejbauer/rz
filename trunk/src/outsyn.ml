@@ -7,6 +7,7 @@ type longname = Logic.longname
 
 type set_name = Syntax.set_name
 type set_longname = Logic.set_longname
+type structure_name = Syntax.theory_name
 
 type ty =
     NamedTy of set_longname    (* 0 *)
@@ -61,7 +62,7 @@ and proposition =
 
 type signat_element =
     ValSpec of name * ty
-  | StructureSpec of name * struct_binding list * signat
+  | StructureSpec of structure_name * struct_binding list * signat
   | AssertionSpec of string * binding list * proposition
   | TySpec of set_name * ty option
   | Comment of string
@@ -494,7 +495,7 @@ and string_of_proposition p = string_of_prop 999 p
 let string_of_bind bind =
     String.concat ", " (List.map (fun (n,t) -> (Syntax.string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
 
-let string_of_spec = function
+let rec string_of_spec = function
     ValSpec (nm, ty) ->
       "val " ^ (Syntax.string_of_name nm) ^ " : " ^ (string_of_ty ty)
     | TySpec (nm, None) -> "type " ^ nm
@@ -503,9 +504,13 @@ let string_of_spec = function
 	"(** Assertion " ^ nm ^ ":\n" ^
 	(if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
 	(string_of_proposition p) ^ "\n*)"
+    | StructureSpec (nm, [], sgntr) ->
+	"module " ^ nm ^ " : " ^ (string_of_signat sgntr)
+    | StructureSpec (nm, mdlbind, sgntr) ->
+	"module " ^ nm ^ (String.concat " " (List.map (fun mdl -> "foo") mdlbind)) ^ " : " ^ (string_of_signat sgntr)
     | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
-let string_of_signat = function
+and string_of_signat = function
     SignatID s -> s
   | Signat body -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
 
