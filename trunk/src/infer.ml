@@ -1,21 +1,19 @@
-(******************************************************************)
-(* Type Reconstruction                                            *)
-(*                                                                *)
-(* For now we assume that                                         *)
-(*   (a) All bound variables are annotated, either when declared  *)
-(*         or through a prior "implicit" statement.               *)
-(*                                                                *)
-(******************************************************************)
+(*******************************************************************)
+(** {1 Type Reconstruction}                                        *)
+(**                                                                *)
+(** For now we assume that                                         *)
+(** all bound variables are annotated, either when declared        *)
+(** or through a prior "implicit" statement.                       *)
+(*******************************************************************)
 
 open Syntax
 
 exception Unimplemented
 
-(********************************)
-(* Lookup Tables (Environments) *)
-(********************************)
+(*************************************)
+(** {2 Lookup Tables (Environments)} *)
+(*************************************)
 
-(* Generic *)
 let emptyenv = []
 let insert (x,s,env) = (x,s)::env
 exception NotFound
@@ -30,23 +28,34 @@ let rec lookupName = function
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
 
 
-(************************)
-(* Typechecking Context *)
-(************************)
 
-type ctx = {implicits  : (string * set) list;
-            types      : (name * set) list;
-            tydefs     : (set_name * set) list;
-            sets       : set_name list }
-(*            predicates : (name * set list) list} *)
+(*********************************)
+(** {2 The Typechecking Context} *)
+(*********************************)
 
+(** Context carried around by the type reconstruction algorithm.
+ *)
+type ctx = {implicits  : (string*set) list;  
+               (** Implicit types for given variable names *)
+            types      : (name*set) list;
+               (** Typing context; types for names in scope *)
+            tydefs     : (set_name*set) list;
+               (** Definitions of type/set variables in scope *)
+            sets       : set_name list ;
+               (** Abstract (undefined) type/set variables in scope *)
+           }
+
+(** Determines whether a variable has an implicitly declared type.
+     @param ctx  The type reconstruction context
+     @param str  The (string) name of the variable.
+  *)
 let lookupImplicit ctx str = lookup (str, ctx.implicits)
-let lookupType     ctx     n = lookupName (n, ctx.types)
-let lookupTydef    ctx    str = lookup (str, ctx.tydefs)
-let lookupSet      ctx    str = if (List.mem str ctx.sets) then
-                                   ()
-                                else raise NotFound
 
+let lookupType     ctx   n = lookupName (n, ctx.types)
+let lookupTydef    ctx str = lookup (str, ctx.tydefs)
+let lookupSet      ctx str = if (List.mem str ctx.sets) then
+                                   ()
+                             else raise NotFound
 let insertImplicit ({implicits=implicits} as ctx) str ty = 
        {ctx with implicits = insert(str,ty,implicits)}
 let insertType ({types=types} as ctx) n ty = 
@@ -59,9 +68,9 @@ let insertSet ({sets=sets} as ctx) str =
 let emptyCtx = {implicits = []; types = [];
                 tydefs = []; sets = []}
 
-(*****************************)
-(* Set Comparison Operations *)
-(*****************************)
+(**********************************)
+(** {2 Set Comparison Operations} *)
+(**********************************)
 
 exception TypeError
 let tyError s = (print_string ("TYPE ERROR: " ^ s ^ "\n");
@@ -105,9 +114,9 @@ let rec toExp ctx = function
  | _ -> tyError "bad application; operand is not a function"
 
 
-(************************************)
-(* Typechecking/Type Reconstruction *)
-(************************************)
+(*****************************************)
+(** {2 Typechecking/Type Reconstruction} *)
+(*****************************************)
 
 let rec annotateSet ctx = 
     (let rec ann = function
@@ -170,7 +179,9 @@ and annotateProp ctx =
         | Exists(bnd, p) ->
             let (bnd',ctx') = annotateBinding ctx bnd
             in Exists(bnd', annotateProp ctx' p)
-        | _ -> tyError "Term found where a proposition was expected" 
+        | t -> (match annotateTerm ctx t with
+                 (t', P) -> t'
+                | _ -> tyError "Term found where a proposition was expected")
     in ann)
            
 and annotateBinding ctx = function
@@ -277,6 +288,13 @@ and annotateTheoryElem ctx =
            in let p' = annotateProp ctx' p
            in (Sentence(sort, n, bnds', p'),
                ctx)   (* XXX:  Cannot refer to previous axioms!? *)
+       | Predicate(n, Unstable, Product ss) ->
+           let    ss' = List.map (annotateSet ctx) ss
+           in let rec toArrow = function
+                   [] -> P
+                 | s::ss -> Exp(s,toArrow ss)
+           in (Predicate(n, Unstable, Product ss'),
+               insertType ctx n (Exp(Product ss', P)))
     in
       ann
 

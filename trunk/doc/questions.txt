@@ -17,3 +17,7 @@
  
 (5) [April 4, CS]
     What is the "x :" when (** x : x = x *) appears in a generated interface?
+
+(6) [April 4, CS]
+    Should relations (and binary term operators) be curried or uncurried?
+

@@ -254,13 +254,13 @@ term:
   | LET LBRACK name_typed RBRACK EQUAL term IN term { Choose ($3, $6, $8) }
   | and_term                    { And $1 }
   | or_term                     { Or $1 }
-  | term INFIXOP0 term          { App (App (Var ($2, Infix0), $1), $3) }
-  | term INFIXOP1 term          { App (App (Var ($2, Infix1), $1), $3) }
-  | term INFIXOP2 term          { App (App (Var ($2, Infix2), $1), $3) }
-  | term PLUS term              { App (App (Var ("+", Infix2), $1), $3) }
-  | term INFIXOP3 term          { App (App (Var ($2, Infix3), $1), $3) }
-  | term STAR term              { App (App (Var ("*", Infix3), $1), $3) }
-  | term SLASH term             { App (App (Var ("/", Infix3), $1), $3) }
+  | term INFIXOP0 term          { App (Var ($2, Infix0), Tuple [$1; $3]) }
+  | term INFIXOP1 term          { App (Var ($2, Infix1), Tuple [$1; $3]) }
+  | term INFIXOP2 term          { App (Var ($2, Infix2), Tuple [$1; $3]) }
+  | term PLUS term              { App (Var ("+", Infix2), Tuple [$1; $3]) }
+  | term INFIXOP3 term          { App (Var ($2, Infix3), Tuple [$1; $3]) }
+  | term STAR term              { App (Var ("*", Infix3), Tuple [$1; $3]) }
+  | term SLASH term             { App (Var ("/", Infix3), Tuple [$1; $3]) }
   | term PERCENT term           { Quot ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }
   | LAMBDA name_typed PERIOD term { Lambda ($2, $4) }
