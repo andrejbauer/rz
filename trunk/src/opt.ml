@@ -22,7 +22,7 @@ exception Impossible
 
 let emptyenv = []
 let insert (x,s,env) = (x,s)::env
-let insertbnds (bnds, env) = bnds @ env
+
 exception NotFound
 let rec lookup = function
       (y,[]) -> (raise NotFound)
@@ -46,35 +46,55 @@ let rec lookupName = function
 
 (** Context carried around by the type reconstruction algorithm.
  *)
-type ctx = {types      : (name*ty) list;
+type ctx = {types      : ty NameMap.t;
                (** Typing context; types for names in scope *)
-            tydefs     : (string*ty) list;
+            tydefs     : ty TyNameMap.t;
                (** Definitions of type/set variables in scope *)
             moduli     : (string*ctx) list
            }
 
+(* Unused and out-of-date
 let rec string_of_ctx {types=types; tydefs=tydefs; moduli=moduli} =
   "{ types = [" ^ (String.concat "," (List.map (fun (n,t) ->
 				       (Syntax.string_of_name n) ^ ":" ^ (string_of_ty t)) types)) ^ "],\n" ^
   "  tydefs = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ty t)) tydefs)) ^ "],\n" ^
   "  moduli = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) moduli)) ^ "],\n" ^
  "}"
+*)
 
-let lookupType     ctx   n = lookupName (n, ctx.types)
-let lookupTydef    ctx str = lookup (str, ctx.tydefs)
+let lookupType  ctx   nm = 
+   try (NameMap.find nm ctx.types) with 
+      Not_found -> ( print_string ( "Unbound name: " ^ string_of_name nm ^ 
+				    "\n");
+                     raise Not_found )
+
+let peekTydef ctx  tynm = 
+   try  Some (TyNameMap.find tynm ctx.tydefs)  with 
+      Not_found -> None
+
 let lookupModul    ctx str = lookup (str, ctx.moduli)
-let peekTydef ctx s = peek(s, ctx.tydefs)
 
-let insertType ({types=types} as ctx) n ty = 
-       {ctx with types = insert(n,ty,types)}
+let insertType ({types=types} as ctx) nm ty = 
+       {ctx with types = NameMap.add nm ty types}
+
+(* insertBnds : ty NameMap.t -> (name * ty) list -> ty NameMap.t
+ *)
+let rec insertBnds types = function
+    [] -> types
+  | (nm,ty)::bnds -> insertBnds (NameMap.add nm ty types) bnds
+
+(* insertTypeBnds : ctx -> (name * ty) list -> ctx
+ *)
 let insertTypeBnds ({types=types} as ctx) bnds = 
-       {ctx with types = insertbnds(bnds,types)}
-let insertTydef ({tydefs=tydefs} as ctx) str ty = 
-       {ctx with tydefs = insert(str,ty,tydefs)}
+       { ctx  with  types = insertBnds types bnds }
+
+let insertTydef ({tydefs=tydefs} as ctx) tynm ty = 
+       { ctx with tydefs = TyNameMap.add tynm ty tydefs }
+
 let insertModul ({moduli=moduli} as ctx) str ctx' = 
        {ctx with moduli = insert(str,ctx',moduli)}
 
-let emptyCtx = {types = []; tydefs = []; moduli = []}
+let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; moduli = []}
 
 (* lookupModulLong : ctx -> ctx
  *)
@@ -91,13 +111,19 @@ let rec peekLong peeker ctx = function
   | LN(Some mdl, nm) ->
        let ctx' = lookupModulLong ctx mdl
        in peeker ctx' nm
+
+let rec peekTyLong peeker ctx = function
+    TLN(None, nm)     ->  peeker ctx nm
+  | TLN(Some mdl, nm) ->
+       let ctx' = lookupModulLong ctx mdl
+       in peeker ctx' nm
  
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
-    NamedTy n ->
-      (match (peekTydef ctx (string_of_tln n)) with
+    NamedTy tynm ->
+      (match (peekTyLong peekTydef ctx tynm) with
         Some s' -> hnfTy ctx s'
-      | None -> NamedTy n)
+      | None -> NamedTy tynm)
   | s -> s
 
 
@@ -444,15 +470,13 @@ and optElems ctx = function
 	 (AssertionSpec assertion' :: rest'), ctx'
 
   | ModulSpec (name,signat) :: rest -> 
-      let (sbnds',ctx') = optStructBindings ctx sbnds
-      in let (signat',ctx'') = optSignat ctx' signat
-      in let ctx''' = if List.length sbnds = 0 then
-	                insertModul ctx name ctx''
-	              else
-			ctx
-      in let (rest', ctx'''') = optElems ctx''' rest 
-      in (ModulSpec (name, sbnds', signat') :: rest',
-	  ctx'''')
+      let (signat',ctxopt') = optSignat ctx signat
+      in let ctx'' = (match ctxopt' with
+	                 Some ctx' -> insertModul ctx name ctx'
+                       | None -> ctx)
+      in let (rest', ctx''') = optElems ctx'' rest 
+      in (ModulSpec (name, signat') :: rest',
+	  ctx''')
 
   |  TySpec(nm, None, assertions) :: rest -> 
        (** We don't add nm to the input context of optAssertion
@@ -477,36 +501,46 @@ and optElems ctx = function
 
 and optSignat ctx = function
     SignatName s ->
-      SignatName s, lookupModul ctx s
+      ( SignatName s, Some ( lookupModul ctx s ) )
   | Signat body -> 
       let body', ctx' = optElems ctx body in
-	(Signat body', ctx')
+      ( Signat body', Some ctx' )
   | SignatFunctor(args, body) ->
-      let (args',ctx') = optStructBindings ctx args
-      in let (body',ctx'') = optSignat ctx' body
-      in (SignatFunctor(args', body'), emptyCtx)
+      let    ( args', ctx'  ) = optStructBindings ctx args
+      in let ( body', ctx'' ) = optSignat ctx' body
+      in ( SignatFunctor ( args', body' ), None )
+      (* XXX:  We are failing to put any information into the context
+         for functors, since the context doesn't support them yet *)
 
 
 and optStructBindings ctx = function
     [] -> [], ctx
   | (m, signat) :: bnd ->
-      let signat', ctx' = optSignat ctx signat in
+      let signat', ctxopt' = optSignat ctx signat in
       let bnd', ctx'' = optStructBindings ctx bnd in
-	(m, signat') :: bnd',
-	insertModul ctx'' m ctx'
+	( (m, signat') :: bnd',
+	  (match ctxopt' with
+             Some ctx' -> insertModul ctx'' m ctx'
+           | None      -> ctx'') )
+        (* XXX: Again, ignoring functor variables ! *)
 
 let optToplevel ctx = function
-    (Signatdef (s, args, signat)) ->
-      let args', ctx' = optStructBindings ctx args in
-      let signat', ctx'' = optSignat ctx' signat in
-	Signatdef (s, args', signat'), 
-	insertModul ctx s ctx''
+    (Signatdef (s, signat)) ->
+      let signat', ctxopt' = optSignat ctx signat in
+	( Signatdef (s, signat'), 
+	  ( match ctxopt' with
+              Some ctx' -> insertModul ctx s ctx'
+            | None      -> ctx                   ) )
+          (* XXX: Again, ignoring functor variables ! *)
   | TopComment cmmnt -> (TopComment cmmnt, ctx)
   | TopModul (mdlnm, signat) ->
-      let (signat', ctx') = optSignat ctx signat in
-	(TopModul(mdlnm, signat'), insertModul ctx mdlnm ctx')
+      let (signat', ctxopt') = optSignat ctx signat in
+	(TopModul(mdlnm, signat'), 
+	  ( match ctxopt' with
+              Some ctx' -> insertModul ctx mdlnm ctx'
+            | None      -> ctx                   ) )
+          (* XXX: Again, ignoring functor variables ! *)
 
-    
 let rec optToplevels' ctx = function
     [] -> ([], ctx)
   | sg :: lst ->

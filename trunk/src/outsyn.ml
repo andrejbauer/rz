@@ -125,7 +125,7 @@ module StringOrder = struct
 
 module NameMap = Map.Make(NameOrder)
 
-module TyNameMap = Map.Make(NameOrder)
+module TyNameMap = Map.Make(TyNameOrder)
 
 module StringMap = Map.Make(StringOrder)
 

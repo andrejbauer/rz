@@ -260,7 +260,7 @@ let peekTheory (cntxt : cntxt) desired_thrynm =
 *)
 let toModel mdlnms = 
   let rec loop = function
-      [] -> raise Impossible
+      []            -> raise Impossible
     | [strng]       -> ModelName strng
     | strng::strngs -> ModelProj(loop strngs, strng)
   in loop (List.rev mdlnms)
