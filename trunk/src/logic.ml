@@ -50,7 +50,7 @@ and set =
     Empty
   | Unit
   | Bool (** Bool is isomorphic to Unit+Unit *)
-  | Basic   of string
+  | Basic   of name
   | Product of set list
   | Exp     of set * set
   | Sum     of (label * set option) list
@@ -168,6 +168,11 @@ and subst x t =
      in sub)
 
 
+let rec toSubset ctx = function
+    Subset ((x,s), p) -> ((x, s), p)
+  | Basic b -> toSubset ctx (Context.getCtx b ctx)
+  | _ -> failwith "not a subset"
+
 
 (************************************)
 (* Translation from Syntax to Logic *)
@@ -188,7 +193,7 @@ let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
   | S.Bool -> Bool
-  | S.Set_name n -> Basic n
+  | S.Set_name n -> Basic (n, Syntax.Word)
   | S.Product lst -> Product (List.map make_set lst)
   | S.Sum lst -> Sum (List.map
 			(function (lb, None) -> (lb, None) 
