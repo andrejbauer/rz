@@ -34,56 +34,6 @@ represented by many pairs of lists.) This leads us to the definition given
 below. We shall abuse notation slightly and write $t \in \ut{S}$ to
 mean that $t$ is a closed expression of type $\ut{S}$.
 
-\begin{definition}
-  A \emph{modest set}\footnote{Modest sets were so named by Dana
-    Scott. They are ``modest'' because their size cannot exceed the
-    number of expressions of the underlying datatype.} is a triple
-  $(S, \ut{S}, {\rz_S})$ where $S$ is a set, $\ut{S}$ is a type and
-  $\rz_S$ is a relation between expressions of type~$\ut{S}$ and
-  elements of~$S$, satisfying:
-  % 
-  \begin{enumerate}
-  \item For every $x \in S$ there is $t \in \ut{S}$ such that $t \rz_S
-    x$.
-  \item If $t \rz_S x$ and $t \rz_S y$ then $x = y$.
-  \end{enumerate}
-  %
-  A \emph{realized function} $f : (S, \ut{S}, {\rz_S}) \to (T, \ut{T},
-  {\rz_T})$ between modest sets is a function $f : S \to T$ for which
-  there exists $u \in \ut{S} \to \ut{T}$ such that
-  %
-  \begin{equation*}
-    t \rz_S x \implies u\,t \rz_T f(x) \;.
-  \end{equation*}
-  %
-  We say that $u$ \emph{realizes}~$f$.
-\end{definition}
-
-The realizer~$u$ of a realized function~$f$ is more commonly known as
-an ``implementation of~$f$'' or an ``algorithm for computing~$f$''.
-
-Modest sets and realized functions form a category of \emph{modest
-  sets~$\Mod{\PL}$}. In realizability theory this is a well known
-category with good properties. It is regular and locally cartesian
-closed, which allows us to interpret first-order logic and a rich type
-theory. Here we only outline the main ideas behind the realizability
-interpretation of logic. See e.g.~\cite{Bauer:00} for details.
-
-In the realizability interpretation of logic, each formula~$\phi$ is
-assigned a set of \emph{realizers} which can be thought of as
-computations that witness the validity of~$\phi$. The situation is
-somewhat similar (but not equivalent) to the propositions-as-types
-translation of logic into type theory, where the proofs of a
-proposition correspond to terms of the corresponding type. More
-precisely, to each formula~$\phi$ we assign an underlying type
-$\ut{\phi}$ of realizers. However, unlike in the propositions-as-types
-translation, not all terms of type $\ut{\phi}$ are necessarily valid
-realizers for~$\phi$. We write $t \rz \phi$ when $t \in \ut{\phi}$ is
-in fact a realizer for~$\phi$. The underlying types and the
-realizability relation~$\rz$ are defined inductively on the structure
-of~$\phi$, see the outline in Figure~\ref{fig:rz-logic}. We say that a
-formula~$\phi$ is \emph{valid} in~$\Mod{\PL}$ if it has at least one
-realizer.
 
 \begin{figure*}
   \centering
@@ -138,6 +88,57 @@ realizer.
   \caption{Realizability interpretation of logic (outline)}
   \label{fig:rz-logic}
 \end{figure*}
+
+\begin{definition}
+  A \emph{modest set}\footnote{Modest sets were so named by Dana
+    Scott. They are ``modest'' because their size cannot exceed the
+    number of expressions of the underlying datatype.} is a triple
+  $(S, \ut{S}, {\rz_S})$ where $S$ is a set, $\ut{S}$ is a type and
+  $\rz_S$ is a relation between expressions of type~$\ut{S}$ and
+  elements of~$S$, satisfying:
+  % 
+  \begin{enumerate}
+  \item For every $x \in S$ there is $t \in \ut{S}$ such that $t \rz_S
+    x$.
+  \item If $t \rz_S x$ and $t \rz_S y$ then $x = y$.
+  \end{enumerate}
+  %
+  A \emph{realized function} $f : (S, \ut{S}, {\rz_S}) \to (T, \ut{T},
+  {\rz_T})$ between modest sets is a function $f : S \to T$ for which
+  there exists $u \in \ut{S} \to \ut{T}$ such that
+  %
+  \begin{equation*}
+    t \rz_S x \implies u\,t \rz_T f(x) \;.
+  \end{equation*}
+  %
+  We say that $u$ \emph{realizes}~$f$.
+\end{definition}
+
+The realizer~$u$ of a realized function~$f$ is more commonly known as
+an ``implementation of~$f$'' or an ``algorithm for computing~$f$''.
+
+Modest sets and realized functions form a category of \emph{modest
+  sets~$\Mod{\PL}$}. In realizability theory this is a well known
+category with good properties. It is regular and locally cartesian
+closed, which allows us to interpret first-order logic and a rich type
+theory. Here we only outline the main ideas behind the realizability
+interpretation of logic. See e.g.~\cite{Bauer:00} for details.
+
+In the realizability interpretation of logic, each formula~$\phi$ is
+assigned a set of \emph{realizers} which can be thought of as
+computations that witness the validity of~$\phi$. The situation is
+somewhat similar (but not equivalent) to the propositions-as-types
+translation of logic into type theory, where the proofs of a
+proposition correspond to terms of the corresponding type. More
+precisely, to each formula~$\phi$ we assign an underlying type
+$\ut{\phi}$ of realizers. However, unlike in the propositions-as-types
+translation, not all terms of type $\ut{\phi}$ are necessarily valid
+realizers for~$\phi$. We write $t \rz \phi$ when $t \in \ut{\phi}$ is
+in fact a realizer for~$\phi$. The underlying types and the
+realizability relation~$\rz$ are defined inductively on the structure
+of~$\phi$, see the outline in Figure~\ref{fig:rz-logic}. We say that a
+formula~$\phi$ is \emph{valid} in~$\Mod{\PL}$ if it has at least one
+realizer.
 
 We shall not dwell any further on the technicalities involving the
 category of modest sets, but rather proceed to a concrete description

@@ -2,6 +2,66 @@
 \section{Theories and Signatures}
 \label{sec:theories-signatures}
 
+\begin{figure*}[t]
+\[
+\begin{array}[t]{l}
+\mbox{\textbf{Theory Elements}}\\
+\SET\ s\ [\EQUALS\ \mathit{set}\ ]\\
+\CONST\ c\ [\COLON \mathit{set}\ ]\ [\EQUALS\ \mathit{term}\ ]\\
+{}[\STABLE{}]\ \RELATION\ r\ [\COLON \mathit{set}\ ]\ [\EQUALS \mathit{prop}\ ]\\
+\EQUIVALENCE \COLON \mathit{set}\\
+\MODEL\ M\COLON\mathit{theory}\\
+\AXIOM\ a\ [\ M\COLON\mathit{theory}\ ]^{*}\ [x\COLON\mathit{set}\ ]^*\EQUALS\mathit{prop}\\
+\\
+\mbox{\textbf{Propositions}}\\
+\TRUE\\
+\FALSE\\
+\NOT\ \Prop\\
+\Prop \AAND \Prop\\
+\Prop \OOR \Prop\\
+\Prop \IIMPLY \Prop\\
+\Prop \IIFF \Prop\\
+r [\ \Term\ ]^*\\
+\Term\EQUALS\Term\\ %[\IN\ \Set]\\
+\ALL\ [x\COLON \Set] \PERIOD \Prop\\
+\SOME\ [x\COLON \Set] \PERIOD \Prop\\
+\UNIQUE\ [x\COLON \Set] \PERIOD \Prop\\
+\end{array}
+\qquad
+\begin{array}[t]{l}
+\mbox{\textbf{Sets}}\\
+\ZERO\\
+\ONE\\
+\BOOL\\
+s\\
+\mathit{Model}\PERIOD \mathit{name}\\
+\Set \TIMES \cdots \TIMES \Set\\
+\Setexp \ARROW \Setexp\\
+\Label\ [\COLON \Setexp\ ]\ \PLUS \cdots \PLUS \Label\ [\COLON \Setexp\ ]\\
+\LBRACE \Ident [\ \COLON \Setexp\ ]\ \BAR \Proposition \RBRACE\\
+\Setexp \PERCENT \metav{relation}\\
+%\RZ\ \Setexp\\
+\\
+\mbox{\textbf{Terms}}\\
+x\\
+\LPAREN \Term\COMMA \cdots \COMMA \Term \RPAREN\\
+\Term\PERIOD \metav{n}\\
+\Label\ [\ \Term\ ]\\
+\MATCH\ \Term\ \WITH\ \mbox{\textit{pattern-matches}}\\
+\LAMBDA\ x\COLON\Set\ \PERIOD\ \Term\\
+\Term\ \Term\\
+\Term \PERCENT \metav{relation}\\
+\LET\ x \PERCENT \metav{relation}\ \IN\ \Term\EQUALS\Term\\
+\Term \SUBIN \Set\\
+\Term \SUBOUT \Set\\
+\THE\ x\ [\COLON\Set\ ] \PERIOD \Prop\\
+\LET\ x\ [\COLON\Set\ ] \EQUALS\Term\ \IN\ \Term\\
+\end{array}
+\]  
+\caption{Input Language Summary}
+\label{fig:input}  
+\end{figure*}
+
 In this section we describe first-order theories and signatures.
 Our system translates the former into the later.
 
@@ -31,9 +91,9 @@ The theory is enclosed by \Verb|thy|\ldots\Verb|end|. This theory
 defines one basic set \Verb|s|, and two basic constants: an element
 \Verb|e| of \Verb|s| and a (curried) binary infix operator \Verb|*| on
 the set \Verb|s|. The \Verb|implicit| operator is not part of the
-theory proper, but signals to the type checker that all bound
+theory proper, but signals to the type checker that bound
 variables named \Verb|x| or \Verb|y| or \Verb|z| should be assumed to
-range over elements in \Verb|s| unless otherwise specified. Finally,
+range over \Verb|s| unless otherwise specified. Finally,
 we have three axioms. Axiom arguments, e.g., \Verb|x|, \Verb|y|, and
 \Verb|z| in the associativity axiom, name the free variables occuring
 in the axiom. It is not too big a mistake to think of them as being
@@ -57,78 +117,24 @@ Axioms can universally quantify over all models of a theory.
   This is useful for describing universaility properties, such as
   initiality of an algebra or finality of a coalgebra.
   
-  The propositions are the familiar one from first-order logic;
-  $\SOMEONE$ is unique existence. In addition to the basic empty
-  ($\ZERO$) and unit ($\ONE$) sets, one can form cartesian products,
-  function spaces, tagged disjoint unions, subsets, and quotients by
-  stable equivalence relations. The corresponding introduction and
-  elimination forms appear in the language of terms. For example,
-  $\Term\PERCENT\ \metav{relation}$ is the equivalence class under
-  $\metav{relation}$ containing $\Term$, while $\LET\ x \PERCENT
-  \metav{relation} \mbox{\Verb| =|}$ $ \Term_1\ \IN\ \Term_2$ binds
-  $x$ to a representative of the equivalence class $\Term_1$ to be
-  used in $\Term_2$. $\Term \SUBIN \Set$ injects $\Term$ into a given
-  subset (recording a proof obligation of the term actually being a
-  member of the subset), while $\Term \SUBOUT \Set$ projects $\Term$
-  from a subset out into its superset $\Set$.
+  The propositions are the familiar ones from first-order logic;
+  $\UNIQUE$ is unique existence ($\exists!$). In addition to the basic
+  empty ($\ZERO$) and unit ($\ONE$) sets, one can form cartesian
+  products, function spaces, tagged disjoint unions, subsets, and
+  quotients by stable equivalence relations. The corresponding
+  introduction and elimination forms appear in the language of terms.
+  For example, $\Term\PERCENT\ \metav{relation}$ is the equivalence
+  class under $\metav{relation}$ containing $\Term$, while $\LET\ x
+  \PERCENT \metav{relation} \mbox{\Verb| =|}$ $ \Term_1\ \IN\ \Term_2$
+  binds $x$ to a representative of the equivalence class $\Term_1$ to
+  be used in $\Term_2$. $\Term \SUBIN \Set$ injects $\Term$ into a
+  given subset (recording a proof obligation of the term actually
+  being a member of the subset), while $\Term \SUBOUT \Set$ projects
+  $\Term$ from a subset out into its superset $\Set$.  The value of
+  the description operator $\THE\ x\PERIOD \Prop$ is the unique $x$
+  satisfying $\Prop$; using it incurs the obligation of proving that
+  there is exactly one such $x$.
 
-\begin{figure}
-\[
-\begin{array}{l}
-\mbox{\textbf{Theory Elements}}\\
-\SET\ s\ [\EQUALS\ \mathit{set}\ ]\\
-\CONST\ c\ [\COLON \mathit{set}\ ]\ [\EQUALS\ \mathit{term}\ ]\\
-{}[\STABLE{}]\ \RELATION\ r\ [\COLON \mathit{set}\ ]\ [\EQUALS \mathit{prop}\ ]\\
-\EQUIVALENCE \COLON \mathit{set}\\
-\MODEL\ M\COLON\mathit{theory}\\
-\AXIOM\ a\ [\ M\COLON\mathit{theory}\ ]^{*}\ [x\COLON\mathit{set}\ ]^*\EQUALS\mathit{prop}\\
-\\
-\mbox{\textbf{Propositions}}\\
-\TRUE\\
-\FALSE\\
-\NOT\ \Prop\\
-\Prop \AAND \Prop\\
-\Prop \OOR \Prop\\
-\Prop \IIMPLY \Prop\\
-\Prop \IIFF \Prop\\
-r [\ \Term\ ]^*\\
-\Term\EQUALS\Term\\ %[\IN\ \Set]\\
-\ALL\ [x\COLON \Set] \PERIOD \Prop\\
-\SOME\ [x\COLON \Set] \PERIOD \Prop\\
-\SOME1\ [x\COLON \Set] \PERIOD \Prop\\
-\\
-\mbox{\textbf{Sets}}\\
-\ZERO\\
-\ONE\\
-\BOOL\\
-s\\
-\mathit{Model}\PERIOD \mathit{name}\\
-\Set \TIMES \cdots \TIMES \Set\\
-\Setexp \ARROW \Setexp\\
-\Label\ [\COLON \Setexp\ ]\ \PLUS \cdots \PLUS \Label\ [\COLON \Setexp\ ]\\
-\LBRACE \Ident [\ \COLON \Setexp\ ]\ \BAR \Proposition \RBRACE\\
-\Setexp \PERCENT \metav{relation}\\
-%\RZ\ \Setexp\\
-\\
-\mbox{\textbf{Terms}}\\
-x\\
-\LPAREN \Term\COMMA \cdots \COMMA \Term \RPAREN\\
-\Term\PERIOD \metav{n}\\
-\Label\ [\ \Term\ ]\\
-\MATCH\ \Term\ \WITH\ \mbox{\textit{pattern-matches}}\\
-\LAMBDA\ x\COLON\Set\ \PERIOD\ \Term\\
-\Term\ \Term\\
-\LET\ x\EQUALS\Term\ \IN\ \Term\\
-\THE\ x\COLON\Set \PERIOD \Prop\\
-\Term \PERCENT \metav{relation}\\
-\LET\ x \PERCENT \metav{relation}\ \IN\ \Term\EQUALS\Term\\
-\Term \SUBIN \Set\\
-\Term \SUBOUT \Set\\
-\end{array}
-\]  
-\caption{Input Language Summary}
-\label{fig:input}  
-\end{figure}
 
 \subsection{Signatures}
 \label{sec:signatures}
@@ -164,11 +170,12 @@ well; thus, the ML signature further requires a function \Verb|sqrt|
 mapping \Verb|s| to \Verb|s|.
 
 Comments contain other properties (not expressible in ML) that further
-constrain the allowed implementations.  \Verb|PER(=s=)| requires a
-partial equivalence \Verb|=s=| on \Verb|s|; its domain \Verb+||s||+ is the
-subset of terms of type $s$ that represent group elements; the
+constrain the allowed implementations.  The proposition \Verb|PER(=s=)| 
+abbreviates a requirement that \Verb|=s=| be a partial equivalence 
+on \Verb|s|; its domain \Verb+||s||+ is the
+subset of terms of type $s$ that represent group elements, and the
 relation equates different implementations corresponding to the same
-abstract group element.  \Verb|e| must represent a
+abstract group element.  Then, \Verb|e| must represent a
 group element, and the \Verb|*| operation must not be affected by the
 choice of representatives.  These must of course still satisfy the
 \Verb|unit| and \Verb|assoc| axioms.  Finally, the new function
@@ -177,7 +184,7 @@ the theory requires existence but not uniqueness of square roots, its
 computational content does not require that \Verb|sqrt| be invariant
 with respect to the partial equivalence relation on \Verb|s|;
 different implementations of the same group element are allowed to produce
-(implementations of) different square roots.
+(implementations of) different square roots.  
 
 
 \subsection{Parameterized Theories}

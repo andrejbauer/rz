@@ -2,6 +2,8 @@
 \section{Implementation}
 \label{sec:implementation}
 
+\subsection{Superstructure}
+
 After parsing, our implementation does type checking.  The type
 checker does rather limited type reconstruction; the types of all
 bound variables must either be given at the binding site, given
@@ -13,7 +15,7 @@ The system will also try to insert explicit coercions into or out of
 subset types where they were omitted by the theory author.  This can
 significantly improve readability.  \comment{give example!}
 
-After typechecking the theories are represented in abstract syntax and
+After type checking the theories are represented in abstract syntax and
 translated into ML signatures as described below.  
 
 Propositions without constructive content have trivial realizers, and
@@ -41,13 +43,10 @@ requiring the presence of trivial realizers for the first two axioms,
 and a more complicated (but not more useful) realizer for the final
 axiom.
 
-
+\subsection{Realizability Translation}
 Here we provide more details about the translation.
 
 
-The translation of axioms parameterized by models into polymorphism
-(instead of functors) is essentially the phase-splitting translation
-of Harper, Mitchell, and Moggi \cite{harper+:popl90}.
 
 %%% Local Variables: 
 %%% mode: latex
