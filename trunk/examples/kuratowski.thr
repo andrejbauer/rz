@@ -20,12 +20,12 @@ thy
 end
 
 
-theory Kuratowski(A : thy set a end) =
+theory Kuratowski(model A : thy set a end) =
 thy
   set s
-  const empty
+  const empty : s
   const union : s -> s -> s
-  const singleton : A.a -> s
+  const singleton : A::a -> s
 
   # at this point we want to say that (s, zero, union) is a semilattice
   # and it seems like we just have to repeat the axioms
@@ -40,12 +40,12 @@ thy
   # we really want unique existence, but we don't have the some1
   # quantifier yet
 
-  axiom initial (S : Semilattice) (f : A.a -> S.s) =
-    some (f' : s -> S.s) . (
-      f' empty = S.zero and
-      all (x : A.a) . (f a = f' (singleton x)) and
+  axiom initial (model S : Semilattice) (f : A::a -> S::s) =
+    some (f' : s -> S::s) . (
+      f' empty = S::zero and
+      all (x : A::a) . (f a = f' (singleton x)) and
       all (u : s) . all (v : s) . (
-        f' (union u v) = S.join (f' u) (f' v)
+        f' (union u v) = S::join (f' u) (f' v)
       )
     )
 

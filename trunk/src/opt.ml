@@ -34,7 +34,7 @@ let rec peek = function
     | (y,(k,v)::rest) -> if (y=k) then Some v else peek(y,rest)
 
 let rec lookupName = function
-      (y,[]) -> (print_string ("Unbound name: " ^ (fst y) ^ "\n");
+      (y,[]) -> (print_string ("Unbound name: " ^ string_of_name y ^ "\n");
                  raise NotFound)
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
 
@@ -48,6 +48,7 @@ type ctx = {types      : (name*ty) list;
                (** Typing context; types for names in scope *)
             tydefs     : (string*ty) list;
                (** Definitions of type/set variables in scope *)
+            models     : (string*ctx) list
            }
 
 (** Determines whether a variable has an implicitly declared type.
@@ -56,6 +57,7 @@ type ctx = {types      : (name*ty) list;
   *)
 let lookupType     ctx   n = lookupName (n, ctx.types)
 let lookupTydef    ctx str = lookup (str, ctx.tydefs)
+let lookupModel    ctx str = lookup (str, ctx.models)
 let peekTydef ctx s = peek(s, ctx.tydefs)
 
 let insertType ({types=types} as ctx) n ty = 
@@ -64,14 +66,22 @@ let insertTypeBnds ({types=types} as ctx) bnds =
        {ctx with types = insertbnds(bnds,types)}
 let insertTydef ({tydefs=tydefs} as ctx) str ty = 
        {ctx with tydefs = insert(str,ty,tydefs)}
+let insertModel ({models=models} as ctx) str ctx' = 
+       {ctx with models = insert(str,ctx',models)}
 
-let emptyCtx = {types = []; tydefs = []}
+let emptyCtx = {types = []; tydefs = []; models = []}
 
+let rec peekLong peeker ctx = function
+    (Syntax.LN(str, [], namesort) as lname) -> 
+       peeker ctx (Syntax.N(str,namesort))
+  | (Syntax.LN(str, label::labels, namesort) as lname) ->
+       let ctx' = lookupModel ctx str
+       in peekLong peeker ctx' (Syntax.LN(label,labels,namesort))
 
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
     NamedTy n ->
-      (match (peekTydef ctx (fst n)) with
+      (match (peekTydef ctx (string_of_longname n)) with
         Some s' -> hnfTy ctx s'
       | None -> NamedTy n)
   | s -> s
@@ -146,7 +156,7 @@ let rec optTy ctx ty =
       Never returns Tuple []
 *)       
 let rec optTerm ctx = function
-   Id n -> (let oldty = lookupType ctx n
+   Id n -> (let oldty = peekLong lookupType ctx n
             in  match (optTy ctx oldty) with
                    TopTy -> (oldty, Dagger, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
@@ -354,7 +364,7 @@ and optElems ctx = function
       in AssertionSpec(name, bnds, optProp ctx' prop) :: optElems ctx rest
   |  TySpec(n, None) :: rest -> 
       TySpec(n, None) :: optElems ctx rest
-  |  TySpec((str,_) as n, Some ty) :: rest ->
+  |  TySpec(Syntax.N(str,_) as n, Some ty) :: rest ->
       (** XXX Need to add the definition into the context *)
       TySpec(n, Some (optTy ctx ty)) :: 
       optElems (insertTydef ctx str ty) rest

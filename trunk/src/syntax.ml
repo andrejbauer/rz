@@ -9,11 +9,16 @@ type label = string
 
 type name_type = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4
 
-type name = string * name_type
+type name = N of string * name_type
 
+type longname = LN of string * string list * name_type
+          
 let underscore = ("_", Word)
 
 type set_name = name
+
+type set_longname = longname
+
 
 (** names of sets must be valid type names *)
 
@@ -23,19 +28,20 @@ and set =
     Empty                            (** empty set, a.k.a, void *)
   | Unit                             (** unit set *)
   | Bool                             (** booleans *)
-  | Set_name of set_name             (** atomic set *)
+  | Set_name of set_longname         (** atomic set *)
   | Product  of set list             (** finite product *)
   | Sum      of (label * set option) list (** finite coproduct *)
   | Exp      of set * set            (** function space *)
   | Subset   of binding * term       (** subset *)
-  | Quotient of set * set_name       (** quotient set *)
+  | Quotient of set * set_longname   (** quotient set *)
   | Rz of set                        (** the set of realizers *)
+
   | Prop                             (** Only for typechecker internals! *)
   | EquivProp                        (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
 
 and term =
-    Var        of name
+    Var        of longname
   | Constraint of term * set
   | Star (** the member of Unit *)
   | False
@@ -45,8 +51,8 @@ and term =
   | App    of term  * term
   | Inj    of label * term option (** injection into a sum type *)
   | Case   of term  * (label * binding option * term) list
-  | Quot   of term  * set_name (** quotient under equivalence relation *)
-  | Choose of binding * set_name * term * term (** elimination of equivalence class *)
+  | Quot   of term  * set_longname (** quotient under equivalence relation *)
+  | Choose of binding * set_longname * term * term (** elimination of equivalence class *)
   | RzQuot of term
   | RzChoose of binding * term * term (** elimination of rz *)
   | Subin  of term * set
@@ -67,15 +73,15 @@ and term =
 (** We do not actually distinguish between different types of sentences,
   but we let the user name them as he likes. *)
 
-type sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
+and sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 
 (* Unstable here really means that we're not guaranteed the relation
    is stable, not that it is definitely not stable.  Perhaps
    "Nonstable" would be less pejorative?
 *)
-type propKind = Stable | Unstable | Equivalence
+and propKind = Stable | Unstable | Equivalence
 
-type theory_element =
+and theory_element =
     Set           of set_name * set option
   | Predicate     of name * propKind * set
   | Let_predicate of name * propKind * binding list * term
@@ -84,36 +90,49 @@ type theory_element =
   | Variable      of name * set
   | Sentence      of sentence_type * name * binding list * term
   | Model         of string * theory
-  | Subtheory     of theoryspec (* AB: Do we want subtheories? *)
+(*  | Subtheory     of string * theory *)
   | Implicit      of string list * set
-      
-and theoryspec = {t_arg  : theory_element list option;
-                  t_name : string ;
-                  t_body : theory}
+
+and theoryinfo = {t_arg  : theory_element list;
+               t_body : theory_element list}
 
 and theory = 
-     Theory of theory_element list
-  |  TheoryID of string
+    Theory of theoryinfo
+  | TheoryID of string
+
+and theorydef = 
+    TheoryDef of string * theory
 
 module NameOrder = struct
                      type t = name
                      let compare = Pervasives.compare
                    end
 
+module StringOrder = struct
+                     type t = string
+                     let compare = Pervasives.compare
+                   end
+
 module NameMap = Map.Make(NameOrder)
+
+module StringMap = Map.Make(StringOrder)
 
 module NameSet = Set.Make(NameOrder)
 
 let rec string_of_name = function 
-    (str,Word) -> str
-  | (str,_) -> "(" ^ str ^ ")"
+    N(str,Word) -> str
+  | N(str,_) -> "(" ^ str ^ ")"
+
+let rec string_of_longname = function 
+    LN(str,strs,Word) -> String.concat  "::" (str :: strs)
+  | LN(str,strs,_) -> "(" ^ String.concat "::" (str :: strs) ^ ")"
 
 let rec string_of_set set = 
   (let rec toStr = function 
       Empty -> "0"
     | Unit  -> "1"
     | Bool  -> "2"
-    | Set_name name -> string_of_name name
+    | Set_name lname -> string_of_longname lname
     | Product sets -> "(" ^ String.concat " * " (List.map toStr sets) ^ ")"
     | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"
     | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
@@ -126,8 +145,8 @@ let rec string_of_set set =
     | Quotient (s, r) ->
 	(match s with
 	     Product _ | Sum _ | Exp _ | Rz _ ->
-	       "(" ^ (toStr s) ^ ") % " ^ (string_of_name r)
-	   | _ -> (toStr s) ^ " % " ^ (string_of_name r))
+	       "(" ^ (toStr s) ^ ") % " ^ (string_of_longname r)
+	   | _ -> (toStr s) ^ " % " ^ (string_of_longname r))
 
 
    and sumarmToStr = function
@@ -139,7 +158,7 @@ let rec string_of_set set =
     
 and string_of_term trm =
   (let rec toStr = function
-      Var name  -> string_of_name name
+      Var lname  -> string_of_longname lname
     | Constraint(trm, set) -> "(" ^ toStr trm ^ " : " ^ string_of_set set ^ ")"
     | Star -> "()"
     | False -> "false"

@@ -54,7 +54,9 @@
 }
 
 
-let ident = ['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
+let ident = ['a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
+
+let tident = ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
 
 let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
@@ -77,6 +79,7 @@ rule token = parse
 		    }
 
   | ':'             { COLON }
+  | "::"            { PATHSEP }
   | ":>"            { SUBIN }
   | ":<"            { SUBOUT }
   | '.'             { PERIOD }
@@ -101,6 +104,7 @@ rule token = parse
                           with Not_found -> NAME w
                         end
                     }
+  | tident          { TNAME (Lexing.lexeme lexbuf) }
   | "!" symbolchar *
             { PREFIXOP(Lexing.lexeme lexbuf) }
   | ['~' '?'] symbolchar *

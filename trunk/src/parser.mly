@@ -5,6 +5,12 @@
   let parse_error _ =
     raise (Message.Parse (Message.loc_here 1, "parse error"))
 
+  exception Impossible
+  let makeLN strs str sort = 
+    (match strs @ [str] with
+      [] -> raise Impossible
+    | first::rest -> LN(first, rest, sort))
+
 %}
 
 /* Tokens */
@@ -48,10 +54,12 @@
 %token MATCH
 %token MODEL
 %token <string> NAME
+%token <string> TNAME
 %token NOT
 %token ONE
 %token ON
 %token OR
+%token PATHSEP
 %token PERCENT
 %token PERIOD
 %token PLUS
@@ -108,47 +116,44 @@
 %left     PERCENT
 %nonassoc RZ
 
-%nonassoc PREFIXOP NOT
+%nonassoc PREFIXOP NOT 
+%right TNAME
 %nonassoc HASH
 
 /* Entry points */
 
-%start theoryspecs
-%type <Syntax.theoryspec list> theoryspecs
+%start theorydefs
+%type <Syntax.theorydef list> theorydefs
 
 %%
 
-theoryspecs:
-  | EOF                         { [] }
-  | theoryspec theoryspecs      { $1 :: $2 }
+theorydefs:
+  | EOF                       { [] }
+  | theorydef theorydefs      { $1 :: $2 }
 
 
 
-theoryspec:
-  | THEORY NAME EQUAL theory    { {t_arg = None; 
-                                   t_name = $2; 
-                                   t_body = $4} }
-  | THEORY NAME LPAREN theory_body RPAREN EQUAL theory 
-                                { {t_arg = Some $4;
-                                   t_name = $2;
-                                   t_body = $7} }
+theorydef:
+    THEORY TNAME EQUAL TNAME   { TheoryDef($2, TheoryID $4) }
+  | THEORY TNAME EQUAL THY theory_elements END   
+                               { TheoryDef($2, Theory { t_arg = []; 
+							t_body = $5}) }
+  | THEORY TNAME LPAREN theory_elements RPAREN EQUAL 
+             THY theory_elements END 
+                                { TheoryDef($2, Theory { t_arg = $4;
+							 t_body = $8 }) }
 
-
-theory:
-  | THY theory_body END         { Theory $2 }
-  | NAME                        { TheoryID $1 }
-
-theory_body:
-  |                             { [] }
-  | theory_element theory_body	{ $1 :: $2 }
+theory_elements:
+  |                             	{ [] }
+  | theory_element theory_elements	{ $1 :: $2 }
 
 theory_element:
-    SET NAME  			{ Set (($2, Syntax.Word), None) }
-  | SET NAME EQUAL set		{ Set (($2, Syntax.Word), Some $4) }
+    SET NAME  			{ Set (N($2, Syntax.Word), None) }
+  | SET NAME EQUAL set		{ Set (N($2, Syntax.Word), Some $4) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
   | CONSTANT name_typed EQUAL term { Let_term ($2, $4) }
   | PREDICATE name COLON set    { Predicate ($2, Unstable, $4) }
-  | STABLE PREDICATE name COLON set    { Predicate ($3, Stable, $5) }
+  | STABLE PREDICATE name COLON set	{ Predicate ($3, Stable, $5) }
   | RELATION name COLON set     { Predicate ($2, Unstable, $4) }
   | STABLE RELATION name COLON set     { Predicate ($3, Stable, $5) }
   | PREDICATE name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
@@ -162,8 +167,13 @@ theory_element:
   | LEMMA name args EQUAL term       { Sentence (Lemma, $2, $3, $5) }
   | PROPOSITION name args EQUAL term { Sentence (Proposition, $2, $3, $5) }
   | COROLLARY name args EQUAL term   { Sentence (Corollary, $2, $3, $5) }
-  | MODEL NAME COLON theory      { Model($2, $4) }
-  | STRUCTURE NAME COLON theory      { Model($2, $4) }
+  | MODEL TNAME COLON TNAME       { Model($2, TheoryID $4) }
+  | MODEL TNAME COLON THY theory_elements END 
+                                {  Model($2, Theory { t_arg = [];
+							 t_body = $5 }) }
+  | MODEL TNAME LPAREN theory_elements RPAREN COLON THY theory_elements END 
+                                {  Model($2, Theory { t_arg = $4;
+							 t_body = $8 }) }
   | IMPLICIT name_list COLON set  { Implicit($2, $4) }
 
 name_list:
@@ -184,14 +194,36 @@ arg_list:
   | name_typed COMMA arg_list	{ $1 :: $3 }
 
 name:
-    NAME                          { ($1, Word) }
-  | LPAREN PREFIXOP RPAREN        { ($2, Prefix) }
-  | LPAREN INFIXOP0 RPAREN        { ($2, Infix0) }
-  | LPAREN INFIXOP1 RPAREN        { ($2, Infix1) }
-  | LPAREN INFIXOP2 RPAREN        { ($2, Infix2) }
-  | LPAREN PLUS RPAREN            { ("+", Infix2) }
-  | LPAREN INFIXOP3 RPAREN        { ($2, Infix3) }
-  | LPAREN STAR RPAREN            { ("*", Infix3) }
+    NAME                          { N($1, Word) }
+  | LPAREN PREFIXOP RPAREN        { N($2, Prefix) }
+  | LPAREN INFIXOP0 RPAREN        { N($2, Infix0) }
+  | LPAREN INFIXOP1 RPAREN        { N($2, Infix1) }
+  | LPAREN INFIXOP2 RPAREN        { N($2, Infix2) }
+  | LPAREN PLUS RPAREN            { N("+", Infix2) }
+  | LPAREN INFIXOP3 RPAREN        { N($2, Infix3) }
+  | LPAREN STAR RPAREN            { N("*", Infix3) }
+
+path:
+    TNAME PATHSEP                 { [$1] }
+  | TNAME PATHSEP path            { $1 :: $3 }
+
+longname:
+    path NAME                     { makeLN $1 $2 Word }
+  | LPAREN path PREFIXOP RPAREN   { makeLN $2 $3 Prefix }
+  | LPAREN path INFIXOP0 RPAREN   { makeLN $2 $3 Infix0 }
+  | LPAREN path INFIXOP1 RPAREN   { makeLN $2 $3 Infix1 }
+  | LPAREN path INFIXOP2 RPAREN   { makeLN $2 $3 Infix2 }
+  | LPAREN path PLUS RPAREN       { makeLN $2 "+" Infix2 }
+  | LPAREN path INFIXOP3 RPAREN   { makeLN $2 $3 Infix3 }
+  | LPAREN path STAR RPAREN       { makeLN $2 "*" Infix3 }
+  | NAME                          { makeLN [] $1 Word }
+  | LPAREN PREFIXOP RPAREN        { makeLN [] $2 Prefix }
+  | LPAREN INFIXOP0 RPAREN        { makeLN [] $2 Infix0 }
+  | LPAREN INFIXOP1 RPAREN        { makeLN [] $2 Infix1 }
+  | LPAREN INFIXOP2 RPAREN        { makeLN [] $2 Infix2 }
+  | LPAREN PLUS RPAREN            { makeLN [] "+" Infix2 }
+  | LPAREN INFIXOP3 RPAREN        { makeLN [] $2 Infix3 }
+  | LPAREN STAR RPAREN            { makeLN [] "*" Infix3 } 
 
 name_typed:
     name                         { ($1, None) }
@@ -205,19 +237,19 @@ simple_set:
   | BOOL                        { Bool }
   | PROP                        { Prop }
   | STABLEPROP                  { StableProp }
-  | NAME                        { Set_name ($1, Syntax.Word) }
+  | longname	                { Set_name ($1) }
   | LPAREN set RPAREN           { $2 }
   | subset                      { $1 }
-  | simple_set PERCENT name     { Quotient ($1, $3) }
+  | simple_set PERCENT longname { Quotient ($1, $3) }
   | RZ simple_set               { Rz $2 }
 
 subset:
     LBRACE name BAR term RBRACE { Subset (($2, None), $4) }
   | LBRACE name COLON set BAR term RBRACE { Subset (($2, Some $4), $6) }
 
-subset_or_name:
+subset_or_longname:
     subset  { $1 }
-  | NAME    { Set_name ($1, Syntax.Word) }
+  | longname { Set_name ($1) }
 
 product:
     simple_set STAR simple_set        { [$1; $3] }
@@ -238,9 +270,9 @@ set:
 simple_term:
     TRUE                        { True }
   | FALSE                       { False }
-  | name                        { Var $1 }
-  | ZERO                        { Var ("0", Word) }
-  | ONE                         { Var ("1", Word) }
+  | longname                    { Var $1 }
+  | ZERO                        { Var (makeLN [] "0" Word) }
+  | ONE                         { Var (makeLN [] "1" Word) }
   | LPAREN term COLON set RPAREN { Constraint ($2, $4) }
   | LPAREN RPAREN               { Star }
   | LPAREN term_seq RPAREN      { Tuple $2 }
@@ -251,7 +283,8 @@ simple_term:
   | simple_term PERIOD ZERO       { Proj (0, $1) }
   | simple_term PERIOD ONE        { Proj (1, $1) }
   | simple_term PERIOD TWO        { Proj (2, $1) }
-  | PREFIXOP simple_term        { App (Var ($1, Prefix), $2) }
+  | PREFIXOP simple_term        { App (Var (makeLN [] $1 Prefix), $2) }
+  | path PREFIXOP simple_term   { App (Var (makeLN $1 $2 Prefix), $3) }
   | NOT simple_term             { Not $2 }
 
 apply_term:
@@ -276,19 +309,26 @@ term:
   | LPAREN term EQUAL term IN set RPAREN   { Equal (Some $6 , $2, $4) }
   | LET name_typed EQUAL term IN term { Let ($2, $4, $6) }
   | LET LBRACK name_typed RBRACK EQUAL term IN term { RzChoose ($3, $6, $8) }
-  | LET name_typed PERCENT name EQUAL term IN term { Choose ($2, $4, $6, $8) }
+  | LET name_typed PERCENT longname EQUAL term IN term { Choose ($2, $4, $6, $8) }
   | and_term                    { And $1 }
   | or_term                     { Or $1 }
-  | term INFIXOP0 term          { App (App (Var ($2, Infix0), $1), $3) }
-  | term INFIXOP1 term          { App (App (Var ($2, Infix1), $1), $3) }
-  | term INFIXOP2 term          { App (App (Var ($2, Infix2), $1), $3) }
-  | term PLUS term              { App (App (Var ("+", Infix2), $1), $3) }
-  | term INFIXOP3 term          { App (App (Var ($2, Infix3), $1), $3) }
-  | term STAR term              { App (App (Var ("*", Infix3), $1), $3) }
-  | term INFIXOP4 term          { App (App (Var ($2, Infix4), $1), $3) }
-  | term PERCENT name           { Quot ($1, $3) }
-  | term SUBIN subset_or_name   { Subin ($1, $3) }
-  | term SUBOUT subset_or_name  { Subout ($1, $3) }
+  | term INFIXOP0 term          { App (App (Var (makeLN [] $2 Infix0), $1), $3) }
+  | term path INFIXOP0 term  %prec INFIXOP0        { App (App (Var (makeLN $2 $3 Infix0), $1), $4) }
+  | term INFIXOP1 term          { App (App (Var (makeLN [] $2 Infix1), $1), $3) }
+  | term path INFIXOP1 term          { App (App (Var (makeLN $2 $3 Infix1), $1), $4) }
+  | term INFIXOP2 term          { App (App (Var (makeLN [] $2 Infix2), $1), $3) }
+  | term path INFIXOP2 term          { App (App (Var (makeLN $2 $3 Infix2), $1), $4) }
+  | term PLUS term              { App (App (Var (makeLN [] "+" Infix2), $1), $3) }
+  | term path PLUS term              { App (App (Var (makeLN $2 "+" Infix2), $1), $4) }
+  | term INFIXOP3 term          { App (App (Var (makeLN [] $2 Infix3), $1), $3) }
+  | term path INFIXOP3 term          { App (App (Var (makeLN $2 $3 Infix3), $1), $4) }
+  | term STAR term              { App (App (Var (makeLN [] "*" Infix3), $1), $3) }
+  | term path STAR term              { App (App (Var (makeLN $2 "*" Infix3), $1), $4) }
+  | term INFIXOP4 term          { App (App (Var (makeLN [] $2 Infix4), $1), $3) }
+  | term path INFIXOP4 term          { App (App (Var (makeLN $2 $3 Infix4), $1), $4) }
+  | term PERCENT longname           { Quot ($1, $3) }
+  | term SUBIN subset_or_longname   { Subin ($1, $3) }
+  | term SUBOUT subset_or_longname  { Subout ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }
   | LAMBDA name_typed PERIOD term { Lambda ($2, $4) }
   | FORALL name_typed PERIOD term { Forall ($2, $4) }

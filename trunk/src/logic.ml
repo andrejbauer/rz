@@ -25,9 +25,11 @@ type label = string
 
 (** names of identifiers *)
 type name = Syntax.name
+type longname = Syntax.longname
 
 (** names of sets *)
 type set_name = Syntax.set_name
+type set_longname = Syntax.set_longname
 
 (** a binding in a quantifier or lambda *)
 type binding = name * set
@@ -36,7 +38,7 @@ type binding = name * set
 and proposition =
     False
   | True
-  | Atomic of name * term (** atomic proposition *)
+  | Atomic of longname * term (** atomic proposition *)
   | And    of proposition list
   | Imply  of proposition * proposition
   | Iff    of proposition * proposition
@@ -50,13 +52,13 @@ and set =
     Empty
   | Unit
   | Bool (** Bool is isomorphic to Unit+Unit *)
-  | Basic   of set_name
+  | Basic   of set_longname
   | Product of set list
   | Exp     of set * set
   | Sum     of (label * set option) list
   | Subset  of binding * proposition
   | Rz      of set (** the set of realizers *)
-  | Quotient of set * set_name
+  | Quotient of set * set_longname
   | PROP (** we pretend propositions form a set *)
   | STABLE (** we pretend not-not stable propositions form a set *)
   | EQUIV (** we even pretend not-not stable equivalences form a set *)
@@ -65,7 +67,7 @@ and set =
 and term =
     Star
 (** missing terms for type Bool *)
-  | Var    of name
+  | Var    of longname
   | Tuple  of term list
   | Proj   of int * term
   | App    of term * term
@@ -74,8 +76,8 @@ and term =
   | Case   of term * (label * binding option * term) list
   | RzQuot of term
   | RzChoose of binding * term * term
-  | Quot   of term * set_name
-  | Choose of binding * set_name * term * term
+  | Quot   of term * set_longname
+  | Choose of binding * set_longname * term * term
   | Let    of binding * term * term
   | Subin  of term * set
   | Subout of term * set
@@ -91,14 +93,23 @@ type theory_element =
   | Let_term of name * set * term
   | Value of name * set
   | Sentence of sentence_type * name * binding list * proposition
+  | Model of string * theory
+
+and theoryinfo = {
+   t_arg : theory_element list;
+   t_body : theory_element list
+ }
+
+and theory = 
+    Theory of theoryinfo
+  | TheoryID of string
+
+and theorydef =
+    TheoryDef of string * theory
 
 type context = (string * theory_element) list
 
-type theory = {
-  t_name : string;
-  t_arg : theory_element list option;
-  t_body : theory_element list
-}
+
 
 (****************************************)
 (* Substitution functions for Logic.xxx *)
@@ -180,7 +191,7 @@ let rec string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
   | Bool -> "bool"
-  | Basic (n, _) -> n
+  | Basic lname -> Syntax.string_of_longname lname
   | Product lst ->
       "(" ^ (String.concat " * " (List.map string_of_set lst)) ^ ")"
   | Exp (s, t) -> "(" ^ (string_of_set s) ^ " -> " ^ (string_of_set t) ^ ")"
@@ -195,7 +206,7 @@ let rec string_of_set = function
 
   | Subset _ -> "{...}"
   | Rz s -> "rz " ^ (string_of_set s)
-  | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (fst n)
+  | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (Syntax.string_of_longname n)
   | PROP -> "PROP"
   | STABLE -> "STABLE"
   | EQUIV -> "EQUIV"
@@ -304,13 +315,13 @@ and make_theory_element = function
                                   raise Unimplemented)
   | S.Sentence (st, n, b, t) -> Sentence (st, n, make_bindings b, make_proposition t)
   | S.Value (n, s) -> Value (n, make_set s)
+  | S.Model (str, thr) -> Model(str, make_theory thr)
 
-and make_theoryspec {S.t_arg=args; S.t_name=name; S.t_body=body} =
-  { t_name = name;
-    t_arg = (match args with None -> None | Some args -> Some (List.map make_theory_element args));
-    t_body = make_theory body
-  }
-   
 and make_theory = function
-    S.Theory elts -> List.map make_theory_element elts
+    S.Theory {S.t_arg = eltsa; S.t_body = eltsb} ->
+       Theory{t_arg = List.map make_theory_element eltsa;
+	      t_body = List.map make_theory_element eltsb}
   | S.TheoryID id -> raise Unimplemented
+
+and make_theorydef = function
+    S.TheoryDef(str, thr) -> TheoryDef(str, make_theory thr)

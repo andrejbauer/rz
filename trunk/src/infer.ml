@@ -11,66 +11,6 @@ open Syntax
 exception Unimplemented
 exception Impossible
 
-(*********************************)
-(** {2 The Typechecking Context} *)
-(*********************************)
-
-(** Context carried around by the type reconstruction algorithm.
- *)
-type ctx = {implicits  : set NameMap.t;  
-               (** Implicit types for variables *)
-            types      : set NameMap.t;
-               (** Typing context; types for names in scope,
-                   including sentences and terms *)
-            tydefs     : set NameMap.t;
-               (** Definitions of type/set variables in scope *)
-            sets       : NameSet.t ;
-               (** Abstract (undefined) type/set variables in scope *)
-           }
-
-(** Lookup functions:
-       Return the value associated with the given name.
-
-     @raise Not_Found when the name isn't in the map.
-  *)
-let lookupImplicit ctx name = NameMap.find name ctx.implicits
-
-(** Peek functions:
-       Search the context for a name that might not be there;
-       raises no exceptions.
-*)
-let peekSet ctx name = NameSet.mem name ctx.sets
-
-let peekType ctx name = 
-       if (NameMap.mem name ctx.types) then
-           Some (NameMap.find name ctx.types)
-       else None
-
-let peekTydef ctx name = 
-       if (NameMap.mem name ctx.tydefs) then
-           Some (NameMap.find name ctx.tydefs)
-       else None
-
-
-(** Insertion functions.
- *)
-let insertImplicit ctx name ty = 
-       {ctx with implicits = NameMap.add name ty ctx.implicits}
-let insertType ctx name ty = 
-       {ctx with types = NameMap.add name ty ctx.types}
-let insertTydef ctx name ty = 
-       {ctx with tydefs = NameMap.add name ty ctx.tydefs}
-let insertSet ctx name =
-       {ctx with sets = NameSet.add name ctx.sets}
-
-
-(** Initial context.
- *)
-let emptyCtx = {implicits = NameMap.empty; 
-                types     = NameMap.empty;
-                tydefs    = NameMap.empty; 
-                sets      = NameSet.empty}
-
 (************************)
 (** {2 Error Reporting} *)
 (************************)
@@ -132,11 +72,100 @@ let tyWrongSortError expr sort ty =
      print_string "\n\n";
      raise TypeError)
 
-let tyUnboundError name =
+let tyUnboundError lname =
     (print_string "\nTYPE ERROR:  Unbound variable ";
-     print_string (string_of_name name);
+     print_string (string_of_longname lname);
      print_string "\n\n";
      raise TypeError)
+
+(*********************************)
+(** {2 The Typechecking Context} *)
+(*********************************)
+
+(** Context carried around by the type reconstruction algorithm.
+ *)
+type ctx = {implicits  : set NameMap.t;  
+               (** Implicit types for variables *)
+            types      : set NameMap.t;
+               (** Typing context; types for names in scope,
+                   including sentences and terms *)
+            tydefs     : set NameMap.t;
+               (** Definitions of type/set variables in scope *)
+            sets       : NameSet.t ;
+               (** Abstract (undefined) type/set variables in scope *)
+            models   : ctx StringMap.t;
+               (** Models in scope *)
+            theories : ctx StringMap.t;
+               (** Theories in scope *)
+           }
+
+
+(** Lookup functions:
+       Return the value associated with the given name.
+
+     @raise Not_Found when the name isn't in the map.
+  *)
+let lookupImplicit ctx name = NameMap.find name ctx.implicits
+
+(** Peek functions:
+       Search the context for a name that might not be there;
+       raises no exceptions.
+*)
+
+let peekSet ctx name = NameSet.mem name ctx.sets
+
+let peekType ctx name = 
+       if (NameMap.mem name ctx.types) then
+           Some (NameMap.find name ctx.types)
+       else None
+
+let peekTydef ctx name = 
+       if (NameMap.mem name ctx.tydefs) then
+           Some (NameMap.find name ctx.tydefs)
+       else None
+
+let peekModel ctx str = 
+       if (StringMap.mem str ctx.models) then
+           Some (StringMap.find str ctx.models)
+       else None
+
+let peekTheory ctx str = 
+       if (StringMap.mem str ctx.theories) then
+           Some (StringMap.find str ctx.theories)
+       else None
+
+let rec peekLong peeker ctx = function
+    (LN(str, [], namesort) as lname) -> peeker ctx (N(str,namesort))
+  | (LN(str, lab::labs, namesort) as lname) ->
+      (match (peekModel ctx str) with
+        Some ctx' -> peekLong peeker ctx' (LN(lab, labs, namesort))
+      | None -> tyGenericError ("Unbound model" ^ str))
+
+(** Insertion functions.
+ *)
+let insertImplicit ctx name ty = 
+       {ctx with implicits = NameMap.add name ty ctx.implicits}
+let insertType ctx name ty = 
+       {ctx with types = NameMap.add name ty ctx.types}
+let insertTydef ctx name ty = 
+       {ctx with tydefs = NameMap.add name ty ctx.tydefs}
+let insertSet ctx name =
+       {ctx with sets = NameSet.add name ctx.sets}
+let insertModel ctx str ctx' =
+       {ctx with models = StringMap.add str ctx' ctx.models}
+let insertTheory ctx str ctx' =
+       {ctx with theories = StringMap.add str ctx' ctx.theories}
+
+
+(** Initial context.
+ *)
+let emptyCtx = {implicits = NameMap.empty; 
+                types     = NameMap.empty;
+                tydefs    = NameMap.empty; 
+                sets      = NameSet.empty;
+                models  = StringMap.empty;
+	        theories = StringMap.empty}
+
 
 
 (**********************************)
@@ -146,10 +175,10 @@ let tyUnboundError name =
 (** Expand out any top-level definitions for a set 
   *)
 let rec hnfSet ctx = function
-    Set_name name ->
-      (match (peekTydef ctx name) with
+    Set_name (lname) ->
+      (match (peekLong peekTydef ctx lname) with
         Some set -> hnfSet ctx set
-      | None -> Set_name name)
+      | None -> Set_name lname)
   | set -> set
 
 (** Compare two sets.  If do_subtyping is true, we're doing subtyping
@@ -274,7 +303,7 @@ let joinSets ctx =
 (*****************************************)
 
 let isEquivalence ctx s r =
-    match peekType ctx r with
+    match peekLong peekType ctx r with
 	Some (Exp (u, Exp (v, EquivProp)))
       | Some (Exp (Product [u; v], EquivProp)) ->
 	  (eqSet ctx s u) && (eqSet ctx s v)
@@ -315,7 +344,7 @@ let mkProp = function
   | Stable -> StableProp
 
 let isInfix = function
-    _, (Infix0|Infix1|Infix2|Infix3|Infix4) -> true
+    N(_, (Infix0|Infix1|Infix2|Infix3|Infix4)) -> true
   | _ -> false
 
 let makeBinaryCurried = function
@@ -330,7 +359,7 @@ let rec makeProp n prp s =
   else if isProp s then
     s
   else
-    tyGenericError ("Invalid type for predicate " ^ (fst n))
+    tyGenericError ("Invalid type for predicate " ^ (string_of_name n))
     
 let rec makeStable = function
     Prop | StableProp -> StableProp
@@ -343,12 +372,12 @@ let rec makeEquivalence n ctx = function
       if eqSet ctx s1 s2 then
 	Exp (Product [s1; s2], EquivProp)
       else
-	tyGenericError ("Ill-typed equivalence " ^ (fst n))
+	tyGenericError ("Ill-typed equivalence " ^ (string_of_name n))
   | Exp (s1, Exp (s2, (Prop|StableProp|EquivProp))) ->
       if eqSet ctx s1 s2 then
 	Exp (s1, Exp (s2, EquivProp))
       else
-	tyGenericError ("Ill-typed equivalence " ^ (fst n))
+	tyGenericError ("Ill-typed equivalence " ^ (string_of_name n))
 
 (** ------------------- *)
 
@@ -372,12 +401,13 @@ let rec annotateSet ctx =
 	      else
 		failwith "only quotients by stable binary relations exist"
         | Rz s -> Rz (ann s)
-        | Set_name name ->
-             (if peekSet ctx name then
-		 Set_name name
-	      else match peekTydef ctx name with
-                     Some _ -> Set_name name
-                   | None -> tyGenericError ("Unknown set " ^ (fst name)))
+        | Set_name lname ->
+             (if peekLong peekSet ctx lname then
+		 Set_name lname
+	      else match peekLong peekTydef ctx lname with
+                     Some _ -> Set_name lname
+                   | None -> tyGenericError ("Unknown set " ^ 
+                                             string_of_longname lname))
         | s -> s
      in
         ann)
@@ -500,12 +530,19 @@ and annotateBindings ctx = function
          in let (bnds', ctx'') = annotateBindings ctx' bnds
          in (bnd'::bnds', ctx'')
 
+and addBindings ctx = function
+      [] -> ctx
+    | ((n,Some t)::bnds) -> 
+         let    ctx' = insertType ctx n t
+         in let ctx'' = addBindings ctx' bnds
+         in ctx''
+
 and annotateTerm ctx = 
     (let rec ann = function 
-       Var name -> 
-	 (match (peekType ctx name) with
-	   Some ty -> (Var name, ty)
-	 | None -> tyUnboundError name)
+       Var lname -> 
+	 (match (peekLong peekType ctx lname) with
+	   Some ty -> (Var lname, ty)
+	 | None -> tyUnboundError lname)
      | Constraint(t,s) ->
         let    (t',ty) = ann t
         in let s' = annotateSet ctx s
@@ -573,7 +610,7 @@ and annotateTerm ctx =
 	   if isEquivalence ctx ty r then
 	     Quot (t', r), Quotient (ty, r)
 	   else
-	     failwith (fst r ^ " is not an equivalence")
+	     failwith (string_of_longname r ^ " is not an equivalence")
 	 
      | RzQuot t ->
 	 let (t', ty) = ann t in
@@ -643,78 +680,112 @@ and annotateTerm ctx =
      | _ -> tyGenericError "Proposition found where a term was expected"
    in ann)
 
-and annotateTheoryElem ctx = 
-    let rec ann = function
-         Set(str, None) -> (Set(str, None), insertSet ctx str)
+and annotateTheoryElems ctx raccum ctx0 = function
 
-       | Set(str, Some s) -> 
+         [] -> (List.rev raccum, ctx0, ctx)
+
+       | Set(str, None)::rest -> 
+           annotateTheoryElems (insertSet ctx str) 
+                               (Set(str, None)::raccum) (insertSet ctx0 str) rest
+
+       | Set(str, Some s)::rest -> 
            let ty = annotateSet ctx s
-           in (Set(str, Some ty), insertTydef ctx str ty)
+           in annotateTheoryElems (insertTydef ctx str ty)
+                                  (Set(str, Some ty)::raccum)
+                                  (insertTydef ctx0 str ty)
+                                  rest
 
-       | Value(n,s) ->
-           let ((_,Some ty1), ctx') = annotateBinding ctx (n, Some s)
-           in (Value(n,ty1), ctx')
+       | Value(n,s)::rest ->
+           let ((_,Some ty1) as bnd', ctx') = annotateBinding ctx (n, Some s)
+	   in let ctx0' = addBindings ctx0 [bnd']
+           in annotateTheoryElems ctx' (Value(n,ty1)::raccum) ctx0' rest
 
-       | Let_term(bnd,t) ->
+       | Let_term(bnd,t)::rest ->
            let    (t', ty1) = annotateTerm ctx t
            in let ((_,Some ty2) as bnd', ctx') = 
 	                 annotateBindingWithDefault ctx ty1 bnd
+           in let ctx0' = addBindings ctx0 [bnd']
            in if (subSet ctx ty1 ty2) then
-                (Let_term(bnd',t'), ctx')
+                annotateTheoryElems ctx' (Let_term(bnd',t')::raccum) ctx0' rest
               else
                 tyGenericError "Term definition doesn't match constraint"
 
-       | Sentence(sort, n, bnds, p) ->
+       | Sentence(sort, n, bnds, p)::rest ->
            let    (bnds',ctx') = annotateBindings ctx bnds
-           in let p',_ = annotateProp ctx' p
-           in (Sentence(sort, n, bnds', p'),
-               ctx)   (* XXX:  Cannot refer to previous axioms!? *)
+           in let (p',_) = annotateProp ctx' p
+           in annotateTheoryElems ctx (Sentence(sort, n, bnds', p')::raccum) 
+                                  ctx0 rest
+                    (** XXX:  Cannot refer to previous axioms!? *)
 
-       | Predicate (n, stab, s) ->
+       | Predicate (n, stab, s)::rest ->
 	   let s1 = makeProp n (mkProp stab) (annotateSet ctx s) in
 	   let s2 = (if isInfix n then makeBinaryCurried s1 else s1) in
 	   let s3 = (if stab = Equivalence then makeEquivalence n ctx s2 else s2) in
 	   let s4 = (if stab = Stable then makeStable s3 else s3) in
-	     (Predicate (n, (if propKind s4 = Stable then Stable else stab), s4),
-	      insertType ctx n s4)
+	   let ctx' = insertType ctx n s4 in
+           let ctx0' = insertType ctx0 n s4 in
+	     annotateTheoryElems ctx' (Predicate (n, (if propKind s4 = Stable then Stable else stab), s4)::raccum) ctx0' rest
 
-       | Let_predicate (n, stab, bnds, p) ->
+       | Let_predicate (n, stab, bnds, p)::rest ->
 	   let    (bnds', ctx') = annotateBindings ctx bnds
 	   in let tys = List.map (function (_, Some ty) -> ty) bnds'
 	   in let (p', stab') = annotateProp ctx' p
+           in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkProp stab')
+           in let ctx' = insertType ctx n ty
+           in let ctx0' = insertType ctx0 n ty
 	   in
 	     if stab = Unstable or stab' = Stable then
-	       (Let_predicate (n, stab, bnds', p'),
-		insertType ctx n (List.fold_right 
-				    (fun x y -> Exp(x,y)) tys (mkProp stab')))
+	       annotateTheoryElems ctx' (Let_predicate (n, stab, bnds', p')::raccum)
+                                   ctx0' rest
 	     else
-	       failwith ("Could not determine that " ^ (fst n) ^ " is stable")
+	       failwith ("Could not determine that " ^ (string_of_name n) ^ " is stable")
 
-       | Implicit(_,_) -> raise Impossible (* see below *)
-    in
-      ann
-
-and annotateTheoryElems ctx = function
-      [] -> ([], ctx)
-  
-    | (Implicit(strs, s)::tes) ->    (** Eliminated during inference *)
+       | Implicit(strs, s)::rest ->    (** Eliminated during inference *)
            let    s' = annotateSet ctx s
            in let ctx' = List.fold_left 
-                            (fun ctx str -> insertImplicit ctx (str,Word) s') 
+                            (fun ctx str -> insertImplicit ctx (N(str,Word)) s') 
                             ctx strs
-           in annotateTheoryElems ctx' tes
+           in annotateTheoryElems ctx' raccum ctx0 rest
 
-    | te::tes -> let (te', ctx') = annotateTheoryElem ctx te
-                 in let (tes', ctx'') = annotateTheoryElems ctx' tes
-                 in (te'::tes', ctx'')
+       | Model (str,thr) :: rest ->
+           let (thr',ctx_thr) = annotateTheory ctx thr
+           in let ctx' = insertModel ctx str ctx_thr
+           in let ctx0' = insertModel ctx str ctx_thr
+           in 
+              annotateTheoryElems ctx' (Model(str,thr')::raccum) ctx0' rest
+(*
+       | Subtheory (str, thr)::rest ->
+            raise Unimplemented
+*)
 
 (* XXX Does not return context or handle TheoryID's*)
 and annotateTheory ctx = function
-      Theory tes -> Theory(fst(annotateTheoryElems ctx tes))
-   
-and annotateTheorySpec ctx = function
-      {t_arg = None; t_name = n; t_body = thr} ->
-           {t_arg = None; t_name = n; t_body = annotateTheory ctx thr}
- 
-                    
-      
+  | Theory {t_arg = []; t_body = tesb } ->
+	let (tesb', ctx_thr, _) = annotateTheoryElems ctx [] emptyCtx tesb
+        in (Theory {t_arg=[]; t_body = tesb'}, ctx_thr)
+
+  |  Theory {t_arg = tesa; t_body = tesb} -> 
+	let (tesa', _, ctx') = annotateTheoryElems ctx [] emptyCtx tesa
+	in let (tesb', ctx_thr, _) = annotateTheoryElems ctx' [] emptyCtx tesb
+        in (Theory {t_arg=tesa'; t_body = tesb'}, emptyCtx)
+	    
+    | TheoryID str -> (TheoryID str,
+		       match peekTheory ctx str with
+			 Some ctx_thr -> ctx_thr
+		       | None -> tyGenericError ("Unknown Theory " ^ str))
+			    
+
+
+and annotateTheoryDef ctx = function
+      TheoryDef(str, thr) -> 
+	let (thr', ctx_thr) = annotateTheory ctx thr
+	in (TheoryDef(str, thr'),
+	    insertTheory ctx str ctx_thr)
+
+and annotateTheoryDefs ctx = function
+    [] -> []
+  | td::tds -> let (td', ctx') = annotateTheoryDef ctx td
+               in let tds' = annotateTheoryDefs ctx' tds 
+               in td'::tds'
+
+
