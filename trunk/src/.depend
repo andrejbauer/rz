@@ -1,4 +1,7 @@
-parser.cmo: message.cmo parser.cmi 
-parser.cmx: message.cmx parser.cmi 
+parser.cmi: syntax.cmo 
+parser.cmo: message.cmo syntax.cmo parser.cmi 
+parser.cmx: message.cmx syntax.cmx parser.cmi 
+tex.cmo: logic.cmo 
+tex.cmx: logic.cmx 
 toplevel.cmo: message.cmo parser.cmi 
 toplevel.cmx: message.cmx parser.cmx 

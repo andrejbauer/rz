@@ -44,6 +44,7 @@
 %token LET
 %token LPAREN
 %token MATCH
+%token MODEL
 %token <string> NAME
 %token NOT
 %token ONE
@@ -64,6 +65,7 @@
 %token SLASH
 %token STABLE
 %token STAR
+%token STRUCTURE
 %token THEOREM
 %token THEORY
 %token THY
@@ -104,17 +106,34 @@
 
 /* Entry points */
 
-%start theory
-%type <Syntax.theory> theory
+%start theoryspecs
+%type <Syntax.theoryspec list> theoryspecs
 
 %%
 
+theoryspecs:
+  | EOF                         { [] }
+  | theoryspec theoryspecs      { $1 :: $2 }
+
+
+
+theoryspec:
+  | THEORY NAME EQUAL theory    { {t_arg = None; 
+                                   t_name = $2; 
+                                   t_body = $4} }
+  | THEORY NAME LPAREN theory_body RPAREN EQUAL theory 
+                                { {t_arg = Some $4;
+                                   t_name = $2;
+                                   t_body = $7} }
+
+
 theory:
-  | THEORY NAME EQUAL THY theory_body END EOF { {t_name = $2; t_body = $5} }
+  | THY theory_body END         { Theory $2 }
+  | NAME                        { TheoryID $1 }
 
 theory_body:
   |                             { [] }
-         | theory_element theory_body	{ $1 :: $2 }
+  | theory_element theory_body	{ $1 :: $2 }
 
 theory_element:
     SET NAME  			{ Set $2 }
@@ -134,6 +153,8 @@ theory_element:
   | LEMMA name args EQUAL term       { Sentence (Lemma, $2, $3, $5) }
   | PROPOSITION name args EQUAL term { Sentence (Proposition, $2, $3, $5) }
   | COROLLARY name args EQUAL term   { Sentence (Corollary, $2, $3, $5) }
+  | MODEL NAME COLON theory      { Model($2, $4) }
+  | STRUCTURE NAME COLON theory      { Model($2, $4) }
 
 args:
                                 { [] }

@@ -70,8 +70,14 @@ type theory_element =
   | Variable of name * set
   | Define of name * term
   | Sentence of sentence_type * name * binding list * term
+  | Model of string * theory
+  | Subtheory of theoryspec
       
-type theory = {
-  t_name : string ;
-  t_body : theory_element list
-}
+and theoryspec = {t_arg  : theory_element list option;
+                  t_name : string ;
+                  t_body : theory}
+
+and theory = 
+     Theory of theory_element list
+  |  TheoryID of string
+

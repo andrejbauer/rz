@@ -23,6 +23,7 @@
       "lemma", LEMMA;
       "let", LET;
       "match", MATCH;
+      "model", MODEL;
       "not", NOT;
       "on", ON;
       "or", OR;
@@ -32,6 +33,7 @@
       "rz", RZ;
       "set", SET;
       "stable", STABLE;
+      "structure", STRUCTURE;
       "theorem", THEOREM;
       "theory", THEORY;
       "thy", THY ;
@@ -39,7 +41,11 @@
       "with", WITH
     ]
 
+  let commentdepth = ref 0
+  exception BadComment
+
 }
+
 
 let ident = ['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
 
@@ -100,11 +106,17 @@ rule token = parse
             { INFIXOP4(Lexing.lexeme lexbuf) }
   | ['*' '/' '%'] symbolchar *
             { INFIXOP3(Lexing.lexeme lexbuf) }
-  | "(*"    { comment lexbuf; token lexbuf }
+  | "(*"    { commentdepth := 1;
+              comment lexbuf }
+  | "*)"    { print_string "ERROR:  too many close comments\n";
+              raise BadComment}
   | eof             { EOF }
 
 and comment = parse
-    "*)"    { }
+    "*)"    { commentdepth := !commentdepth - 1;
+              if (!commentdepth > 0) then comment lexbuf else token lexbuf}
+  | "(*"    { commentdepth := !commentdepth + 1;
+              comment lexbuf }
   | _       { comment lexbuf }
 
 (* trailer *)
