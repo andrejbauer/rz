@@ -505,20 +505,20 @@ and optSignat ctx = function
   | Signat body -> 
       let body', ctx' = optElems ctx body in
       ( Signat body', Some ctx' )
-  | SignatFunctor(args, body) ->
-      let    ( args', ctx'  ) = optStructBindings ctx args
+  | SignatFunctor(arg, body) ->
+      let    ( [arg'], ctx'  ) = optStructBindings ctx [arg]
       in let ( body', ctx'' ) = optSignat ctx' body
-      in ( SignatFunctor ( args', body' ), None )
+      in ( SignatFunctor ( arg', body' ), None )
       (* XXX:  We are failing to put any information into the context
          for functors, since the context doesn't support them yet *)
 
 
 and optStructBindings ctx = function
     [] -> [], ctx
-  | (m, signat) :: bnd ->
+  | (m, signat) :: bnds ->
       let signat', ctxopt' = optSignat ctx signat in
-      let bnd', ctx'' = optStructBinding ctx bnd in
-	( (m, signat') :: bnd',
+      let bnds', ctx'' = optStructBindings ctx bnds in
+	( (m, signat') :: bnds',
 	  (match ctxopt' with
              Some ctx' -> insertModul ctx'' m ctx'
            | None      -> ctx'') )
