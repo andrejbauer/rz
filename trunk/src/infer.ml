@@ -920,8 +920,8 @@ and annotateModelBindings ctx = function
     [] -> [], ctx
   | (m, th) :: bnd ->
       let th' = annotateTheory ctx th in
-      let bnd', ctx'' = annotateModelBindings (insertModel ctx m th') bnd in
-	(m, th') :: bnd', ctx''
+      let bnd', ctx' = annotateModelBindings ctx bnd in
+	(m, th') :: bnd', (insertModel ctx' m th')
 
 and annotateTheory ctx = function
   | Theory elems ->

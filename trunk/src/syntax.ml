@@ -122,8 +122,8 @@ let rec string_of_name = function
   | N(str,_) -> "(" ^ str ^ ")"
 
 let rec string_of_longname = function 
-    LN(str,strs,Word) -> String.concat  "::" (str :: strs)
-  | LN(str,strs,_) -> "(" ^ String.concat "::" (str :: strs) ^ ")"
+    LN(str,strs,Word) -> String.concat  "." (str :: strs)
+  | LN(str,strs,_) -> "(" ^ String.concat "." (str :: strs) ^ ")"
 
 let rec string_of_set set = 
   (let rec toStr = function 

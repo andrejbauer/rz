@@ -185,7 +185,7 @@ name_list:
 
 margs:
   |                                        { [] }
-  | RBRACK TNAME COLON theory RBRACK margs { ($2, $4) :: $6 }
+  | LBRACK TNAME COLON theory RBRACK margs { ($2, $4) :: $6 }
 
 args:
   |                             { [] }
@@ -202,8 +202,8 @@ name:
   | LPAREN STAR RPAREN            { N("*", Infix3) }
 
 path:
-    TNAME PATHSEP                 { [$1] }
-  | TNAME PATHSEP path            { $1 :: $3 }
+    TNAME PERIOD                 { [$1] }
+  | TNAME PERIOD path            { $1 :: $3 }
 
 longname:
     path NAME                     { makeLN $1 $2 Word }

@@ -1,6 +1,6 @@
-theory Bar =
+theory Bar (A : thy set s end) =
 thy
-  set s
+  set s = A.s
   const x : s
   set t = s
 end

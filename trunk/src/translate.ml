@@ -537,10 +537,38 @@ and translateTheoryElement ctx = function
 
   | L.Sentence (_, n, mbind, bind, p) ->
       begin
+	let prep m (Syntax.N(s,t)) = Syntax.LN(s,[m],t) in
+	let rec extract (bad, bind, varsubst, setsubst, precond) = function
+	    [] -> bad, bind, varsubst, setsubst, precond
+	  | (m, Signat sg) :: rest ->
+	      let (bad', bind', varsubst', setsubst', precond') =
+		List.fold_left
+		  (fun (bad, bind, varsubst, setsubst, precond) -> function
+		       ValSpec (n, ty) ->
+			 let n' = fresh [n] bad ctx in
+			   (n'::bad, (n',ty)::bind,
+			    (prep m n, Id (Syntax.toLN(n')))::varsubst,
+			    setsubst,
+			    precond)
+		     | AssertionSpec (str, bnd, p) ->
+			 (bad, bind, varsubst, setsubst, precond)
+		     | TySpec (s, None) -> 
+			 let s' = fresh [s] bad ctx in
+			   (s'::bad, bind, varsubst,
+			    (prep m s, PolyTy s') :: setsubst,
+			    precond)
+		     | TySpec (s, Some t) ->
+			 (bad, bind, varsubst, (prep m s, t) :: setsubst, precond)
+		  ) (bad, bind, varsubst, setsubst, precond) sg
+	      in
+		extract (bad', bind', varsubst', setsubst', precond') rest
+	in
+	let (_, bind', varsubst, setsubst, precond) =
+	  extract ([], [], [], [], []) (fst (translateModelBinding ctx mbind)) in
 	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in
 	let (ty, x, p') = translateProp ctx' p in
 	let p'' = substProp ctx'
-		    [(x, App (toId n, Tuple (List.map (fun (x,_) -> toId x) bind)))] p'
+		    [(x, App (toId n, Tuple (List.map (fun (x,_) -> toId x) bind')))] p'
 	in
 	let rec fold cx tots = function
 	    [] -> [],
@@ -555,31 +583,32 @@ and translateTheoryElement ctx = function
 		((x,t)::cx), r
 	in
 	let (b, r) = fold ctx [] bind in 
-	  [ ValSpec (n, ArrowTy (TupleTy (List.map snd b), ty));
-	    AssertionSpec ((Syntax.string_of_name n) ^ "_rz", b, r)
+	let b' = bind' @ b in
+	  [ ValSpec (n, ArrowTy (TupleTy (List.map snd b'), ty));
+	    AssertionSpec ((Syntax.string_of_name n) ^ "_rz", b', r)
 	  ]
       end,
       addProp n (Syntax.Unstable, Some (bind, p)) ctx
 
-let rec translateTheoryBody ctx = function
-    [] -> [], ctx
-  | elem::elems ->
-      let es, ctx' = translateTheoryElement ctx elem in
-      let th, ctx'' = translateTheoryBody ctx' elems in
-	(es @ th), ctx''
-
-let translateTheory ctx = function
-    L.Theory body -> 
-      let body', ctx' = translateTheoryBody ctx body in
-	Signat body', ctx'      
-  | L.TheoryID id -> SignatID id, getModel id ctx
-
-let rec translateModelBinding ctx = function
+and translateModelBinding ctx = function
     [] -> [], emptyCtx
   | (m, th) :: rest ->
       let th', ctx' = translateTheory ctx th in
       let rest', ctx'' = translateModelBinding ctx rest in
 	(m, th') :: rest', (addModel m ctx' ctx'')
+
+and translateTheoryBody ctx = function
+    [] -> [], emptyCtx
+  | elem::elems ->
+      let es, ctx' = translateTheoryElement ctx elem in
+      let th, ctx'' = translateTheoryBody ctx' elems in
+	(es @ th), ctx''
+
+and translateTheory ctx = function
+    L.Theory body -> 
+      let body', ctx' = translateTheoryBody ctx body in
+	(Signat body'), ctx'      
+  | L.TheoryID id -> SignatID id, getModel id ctx
 
 let translateTheorydef ctx (L.Theorydef (n, args, th)) =
   let args', ctx' = translateModelBinding ctx args in

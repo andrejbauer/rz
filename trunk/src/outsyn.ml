@@ -10,6 +10,7 @@ type set_longname = Syntax.set_longname
 
 type ty =
     NamedTy of set_longname    (* 0 *)
+  | PolyTy of set_name         (* 0 *)
   | UnitTy                     (* 0 *)
   | VoidTy                     (* 0 *)
   | TopTy                      (* 0 *)
@@ -62,7 +63,6 @@ type signat_element =
     ValSpec of name * ty
   | AssertionSpec of string * binding list * proposition
   | TySpec of set_name * ty option
-  | PredicateSpec of name * ty
 
 type signat =
     SignatID of string
@@ -266,7 +266,8 @@ let rec string_of_ty' level t =
 		
   in let (level', str ) = 
        (match t with
-            NamedTy lname   -> (0, string_of_longname lname)
+            NamedTy lname  -> (0, string_of_longname lname)
+	  | PolyTy name    -> (0, "'" ^ string_of_name name)
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
           | ListTy t       -> (1, (string_of_ty' 1 t) ^ "list")
@@ -375,7 +376,7 @@ let string_of_spec = function
 
 let string_of_signat = function
     SignatID s -> s
-  | Signat body -> String.concat "\n" (List.map string_of_spec body)
+  | Signat body -> "sig\n" ^ (String.concat "\n" (List.map string_of_spec body)) ^ "\nend"
 
 let string_of_signatdef (Signatdef (s, args, body)) =
   "module type " ^ s ^ " =\n" ^
