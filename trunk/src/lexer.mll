@@ -51,6 +51,10 @@
   let commentdepth = ref 0
   exception BadComment
 
+  (* Characters (as length-1 strings) stored in reverse order,
+     so we can more efficiently add them to the list as the
+     comment is read. *)
+  let current_comment : string list ref = ref []
 }
 
 
@@ -126,6 +130,7 @@ rule token = parse
   | ['*' '/' '%'] symbolchar *
             { INFIXOP3(Lexing.lexeme lexbuf) }
   | "(*"    { commentdepth := 1;
+	      current_comment := [];
               comment lexbuf }
   | "*)"    { print_string "ERROR:  too many close comments\n";
               raise BadComment}
@@ -133,10 +138,12 @@ rule token = parse
 
 and comment = parse
     "*)"    { commentdepth := !commentdepth - 1;
-              if (!commentdepth > 0) then comment lexbuf else token lexbuf}
+              if (!commentdepth > 0) then comment lexbuf else 
+		COMMENT ( String.concat "" (List.rev !current_comment)) }
   | "(*"    { commentdepth := !commentdepth + 1;
               comment lexbuf }
-  | _       { comment lexbuf }
+  | _       { current_comment := (Lexing.lexeme lexbuf) :: !current_comment;
+	      comment lexbuf }
 
 (* trailer *)
 {

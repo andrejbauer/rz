@@ -275,6 +275,8 @@ and output_spec ppf = function
   | AssertionSpec (nm, binds, p) ->
       fprintf ppf "@[<hov 7>(** Assertion %s (%a) =@\n@ %a@ *)@]" 
 	nm   output_binds binds   output_prop p
+  | Comment cmmnt ->
+      fprintf ppf "(**%s*)" cmmnt
 
 and output_specs ppf = function
     [] -> ()
@@ -286,7 +288,7 @@ and output_signat ppf = function
     SignatID s -> fprintf ppf "%s" s
   | Signat body -> fprintf ppf "@[<v 2>sig@,%a@]@,end"  output_specs body
 
-and output_signatdef ppf = function
+and output_toplevel ppf = function
     Signatdef (s, args, body) ->
       let rec output_args ppf = function
 	  [] -> ()
@@ -296,4 +298,8 @@ and output_signatdef ppf = function
       in
 	fprintf ppf "@[<v>module type %s = %a@,%a@]@."  
 	  s   output_args args   output_signat body
+  | TopComment cmmnt -> 
+      fprintf ppf "@[(*%s*)@]@." cmmnt
+
+
 	  

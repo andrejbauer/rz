@@ -504,6 +504,8 @@ and translateTheoryElement ctx = function
 		      substProp ctx [(x, toId n)] p)],
       addBind n s ctx
 
+  | L.Comment cmmnt -> ([Comment cmmnt], ctx)
+
   | L.Sentence (_, nm, mdlbind, valbnd, prp) ->
       begin
 	let (typ, x, prp') = translateProp ctx prp in
@@ -624,13 +626,20 @@ and processTheory ctx = function
 	    body', ctx'
 
 
-let translateTheorydef ctx (L.Theorydef (n, args, th)) =
-  let args', ctx' = translateModelBinding ctx args in
-    Signatdef (n, args', fst (translateTheory ctx' th))
+let translateToplevel ctx = function
+    (L.Theorydef (n, args, th)) -> 
+      let args', ctx' = translateModelBinding ctx args in
+	(Signatdef (n, args', fst (translateTheory ctx' th)),  
+	 addTheory n args th ctx)
+  | (L.TopComment cmmnt) -> (TopComment cmmnt,  ctx)
+  | (L.TopModel (mdlnm, thry)) ->
+      let (thry',ctx') = translateTheory ctx thry
+      in (TopModule(mdlnm,thry'),  ctx')
+      
 
-let rec translateTheorydefs ctx = function
+let rec translateToplevels ctx = function
     [] -> []
-  | ((L.Theorydef (n, args, th)) as thr) :: ths ->
-      let signat = translateTheorydef ctx thr in
-	signat :: (translateTheorydefs (addTheory n args th ctx) ths)
+  | thr :: ths ->
+      let (signat,ctx') = translateToplevel ctx thr in
+	signat :: (translateToplevels ctx' ths)
 

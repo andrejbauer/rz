@@ -183,7 +183,8 @@ type theory_summary_item =
        This is backwards from the items list of a typing context,
        where the first item in the model becomes the last item of
        the list, but both make sense. *)
-  | SentenceSpec (** Some logical sentence; details aren't important *) 
+  | OtherSpec (** Some logical sentence or a comment; 
+		  details aren't important *) 
 
 (** Representation of the context itself.  The implicits and theories
     are stored separately, because they are not components of any model.
@@ -325,7 +326,7 @@ let addToSubst substitution pathtohere = function
     TermSpec(nm,_) -> (addTermToSubst substitution nm pathtohere)
   | SetSpec(stnm,_) -> (addSetToSubst substitution stnm pathtohere)
   | ModelSpec(mdlnm,_) -> (addModelToSubst substitution mdlnm pathtohere)
-  | SentenceSpec      -> (substitution) (** Never referenced in a theory  *)
+  | OtherSpec       -> (substitution) (** Never referenced in a theory  *)
 
 (** Given the guts of a context and a desired set name, determine
     whether a set of that name exists (with or without a definition).
@@ -1087,12 +1088,15 @@ and annotateTheoryElem cntxt = function
 	  the code matching this spec will. *)
         (cntxt, 
 	 Sentence(sort, sentence_nm, mbnds', bnds', p'),
-	 SentenceSpec)
+	 OtherSpec)
+
+  | Comment cmmnt->
+        (cntxt, Comment cmmnt, OtherSpec)
 
   | Predicate (nm, stblty, st) ->
       (* XXX Code appears to be trying to allow user to explicitly say
 	 the predicate is PROP/STABLEPROP (via makeProp), but I think
-	 that annotateSet immediately reject these as non-sets.  *)
+	 that annotateSet immediately rejects PROP/STABLEPROP as non-sets.  *)
       let st' = annotateSet cntxt st in
       let st1 = makeProp nm (mkKind stblty) st' in
       let st2 = (if isInfix nm then makeBinaryCurried st1 else st1) in
@@ -1114,7 +1118,9 @@ and annotateTheoryElem cntxt = function
       in
 	if stab = Unstable or stab' = Stable then
 	  (cntxt', 
-	   (* XXX We could return stab' instead of stab...*)
+	   (* XXX We could return stab' instead of stab if we wanted
+              to be more permissive (e.g., treating a stable predicate
+	      as stable regardless of the user's annotation) *)
 	   Let_predicate (n, stab, bnds', p'),
 	   TermSpec(n, ty))
 	else
@@ -1149,7 +1155,7 @@ and annotateModelBindings cntxt = function
     [] -> [], cntxt
   | (m, th) :: bnd ->
       let (th',specs) = annotateTheory cntxt th in
-      let bnd', cntxt' = annotateModelBindings cntxt bnd in
+      let (bnd', cntxt') = annotateModelBindings cntxt bnd in
 	((m, th') :: bnd', (insertModel cntxt' m specs))
 
 and annotateTheory cntxt = function
@@ -1165,17 +1171,23 @@ and annotateTheory cntxt = function
 		       | None -> tyGenericError ("Unknown theory: " ^ str))
 
 
-and annotateTheoryDef cntxt = function
+and annotateToplevel cntxt = function
       Theorydef (str, args, thr) -> 
 	let (args', cntxt') = annotateModelBindings cntxt args in
 	let (thr', body_items) = annotateTheory cntxt' thr
 	in (Theorydef (str, args', thr'), 
 	    insertTheory cntxt str args body_items)
+  |  TopComment cmmnt ->
+       (TopComment cmmnt, cntxt)
+  |  TopModel (mdlnm, thry) ->
+      let (thry',specs) = annotateTheory cntxt thry in
+	(TopModel(mdlnm, thry'),
+	 insertModel cntxt mdlnm specs)
 
-and annotateTheoryDefs cntxt = function
+and annotateToplevels cntxt = function
     [] -> []
-  | td::tds -> let (td', cntxt') = annotateTheoryDef cntxt td
-               in let tds' = annotateTheoryDefs cntxt' tds 
+  | td::tds -> let (td', cntxt') = annotateToplevel cntxt td
+               in let tds' = annotateToplevels cntxt' tds 
                in td'::tds'
 
 

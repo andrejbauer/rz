@@ -64,6 +64,7 @@ type signat_element =
   | StructureSpec of name * struct_binding list * signat
   | AssertionSpec of string * binding list * proposition
   | TySpec of set_name * ty option
+  | Comment of string
 
 and signat =
     SignatID of string
@@ -71,7 +72,10 @@ and signat =
 
 and struct_binding = string * signat
 
-and signatdef = Signatdef of string * struct_binding list * signat
+and toplevel = 
+    Signatdef of string * struct_binding list * signat
+  | TopComment of string
+  | TopModule of string * signat
     
 
 let mk_word str = Syntax.N(str, Syntax.Word)
@@ -499,16 +503,21 @@ let string_of_spec = function
 	"(** Assertion " ^ nm ^ ":\n" ^
 	(if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
 	(string_of_proposition p) ^ "\n*)"
+    | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
 let string_of_signat = function
     SignatID s -> s
   | Signat body -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
 
-let string_of_signatdef (Signatdef (s, args, body)) =
-  "module type " ^ s ^ " =\n" ^
-  (if args = [] then "" else
-     String.concat "\n"
-     (List.map
-	(fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n")
-	args)) ^
-  (string_of_signat body) ^ "\n"
+let string_of_toplevel = function
+    (Signatdef (s, args, body)) ->
+      "module type " ^ s ^ " =\n" ^
+      (if args = [] then "" else
+	 String.concat "\n"
+	   (List.map
+	      (fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n")
+	      args)) ^
+      (string_of_signat body) ^ "\n"
+  | TopComment cmmnt -> "(**" ^ cmmnt ^ "*)"
+  | TopModule (mdlnm, signat) ->
+      "module " ^ mdlnm ^ " : " ^ string_of_signat signat

@@ -97,13 +97,16 @@ and theory_element =
   | Sentence      of sentence_type * name * mbinding list * binding list * term
   | Model         of string * theory
   | Implicit      of string list * set
+  | Comment       of string
 
 and theory = 
     Theory of theory_element list
   | TheoryID of theory_name
 
-and theorydef = 
+and toplevel = 
     Theorydef of theory_name * (model_name * theory) list * theory
+  | TopComment of string
+  | TopModel  of string * theory
 
 module NameOrder = struct
                      type t = name

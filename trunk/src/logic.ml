@@ -109,13 +109,16 @@ and theory_element =
   | Value of name * set
   | Sentence of sentence_type * name * model_binding list * binding list * proposition
   | Model of string * theory
+  | Comment of string
 
 and theory = 
     Theory of theory_element list
   | TheoryID of string
 
-and theorydef =
+and toplevel =
     Theorydef of string * model_binding list * theory
+  | TopComment of string
+  | TopModel  of model_name * theory
 
 type context = (string * theory_element) list
 
@@ -311,7 +314,6 @@ and make_proposition = function
 
 and make_term = function
     S.Var n -> Var (ln_of_name n)
-  | S.MProj (mdl, nm, nmtyp) -> Var (ln_of_modelproj mdl nm nmtyp)
   | S.Constraint (t, _) -> make_term t
   | S.Star -> Star
   | S.Tuple lst -> Tuple (List.map make_term lst)
@@ -348,13 +350,16 @@ and make_theory_element = function
       Sentence (st, n, make_model_bindings mb, make_bindings b, make_proposition t)
   | S.Value (n, s) -> Value (n, make_set s)
   | S.Model (str, thr) -> Model(str, make_theory thr)
+  | S.Comment cmmnt -> Comment cmmnt
 
 and make_theory = function
     S.Theory elems -> Theory (List.map make_theory_element elems)
   | S.TheoryID id -> TheoryID id
 
-and make_theorydef = function
+and make_toplevel = function
     S.Theorydef(str, args, thr) ->
       Theorydef (str, make_model_bindings args, make_theory thr)
+  | S.TopComment cmmnt -> TopComment cmmnt
+  | S.TopModel (mdlnm, thry) -> TopModel(mdlnm, make_theory thry)
 
 and make_model_bindings bnd = List.map (fun (m,th) -> (m, make_theory th)) bnd

@@ -405,6 +405,11 @@ and optElems ctx = function
        let rest', ctx' = optElems (insertTydef ctx nm ty') rest in
 	 TySpec(nm, Some ty') :: rest', (insertTydef ctx' nm ty')
 
+  |  Comment cmmnt :: rest -> 
+       let rest', ctx' = optElems ctx rest in
+	 (Comment cmmnt :: rest', ctx')
+
+
 let optSignat ctx = function
     SignatID s ->
       SignatID s, lookupModel ctx s
@@ -420,13 +425,20 @@ let rec optStructBinding ctx = function
 	(m, signat') :: bnd',
 	insertModel ctx'' m ctx'
 
-let optSignatdef ctx (Signatdef (s, args, signat)) =
-  let args', ctx' = optStructBinding ctx args in
-  let signat', ctx'' = optSignat ctx' signat in
-    Signatdef (s, args', signat'), ctx''
+let optToplevel ctx = function
+    (Signatdef (s, args, signat)) ->
+      let args', ctx' = optStructBinding ctx args in
+      let signat', ctx'' = optSignat ctx' signat in
+	Signatdef (s, args', signat'), 
+	insertModel ctx s ctx''
+  | TopComment cmmnt -> (TopComment cmmnt, ctx)
+  | TopModule (mdlnm, signat) ->
+      let (signat', ctx') = optSignat ctx signat in
+	(TopModule(mdlnm, signat'), insertModel ctx mdlnm ctx')
+
     
-let rec optSignatdefs ctx = function
+let rec optToplevels ctx = function
     [] -> []
-  | (Signatdef (s, args, signat) as sg) :: lst ->
-      let sg', ctx' = optSignatdef ctx sg in
-	sg' :: (optSignatdefs (insertModel ctx s ctx') lst)
+  | sg :: lst ->
+      let sg', ctx' = optToplevel ctx sg in
+	sg' :: (optToplevels ctx' lst)

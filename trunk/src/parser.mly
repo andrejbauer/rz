@@ -27,6 +27,7 @@
 %token BOOL
 %token COLON
 %token COMMA
+%token <string> COMMENT 
 %token CONSTANT
 %token COROLLARY
 %token END
@@ -125,18 +126,22 @@
 
 /* Entry points */
 
-%start theorydefs
-%type <Syntax.theorydef list> theorydefs
+%start toplevels
+%type <Syntax.toplevel list> toplevels
 
 %%
 
-theorydefs:
+toplevels:
   | EOF                       { [] }
-  | theorydef theorydefs      { $1 :: $2 }
+  | toplevel toplevels      { $1 :: $2 }
 
-theorydef:
+toplevel:
   | THEORY TNAME thargs EQUAL TNAME                   { Theorydef ($2, [], TheoryID $5) }
   | THEORY TNAME thargs EQUAL THY theory_elements END { Theorydef ($2, $3, Theory $6) }
+  | COMMENT                                    { TopComment($1) }
+  | MODEL TNAME COLON TNAME                    { TopModel($2, TheoryID $4) }
+  | MODEL TNAME COLON THY theory_elements END  { TopModel($2, Theory $5) }
+
 
 thargs:
   |                                         { [] }
@@ -169,6 +174,7 @@ theory_element:
   | MODEL TNAME COLON TNAME                  { Model($2, TheoryID $4) }
   | MODEL TNAME COLON THY theory_elements END    { Model($2, Theory $5) }
   | IMPLICIT name_list COLON set  { Implicit($2, $4) }
+  | COMMENT                       { Comment($1) }
 
 thm:
   | AXIOM          { Axiom }
