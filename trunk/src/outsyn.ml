@@ -5,7 +5,7 @@ module L = Logic
 
 type label = string
 
-type name = Syntax.name
+type name = L.name
 
 type modul_name = L.model_name
 
@@ -85,17 +85,18 @@ type signat_element =
 and signat =
     SignatName of signat_name
   | Signat of signat_element list
+  | SignatFunctor of struct_binding list * signat
 
-and struct_binding = string * signat
+and struct_binding = modul_name * signat
 
 and toplevel = 
-    Signatdef of string * struct_binding list * signat
+    Signatdef  of signat_name * signat
   | TopComment of string
-  | TopModul of string * signat
+  | TopModul   of modul_name  * signat
     
 
 let mk_word str = Syntax.N(str, Syntax.Word)
-let mk_id str = Id (LN(None,Syntax.N(str,Syntax.Word)))
+let mk_id str = Id (LN(None, Syntax.N(str,Syntax.Word)))
 let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
 
 let tupleOrDagger = function
@@ -105,6 +106,35 @@ let tupleOrDagger = function
 let tupleOrTopTy = function
     [] -> TopTy
   | ts -> TupleTy ts
+
+
+module NameOrder   = struct
+                       type t = name
+                       let compare = Pervasives.compare
+                     end
+
+module TyNameOrder = struct
+                       type t = ty_name
+                       let compare = Pervasives.compare
+                     end
+
+module StringOrder = struct
+                       type t = string
+                       let compare = Pervasives.compare
+                    end
+
+module NameMap = Map.Make(NameOrder)
+
+module TyNameMap = Map.Make(NameOrder)
+
+module StringMap = Map.Make(StringOrder)
+
+module NameSet = Set.Make(NameOrder)
+
+module TyNameSet = Set.Make(TyNameOrder)
+
+module StringSet = Set.Make(StringOrder)
+
 
 let nameSubscript s =
   try
@@ -436,16 +466,17 @@ let rec string_of_spec = function
 and string_of_signat = function
     SignatName s -> s
   | Signat body -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
-
-let string_of_toplevel = function
-    (Signatdef (s, args, body)) ->
-      "module type " ^ s ^ " =\n" ^
+  | SignatFunctor (args, body) -> 
       (if args = [] then "" else
 	 String.concat "\n"
 	   (List.map
 	      (fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n")
 	      args)) ^
       (string_of_signat body) ^ "\n"
+
+let string_of_toplevel = function
+    (Signatdef (s, signat)) ->
+      "module type " ^ s ^ " =\n" ^ (string_of_signat signat) ^ "\n"
   | TopComment cmmnt -> "(**" ^ cmmnt ^ "*)"
   | TopModul (mdlnm, signat) ->
       "module " ^ mdlnm ^ " : " ^ string_of_signat signat

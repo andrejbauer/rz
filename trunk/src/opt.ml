@@ -42,25 +42,27 @@ let rec lookupName = function
 (** {2 The Typechecking Context} *)
 (*********************************)
 
+
+
 (** Context carried around by the type reconstruction algorithm.
  *)
 type ctx = {types      : (name*ty) list;
                (** Typing context; types for names in scope *)
             tydefs     : (string*ty) list;
                (** Definitions of type/set variables in scope *)
-            models     : (string*ctx) list
+            moduli     : (string*ctx) list
            }
 
-let rec string_of_ctx {types=types; tydefs=tydefs; models=models} =
+let rec string_of_ctx {types=types; tydefs=tydefs; moduli=moduli} =
   "{ types = [" ^ (String.concat "," (List.map (fun (n,t) ->
 				       (Syntax.string_of_name n) ^ ":" ^ (string_of_ty t)) types)) ^ "],\n" ^
   "  tydefs = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ty t)) tydefs)) ^ "],\n" ^
-  "  models = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) models)) ^ "],\n" ^
+  "  moduli = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) moduli)) ^ "],\n" ^
  "}"
 
 let lookupType     ctx   n = lookupName (n, ctx.types)
 let lookupTydef    ctx str = lookup (str, ctx.tydefs)
-let lookupModel    ctx str = lookup (str, ctx.models)
+let lookupModul    ctx str = lookup (str, ctx.moduli)
 let peekTydef ctx s = peek(s, ctx.tydefs)
 
 let insertType ({types=types} as ctx) n ty = 
@@ -69,22 +71,31 @@ let insertTypeBnds ({types=types} as ctx) bnds =
        {ctx with types = insertbnds(bnds,types)}
 let insertTydef ({tydefs=tydefs} as ctx) str ty = 
        {ctx with tydefs = insert(str,ty,tydefs)}
-let insertModel ({models=models} as ctx) str ctx' = 
-       {ctx with models = insert(str,ctx',models)}
+let insertModul ({moduli=moduli} as ctx) str ctx' = 
+       {ctx with moduli = insert(str,ctx',moduli)}
 
-let emptyCtx = {types = []; tydefs = []; models = []}
+let emptyCtx = {types = []; tydefs = []; moduli = []}
+
+(* lookupModulLong : ctx -> ctx
+ *)
+let rec lookupModulLong ctx = function
+    ModulName mdlnm -> lookupModul ctx mdlnm
+  | ModulProj (mdl, mdlnm) ->
+       let ctx' = lookupModulLong ctx mdl
+       in lookupModul ctx' mdlnm
+  | ModulApp (mdl1, mdl2) ->
+       raise Impossible   (** Modul application not implemented yet *)
 
 let rec peekLong peeker ctx = function
-    (Logic.LN(str, [], namesort) as lname) -> 
-       peeker ctx (Syntax.N(str,namesort))
-  | (Logic.LN(str, label::labels, namesort) as lname) ->
-       let ctx' = lookupModel ctx str in
-	 peekLong peeker ctx' (Logic.LN(label,labels,namesort))
-
+    LN(None, nm)     ->  peeker ctx nm
+  | LN(Some mdl, nm) ->
+       let ctx' = lookupModulLong ctx mdl
+       in peeker ctx' nm
+ 
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
     NamedTy n ->
-      (match (peekTydef ctx (Logic.string_of_ln n)) with
+      (match (peekTydef ctx (string_of_tln n)) with
         Some s' -> hnfTy ctx s'
       | None -> NamedTy n)
   | s -> s
@@ -386,7 +397,7 @@ and optProp ctx = function
         (_, True) -> True
       | (TopTy,_) -> p'
       | (NamedTy n1,Imply(NamedTotal (n2,Id n3),p'')) ->
-	  if (Logic.ln_of_name n = n3) && (n1 = n2) then
+	  if (LN(None,n) = n3) && (n1 = n2) then
 	    ForallTotal((n,NamedTy n1), p'')
 	  else
 	    Forall((n,NamedTy n1),p')
@@ -432,15 +443,15 @@ and optElems ctx = function
        let (rest', ctx') = optElems ctx rest in
 	 (AssertionSpec assertion' :: rest'), ctx'
 
-  | StructureSpec (name,sbnds,signat) :: rest -> 
+  | ModulSpec (name,signat) :: rest -> 
       let (sbnds',ctx') = optStructBindings ctx sbnds
       in let (signat',ctx'') = optSignat ctx' signat
       in let ctx''' = if List.length sbnds = 0 then
-	                insertModel ctx name ctx''
+	                insertModul ctx name ctx''
 	              else
 			ctx
       in let (rest', ctx'''') = optElems ctx''' rest 
-      in (StructureSpec (name, sbnds', signat') :: rest',
+      in (ModulSpec (name, sbnds', signat') :: rest',
 	  ctx'''')
 
   |  TySpec(nm, None, assertions) :: rest -> 
@@ -466,10 +477,15 @@ and optElems ctx = function
 
 and optSignat ctx = function
     SignatName s ->
-      SignatName s, lookupModel ctx s
+      SignatName s, lookupModul ctx s
   | Signat body -> 
       let body', ctx' = optElems ctx body in
-	Signat body', ctx'
+	(Signat body', ctx')
+  | SignatFunctor(args, body) ->
+      let (args',ctx') = optStructBindings ctx args
+      in let (body',ctx'') = optSignat ctx' body
+      in (SignatFunctor(args', body'), emptyCtx)
+
 
 and optStructBindings ctx = function
     [] -> [], ctx
@@ -477,18 +493,18 @@ and optStructBindings ctx = function
       let signat', ctx' = optSignat ctx signat in
       let bnd', ctx'' = optStructBindings ctx bnd in
 	(m, signat') :: bnd',
-	insertModel ctx'' m ctx'
+	insertModul ctx'' m ctx'
 
 let optToplevel ctx = function
     (Signatdef (s, args, signat)) ->
       let args', ctx' = optStructBindings ctx args in
       let signat', ctx'' = optSignat ctx' signat in
 	Signatdef (s, args', signat'), 
-	insertModel ctx s ctx''
+	insertModul ctx s ctx''
   | TopComment cmmnt -> (TopComment cmmnt, ctx)
-  | TopModule (mdlnm, signat) ->
+  | TopModul (mdlnm, signat) ->
       let (signat', ctx') = optSignat ctx signat in
-	(TopModule(mdlnm, signat'), insertModel ctx mdlnm ctx')
+	(TopModul(mdlnm, signat'), insertModul ctx mdlnm ctx')
 
     
 let rec optToplevels' ctx = function
