@@ -15,3 +15,5 @@
     Will we need dependent types for functions/tuples/records (e.g., Pi
     and Sigma types)
  
+(5) [April 4, CS]
+    What is the "x :" when (** x : x = x *) appears in a generated interface?
