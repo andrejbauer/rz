@@ -37,37 +37,43 @@ let make_type_name = function
   | ("<=", _) -> "leq"
   | (">=", _) -> "geq"
   | ("=", _) -> "eq"
+  | ("=", _) -> "eq"
   | ("<>", _) -> "neq"
   | (s, _) -> s
 
-let rec translateSet = function
+let rec translateSet ctx = function
     L.Empty -> 
       { ty = VoidTy;
 	tot = (any, False);
 	per = (any, any, False)
       }
   | L.Unit ->
+      let x = fresh [mk_word "x"] ctx in
       { ty = UnitTy;
-	tot = (mk_word "x", Equal (mk_id "x", Star));
+	tot = (x, Equal (Id x, Star));
 	per = (any, any, True)
       }
   | L.Bool ->
-      { ty = NamedTy "bool";
-	tot = (mk_word "x", (Cor [Equal (mk_id "x", mk_id "true");
-                          Equal (mk_id "x", mk_id "false")]));
-	per = (mk_word "x", mk_word "y", Equal (mk_id "x", mk_id "y"))
+      let x = fresh [mk_word "x"; mk_word "u"] [] ctx in
+      let y = fresh [mk_word "y"; mk_word "v"] [x] ctx in
+	{ ty = NamedTy "bool";
+	  tot = (x, (Cor [Equal (Id x, mk_id "true");
+                          Equal (Id x, mk_id "false")]));
+	  per = (x, y, Equal (Id x, Id y))
       }
   | L.Basic s ->
-      { ty = NamedTy s;
-	tot = (mk_word "x", NamedTotal (s, mk_id "x"));
-	per = (mk_word "x", mk_word "y", NamedPer (s, mk_id "x", mk_id "y"))
-      }
+      let x = fresh [mk_word "x"; mk_word "u"] [] ctx in
+      let y = fresh [mk_word "y"; mk_word "v"] [x] ctx in
+	{ ty = NamedTy s;
+	  tot = (x, NamedTotal (s, Id x));
+	  per = (x, y, NamedPer (s, Id x, Id y))
+	}
   | L.Product lst ->
-      let us = List.map translateSet lst in
+      let us = List.map translateSet ctx lst in
 	{
 	  ty = TupleTy (List.map (fun u -> u.ty) us);
 	  tot = (
-	    let t = mk_word "t" in
+	    let t = fresh [mk_word "t"; mk_word "u"; mk_word "v"] [] ctx in
 	      (t, And (
 		 let k = ref 0 in
 		   List.map (fun {tot=(x,p)} ->
@@ -76,8 +82,8 @@ let rec translateSet = function
 	      )
 	  );
 	  per = (
-	    let t = mk_word "t" in
-	    let u = mk_word "u" in
+	    let t = fresh [mk_word "t"; mk_word "u"; mk_word "v"] [] ctx in
+	    let u = fresh [mk_word "u"; mk_word "v"; mk_word "w"] [t] ctx in
 	      (t, u, And (
 		 let k = ref 0 in
 		   List.map (fun {per=(x,y,p)} ->
@@ -93,7 +99,7 @@ let rec translateSet = function
       let {ty=v; per=(y,y',q)} = translateSet t in
 	{ ty = ArrowTy (u, v);
 	  tot = (
-	    let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x;x'] in
+	    let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"] [x;x'] ctx in
 	      (f,
 	       Forall ((x, u),
 	       Forall ((x', u),
@@ -103,12 +109,14 @@ let rec translateSet = function
 	      )
 	  );
 	  per = (
-	    let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x; x'] in
-	    let g = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x; x'; f] in
+	    let z = fresh [x; mk_word "x"; mk_word "y"] [] ctx in
+	    let z' = fresh [x'; mk_word "x'"; mk_word "y'"] [x] ctx in
+	    let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"] [z;z'] ctx in
+	    let g = fresh [mk_word "g"; mk_word "h"; mk_word "k"] [f;z;z'] ctx in
 	      (f, g,
-	       Forall ((x, u),
-               Forall ((x', u),
-                 Imply (p,
+	       Forall ((z,u),
+               Forall ((z',u),
+                 Imply (subst_proposition [(x, Id z); (x', Id z')] p,
 			subst_proposition [(y, App (Id f, Id x)); (y', App (Id g, Id x'))] q)
 		      ))
 	      )
@@ -117,19 +125,19 @@ let rec translateSet = function
 
   | L.Subset ((n, s), phi) ->
       let {ty=u; tot=(x,p); per=(y,y',q)} = translateSet s in
-      let (v,z,r) = translateProposition [] phi in
+      let (v,z,r) = translateProposition ctx phi in
 	{
 	  ty = TupleTy [u; v];
 	  tot = (
-	    let k = find_name [mk_word "k"; mk_word "j"; mk_word "x"] [] in
+	    let k = fresh [mk_word "k"; mk_word "j"; mk_word "x"] [] ctx in
 	      (k,
 	       And [subst_proposition [(x, Proj (1, Id k))] p;
 		    subst_proposition [(z, Proj (2, Id k))] r]
 	      )
 	  );
 	  per = (
-	    let w  = find_name [y; y'; mk_word "w"] [] in
-	    let w' = find_name [w; y; y'; mk_word "w"] [] in
+	    let w  = fresh [y; mk_word "w"] [] ctx in
+	    let w' = fresh [y'; mk_word "w'"] [w] ctx in
 	      (w, w', subst_proposition [(y, Proj (1, Id w)); (y', Proj (1, Id w'))] q)
 	  )
 	}
@@ -140,31 +148,44 @@ let rec translateSet = function
   | Quotient, if we add this to Logic
 *)
 
-and translateTerm = function
+and translateTerm ctx = function
     L.Var n -> Id n
+
   | L.Star -> Star
-  | L.Tuple lst -> Tuple (List.map translateTerm lst)
-  | L.Proj (k, t) -> Proj (k, translateTerm t)
-  | L.App (u, v) -> App (translateTerm u, translateTerm v)
-  | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet s).ty), translateTerm t)
-  | L.Inj (lb, t) -> Inj (lb, translateTerm t)
-  | L.Case (t1, lst) -> Cases (translateTerm t1, 
-                               List.map (function 
-                                            (lb, Some (n, s), t) -> 
-                                               (lb, (n, (translateSet s).ty),
-                                                translateTerm t)
-                                          | (lb, None, t) ->
-                                               (lb, (any, UnitTy), 
-                                                translateTerm t))
-                                        lst)
-  | L.Let ((n,_), u, v) -> Let (n, translateTerm u, translateTerm v)
-  | L.Subin (t, L.Subset ((x, _), p)) ->
-      let (ty, y, p') = translateProposition [] p in
-      let t' = translateTerm t in
-	Tuple [t'; Obligation ((y, ty), subst_proposition [(x,t')] p')]
+
+  | L.Tuple lst -> Tuple (List.map (translateTerm ctx) lst)
+
+  | L.Proj (k, t) -> Proj (k, translateTerm ctx t)
+
+  | L.App (u, v) -> App (translateTerm ctx u, translateTerm ctx v)
+
+  | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet ctx s).ty), translateTerm ctx t)
+
+  | L.Inj (lb, t) -> Inj (lb, translateTerm ctx t)
+
+  | L.Case (t1, lst) ->
+      Cases (translateTerm ctx t1, List.map
+	       (function
+		    (lb, Some (n, s), t) ->
+		      let ctx' = addCtx n s ctx in
+			(lb, (n, (translateSet ctx' s).ty), translateTerm ctx' t)
+                  | (lb, None, t) ->
+                      (lb, (any, UnitTy), translateTerm (addCtx any UnitTy ctx) t)
+	       )
+               lst
+	    )
+
+  | L.Let ((n, s), u, v) ->
+      Let (n, translateTerm ctx u, translateTerm (addCtx n s ctx) v)
+
+  | L.Subin (t, L.Subset ((x, s), p)) ->
+      let (ty, y, p') = translateProposition (addCtx x s ctx) p in
+      let t' = translateTerm ctx t in
+      let y' = fresh [y; "v"; "u"; "t"] [] ctx in
+	Tuple [t'; Obligation ((y', ty), subst_proposition [(y,y'); (x,t')] p')]
   | L.Subin (t, L.Basic s) ->
       failwith "I need a context"
-  | L.Subout (t, _) -> Proj (1, translateTerm t)
+  | L.Subout (t, _) -> Proj (1, translateTerm ctx t)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
 and translateProposition ctx = function
@@ -173,40 +194,45 @@ and translateProposition ctx = function
   | L.True -> (UnitTy, any, True)
 
   | L.Atomic (n, t) ->
-      let r = find_name [mk_word "r"; mk_word "q"; mk_word "s"] (List.map fst ctx)
-      in
-	(NamedTy (make_type_name n), r, NamedProp (make_type_name n, Id r, translateTerm t))
+      let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
+      let n' = make_type_name ctx n in
+	(NamedTy n', r, NamedProp (n', Id r, translateTerm t))
 
   | L.And lst ->
       let lst' = List.map (translateProposition ctx) lst in
-      let t = find_name
-		[mk_word "t"; mk_word "p"; mk_word "u"; mk_word "q"; mk_word "r"]
-		(List.map fst ctx) in
+      let t = fresh [mk_word "t"; mk_word "p"; mk_word "u"; mk_word "q"; mk_word "r"] ctx in
 	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
 		List.map (fun (_, x, p) ->
-			    let q = subst_proposition [(x, Proj (!k, Id t))] p in
-			      incr k ; q)
-		  lst'))
+			    let q = subst_proposition [(x, Proj (!k, Id t))] p in incr k ; q)
+		  lst')
+	)
 
   | L.Imply (p, q) ->
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
-      let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"]
-		(x :: (List.map fst ctx)) in
-	(ArrowTy (t, u), f, Forall ((x, t), Imply (p', subst_proposition [(y, App (Id f, Id x))] q')))
+      let x' = fresh [x; "x"; "y"; "z"] [] ctx in
+      let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x'] ctx in
+	(ArrowTy (t, u),
+	 f,
+	 Forall ((x', t), Imply (subst_proposition [(x,x')] p',
+				 subst_proposition [(y, App (Id f, Id x'))] q')))
 
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
-      let f = find_name
-		[mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"; mk_word "r"]
-		(x :: y :: (List.map fst ctx))
-      in
+      let x' = fresh [x; "x"; "y"; "z"] [] ctx in
+      let y' = fresh [y; "y"; "z"; "x"] [x'] ctx in
+      let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x';y'] ctx in
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
-	 f, And [
-	   Forall ((x, t), Imply (p', subst_proposition [(y, App (Proj (0, Id f), Id x))] q'));
-	   Forall ((y, u), Imply (q', subst_proposition [(x, App (Proj (1, Id f), Id y))] p'))])
+	 f,
+	 And [
+	   Forall ((x', t), Imply (subst_proposition [(x,x')] p',
+				   subst_proposition [(y, App (Proj (0, Id f), Id x))] q'));
+	   Forall ((y', u), Imply (subst_proposition [(y,y')] q',
+				   subst_proposition [(x, App (Proj (1, Id f), Id y))] p'))
+	 ]
+	)
 
   | L.Or lst ->
       let rec make_labels i j =
@@ -214,24 +240,29 @@ and translateProposition ctx = function
       in
       let lst' = List.map (translateProposition ctx) lst in
       let lbs = make_labels 0 (List.length lst) in
-      let u = find_name
-		[mk_word "u"; mk_word "v"; mk_word "w"; mk_word "r"]
-		((List.map (fun (_,x,_) -> x) lst') @ (List.map fst ctx))
+      let u = fresh [mk_word "u"; mk_word "v"; mk_word "w"; mk_word "r"] [] ctx
       in
-	(SumTy (List.map2 (fun lb (s,_,_) -> (lb, s)) lbs lst'), u,
+	(SumTy (List.map2 (fun lb (t,_,_) -> (lb, t)) lbs lst'),
+	 u,
 	 And (
 	   List.map2
-		(fun lb (t,y,p) -> Forall ((y,t), Imply (Equal(Id u, Inj (lb, Id y)), p)))
+		(fun lb (t,x,p) ->
+		   let x' = fresh [x] [u] ctx in
+		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Id x')), subst_proposition [(x,x')] p)))
 		lbs lst'
 	 ))
 
   | L.Forall ((n, s), p) ->
-      let {ty=t; tot=(x,q)} = translateSet s in
-      let (u, y, p') = translateProposition ctx p in
-      let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "l"] (List.map fst ctx)
+      (** wrong, what happened to n? *)
+      let {ty=t; tot=(x,q)} = translateSet ctx s in
+      let (u, y, p') = translateProposition (ctxAdd n s ctx) p in
+      let x' = fresh [x] ctx in
+      let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "l"] [x'] ctx
       in
-	(ArrowTy (t, u), f,
-	 Forall ((x,t), Imply (q, subst_proposition [(y, App (Id f, Id x))] p'))
+	(ArrowTy (t, u),
+	 f,
+	 Forall ((x',t), Imply (subst_proposition [(x,x')] q,
+				subst_proposition [(y, App (Id f, Id x'))] p'))
 	)
 
   | L.Exists ((n, s), p) -> 
@@ -249,7 +280,9 @@ and translateProposition ctx = function
       let (t, n, p') = translateProposition ctx p in
 	(UnitTy, any, Forall ((n, t), Not p'))
 
-  | L.Equal (s, t, u) -> (UnitTy, any, Equal (translateTerm t, translateTerm u))
+  | L.Equal (s, t, u) ->
+      (** wrong, should use equality on s *)
+      (UnitTy, any, Equal (translateTerm t, translateTerm u))
 
 let translateBinding (n, s) = (n, (translateSet s).ty)
 
