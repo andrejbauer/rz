@@ -1,4 +1,4 @@
-theory T =
+theory SQGROUP =
 thy
   set s
   const e : s

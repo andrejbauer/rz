@@ -179,9 +179,11 @@ relationship between data structures and constructive mathematics.
 
 We assume throughout that we have chosen a fixed programming
 language~$\PL$. We only require that the language has product and
-function types. Any ML-like language will do~\note{reference to ML}.
-Our implementation of RZ uses ocaml~\note{reference to ocaml} but
+function types. Any ML-like language will do~\cite{milner+:definition}.
+Our implementation of RZ uses Objective Caml~\cite{ocaml} but
 could easily be adopted to other variants of ML.
+
+
 
 
 Other points:
@@ -521,7 +523,7 @@ Assertions are written in ordinary classical first-order logic. (Since
 programmers typically are not trained in constructive logic, this
 may make it easier to verify the assertions.)
 
-The output for the theory \Verb|T| above is then:
+The output for the theory \Verb|SQGROUP| above is then:
 \VerbatimInput{semigroup.mli} 
 
 At the ML level we have required a type \Verb|s|, a value \Verb|e| of
@@ -553,14 +555,37 @@ different implementations of the same group element are allowed to produce
 \subsection{Parameterized Theories}
 \label{sec:param-theor-funct}
 
-The 
+A theory may be parameterized by one or more models of other theories.
+For example, a theory \Verb|Real| of the reals may be parameterized in
+terms of a model \Verb|N| of the naturals.  A theory of free groups may be
+parameterized in terms of the generating set.
 
+Parameterized theories serve two purposes.  First a model of a
+parameterized theory would be a generic implementation that, given any
+implementation of the parameters, returns an implementation of the
+resulting theory.  At the level of ML, this would be a function from
+modules to modules, which is called a \emph{functor}, and so a
+parameterized theory can be translated into the signature of a
+functor.
 
-Mention that we can handle parameterized theories and functor
-signatures, but avoid explaining everything about them.
+Alternatively, once we have described a parameterized theory
+\Verb|Real|, we may wish to use it to describe a single specific
+implementation of real numbers based on a specific model \Verb|N1|
+(implementation) of the natural numbers; this can be described as
+an implementation satisfying the theory \Verb|Real(N1)|.
+
+The dual nature of parameterized theories as being both a description
+of a parameterized model (a $\Pi$ type) and something which can be
+applied to a model to produce a specialized theory (a $\lambda$) is
+very reminiscent the type inclusion of Automath~\cite{automath}.  ML
+does not permit applications of functor signatures, however, so we
+beta-reduce all theory applications before generating signatures;
+\Verb|Real(N1)| would produce a signature for a real-number
+implementation that refers directly to \Verb|N1| rather than to a
+generic parameter \Verb|N|.
 
 \section{Implementation}
-\label{sec:implimentation}
+\label{sec:implementation}
 
 After parsing, our implementation does type checking.  The type
 checker does rather limited type reconstruction; the types of all
@@ -577,14 +602,38 @@ After typechecking the theories are represented in abstract syntax and
 translated into ML signatures as described below.  
 
 Propositions without constructive content have trivial realizers, and
-so a final ``unit elimination'' pass removes these and does a few
-peephole simplifications of the resulting signature. \comment{give example!}
+so a final ``unit elimination'' pass both removes these and does 
+peephole simplification of the resulting signature.   Without the optimizer,
+the axioms of the theory \Verb|SQGROUP| would produce
+\begin{Verbatim}
+val unit : s -> top * top
+(**  Assertion unit (x:s) =  
+      x * e =s= x and e * x =s= x
+*)
+   
+val assoc : s -> s -> s -> top
+(**  Assertion assoc (x:s,y:s,z:s) =
+      x * (y * z) =s= (x * y) * z
+*)
+   
+val sqrt : s -> s * top
+(**  Assertion sqrt (x:s) =  
+      pi0 (sqrt x) : ||s|| and 
+      pi0 (sqrt x) * pi0 (sqrt x) =s= x
+*)
+\end{Verbatim}
+requiring the presence of trivial realizers for the first two axioms,
+and a more complicated (but not more useful) realizer for the final
+axiom.
+\comment{give example!}
 
-\comment{I could say more about the typechecker and the optimizer, but
-  I'm not sure this audience would care much.}
 
 Here we provide more details about the translation.
 
+
+The translation of axioms parameterized by models into polymorphism
+(instead of functors) is essentially the phase-splitting translation
+of Harper, Mitchell, and Moggi \cite{harper+:popl90}.
 
 \section{Examples}
 \label{sec:examples}
