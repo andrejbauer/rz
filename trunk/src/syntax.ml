@@ -353,6 +353,86 @@ and substModel substitution = function
     ModelName strng -> getModelvar substitution strng
   | ModelProj (mdl, lbl) -> ModelProj(substModel substitution mdl, lbl)
 
+let rec substTheory sub = 
+  let rec dosub = function
+      Theory elts       -> Theory (substTheoryElts sub elts)
+	  
+    | TheoryName thrynm -> TheoryName thrynm
+	  
+    | TheoryFunctor ( (mdlnm, thry1), thry2 ) ->
+	TheoryFunctor( ( mdlnm, dosub thry1 ),
+                       let sub' = insertModelvar sub mdlnm ( ModelName mdlnm )
+                       in substTheory sub' thry2 )
+	  
+    | TheoryApp ( thry, mdl ) ->
+	TheoryApp ( dosub thry,  substModel sub mdl )
+  in dosub
+
+and substTheoryElts sub = function
+    Set ( stnm, stopt ) :: rest -> 
+       let this' = Set ( stnm, substSetOption sub stopt )
+       in let sub' = insertSetvar sub stnm ( Set_name ( None, stnm ))
+       in let rest' = substTheoryElts sub' rest
+       in this' :: rest'
+  | Predicate ( nm, pk, st) :: rest -> 
+       let this' = Predicate ( nm, pk, substSet sub st )
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Let_predicate ( nm, pk, bnds, trm ) :: rest -> 
+       let (bnds', sub_b) = substBnds sub bnds
+       in let this' = Let_predicate ( nm, pk, bnds', subst sub_b trm )
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Let_term ( bnd, trm ) :: rest ->
+       let ( ( nm, _) as bnd', sub_b) = substBnd sub bnd
+       in let this' = Let_term ( bnd' , subst sub_b trm )
+       in let sub'  = insertTermvar sub nm ( Var ( None, nm ) )
+       in let rest' = substTheoryElts sub' rest
+       in this' :: rest'
+  | Value ( nm, st ) :: rest ->
+       let this'    = Value ( nm, substSet sub st )
+       in let sub'  = insertTermvar sub nm ( Var ( None, nm ) )
+       in let rest' = substTheoryElts sub' rest
+       in this' :: rest'
+  | Sentence ( sentsort, nm, mbnds, bnds, trm ) :: rest ->
+       let    ( mbnds', sub_m ) = substMBnds sub mbnds
+       in let ( bnds',  sub_b ) = substBnds sub_m bnds
+       in let trm' = subst sub_b trm
+       in let this' = Sentence ( sentsort, nm, mbnds', bnds', trm' )
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Model ( mdlnm, thry ) :: rest ->
+       let    thry' = substTheory sub thry 
+       in let this' = Model ( mdlnm, thry' )
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Implicit ( strs, set ) :: rest ->
+       let    set'  = substSet sub set
+       in let this' = Implicit ( strs, set' )
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | ( ( Comment c ) as this') :: rest ->
+       let rest' = substTheoryElts sub rest
+       in this' :: rest'
+
+and substBnd sub (nm, stopt) = 
+    ( ( nm, substSetOption sub stopt ), 
+      insertTermvar sub nm ( Var ( None, nm) ) )
+
+and substBnds sub = function
+     [] -> ([], sub)
+    | bnd :: rest -> 
+       let ( bnd',  sub'  ) = substBnd sub bnd
+       in let ( rest', sub'' ) = substBnds sub' rest 
+       in ( bnd' :: rest' , sub'' )
+
+and substMBnds sub = function
+     [] -> ([], sub)
+    | (mdlnm, thry) :: rest -> 
+       let sub' = insertModelvar sub mdlnm ( ModelName mdlnm  ) in
+       let ( rest', sub'' ) = substMBnds sub' rest in
+         ( ( mdlnm, substTheory sub thry ) :: rest' , sub'' )
+
 let freshNameString = 
   let counter = ref 0
   in
