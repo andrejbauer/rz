@@ -14,6 +14,7 @@ type spec = ValSpec of label * ty
 type signat = spec list
 
 let unitTy = TupleTy []
+let voidTy = SumTy []
 
 let rec tyToString' level (t : ty) =
   let rec makeTupleTy = function
