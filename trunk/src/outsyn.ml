@@ -59,7 +59,7 @@ and proposition =
 
 type signat_element =
     ValSpec of name * ty
-  | AssertionSpec of binding list * proposition
+  | AssertionSpec of string * binding list * proposition
   | TySpec of set_name * ty option
   | PredicateSpec of name * ty
 
@@ -348,8 +348,8 @@ let string_of_spec ctx = function
       "val " ^ (string_of_name name) ^ " : " ^ (string_of_ty ty)
     | TySpec (name, None) -> "type " ^ (string_of_name name)
     | TySpec (name, Some ty) -> "type " ^ (string_of_name name) ^ " = " ^ (string_of_ty ty)
-    | AssertionSpec (bind, p) ->
-	"(**\n" ^
+    | AssertionSpec (name, bind, p) ->
+	"(** Assertion " ^ name ^ ":\n" ^
 	(if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
 	(string_of_proposition p) ^ "\n*)"
 

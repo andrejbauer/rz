@@ -348,10 +348,10 @@ and optElems ctx = function
   	TopTy -> rest'
       |	ty' ->   ValSpec(name, ty') :: rest')
 
-  |  AssertionSpec(bnds, prop) :: rest ->
+  |  AssertionSpec(name, bnds, prop) :: rest ->
       (** XXX Eliminate unit bindings? *)
       let ctx' = insertTypeBnds ctx bnds
-      in AssertionSpec(bnds, optProp ctx' prop) :: optElems ctx rest
+      in AssertionSpec(name, bnds, optProp ctx' prop) :: optElems ctx rest
   |  TySpec(n, None) :: rest -> 
       TySpec(n, None) :: optElems ctx rest
   |  TySpec((str,_) as n, Some ty) :: rest ->

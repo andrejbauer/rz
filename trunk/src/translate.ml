@@ -416,16 +416,17 @@ let translateTheoryElement ctx = function
     L.Set n -> 
       [TySpec (n, None);
        (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	  AssertionSpec ([(x, NamedTy n)],
+	  AssertionSpec ((fst n ) ^ "_strict",
+			 [(x, NamedTy n)],
 			 Imply (NamedPer (n, Id x, Id x), NamedTotal (n, Id x))));
        (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
 	let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
-	  AssertionSpec ([(x, NamedTy n); (x', NamedTy n)],
+	  AssertionSpec ((fst n) ^ "_symmetric", [(x, NamedTy n); (x', NamedTy n)],
 			 Imply (NamedPer (n, Id x, Id x'), NamedPer (n, Id x', Id x))));
        (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
 	let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
 	let x''= fresh [mk_word "x"; mk_word "y"; mk_word "z"; mk_word "v"] [x;x'] ctx in
-	  AssertionSpec (
+	  AssertionSpec ((fst n) ^ "_transitive",
 	    [(x, NamedTy n); (x', NamedTy n); (x'', NamedTy n)],
 	    Imply (And [NamedPer (n, Id x, Id x'); NamedPer (n, Id x', Id x'')],
 		   NamedPer (n, Id x, Id x''))))
@@ -435,8 +436,8 @@ let translateTheoryElement ctx = function
   | L.Let_set (n, s) ->
       (let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
 	[TySpec (n, Some t);
-	 AssertionSpec ([(x,t)], Iff (NamedTotal (n, Id x), p));
-	 AssertionSpec ([(y,t); (y',t)], Iff (NamedPer (n, Id y, Id y'), q))
+	 AssertionSpec ((fst n) ^ "_def_total", [(x,t)], Iff (NamedTotal (n, Id x), p));
+	 AssertionSpec ((fst n) ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (n, Id y, Id y'), q))
 	]
       ),
       addSet n s ctx
@@ -454,10 +455,10 @@ let translateTheoryElement ctx = function
 		    (x'::bad, (x',t)::bind, (Id x')::app, (substProp ctx [(x, Id x')] p)::tots))
 	       ([r; n],[],[],[]) (domain s)
 	   in
-	     AssertionSpec ((r, ty)::bind, Imply (
-			      NamedProp (n, Id r, tuplify app),
-			      And tots
-			    )));
+	     AssertionSpec ((fst n) ^ "_strict",
+	       (r, ty)::bind,
+	       Imply (NamedProp (n, Id r, tuplify app),
+		      And tots)));
 	 (let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
 	  let _, bind, app1, app2, eqs =
 	    List.fold_left
@@ -470,7 +471,7 @@ let translateTheoryElement ctx = function
 		    (substProp ctx [(x, Id x'); (y, Id y')] p)::eqs))
 	      ([r;n], [], [], [], []) (domain s)
 	  in
-	    AssertionSpec (
+	    AssertionSpec ((fst n) ^ "_extensional",
 	      (r, ty)::bind, Imply (
 		And ((NamedProp (n, Id r, tuplify app1))::eqs),
 		NamedProp (n, Id r, tuplify app2)
@@ -483,7 +484,7 @@ let translateTheoryElement ctx = function
       let (ty, r, p') = translateProp ctx' p in
       let r' = fresh [r] (List.map fst bind) ctx in
 	[TySpec (n, Some ty);
-	 AssertionSpec (
+	 AssertionSpec ((fst n) ^ "_def",
 	   (r',ty) :: bind',
 	   Iff (NamedProp (n, Id r', Tuple (List.map (fun (y,_) -> Id y) bind)),
 		substProp ctx ([(r, Id r')]) p'))
@@ -494,14 +495,14 @@ let translateTheoryElement ctx = function
       let {ty=u; per=(y,y',q)} = translateSet ctx s in
       let t' = translateTerm ctx t in
       [ValSpec (n, u);
-       AssertionSpec([], substProp ctx [(y, Id n); (y', t')] q)
+       AssertionSpec((fst n) ^ "_def", [], substProp ctx [(y, Id n); (y', t')] q)
       ],
       addTerm n t (addBind n s ctx)
 
   | L.Value (n, s) ->
       let {ty=t; tot=(x,p)} = translateSet ctx s in
       [ValSpec (n, t);
-       AssertionSpec ([], substProp ctx [(x, Id n)] p)
+       AssertionSpec ((fst n) ^ "_total", [], substProp ctx [(x, Id n)] p)
       ],
       addBind n s ctx
 
@@ -509,8 +510,8 @@ let translateTheoryElement ctx = function
       (let {ty=ty; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
        let t' = translateTerm ctx t in
 	 [ValSpec (n, ty);
-	  AssertionSpec ([], substProp ctx [(x, Id n)] p);
-	  AssertionSpec ([], substProp ctx [(y, Id n); (y', t')] q)
+	  AssertionSpec ("???", [], substProp ctx [(x, Id n)] p);
+	  AssertionSpec ("???", [], substProp ctx [(y, Id n); (y', t')] q)
 	 ]
       ),
       addBind n s ctx
@@ -534,7 +535,7 @@ let translateTheoryElement ctx = function
 	in
 	let (b, r) = fold ctx [] bind in 
 	  [ ValSpec (n, ArrowTy (TupleTy (List.map snd b), ty));
-	    AssertionSpec (b, r)
+	    AssertionSpec ((fst n) ^ "_rz", b, r)
 	  ]
       end,
       addProp n (Syntax.Unstable, Some (bind, p)) ctx
