@@ -351,7 +351,7 @@ and substTYProp ctx s = function
       Cexists ((n, substTYType ctx s ty), substTYProp ctx s q)
 
 and substTYType ctx s = function
-    NamedTy ln -> NamedTy ln (* XXX probably wrong *)
+    NamedTy ln -> NamedTy ln (* XXX: this might be wrong (AB) *)
   | UnitTy -> UnitTy
   | VoidTy -> VoidTy
   | TopTy -> TopTy
