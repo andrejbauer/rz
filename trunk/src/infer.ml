@@ -1252,7 +1252,7 @@ and annotateTerm cntxt =
 		    tyGenericError
 		      ("Term " ^ string_of_term t ^ " is in " ^
 		       string_of_set ty ^ "\nbut " ^ string_of_term r ^
-		       "is a relation on " ^ string_of_set domain_st)
+		       " is a relation on " ^ string_of_set domain_st)
 	 end
 	     
      | RzQuot t ->
@@ -1399,12 +1399,24 @@ and annotateTheoryElem cntxt = function
       let ((_,Some st') as bnd', cntxt') = annotateBinding cntxt (nm, Some st)
       in (cntxt', Value(nm,st'), TermSpec(nm,st'))
 
-  | Let_term(bnd,trm) ->
+  | Let_term(bnd, None, trm) ->
       let   (trm', ty1) = annotateTerm cntxt trm
       in let ((nm,Some ty2) as bnd', cntxt') = 
 	  annotateBindingWithDefault cntxt ty1 bnd
       in if (subSet cntxt ty1 ty2) then
-          (cntxt', Let_term(bnd',trm'), TermSpec(nm,ty2))
+          (cntxt', Let_term(bnd',None,trm'), TermSpec(nm,ty2))
+        else
+          tyGenericError ("Definition doesn't match constraint for " ^ 
+			  string_of_bnd bnd)
+
+  | Let_term(bnd, Some args, trm) ->
+      let    (args', cntxt') = annotateBindings cntxt args
+      in let (trm', ty1) = annotateTerm cntxt' trm
+      in let ty1' = List.fold_right (fun (_, Some s) t -> Exp (s, t)) args' ty1
+      in let ((nm, Some ty2) as bnd', cntxt'') = 
+	  annotateBindingWithDefault cntxt (ty1') bnd
+      in if (subSet cntxt ty1' ty2) then
+          (cntxt'', Let_term(bnd', Some args', trm'), TermSpec(nm, ty2))
         else
           tyGenericError ("Definition doesn't match constraint for " ^ 
 			  string_of_bnd bnd)

@@ -162,7 +162,8 @@ theory_element:
     SET NAME  			{ Set ($2, None) }
   | SET NAME EQUAL set		{ Set ($2, Some $4) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
-  | CONSTANT name_typed EQUAL term { Let_term ($2, $4) }
+  | CONSTANT name_typed EQUAL term { Let_term ($2, None, $4) }
+  | CONSTANT name_typed args EQUAL term { Let_term ($2, Some $3, $5) }
   | PREDICATE name COLON set    { Predicate ($2, Unstable, $4) }
   | STABLE PREDICATE name COLON set	{ Predicate ($3, Stable, $5) }
   | RELATION name COLON set     { Predicate ($2, Unstable, $4) }
@@ -194,8 +195,8 @@ margs:
   | LBRACK TNAME COLON theory RBRACK margs { ($2, $4) :: $6 }
 
 args:
-  |                             { [] }
-  | name_typed args             { $1 :: $2 }
+  |                                           { [] }
+  | name_typed args                           { $1 :: $2 }
 
 name:
     NAME                          { N($1, Word) }

@@ -232,7 +232,7 @@ let rec translateSet (ctx : ctxElement list) = function
 	       Forall ((z, u),
 	       Forall ((z', u),
 	         Imply (sbp ctx [(x, id z); (x', id z')] p,
-			sbp ctx [(y, App (id f, id x)); (y', App (id f, id x'))] q)
+			sbp ctx [(y, App (id f, id z)); (y', App (id f, id z'))] q)
 		      ))
 	      )
 	  );
@@ -397,7 +397,7 @@ and translateTerm ctx = function
 	Let (n, translateTerm ctx t,
 	     Obligation ((any, TopTy),
 			 Forall ((n', ty1), Imply (
-				   sbp ctx [(x1, id n); (y1, id n')] p1, 
+				   NamedProp(translateLN r, Dagger, [Tuple [id n; id n']]),
 				   sbp ctx [(x2, v); (y2, v')] p2)),
 			 v))
 
@@ -584,12 +584,22 @@ and translateTheoryElements ctx = function
 	) :: sgnt,
 	addProp n stab smmry
 
-  | L.Let_term (n, s, t) :: rest ->
+  | L.Let_term (n, s, None, t) :: rest ->
       let sgnt, smmry = translateTheoryElements (addBind n s ctx) rest in
 	(let {ty=u; per=(y,y',q)} = translateSet ctx s in
 	 let t' = translateTerm ctx t in
-	   ValSpec (n, u, [((S.string_of_name n) ^ "_def", [], 
+	   ValSpec (n, u, [((S.string_of_name n) ^ "_def", [],
 			sbp ctx [(y, id n); (y', t')] q)])
+	) :: sgnt,
+	addBind n s smmry
+
+  | L.Let_term (n, s, Some args, t) :: rest ->
+      let sgnt, smmry = translateTheoryElements (addBind n s ctx) rest in
+	(let {ty=u; per=(y,y',q)} = translateSet ctx s in
+	 let t' = translateTerm (addBinding args ctx) t in
+	   ValSpec (n, u, [((S.string_of_name n) ^ "_def", [], 
+			    sbp ctx [(y, (id n));
+				     (y', nested_lambda (translateBinding ctx args) t')] q)])
 	) :: sgnt,
 	addBind n s smmry
 

@@ -112,7 +112,7 @@ and theory_element =
   | Let_set of set_name * set
   | Predicate of name * S.propKind * set
   | Let_predicate of name * S.propKind * binding list * proposition
-  | Let_term of name * set * term
+  | Let_term of name * set * binding list option * term
   | Value of name * set
   | Sentence of sentence_type * name * model_binding list * binding list * proposition
   | Model of model_name * theory
@@ -389,7 +389,7 @@ let rec make_set = function
   | S.Quotient (s, S.Var(mdl,nm)) ->
       Quotient (make_set s, LN(make_model_opt mdl,nm))
   | S.Quotient _ ->
-      print_string ("ERROR: Quotitent type by anonymous relation\n") ;
+      print_string ("ERROR: Quotient type by anonymous relation\n") ;
       failwith "Logic.make_set"
   | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
@@ -399,7 +399,11 @@ let rec make_set = function
 (* Assumes that we have already done Type Inference
    or that the user has specified sets for all variables
  *)
-and make_bindings b = List.map (fun (n, Some s) -> (n, make_set s)) b
+and make_bindings b =
+  List.map (function
+		(n, Some s) -> (n, make_set s)
+	      | (_, None) -> failwith "Logic.make_bindings: annotation expected"
+	   ) b
 
 and make_proposition = function
     S.False -> False
@@ -477,8 +481,10 @@ and make_theory_element = function
   | S.Predicate (n, stab, t) -> Predicate (n, stab, make_set t)
   | S.Let_predicate (n, stab, b, p) ->
       Let_predicate (n, stab, make_bindings b, make_proposition p)
-  | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
-  | S.Let_term ((_, None), t) -> (print_string "Let_term without ty ann.\n";
+  | S.Let_term ((n, Some s), None, t) -> Let_term (n, make_set s, None, make_term t)
+  | S.Let_term ((n, Some s), Some args, t) ->
+      Let_term (n, make_set s, Some (make_bindings args), make_term t)
+  | S.Let_term ((_, None), _, t) -> (print_string "Let_term without ty ann.\n";
                                   raise Unimplemented)
   | S.Sentence (st, n, mb, b, t) ->
       Sentence (st, n, make_model_bindings mb, make_bindings b, make_proposition t)

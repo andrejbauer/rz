@@ -1,3 +1,37 @@
+- DONE (<< 2004-06-17)
+  IMPROVEMENT (2004-06-17):
+  Improve the toplevel program.
+
+    [2004-07-01 CAS:  Done so far:
+      *  Uses OCaml's generic command-line-option-processing functions 
+         (the Arg library module), 
+      *  Writes output to .mli files that could be run through
+         ocamldoc, though the result is currently not pretty.
+      *  Handles multiple filenames, and later files can refer to
+         definitions in the earlier ones; see semilattice.thr
+         and kuratowski2.thr.
+     What else do we want to do?]
+     
+
+- DONE (<< 2004-02-06)
+  IMPROVEMENT (2004-06-17) [Andrej & Chris]:
+  Make variable names more consistent. The rule is: delete all the
+  vowels, except in the following cases:
+
+    totality -> tot
+    substitution -> sub
+
+  Make sure that all the exceptional names contain vowels.
+
+- DONE (2004-02-06)
+  IMPROVEMENT (2004-06-17) [Andrej]:
+  Rename "thy" to "thr" XOR rename ".thr" to ".thy"
+
+- DONE (<< 2004-02-06)
+  NEW (2005-01-03) [Both]:
+  Add support for applications of parameterized theories and 
+  parameterized models (to model arguments).
+
 - DONE (<< 2004-12-30)
   NEW (2004-06-17) [Andrej]:
   Add abbreviations for common groups of assertions (such as "is a per").

@@ -115,6 +115,12 @@ let tupleOrTopTy = function
     [] -> TopTy
   | ts -> TupleTy ts
 
+let curried_app head args =
+  List.fold_left (fun ap x -> App (ap, x)) head args
+
+let nested_lambda args trm =
+  List.fold_right (fun b t -> Lambda (b, t)) args trm
+
 (** ======== FREE VARIABLES ======= *)
 
 let rec fvModest flt acc {tot=(x,p); per=(u,v,q)} =
@@ -160,20 +166,23 @@ let fvProp = fvProp' [] []
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
-module NameOrder   = struct
-                       type t = name
-                       let compare = Pervasives.compare
-                     end
+module NameOrder =
+struct
+  type t = name
+  let compare = Pervasives.compare
+end
 
-module TyNameOrder = struct
-                       type t = ty_name
-                       let compare = Pervasives.compare
-                     end
+module TyNameOrder =
+struct
+  type t = ty_name
+  let compare = Pervasives.compare
+end
 
-module ModulNameOrder = struct
-                       type t = modul_name
-                       let compare = Pervasives.compare
-                    end
+module ModulNameOrder =
+struct
+  type t = modul_name
+  let compare = Pervasives.compare
+end
 
 module NameMap = Map.Make(NameOrder)
 
@@ -193,8 +202,10 @@ let emptysubst = {terms = NameMap.empty;
 
 let insertTermvar sbst nm trm =
   {sbst with terms = NameMap.add nm trm sbst.terms}
+
 let insertTyvar sbst nm ty =
   {sbst with tys = TyNameMap.add nm ty sbst.tys}
+
 let insertModulvar sbst strng mdl =
   {sbst with moduls = ModulNameMap.add strng mdl sbst.moduls}
 
@@ -212,25 +223,29 @@ let getModulvar sbst mdlnm =
 
 (** see also display_subst below *)
 
-let occursSubst sbst str =
-  (NameMap.fold (fun (Syntax.N(nm,_)) _ b -> b || str = nm) sbst.terms false) ||
-  (try ignore (TyNameMap.find str sbst.tys) ; true with Not_found -> false) ||
-  (try ignore (ModulNameMap.find str sbst.moduls) ; true with Not_found -> false)
+let occursSubstName sbst str =
+  NameMap.fold (fun (Syntax.N(nm,_)) _ b -> b || str = nm) sbst.terms false
+
+let occursSubstTyname sbst str =
+  try ignore (TyNameMap.find str sbst.tys) ; true with Not_found -> false
+
+let occursSubstModulname sbst str =
+  try ignore (ModulNameMap.find str sbst.moduls) ; true with Not_found -> false
 
 let freshName good bad ?occ sbst =
-    match occ with
-	None -> Syntax.freshName good bad (occursSubst sbst)
-      | Some occ -> Syntax.freshName good bad (fun n -> occ n || occursSubst sbst n)
+  match occ with
+      None -> Syntax.freshName good bad (occursSubstName sbst)
+    | Some occ -> Syntax.freshName good bad (fun n -> occ n || occursSubstName sbst n)
 
 let freshTyName good bad ?occ sbst =
   match occ with
-      None -> Syntax.freshString good bad (occursSubst sbst)
-    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubst sbst n)
+      None -> Syntax.freshString good bad (occursSubstTyname sbst)
+    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubstTyname sbst n)
 
 let freshModulName good bad ?occ sbst =
   match occ with
-      None -> Syntax.freshString good bad (occursSubst sbst)
-    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubst sbst n)
+      None -> Syntax.freshString good bad (occursSubstModulname sbst)
+    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubstModulname sbst n)
 
 (** The substitution functions accept an optional occ argument which is
     used for extra occur checks (for example in a context). The occ function
@@ -266,17 +281,14 @@ and substProp ?occ sbst = function
   | Iff (p, q) -> Iff (substProp ?occ sbst p, substProp ?occ sbst q)
   | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
-      let sbst' = insertTermvar sbst n (id n) in
       let n' = freshName [n] [] ?occ sbst in
-	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst' n (id n')) q)
+	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | ForallTotal ((n, ty), q) ->
-      let sbst' = insertTermvar sbst n (id n) in
       let n' = freshName [n] [] ?occ sbst in
-	ForallTotal ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst' n (id n')) q)
+	ForallTotal ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | Cexists ((n, ty), q) ->
-      let sbst' = insertTermvar sbst n (id n) in
       let n' = freshName [n] [] ?occ sbst in
-	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst' n (id n')) q)
+	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
 
 and substTerm ?occ sbst = function
     Id (LN (None, nm)) -> getTermvar sbst nm

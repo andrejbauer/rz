@@ -87,7 +87,7 @@ and theory_element =
     Set           of set_name * set option
   | Predicate     of name * propKind * set
   | Let_predicate of name * propKind * binding list * term
-  | Let_term      of binding * term
+  | Let_term      of binding * binding list option * term
   | Value         of name * set
   | Variable      of name * set
   | Sentence      of sentence_type * name * mbinding list * binding list * term
@@ -295,25 +295,27 @@ and string_of_theory = function
       "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_theory_element = function
-    Set ( stnm , None ) -> "set " ^ stnm
-  | Set ( stnm , Some st ) -> "set " ^ stnm ^ " = " ^ string_of_set st
-  | Predicate ( nm, pk, st ) -> 
+    Set (stnm, None) -> "set " ^ stnm
+  | Set (stnm, Some st) -> "set " ^ stnm ^ " = " ^ string_of_set st
+  | Predicate (nm, pk, st) -> 
       string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^
       string_of_set st
-  | Let_predicate ( nm, pk, bnds, trm ) ->
+  | Let_predicate (nm, pk, bnds, trm) ->
       string_of_pk pk ^ " " ^ string_of_name nm ^ string_of_bnds bnds ^ 
       " = " ^ string_of_term trm
-  | Let_term ( bnd , trm ) -> 
+  | Let_term (bnd, None, trm) -> 
       "let " ^ string_of_bnd bnd ^ " = " ^ string_of_term trm
-  | Value ( nm , st ) ->
+  | Let_term (bnd, Some args, trm) -> 
+      "let " ^ string_of_bnd bnd ^ string_of_bnds args ^ " = " ^ string_of_term trm
+  | Value (nm, st) ->
       "const " ^ string_of_name nm ^ " : " ^ string_of_set st
-  | Sentence ( ssort, nm, mbnds, bnds, trm ) ->
+  | Sentence (ssort, nm, mbnds, bnds, trm) ->
       "axiom  " ^ string_of_name nm ^ " " ^ 
       string_of_mbnds mbnds ^ " " ^ string_of_bnds bnds ^ " =\n " ^
       string_of_term trm
-  | Model ( mdlnm, thry) -> 
+  | Model (mdlnm, thry) -> 
       "model " ^ mdlnm ^ " : " ^ string_of_theory thry
-  | Implicit ( strs , st ) -> 
+  | Implicit (strs, st) -> 
       "implicit " ^ (String.concat "," strs) ^ " : " ^ string_of_set st
   | Comment strng -> 
       "(* " ^ strng ^ " *)"
@@ -335,11 +337,11 @@ and string_of_model = function
   | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
 
 and string_of_toplevel = function
-    Theorydef ( thrynm, thry ) -> 
+    Theorydef (thrynm, thry) -> 
       "theory " ^ thrynm ^ " = " ^ string_of_theory thry
   | TopComment strng ->
       "(* " ^ strng ^ " *)"
-  | TopModel ( mdlnm, thry ) ->
+  | TopModel (mdlnm, thry) ->
       "model " ^ mdlnm ^ " = " ^ string_of_theory thry
 
 (* Substitution functions.
@@ -474,80 +476,87 @@ let rec substTheory sub =
 	  
     | TheoryName thrynm -> TheoryName thrynm
 	  
-    | TheoryFunctor ( (mdlnm, thry1), thry2 ) ->
-	TheoryFunctor( ( mdlnm, dosub thry1 ),
-                       let sub' = insertModelvar sub mdlnm ( ModelName mdlnm )
-                       in substTheory sub' thry2 )
+    | TheoryFunctor ((mdlnm, thry1), thry2) ->
+	TheoryFunctor((mdlnm, dosub thry1),
+                       let sub' = insertModelvar sub mdlnm (ModelName mdlnm)
+                       in substTheory sub' thry2)
 	  
-    | TheoryApp ( thry, mdl ) ->
-	TheoryApp ( dosub thry,  substModel sub mdl )
+    | TheoryApp (thry, mdl) ->
+	TheoryApp (dosub thry,  substModel sub mdl)
   in dosub
 
 and substTheoryElts sub = function
     [] -> []
-  | Set ( stnm, stopt ) :: rest -> 
-       let this' = Set ( stnm, substSetOption sub stopt )
-       in let sub' = insertSetvar sub stnm ( Set_name ( None, stnm ))
+  | Set (stnm, stopt) :: rest -> 
+       let this' = Set (stnm, substSetOption sub stopt)
+       in let sub' = insertSetvar sub stnm (Set_name (None, stnm))
        in let rest' = substTheoryElts sub' rest
        in this' :: rest'
-  | Predicate ( nm, pk, st) :: rest -> 
-       let this' = Predicate ( nm, pk, substSet sub st )
+  | Predicate (nm, pk, st) :: rest -> 
+       let this' = Predicate (nm, pk, substSet sub st)
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Let_predicate ( nm, pk, bnds, trm ) :: rest -> 
+  | Let_predicate (nm, pk, bnds, trm) :: rest -> 
        let (bnds', sub_b) = substBnds sub bnds
-       in let this' = Let_predicate ( nm, pk, bnds', subst sub_b trm )
+       in let this' = Let_predicate (nm, pk, bnds', subst sub_b trm)
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Let_term ( bnd, trm ) :: rest ->
-       let ( ( nm, _) as bnd', sub_b) = substBnd sub bnd
-       in let this' = Let_term ( bnd' , subst sub_b trm )
-       in let sub'  = insertTermvar sub nm ( Var ( None, nm ) )
+  | Let_term (bnd, None, trm) :: rest ->
+       let ((nm, _) as bnd', sub_b) = substBnd sub bnd
+       in let this' = Let_term (bnd', None, subst sub_b trm)
+       in let sub'  = insertTermvar sub nm (Var (None, nm))
        in let rest' = substTheoryElts sub' rest
        in this' :: rest'
-  | Value ( nm, st ) :: rest ->
-       let this'    = Value ( nm, substSet sub st )
-       in let sub'  = insertTermvar sub nm ( Var ( None, nm ) )
+  | Let_term (bnd, Some args, trm) :: rest ->
+       let ((nm, _) as bnd', sub_b) = substBnd sub bnd
+       in let (args', sub_a) = substBnds sub args
+       in let this' = Let_term (bnd', Some args', subst sub_b trm)
+       in let sub'  = insertTermvar sub nm (Var (None, nm))
        in let rest' = substTheoryElts sub' rest
        in this' :: rest'
-  | Sentence ( sentsort, nm, mbnds, bnds, trm ) :: rest ->
-       let    ( mbnds', sub_m ) = substMBnds sub mbnds
-       in let ( bnds',  sub_b ) = substBnds sub_m bnds
+  | Value (nm, st) :: rest ->
+       let this'    = Value (nm, substSet sub st)
+       in let sub'  = insertTermvar sub nm (Var (None, nm))
+       in let rest' = substTheoryElts sub' rest
+       in this' :: rest'
+  | Sentence (sentsort, nm, mbnds, bnds, trm) :: rest ->
+       let    (mbnds', sub_m) = substMBnds sub mbnds
+       in let (bnds',  sub_b) = substBnds sub_m bnds
        in let trm' = subst sub_b trm
-       in let this' = Sentence ( sentsort, nm, mbnds', bnds', trm' )
+       in let this' = Sentence (sentsort, nm, mbnds', bnds', trm')
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Model ( mdlnm, thry ) :: rest ->
+  | Model (mdlnm, thry) :: rest ->
        let    thry' = substTheory sub thry 
-       in let this' = Model ( mdlnm, thry' )
+       in let this' = Model (mdlnm, thry')
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Implicit ( strs, set ) :: rest ->
+  | Implicit (strs, set) :: rest ->
        let    set'  = substSet sub set
-       in let this' = Implicit ( strs, set' )
+       in let this' = Implicit (strs, set')
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | ( ( Comment c ) as this') :: rest ->
+  | ((Comment c) as this') :: rest ->
        let rest' = substTheoryElts sub rest
        in this' :: rest'
 
 and substBnd sub (nm, stopt) = 
-    ( ( nm, substSetOption sub stopt ), 
-      insertTermvar sub nm ( Var ( None, nm) ) )
+    ((nm, substSetOption sub stopt), 
+      insertTermvar sub nm (Var (None, nm)))
 
 and substBnds sub = function
      [] -> ([], sub)
     | bnd :: rest -> 
-       let ( bnd',  sub'  ) = substBnd sub bnd
-       in let ( rest', sub'' ) = substBnds sub' rest 
-       in ( bnd' :: rest' , sub'' )
+       let (bnd',  sub' ) = substBnd sub bnd
+       in let (rest', sub'') = substBnds sub' rest 
+       in (bnd' :: rest', sub'')
 
 and substMBnds sub = function
      [] -> ([], sub)
     | (mdlnm, thry) :: rest -> 
-       let sub' = insertModelvar sub mdlnm ( ModelName mdlnm  ) in
-       let ( rest', sub'' ) = substMBnds sub' rest in
-         ( ( mdlnm, substTheory sub thry ) :: rest' , sub'' )
+       let sub' = insertModelvar sub mdlnm (ModelName mdlnm ) in
+       let (rest', sub'') = substMBnds sub' rest in
+         ((mdlnm, substTheory sub thry) :: rest', sub'')
 
 let freshNameString = 
   let counter = ref 0
@@ -576,16 +585,16 @@ let rec etaEquivTheories thry1 thry2 =
 	 in let thry12' = substTheory sub1 thry12 
 	 in let thry22' = substTheory sub2 thry22 
 	 in etaEquivTheories thry12' thry22'
-  | ( TheoryFunctor ( ( _, thry11 ), _ ), _ ) ->
+  | (TheoryFunctor ((_, thry11), _), _) ->
       let mdlnm3 = freshNameString ()
-      in let thry2' = TheoryFunctor( ( mdlnm3, thry11 ), 
-				     TheoryApp ( thry2, ModelName mdlnm3 ) )
+      in let thry2' = TheoryFunctor((mdlnm3, thry11), 
+				     TheoryApp (thry2, ModelName mdlnm3))
       in etaEquivTheories thry1 thry2'
 
-  | ( _, TheoryFunctor ( ( _, thry21 ), _ ) ) ->
+  | (_, TheoryFunctor ((_, thry21), _)) ->
       let mdlnm3 = freshNameString ()
-      in let thry1' = TheoryFunctor( ( mdlnm3, thry21 ), 
-				     TheoryApp ( thry1, ModelName mdlnm3 ) )
+      in let thry1' = TheoryFunctor((mdlnm3, thry21), 
+				     TheoryApp (thry1, ModelName mdlnm3))
       in etaEquivTheories thry1' thry2 
   | _ -> thry1 = thry2
 )
