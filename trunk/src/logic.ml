@@ -358,6 +358,9 @@ let typename_of_ln = function
     LN (_, S.N(_, S.Word)) as n -> n
   | LN (mdl, S.N(p, _)) -> LN (mdl, S.N(rename p, S.Word))
 
+let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
+
+
 (************************************)
 (* Translation from Syntax to Logic *)
 (************************************)

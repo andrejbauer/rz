@@ -197,6 +197,11 @@ let insertTyvar sbst nm ty =
 let insertModulvar sbst strng mdl =
   {sbst with moduls = ModulNameMap.add strng mdl sbst.moduls}
 
+let termsSubst lst =
+  List.fold_left (fun sbst (nm,trm) -> insertTermvar sbst nm trm) emptysubst lst
+
+let termSubst nm trm = insertTermvar emptysubst nm trm
+
 let getTermvar sbst nm =
    try (NameMap.find nm sbst.terms) with Not_found -> Id (ln_of_name nm)
 let getTyvar sbst tynm =
@@ -334,6 +339,8 @@ and substModest ?occ sbst {ty=ty; tot=(x,p); per=(y,z,q)} =
 	     (y',z', substProp ?occ (insertTermvar (insertTermvar sbst y (id y')) z (id z')) q));
   }
 
+and substSignat ?occ sbst = failwith "substSignat: not implemented"
+    
 
 (**** SOMEWHAT OLD CODE OLD CODE OLD CODE OLD CODE IS STILL USED IS STILL USED *)
 
