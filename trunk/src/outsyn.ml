@@ -88,6 +88,11 @@ let rec find_name good bad =
     List.find (fun x -> not (List.mem x bad)) bad
   with Not_found -> find_name (List.map next_name good) bad
 
+let find_name_subst name subst =
+  find_name name (List.flatten (List.map (fun t -> free_vars (snd t)) subst))
+
+let subst_remove n subst = List.filter (fun (m,_) -> n <> m) subst
+
 let free_vars =
   let rec fv acc = function
     True -> acc
@@ -106,17 +111,37 @@ let rec subst_negative s = function
     True -> True
   | False -> False
   | Total (n, t) -> (n, subst_term s t)
-  | Per (n, u, v) -> Per (n, subst_term u, subst_term v)
-  | Equal (u, v) -> Equal (subst_term u, subst_term v)
+  | Per (n, u, v) -> Per (n, subst_term s u, subst_term s v)
+  | Equal (u, v) -> Equal (subst_term s u, subst_term s v)
   | And lst -> And (List.map (subst_negative s) lst)
   | Cor lst -> Cor (List.map (subst_negative s) lst)
   | Imply (p, q) -> Imply (subst_negative s p, subst_negative s q)
   | Forall (n, ty, q) as p ->
-      if List.mem n (List.map fst s) then p
-      else
-	let n' = find_name [n] (List.flatten (List.map (fun t -> free_vars (snd t)) s))
-	in
-	  failwith "had to go home here"
+      let s = subst_remove n s in
+      let n' = find_name_subst n s in
+	Forall (n', ty, subst_negative (if n = n' then s else (n,n')::s) q)
+
+and subst_term s = function
+    Ident n ->
+      (try List.assoc n s with Not_found -> n)
+  | Star -> Star
+  | App (t, u) -> App (subst_term t, subst_term u)
+  | Lambda (n, md, t) ->
+      let s = subst_remove n s in
+      let n' = find_name_subst n s in
+	Lambda (n, md, subst_term (if n=n' then s else (n,n')::s) t)
+  | Tuple lst -> Tuple (List.map (subst_term s) lst)
+  | Proj (k, t) -> Proj (k, subst_term s t)
+  | Inj (k, t) -> Inj (k, subst_term s t)
+  | Cases (t, lst) -> 
+      Cases (subst_term s t,
+	     List.map (fun (lb, n, ty, t) ->
+			 let s = subst_remove n s in
+			 let n' = find_name_subst n s in
+			 (lb, n', ty, subst_term (if n=n' then s else (n,n')::s) t)
+		      ) lst
+
+
 
 let rec tyToString' level (t : ty) =
   let rec makeTupleTy = function

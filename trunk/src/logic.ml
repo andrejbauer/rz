@@ -32,7 +32,6 @@ and set =
   | Sum of (label * set) list
   | Subset of binding * proposition
   | RZ of set
-  | Type of set
 
 and term =
     Var of name

@@ -49,13 +49,31 @@ let rec translateSet = function
 	per = ("x", "y", Per ("s", Ident "x", Ident "y"))
       }
   | L.Product lst ->
-      let us = List.map lst in
+      let us = List.map translateSet lst in
 	{
 	  ty = TupleTy (List.map (fun u -> u.ty) us);
 	  tot = (
+	    let t = "t" in
+	      (t, And (
+		 let k = ref 0 in
+		   List.map (fun {tot=(x,p)} ->
+			       let q = subst [(x, Proj (!k, Ident t))] p in incr k ; q) us
+	       )
+	      )
 	  );
+	  per = (
+	    let t = "t" in
+	    let u = "u" in
+	      (t, u, And (
+		 let k = ref 0 in
+		   List.map (fun {per=(x,y,p)} ->
+			       let q = subst [(x, Proj (!k, Ident t)), (y, Proj (!k, Ident u))] p in
+				 incr k; q
+			    ) us
+	       )
+	      )
+	  )
 	}
-
   | L.Exp (s, t) ->
       let u = translateSet s in
       let v = translateSet t in
@@ -78,6 +96,11 @@ let rec translateSet = function
 				))))
 	  )
 	}
+(* remaining cases:
+  | Sum of (label * set) list
+  | Subset of binding * proposition
+  | RZ of set
+*)
 	  
       
 
