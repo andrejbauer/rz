@@ -78,94 +78,249 @@ let tyUnboundError lname =
      print_string "\n\n";
      raise TypeError)
 
+(**************************)
+(** {2 Utility Functions} *)
+(**************************)
+
+
+let mkProp = function
+    Unstable -> Prop
+  | Equivalence -> EquivProp
+  | Stable -> StableProp
+
+
+
 (*********************************)
 (** {2 The Typechecking Context} *)
 (*********************************)
 
-(** Context carried around by the type reconstruction algorithm.
+type ctx = theory_element list
+
+let emptyCtx = []
+
+
+
+let peekImplicit (ctx : ctx) (N(namestring, fixity) : name) = 
+   let rec loop = function
+       [] -> None
+     | Implicit (strings, set)::rest -> 
+         if List.mem namestring strings
+            then Some set
+            else loop rest
+     | _::rest -> loop rest
+   in
+      loop ctx
+
+(* For simplicity, at the moment does not descend into models,
+   hence does not require substitutions *)
+let peekTheory (ctx : ctx) namestring =
+   let rec loop = function
+       [] -> None
+     | Subtheory (thisstring, theory)::rest -> 
+         if thisstring = namestring 
+            then Some theory
+            else loop rest
+     | _::rest -> loop rest
+   in
+      loop ctx
+
+let rec expandTheory ctx = function
+    Theory {t_arg = []; t_body = elems} -> elems
+  | Theory _ -> []
+  | TheoryID theoryid -> 
+     (match (peekTheory ctx theoryid) with
+        Some theory -> expandTheory ctx theory
+      | None -> tyGenericError ("Undefined theory " ^ theoryid))
+          
+
+let addToSubst (substitution : renamingsubst) (N(namestring,fixity)) = function
+    [] -> substitution
+  | model::models  -> (N(namestring,fixity),
+                       LN(model, models@[namestring], fixity)) ::
+                             substitution
+
+(** All these routines need cleaning up.
+  
+    The Basic idea is to maintain two things:  
+     (1) where we are in reference to the top level
+         (a list of model names representing the start of a path)
+     (2) a substitution mapping all theory-component names in scope to the
+         paths that would be used to access these values from
+         the top-level.  so, e.g., if we had
+
+           thy
+              set s
+              model M : thy
+                           set t
+                           model N : thy
+                                        set u
+                                        const x : u
+                                     end
+                        end
+
+           end
+      
+         assuming we're looking for M::N::x, by the time we
+         get there the substitution contains
+             s -> s
+             t -> M::t
+             u -> M::N::u
+         and the "where am I" list would be [M ; N].
+
+
+    Warning:  references to TheoryID's from inside a 
+     strict subtheory are likely to fail.  (The problem is
+     that the "top-level" context that is passed to peekTypeof'
+     gets lost on the recursive call, when we descend into
+     a specific sub-model 
  *)
-type ctx = {implicits  : set NameMap.t;  
-               (** Implicit types for variables *)
-            types      : set NameMap.t;
-               (** Typing context; types for names in scope,
-                   including sentences and terms *)
-            tydefs     : set NameMap.t;
-               (** Definitions of type/set variables in scope *)
-            sets       : NameSet.t ;
-               (** Abstract (undefined) type/set variables in scope *)
-            models   : ctx StringMap.t;
-               (** Models in scope *)
-            theories : ctx StringMap.t;
-               (** Theories in scope *)
-           }
+
+let rec peekTypeof' subst0 ctx pathtohere = function
+    LN(namestring, strs, fixity) as lname ->
+      let rec loop substitution = function
+       [] -> None
+        | Set(sname, sopt) :: rest ->
+	    ((* let _ = print_string ("Found the set " ^ (string_of_name sname) ^ " when pathtohere = ")
+	    in let _ = List.iter print_string 
+		          (pathtohere @ ["\n"])
+	    in *)
+              loop (addToSubst substitution sname pathtohere) rest)
+	| Predicate(pname, pkind, domain) :: rest ->
+            if lname = toLN pname then
+              Some (substSet substitution (Exp(domain, mkProp pkind)))
+            else 
+              loop (addToSubst substitution pname pathtohere) rest
+	| Let_predicate(pname, pkind, bnds, _) :: rest ->
+            if lname = toLN pname then
+	      let    tys = List.map (function (_, Some ty) -> ty) bnds
+              in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkProp pkind)
+              in     Some (substSet substitution ty)
+            else 
+              loop (addToSubst substitution pname pathtohere) rest
+	| Let_term((tname, Some set), _) :: rest ->
+	    if lname = toLN tname then 
+                (let answer = substSet substitution set
+                 in (* let _ = print_string ("answer= " ^ string_of_set answer ^ "\n")
+                 in *)Some answer)
+            else 
+	    (loop (addToSubst substitution tname pathtohere) rest)
+	| Value(vname, set) :: rest ->
+	    if lname = toLN vname then 
+                (let answer = substSet substitution set
+		in (* let _ = print_string (string_of_int (List.length substitution))
+                 in let _ = print_string ("answer= " ^ string_of_set answer ^ "\n")
+                 in *) Some answer)
+            else 
+	    (loop (addToSubst substitution vname pathtohere) rest)
+
+	| Variable(vname, set) :: rest ->
+	    if lname = toLN vname then (Some (substSet substitution set)) else
+	    (loop (addToSubst substitution vname pathtohere) rest)
+        | Model (modelstr, theory) :: rest ->
+	    (match strs with
+	      [] -> (* We're looking for a variable in the current
+                       so don't descend into searching this model *)
+                loop (addToSubst substitution (N(modelstr,Word)) pathtohere) 
+                     rest
+            | str1::str1s -> 
+		if (namestring = modelstr) then
+                  peekTypeof' substitution
+                    (expandTheory ctx theory) 
+                    (pathtohere @ [namestring])
+                    (LN(str1,str1s,fixity))
+		else 
+		  (* Wrong model; don't descend *)
+                     loop (addToSubst substitution (N(modelstr,Word)) 
+			     pathtohere) 
+                          rest)
+                                          
+	| _ ::rest -> loop substitution rest
+      in loop subst0 ctx 
+
+let peekTypeof ctx lname = peekTypeof' [] ctx [] lname
+
+let rec peekTydef' subst0 ctx pathtohere = function
+    LN(namestring, strs, fixity) as lname ->
+      let rec loop substitution = function
+       [] -> None
+        | Set(sname, sopt) :: rest -> 
+	    if lname = toLN sname then
+	      substSetOption substitution sopt
+	    else
+	      loop (addToSubst substitution sname pathtohere) rest
+	| Predicate(pname, pkind, domain) :: rest ->
+              loop (addToSubst substitution pname pathtohere) rest
+	| Let_predicate(pname, pkind, bnds, _) :: rest ->
+              loop (addToSubst substitution pname pathtohere) rest
+	| Let_term((tname, Some set), _) :: rest ->
+	    (loop (addToSubst substitution tname pathtohere) rest)
+	| Value(vname, set) :: rest ->
+	    (loop (addToSubst substitution vname pathtohere) rest)
+	| Variable(vname, set) :: rest ->
+	    (loop (addToSubst substitution vname pathtohere) rest)
+        | Model (modelstr, theory) :: rest ->
+	    (match strs with
+	      [] -> (* We're looking for a variable in the current
+                       so don't descend into searching this model *)
+                loop (addToSubst substitution (N(modelstr,Word)) pathtohere) 
+                     rest
+            | str1::str1s -> 
+		if (namestring = modelstr) then
+                  peekTydef' substitution
+                    (expandTheory ctx theory) 
+                    (pathtohere @ [namestring])
+                    (LN(str1,str1s,fixity))
+		else 
+		  (* Wrong model; don't descend *)
+                     loop (addToSubst substitution (N(modelstr,Word)) 
+			     pathtohere) 
+                          rest)
+                                          
+	| _ ::rest -> loop substitution rest
+      in loop subst0 ctx 
+
+let peekTydef ctx lname = peekTydef' [] ctx [] lname
 
 
-(** Lookup functions:
-       Return the value associated with the given name.
-
-     @raise Not_Found when the name isn't in the map.
-  *)
-let lookupImplicit ctx name = NameMap.find name ctx.implicits
-
-(** Peek functions:
-       Search the context for a name that might not be there;
-       raises no exceptions.
-*)
-
-let peekSet ctx name = NameSet.mem name ctx.sets
-
-let peekType ctx name = 
-       if (NameMap.mem name ctx.types) then
-           Some (NameMap.find name ctx.types)
-       else None
-
-let peekTydef ctx name = 
-       if (NameMap.mem name ctx.tydefs) then
-           Some (NameMap.find name ctx.tydefs)
-       else None
-
-let peekModel ctx str = 
-       if (StringMap.mem str ctx.models) then
-           Some (StringMap.find str ctx.models)
-       else None
-
-let peekTheory ctx str = 
-       if (StringMap.mem str ctx.theories) then
-           Some (StringMap.find str ctx.theories)
-       else None
-
-let rec peekLong peeker ctx = function
-    (LN(str, [], namesort) as lname) -> peeker ctx (N(str,namesort))
-  | (LN(str, lab::labs, namesort) as lname) ->
-      (match (peekModel ctx str) with
-        Some ctx' -> peekLong peeker ctx' (LN(lab, labs, namesort))
-      | None -> tyGenericError ("Unbound model " ^ str))
-
-(** Insertion functions.
- *)
-let insertImplicit ctx name ty = 
-       {ctx with implicits = NameMap.add name ty ctx.implicits}
-let insertType ctx name ty = 
-       {ctx with types = NameMap.add name ty ctx.types}
-let insertTydef ctx name ty = 
-       {ctx with tydefs = NameMap.add name ty ctx.tydefs}
-let insertSet ctx name =
-       {ctx with sets = NameSet.add name ctx.sets}
-let insertModel ctx str ctx' =
-       {ctx with models = StringMap.add str ctx' ctx.models}
-let insertTheory ctx str ctx' =
-       {ctx with theories = StringMap.add str ctx' ctx.theories}
+(* Simpler than peekTydef and peekTypeof because we are just
+   returning a boolean, so there's no need to maintain the substitution.
+   More complex than peekImplicit because the argument might be a
+   general path. *)
+let rec peekSet ctx = function
+    LN(namestring, strs, fixity) as lname ->
+      (* let _ = print_string ("looking for " ^ namestring ^ "\n")
+      in *) let rec loop = function
+       [] -> false
+        | Set(sname, sopt) :: rest -> 
+	    if lname = toLN sname then
+	      true
+	    else
+	      loop rest
+        | Model (modelstr, theory) :: rest ->
+	    ((* print_string ("found the model" ^ modelstr ^ "\n"); *)
+	     match strs with
+	      [] -> (* We're looking for a variable in the current
+                       so don't descend into searching this model *)
+                loop rest
+            | str1::str1s -> 
+                if (namestring = modelstr) then
+                  ((* print_string "it's what we're looking for\n"; *)
+                   peekSet (expandTheory ctx theory) (LN(str1,str1s,fixity)))
+		else 
+		  (* Wrong model; don't descend *)
+                     loop rest)
+	| _ ::rest -> loop rest
+      in loop ctx 
 
 
-(** Initial context.
- *)
-let emptyCtx = {implicits = NameMap.empty; 
-                types     = NameMap.empty;
-                tydefs    = NameMap.empty; 
-                sets      = NameSet.empty;
-                models  = StringMap.empty;
-	        theories = StringMap.empty}
 
+(** XXX should check for [and reject as erroneous] shadowing! *)
+let insertModel ctx modelstring theory = (Model(modelstring,theory)::ctx)
+let insertSet ctx name = (Set(name, None) :: ctx)
+let insertTydef ctx name set = (Set(name,Some set) :: ctx)
+let insertType ctx name set = (Value(name,set) :: ctx)
+let insertImplicits ctx namestrings set = (Implicit(namestrings,set) :: ctx)
+let insertTheory ctx thrstring thr = (Subtheory(thrstring, thr)::ctx)
 
 
 
@@ -177,7 +332,7 @@ let emptyCtx = {implicits = NameMap.empty;
   *)
 let rec hnfSet ctx = function
     Set_name (lname) ->
-      (match (peekLong peekTydef ctx lname) with
+      (match (peekTydef ctx lname) with
         Some set -> hnfSet ctx set
       | None -> Set_name lname)
   | set -> set
@@ -304,7 +459,7 @@ let joinSets ctx =
 (*****************************************)
 
 let isEquivalence ctx s r =
-    match peekLong peekType ctx r with
+    match peekTypeof ctx r with
 	Some (Exp (u, Exp (v, EquivProp)))
       | Some (Exp (Product [u; v], EquivProp)) ->
 	  (eqSet ctx s u) && (eqSet ctx s v)
@@ -338,11 +493,6 @@ let rec propKind = function
   | Exp (s, t) -> propKind t
   | t -> failwith ("propKind of a non-proposition: " ^ (string_of_set t))
 
-
-let mkProp = function
-    Unstable -> Prop
-  | Equivalence -> EquivProp
-  | Stable -> StableProp
 
 let isInfix = function
     N(_, (Infix0|Infix1|Infix2|Infix3|Infix4)) -> true
@@ -403,9 +553,9 @@ let rec annotateSet ctx =
 		failwith "only quotients by stable binary relations exist"
         | Rz s -> Rz (ann s)
         | Set_name lname ->
-             (if peekLong peekSet ctx lname then
+             (if peekSet ctx lname then
 		 Set_name lname
-	      else match peekLong peekTydef ctx lname with
+	      else match peekTydef ctx lname with
                      Some _ -> Set_name lname
                    | None -> tyGenericError ("Unknown set " ^ 
                                              string_of_longname lname))
@@ -470,10 +620,10 @@ and annotateProp ctx =
 	      Exists (bnd', fst (annotateProp ctx' p)), Unstable
 
         | ForallModels (str, thr, p) ->
-	    let (thr', ctx_thr) = annotateTheory ctx thr
-	    in let ctx' = insertModel ctx str ctx_thr
+	    let thr' = annotateTheory ctx thr
+	    in let ctx' = insertModel ctx str thr'
 	    in let (p',stb) = annotateProp ctx' p
-            in (ForallModels(str,thr',p'), stb) (** XXX Right stability? *)
+            in (ForallModels(str,thr',p'), stb) (** XXX Correct stability? *)
 
 	| Case(e, arms) -> 
 	    let (e', ty) = annotateTerm ctx e
@@ -509,8 +659,9 @@ and annotateBinding ctx = function
       (x,sopt) -> 
          let s' = (match sopt with
                      Some s -> annotateSet ctx s
-                   | None   -> (try (lookupImplicit ctx x) with
-                                  Not_found -> 
+                   | None   -> (match (peekImplicit ctx x) with
+                                  Some s -> s
+                                | None -> 
                                    (tyGenericError ("Bound variable " ^ 
 						    string_of_name x ^ 
 						    " not annotated " ^
@@ -547,7 +698,7 @@ and addBindings ctx = function
 and annotateTerm ctx = 
     (let rec ann = function 
        Var lname -> 
-	 (match (peekLong peekType ctx lname) with
+	 (match (peekTypeof ctx lname) with
 	   Some ty -> (Var lname, ty)
 	 | None -> tyUnboundError lname)
      | Constraint(t,s) ->
@@ -749,15 +900,13 @@ and annotateTheoryElems ctx raccum ctx0 = function
 
        | Implicit(strs, s)::rest ->    (** Eliminated during inference *)
            let    s' = annotateSet ctx s
-           in let ctx' = List.fold_left 
-                            (fun ctx str -> insertImplicit ctx (N(str,Word)) s') 
-                            ctx strs
+           in let ctx' = insertImplicits ctx strs s'
            in annotateTheoryElems ctx' raccum ctx0 rest
 
        | Model (str,thr) :: rest ->
-           let (thr',ctx_thr) = annotateTheory ctx thr
-           in let ctx' = insertModel ctx str ctx_thr
-           in let ctx0' = insertModel ctx str ctx_thr
+           let thr' = annotateTheory ctx thr
+           in let ctx' = insertModel ctx str thr'
+           in let ctx0' = insertModel ctx str thr'
            in 
               annotateTheoryElems ctx' (Model(str,thr')::raccum) ctx0' rest
 (*
@@ -769,25 +918,23 @@ and annotateTheoryElems ctx raccum ctx0 = function
 and annotateTheory ctx = function
   | Theory {t_arg = []; t_body = tesb } ->
 	let (tesb', ctx_thr, _) = annotateTheoryElems ctx [] emptyCtx tesb
-        in (Theory {t_arg=[]; t_body = tesb'}, ctx_thr)
+        in Theory {t_arg=[]; t_body = tesb'}
 
   |  Theory {t_arg = tesa; t_body = tesb} -> 
 	let (tesa', _, ctx') = annotateTheoryElems ctx [] emptyCtx tesa
 	in let (tesb', ctx_thr, _) = annotateTheoryElems ctx' [] emptyCtx tesb
-        in (Theory {t_arg=tesa'; t_body = tesb'}, emptyCtx)
-	    
-    | TheoryID str -> (TheoryID str,
-		       match peekTheory ctx str with
-			 Some ctx_thr -> ctx_thr
+        in Theory {t_arg=tesa'; t_body = tesb'}
+    | TheoryID str -> (match peekTheory ctx str with
+			 Some thr -> TheoryID str
 		       | None -> tyGenericError ("Unknown Theory " ^ str))
 			    
 
 
 and annotateTheoryDef ctx = function
       TheoryDef(str, thr) -> 
-	let (thr', ctx_thr) = annotateTheory ctx thr
+	let thr' = annotateTheory ctx thr
 	in (TheoryDef(str, thr'),
-	    insertTheory ctx str ctx_thr)
+	    insertTheory ctx str thr')
 
 and annotateTheoryDefs ctx = function
     [] -> []

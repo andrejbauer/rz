@@ -19,6 +19,7 @@ type set_name = name
 
 type set_longname = longname
 
+let toLN (N(str,fixity)) = LN(str,[],fixity)
 
 (** names of sets must be valid type names *)
 
@@ -91,7 +92,7 @@ and theory_element =
   | Variable      of name * set
   | Sentence      of sentence_type * name * binding list * term
   | Model         of string * theory
-(*  | Subtheory     of string * theory *)
+  | Subtheory     of string * theory 
   | Implicit      of string list * set
 
 and theoryinfo = {t_arg  : theory_element list;
@@ -210,70 +211,82 @@ and string_of_bnd = function
 
      WARNING:  Not capture-avoiding, so either use this
      only for closed terms or terms with free variables that
-     are "fresh".
+     are "fresh", or rare other cases where this is sufficient.
 *)
-
-(** AB: As far as I can tell all this stuff is not used anywhere.
-        So I commented it out. *)
-(*
 
 exception Unimplemented
 
-let rec subst x t = 
+type renamingsubst = (name * longname) list
+
+let rec substLN (substitution : renamingsubst) = function
+      LN(str, labels, sort) as ln ->
+           (try 
+              (match (List.assoc (N(str,Word)) substitution)  with
+               LN(str',labels',sort') ->
+                    LN(str',labels' @ labels, sort'))
+            with Not_found -> ln)
+
+let rec subst (substitution : renamingsubst) =
      let rec sub = function
-          Var y           -> if (x=y) then t else Var y
-        | Constraint(u,s) -> Constraint(sub u, substSet x t s)
+          Var ln -> Var(substLN substitution ln)
+        | Constraint(u,s) -> Constraint(sub u, substSet substitution s)
         | Tuple ts      -> Tuple(List.map sub ts)
         | Proj(n,t1)    -> Proj(n, sub t1)
         | App(t1,t2)    -> App(sub t1, sub t2)
-        | Inj(l,t1)     -> Inj(l, sub t1)
+        | Inj(l,termopt)     -> Inj(l, substTermOption substitution termopt)
         | Case(t1,arms) -> Case(t1,subarms arms)
-        | Quot(t1,t2)   -> Quot(sub t1, sub t2)
-        | Choose((y,sopt),t1,t2) ->
-            Choose((y,substSetOption x t sopt),
+        | Quot(t1,ln)   -> Quot(sub t1, substLN substitution ln)
+        | Choose((y,sopt),ln,t1,t2) ->
+            Choose((y,substSetOption substitution sopt),
+                   substLN substitution ln,
                      sub t1, 
-                     if (x=y) then t2 else sub t2)
+                     subst ((y, toLN y)::substitution) t2)
         | And ts        -> And(List.map sub ts)
         | Imply(t1,t2)  -> Imply(sub t1, sub t2)
         | Iff(t1,t2)    -> Iff(sub t1, sub t2)
         | Or ts         -> Or(List.map sub ts)
         | Not t         -> Not(sub t)
-        | Equal(sopt,t1,t2) -> Equal(substSetOption x t sopt,
+        | Equal(sopt,t1,t2) -> Equal(substSetOption substitution sopt,
                                          sub t1, sub t2)
         | Let((y,sopt),t1,t2) ->
-            Let((y,substSetOption x t sopt),
+            Let((y,substSetOption substitution sopt),
                   sub t1, 
-                  if (x=y) then t2 else sub t2)
+                  subst ((y, toLN y)::substitution) t2)
         | Forall((y,sopt),t1) -> 
-            Forall((y,substSetOption x t sopt),
-                     if (x=y) then t1 else sub t1)
+            Forall((y,substSetOption substitution sopt),
+                   subst ((y, toLN y)::substitution) t1)
         | Exists((y,sopt),t1) -> 
-            Exists((y,substSetOption x t sopt),
-                     if (x=y) then t1 else sub t1)
+            Exists((y,substSetOption substitution sopt),
+                   subst ((y, toLN y)::substitution) t1)
         | t               -> t
      and subarms = function
           [] -> []
         | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
         | (l,Some(y,sopt),u)::rest ->
-              (l,Some(y,substSetOption x t sopt),
-               if (x=y) then u else sub u        )::(subarms rest)
+              (l,Some(y,substSetOption substitution sopt),
+               subst ((y, toLN y)::substitution) u)::(subarms rest)
      in sub
 
-and substSet x t =
+and substSet substitution =
      let rec sub = function
-           Product ss         -> Product(List.map sub ss)
+           Set_name ln -> Set_name(substLN substitution ln)
+         | Product ss         -> Product(List.map sub ss)
          | Exp(s1,s2)         -> Exp(sub s1, sub s2)
          | Subset((y,sopt),u) ->
-              Subset((y,substSetOption x t sopt),
-                       if (x=y) then u else subst x t u )
-         | Quotient(s,y,y',u)    -> Quotient(sub s, y, y',
-					     (if x = y or x = y' then u else subst x t u))
+              Subset((y,substSetOption substitution sopt),
+                     subst ((y, toLN y)::substitution) u)
+         | Quotient(s,ln)   -> 
+              Quotient(sub s, substLN substitution ln)
          | s                    -> s
      in sub
 
-and substSetOption x t = function
+and substSetOption substitution = function
       None   -> None
-    | Some s -> Some (substSet x t s)
+    | Some s -> Some (substSet substitution s)
 
-*)
+and substTermOption substitution = function
+      None   -> None
+    | Some term -> Some (subst substitution term)
+
+
 
