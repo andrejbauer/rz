@@ -1,0 +1,5 @@
+- DONE [2004-06-18]
+  BUG (2004-06-17) [Andrej]:
+  a realizer for an axiom is not applied to the correct
+  arguments in the corresponding assertion (some are missing)
+
