@@ -18,7 +18,8 @@ let command_line_options =
    ("--nosave", Arg.Clear Flags.do_save, "No output to file");
    ("--sigapp", Arg.Set Flags.do_sigapp, "Retain signature applications");
    ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)");
-   ("--dump_infer", Arg.Set Flags.do_dumpinfer, "Dump result of type inference")
+   ("--dump_infer", Arg.Set Flags.do_dumpinfer, "Dump result of type inference");
+   ("--redo_infer", Arg.Set Flags.do_redoinfer, "Check the results of type inference")
   ]
 
 (** One-line usage message
@@ -95,6 +96,12 @@ let rec process = function
 	      List.iter print_item thy';
 	      print_endline "----------------")
 	else ()) in
+
+      let _ =
+        (if (! Flags.do_redoinfer) then
+	    Infer.annotateToplevels infer_state thy'
+         else (thy', infer_state')) in
+
 
 
       let lthy = 

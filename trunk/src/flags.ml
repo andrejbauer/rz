@@ -11,3 +11,5 @@ let do_sigapp = ref false (* Should signature applications be retained,
 
 let do_dumpinfer = ref false (* Should result of infer be written to
                                 stdout? *)
+
+let do_redoinfer = ref false (* Should we do infer on infer's results? *)

@@ -798,7 +798,7 @@ let rec coerce cntxt trm st1 st2 =
 
         | ( _, Subset( ( _, Some st1'1 ), _ ), _ ) -> 
 	    (** Try an implicit out-of-subset conversion *)
-            coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
+            coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
 
         | ( _, _, Subset( ( _, Some st2'1 ), _ ) ) -> 
 	    (** Try an implicit into-subset conversion *)
