@@ -209,23 +209,11 @@ and subst x t =
      in sub)
 *)
 
-let ln_of_name (S.N(str,sort)) = LN(str,[],sort)
+let ln_of_string str = LN(None, S.N(str,S.Word))
 
-let ln_of_string str = LN (str, [], S.Word)
-
-let ln_of_modelproj mdl nm nmtyp =
-  let rec lom acc = function
-      S.ModelName m -> LN (m, acc, nmtyp)
-    | S.ModelProj (mdl, lbl) -> lom (lbl :: acc) mdl
-  in
-    lom [nm] mdl
-
-let ln_of_term = function
-    S.Var nm -> ln_of_name nm
-  | S.MProj (mdl, nm, nmtyp) -> ln_of_modelproj mdl nm nmtyp
-  | _ -> failwith "Name or long name expected"
-
-let rec string_of_ln (LN (nm, nms, _)) = String.concat "." (nm :: nms)
+let rec string_of_ln = function
+    LN (None, nm) -> string_of_name nm
+  | LN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ (string_of_name nm)
 
 let rec string_of_set = function
     Empty -> "empty"
@@ -309,7 +297,7 @@ let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
   | S.Bool -> Bool
-  | S.Set_name nm -> Basic (ln_of_string nm)
+  | S.Set_name nm -> Basic nm
   | S.Set_mproj (mdl, lbl) -> Basic (ln_of_modelproj mdl lbl S.Word)
   | S.Product lst -> Product (List.map make_set lst)
   | S.Sum lst -> Sum (List.map
@@ -318,7 +306,7 @@ let rec make_set = function
                       lst)
   | S.Exp (s, t) -> Exp (make_set s, make_set t)
   | S.Subset ((n, Some s), phi) -> Subset ((n, make_set s), make_proposition phi)
-  | S.Quotient (s, r) -> Quotient (make_set s, ln_of_term r)
+  | S.Quotient (s, r) -> Quotient (make_set s, r)
   | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
   | S.EquivProp -> EQUIV
@@ -338,7 +326,7 @@ and make_proposition = function
 	| u -> u, List.rev acc
       in
       let hd, apps = collect [] prop in
-	Atomic (ln_of_term hd, List.rev apps)
+	Atomic (hd, List.rev apps)
   | S.And lst -> And (List.map make_proposition lst)
   | S.Imply (phi, psi) -> Imply (make_proposition phi, make_proposition psi)
   | S.Iff (phi, psi) -> Iff (make_proposition phi, make_proposition psi)
@@ -365,7 +353,7 @@ and make_proposition = function
 	  raise HOL)
 
 and make_term = function
-    S.Var n -> Var (ln_of_name n)
+    S.Var n -> Var n
   | S.MProj (mdl, nm, nmtyp) -> Var (ln_of_modelproj mdl nm nmtyp)
   | S.Constraint (t, _) -> make_term t
   | S.Star -> Star
@@ -383,12 +371,12 @@ and make_term = function
   | S.The ((n, Some s), t) -> The ((n, make_set s), make_proposition t)
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
-  | S.Quot (t, r) -> Quot (make_term t, ln_of_term r)
+  | S.Quot (t, r) -> Quot (make_term t, r)
   | S.RzQuot t -> RzQuot (make_term t)
   | S.RzChoose ((n, Some s), t, u, Some st) ->
       RzChoose ((n, make_set s), make_term t, make_term u, make_set st)
   | S.Choose ((n, Some s), r, t, u, Some st) ->
-      Choose ((n, make_set s), ln_of_term r, make_term t, make_term u, make_set st)
+      Choose ((n, make_set s), r, make_term t, make_term u, make_set st)
   | S.Let ((nm, Some st1), trm1, trm2, Some st2) -> 
       Let((nm, make_set st1), make_term trm1, make_term trm2,
 	  make_set st2)
