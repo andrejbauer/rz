@@ -148,6 +148,14 @@ let rec optTy ctx ty =
   in
     hnfTy ctx ans
 
+let rec optBinds ctx = function
+    [] -> []
+  | (n,ty)::bnds ->
+      (match optTy ctx ty with
+	   TopTy -> optBinds ctx bnds
+	 | ty' -> (n,ty')::(optBinds ctx bnds))
+    
+
 (* optTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
             e' is the optimized version of e
@@ -359,10 +367,10 @@ and optElems ctx = function
 	   | ty' -> ValSpec (name, ty') :: rest', (insertType ctx' name ty'))
 	
   |  AssertionSpec(name, bnds, prop) :: rest ->
-      (** XXX Eliminate unit bindings? *)
-      let ctx' = insertTypeBnds ctx bnds in
-      let rest', ctx'' = optElems ctx rest in
-	(AssertionSpec (name, bnds, optProp ctx' prop) :: rest'), ctx''
+       let ctx' = insertTypeBnds ctx bnds in
+       let bnds' = optBinds ctx bnds in
+       let rest', ctx'' = optElems ctx rest in
+	 (AssertionSpec (name, bnds', optProp ctx' prop) :: rest'), ctx''
 
   |  TySpec(Syntax.N(str,_) as n, None) :: rest -> 
        let rest', ctx' = optElems ctx rest in

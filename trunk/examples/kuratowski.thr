@@ -21,30 +21,30 @@ end
 
 theory Kuratowski (A : thy set a end) =
 thy
-  set s
-  const empty : s
-  const union : s -> s -> s
-  const singleton : A.a -> s
+  set fin
+  const empty : fin
+  const union : fin -> fin -> fin
+  const singleton : A.a -> fin
 
   # at this point we want to say that (s, zero, union) is a semilattice
   # and it seems like we just have to repeat the axioms
 
-  implicit x, y, z : s
+  implicit x, y, z : fin
 
   axiom commutative x y = (union x y = union y x)
   axiom associative x y z = (union (union x y) z = union x (union y z))
   axiom idempotent x = (union x x = x)
-  axiom bottom (x : s) =  (union x empty = x)
+  axiom bottom (x : fin) =  (union x empty = x)
 
   # we really want unique existence, but we don't have the some1
   # quantifier yet
 
   axiom initial [S : Semilattice] =
       all (f : A.a -> S.s).
-        some (f' : s -> S.s) . (
+        some (f' : fin -> S.s) . (
           f' empty = S.zero and
           all (x : A.a) . (f x = f' (singleton x)) and
-          all (u : s) . all (v : s) . (
+          all (u : fin) . all (v : fin) . (
           f' (union u v) = S.join (f' u) (f' v)
       )
     )
