@@ -1,17 +1,7 @@
 theory Trivial =
 thy
  set s
- const a : s
 
- set t = rz ((s -> s) -> s)
-
- const f0 : t
-
- axiom foo (x : (s -> s) -> s) = [f0] = x
-
- axiom bar (x : t) = f0 = x
-
- axiom baz (f : (s -> s) -> s) =
-   (let [(g : t)] = f in g) = f0
+ predicate r : s * s
 
 end

@@ -3,7 +3,7 @@ thy
   set s
   stable relation (<<) : s * s
 
-  equivalence r : s * s
+  equivalence r : s -> s -> Prop
 
   implicit x, y, z : s
   implicit e : s % r
@@ -16,6 +16,6 @@ thy
 
   axiom surj = all e . some x . (e = x % r)
 
-  axiom bar (f : s -> s) (a : s) e = r (a, let x % r = e in f x)
+  axiom bar (f : s -> s) (a : s) e = r a (let x % r = e in f x)
 
 end

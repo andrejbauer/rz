@@ -179,33 +179,6 @@ and subst x t =
 (** *** *)
 module S = Syntax
 
-let rec isSet = function
-    Empty | Unit | Bool | Basic _ -> true
-  | Product lst -> List.for_all isSet lst
-  | Sum lst -> List.for_all (function (_, None) -> true | (_, Some s) -> isSet s) lst
-  | Subset ((_, s), _) -> isSet s
-  | Rz s -> isSet s
-  | Quotient (s,_) -> isSet s
-  | Exp (s, t) -> isSet s && isSet t
-  | PROP -> false
-  | STABLE -> false
-  | SET -> false
-
-and isProp = function
-    Empty | Unit | Bool | Basic _ | Product _
-  | Sum _ | Subset _ | Rz _ | Quotient _ -> false
-  | PROP -> true
-  | STABLE -> true
-  | SET -> false
-  | Exp (s, t) -> isSet s && isProp t
-
-let rec propKind = function
-    PROP -> S.Unstable
-  | STABLE -> S.Stable
-  | EQUIV -> S.Equivalence
-  | Exp (s, t) -> propKind t
-  | _ -> failwith "propKind of a non-proposition"
-
 (************************************)
 (* Translation from Syntax to Logic *)
 (************************************)
@@ -234,6 +207,7 @@ let rec make_set = function
   | S.Quotient (s, r) -> Quotient (make_set s, r)
   | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
+  | S.EquivProp -> EQUIV
   | S.StableProp -> STABLE
 
 (* Assumes that we have already done Type Inference
@@ -304,14 +278,7 @@ and make_theory_element = function
   | S.Let_term ((_, None), t) -> (print_string "Let_term without ty ann.\n";
                                   raise Unimplemented)
   | S.Sentence (st, n, b, t) -> Sentence (st, n, make_bindings b, make_proposition t)
-  | S.Value (n, s) ->
-      let s' = make_set s in
-	if isProp s' then
-	  Predicate (n, (propKind s'), s')
-	else if isSet s' then
-	  Value (n, s')
-	else
-	  raise HOL
+  | S.Value (n, s) -> Value (n, make_set s)
 
 and make_theoryspec {S.t_arg=args; S.t_name=name; S.t_body=body} =
   { t_name = name;
