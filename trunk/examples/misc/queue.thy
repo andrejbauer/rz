@@ -2,32 +2,32 @@ theory Queue =
 thy
   set a (* elements of queues *)
 
-  stable relation ( <= ) : a -> a -> Prop
-
   set queue (* the set of all queues *)
 
-  stable relation elem : a -> queue -> Prop
+  implicit q,q' : queue
+  implicit x,y : a
 
   const empty : queue
 
-  relation is_least (x : a) (q : queue) =
-    (elem x q) and
-    all (y : a) . (elem y q => x <= y)
+  const enqueue : a * queue -> queue
+  const dequeue : queue -> `some : (a * queue) + `none
 
-  relation is_join (x : a) (r : queue) (q : queue) =
-    (elem x q) and not (elem x r) and
-    (all (y : a) . (elem y q => elem y r))
+  axiom dequeue0 =
+    dequeue (empty) = `none
 
-  axiom empty_queue (x : a) = not (elem x empty)
+  axiom dequeue1 x =
+    dequeue (enqueue (x, empty)) = `some(x, empty)
+	
 
-  axiom dequeue (q : queue) =
-    q = empty or
-    some (x : a) . (
-      is_least x q and 
-      some (r : queue) . (is_join x r q)
-    )
+  axiom dequeue2 x q =
+    not ( q = empty ) => 
+	some y. some q'. (dequeue q = `some(y,q')  and
+                          dequeue(enqueue(x,q)) = `some(y, enqueue(x,q')))
 
-  axiom enqueue (x : a) (q : queue) =
-    some (r : queue) . is_join x q r
+  (* Is the following axiom redundant? *)
+
+  axiom enqueue1 q y q' =
+    (dequeue q = `some(y,q')) <=> (enqueue (y,q') = q)
+
 
 end

@@ -843,7 +843,7 @@ let joinSet cntxt s1 s2 =
 	    (if (List.mem_assoc l1 s2s) then
 	      try
 		let None = List.assoc l1 s2s
-		in (l1,None) :: joinSums(s1s, s2s)
+		in joinSums(s1s, s2s)
               with _ -> tyGenericError ("Disagreement as to whether " ^ l1 ^
                          " stands alone or tags a value")
 	    else (l1,None) :: joinSums(s1s, s2s))
@@ -852,13 +852,13 @@ let joinSet cntxt s1 s2 =
 	      try
 		let Some s2 = List.assoc l1 s2s
 		in if eqSet cntxt s1 s2 then
-		      (l1,None) :: joinSums(s1s, s2s)
+		      joinSums(s1s, s2s)
 		else
 		    tyGenericError ("Disagreement as to whether " ^ l1 ^
                                     " tags a value or stands alone")
               with _ -> tyGenericError("Disagreement on what type of value " ^ 
                                         l1 ^ " should tag")
-	    else (l1,None) :: joinSums(s1s, s2s))
+	    else (l1,Some s1) :: joinSums(s1s, s2s))
 
 
       in match (s1',s2') with
