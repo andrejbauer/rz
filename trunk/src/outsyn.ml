@@ -250,9 +250,11 @@ and substTerm ctx s = function
 			     let n' = fresh [n] (fvSubst s') ctx in
 			       (lb, Some (n', ty), substTerm ctx (substAdd (n,n') s') t)
 		      ) lst)
-  | Obligation ((x, ty), p, trm) ->
-      let s' = substRemove x s in
-	Obligation ((x, ty), substProp ctx s' p, substTerm ctx s' trm)
+  | Obligation ((n, ty), p, trm) ->
+      let s' = substRemove n s in
+      let n' = fresh [n] (fvSubst s') ctx in
+      let s'' = substAdd (n,n') s' in
+	Obligation ((n', ty), substProp ctx s'' p, substTerm ctx s'' trm)
 
 
 and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =

@@ -365,7 +365,7 @@ and translateProp ctx = function
   | L.True -> (TopTy, any, True)
 
   | L.Atomic (n, trms) ->
-print_endline ("ATOMIC " ^ (L.string_of_ln n));
+(* print_endline ("ATOMIC " ^ (L.string_of_ln n)); *)
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let ty = (match fst (getLong getProp ctx n) with
 		    S.Unstable -> NamedTy (L.typename_of_longname n)

@@ -12,8 +12,11 @@ exception BadArgs;;
 let command_line_options = 
   [("--opt", Arg.Set Flags.do_opt, "Turn on simplification optimations (default)");
    ("--noopt", Arg.Clear Flags.do_opt,"Turn off simplification optimizations");
-   ("--show", Arg.Set Flags.do_print, "Display output to stdout as well");
-   ("--noshow", Arg.Clear Flags.do_print, "Send output only to the file system") ]
+   ("--show", Arg.Set Flags.do_print, "Show output on stdout (default)");
+   ("--noshow", Arg.Clear Flags.do_print, "No output to stdout");
+   ("--save", Arg.Set Flags.do_save, "Send output to .mli file (default)");
+   ("--nosave", Arg.Clear Flags.do_save, "No output to file")
+  ]
 
 (** One-line usage message
  *)
@@ -30,7 +33,9 @@ let addFile strng =
 
 (* Helper function:  parses a given filename *)
 let read fn =
-  let _ = print_string ("[Processing " ^ fn ^ "]\n") in
+  let _ = if (!Flags.do_print) 
+             then print_string ("[Processing " ^ fn ^ "]\n") 
+          else () in
   let fin = open_in fn in
   let e = Parser.toplevels Lexer.token (Lexing.from_channel fin) in
     close_in fin ;
@@ -72,16 +77,19 @@ let rec process = function
       let (spec2,opt_state') = 
 	Opt.optToplevels opt_state spec in
 	
+      (** The output file replaces the .thr extension by .mli *)
+      let outfile = (Filename.chop_extension fn) ^ ".mli" in
+
       (** Write the output file 
       *)
-      let outb = Buffer.create 1024 in
-      let formatter = Format.formatter_of_buffer outb in
-	(** The output file replaces the .thr extension by .mli *)
-      let outfile = (Filename.chop_extension fn) ^ ".mli" in
-      let outchan = open_out outfile in
-      let _ = send_to_formatter formatter spec2 in
-      let _ = Buffer.output_buffer outchan outb in
-      let _ = close_out outchan in
+      let _ = if (!Flags.do_save) then
+ 	        let outb = Buffer.create 1024 in
+		let formatter = Format.formatter_of_buffer outb in
+ 		let outchan = open_out outfile in
+		let _ = send_to_formatter formatter spec2 in
+		let _ = Buffer.output_buffer outchan outb in
+		close_out outchan
+              else () in
 	
       (** Optionally display to stdout as well.
       *)
@@ -91,7 +99,9 @@ let rec process = function
 
       (** We put this message after any displayed code so that
           it is more likely to be seen. *)
-      let _ = print_string ("[Output saved in " ^ outfile ^ "]\n") 
+      let _ = if (!Flags.do_save) then
+                 print_string ("[Output saved in " ^ outfile ^ "]\n") 
+              else () 
 		
       in 
 	process (fns, infer_state', translate_state', opt_state');;
@@ -103,7 +113,11 @@ let rec process = function
 if Array.length(Sys.argv) >= 2 then
   (** If so, parse all the command-line options and store the names
       of all the files to be processed *)
-  Arg.parse_argv Sys.argv command_line_options addFile usage_msg 
+  try
+     Arg.parse_argv Sys.argv command_line_options addFile usage_msg 
+  with 
+     Arg.Bad s -> (print_string s;
+                   raise (Arg.Bad ""))
 else
   Arg.usage command_line_options usage_msg;;
 
@@ -111,7 +125,7 @@ else
     command-line (which is the reverse of the order that they were
     stored).
 *)
-process (List.rev !filenames, 
+   process (List.rev !filenames, 
 	 Infer.emptyCtx, 
 	 Translate.emptyCtx, 
 	 Opt.emptyCtx);;

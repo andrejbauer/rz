@@ -44,48 +44,70 @@ and output_term_13 ppf = function
 
 and output_term_12 ppf = function
     Lambda ((n, ty), t) ->
-      fprintf ppf "fun (%a : %a) ->@ %a" 
+      fprintf ppf "@[fun (%a : %a) ->@ %a@]" 
         output_name n  output_ty ty  output_term_12 t
   | Obligation ((n, TopTy), p, trm) ->
-      fprintf ppf "assure %a in %a" 
-        output_prop p  output_term_5 trm
+      fprintf ppf "@[assure @[%a@]@ in %a@]" 
+        output_prop_0 p  output_term_12 trm
+  | Obligation ((n, ty), True, trm) ->
+      fprintf ppf "@[assure %a : %a@ in %a@]" 
+        output_name n  output_ty ty  output_term_12 trm
   | Obligation ((n, ty), p, trm) ->
       fprintf ppf "assure %a : %a . %a in %a" 
-        output_name n  output_ty ty  output_prop p  output_term_5 trm
+        output_name n  output_ty ty  output_prop p  output_term_12 trm
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
     App (App (Id (Logic.LN(_,_, Syntax.Infix0) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
-        output_term_9 t  output_longname ln  output_term_8 u
+(* DISABLED the default left-associativity of infix operators *)
+(*        output_term_9 t  output_longname ln  output_term_8 u *)
+        output_term_8 t  output_longname ln  output_term_8 u
   | trm -> output_term_8 ppf trm
       
 and output_term_8 ppf = function
     App (App (Id (Logic.LN(_,_, Syntax.Infix1) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
-        output_term_8 t  output_longname ln  output_term_7 u
+(* DISABLED the default left-associativity of infix operators *)
+(*        output_term_8 t  output_longname ln  output_term_7 u *)
+        output_term_7 t  output_longname ln  output_term_7 u
   | trm -> output_term_7 ppf trm
       
 and output_term_7 ppf = function
     App (App (Id (Logic.LN(_,_, Syntax.Infix2) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
-        output_term_7 t  output_longname ln  output_term_6 u
+(* DISABLED the default left-associativity of infix operators *)
+(*        output_term_7 t  output_longname ln  output_term_6 u *)
+        output_term_6 t  output_longname ln  output_term_6 u
   | trm -> output_term_6 ppf trm
 
 and output_term_6 ppf = function
      App (App (Id (Logic.LN(_,_, Syntax.Infix3) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
-        output_term_6 t  output_longname ln  output_term_5 u
+(* DISABLED the default left-associativity of infix operators *)
+(*        output_term_6 t  output_longname ln  output_term_5 u *)
+        output_term_5 t  output_longname ln  output_term_5 u
   | trm -> output_term_5 ppf trm
 
 and output_term_5 ppf = function
      App (App (Id (Logic.LN(_,_, Syntax.Infix4) as  ln), t), u) -> 
       fprintf ppf "%a %a %a"
-        output_term_5 t  output_longname ln  output_term_4 u
+(* DISABLED the default left-associativity of infix operators *)
+(*        output_term_5 t  output_longname ln  output_term_4 u *)
+        output_term_4 t  output_longname ln  output_term_4 u
   | trm -> output_term_4 ppf trm
 
 and output_term_4 ppf = function
-    App (t, u) -> 
+    (* Fix for nested binary applications; we don't want the
+       inner ones to accidentally use the "default" case for
+       ordinary non-infix applications
+     *)
+    App (App (Id (Logic.LN(_,_, (Syntax.Infix1 | Syntax.Infix2 |
+                                Syntax.Infix3 | Syntax.Infix4)   )), _), _) 
+    as trm -> 
+      output_term_0 ppf trm
+         
+  | App (t, u) -> 
       fprintf ppf "@[<hov 2>%a@ %a@]"
          output_term_4 t   output_term_0 u
   | Proj (k, t) -> 
@@ -257,7 +279,7 @@ and output_prop_0 ppf = function
 	output_term t   output_longname ln
   | And [] -> fprintf ppf "true"
   | Cor [] -> fprintf ppf "false"
-  | prp -> fprintf ppf "(%a)"   output_prop prp
+  | prp -> fprintf ppf "(@[<hov>%a@])"   output_prop prp
     
 and output_app ppf = function
     ((Logic.LN(_,_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)) as ln), [u;v]) ->

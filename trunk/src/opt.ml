@@ -165,6 +165,20 @@ let rec optBinds ctx = function
       (match optTy ctx ty with
 	   TopTy -> optBinds ctx bnds
 	 | ty' -> (n,ty')::(optBinds ctx bnds))
+
+let simpleTerm = function
+    Id _ -> true
+  | Star -> true
+  | Dagger -> true
+  | _ -> false
+
+let rec betaReduce = function
+    App(Lambda ((nm, _), trm1), trm2) as trm ->
+      if (simpleTerm trm2) then
+         betaReduce (substTerm [] [(nm, trm2)] trm1)
+      else
+         trm
+  | trm -> trm
     
 
 (* optTerm ctx e = (t, e', t')
@@ -191,8 +205,9 @@ let rec optTerm ctx = function
                             ((oldty, Dagger, TopTy))
          | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
                             ((oldty, e1', ty1'))
-         | (ty', _)    -> (* Both parts matter *)
-                            ((oldty, App(e1', e2'), ty')))
+         | (ty', _)    -> (* Both parts matter.
+                             Eliminate trivial beta-redices, though. *)
+                            ((oldty, betaReduce (App(e1', e2')), ty')))
  | Lambda((name1, ty1), term2) ->
     (let    ty1' = optTy ctx ty1
      in let ctx' = insertType ctx name1 ty1
@@ -302,13 +317,16 @@ and optTerm' ctx e =
    in e'      
 
 and optProp ctx = function
-    True -> True
-  | False -> False
-  | IsPer nm -> IsPer nm
-  | IsPredicate nm -> IsPredicate nm
-  | NamedTotal(str, e) -> NamedTotal(str, optTerm' ctx e)
-  | NamedPer(str, e1, e2) -> NamedPer(str, optTerm' ctx e1, optTerm' ctx e2)
-  | NamedProp(str, e1, es2) -> NamedProp(str, optTerm' ctx e1, List.map (optTerm' ctx) es2)
+    True                    -> True
+  | False                   -> False
+  | IsPer nm                -> IsPer nm
+  | IsPredicate nm          -> IsPredicate nm
+  | NamedTotal(str, e)      -> 
+      NamedTotal(str, optTerm' ctx e)
+  | NamedPer(str, e1, e2)   -> 
+      NamedPer (str, optTerm' ctx e1, optTerm' ctx e2)
+  | NamedProp(str, e1, es2) -> 
+      NamedProp(str, optTerm' ctx e1, List.map (optTerm' ctx) es2)
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2

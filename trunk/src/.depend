@@ -1,6 +1,8 @@
 parser.cmi: syntax.cmo 
 infer.cmo: syntax.cmo 
 infer.cmx: syntax.cmx 
+lexer.cmo: message.cmo parser.cmi 
+lexer.cmx: message.cmx parser.cmx 
 logic.cmo: syntax.cmo 
 logic.cmx: syntax.cmx 
 opt.cmo: flags.cmo logic.cmo outsyn.cmo syntax.cmo 
@@ -11,15 +13,15 @@ parser.cmo: message.cmo syntax.cmo parser.cmi
 parser.cmx: message.cmx syntax.cmx parser.cmi 
 pp.cmo: logic.cmo outsyn.cmo syntax.cmo 
 pp.cmx: logic.cmx outsyn.cmx syntax.cmx 
-rz.cmo: flags.cmo infer.cmo logic.cmo message.cmo opt.cmo parser.cmi pp.cmo \
-    translate.cmo 
-rz.cmx: flags.cmx infer.cmx logic.cmx message.cmx opt.cmx parser.cmx pp.cmx \
-    translate.cmx 
+rz.cmo: flags.cmo infer.cmo lexer.cmo logic.cmo message.cmo opt.cmo \
+    parser.cmi pp.cmo translate.cmo 
+rz.cmx: flags.cmx infer.cmx lexer.cmx logic.cmx message.cmx opt.cmx \
+    parser.cmx pp.cmx translate.cmx 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
-toplevel.cmo: infer.cmo logic.cmo message.cmo opt.cmo outsyn.cmo parser.cmi \
-    translate.cmo 
-toplevel.cmx: infer.cmx logic.cmx message.cmx opt.cmx outsyn.cmx parser.cmx \
-    translate.cmx 
+toplevel.cmo: infer.cmo lexer.cmo logic.cmo message.cmo opt.cmo outsyn.cmo \
+    parser.cmi translate.cmo 
+toplevel.cmx: infer.cmx lexer.cmx logic.cmx message.cmx opt.cmx outsyn.cmx \
+    parser.cmx translate.cmx 
 translate.cmo: logic.cmo outsyn.cmo syntax.cmo 
 translate.cmx: logic.cmx outsyn.cmx syntax.cmx 

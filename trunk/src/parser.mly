@@ -254,6 +254,8 @@ simple_set:
 subset:
     LBRACE name BAR term RBRACE { Subset (($2, None), $4) }
   | LBRACE name COLON set BAR term RBRACE { Subset (($2, Some $4), $6) }
+  | LBRACE name WITH term RBRACE { Subset (($2, None), $4) }
+  | LBRACE name COLON set WITH term RBRACE { Subset (($2, Some $4), $6) }
 
 subset_or_longsetname:
     subset  { $1 }

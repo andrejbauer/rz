@@ -147,7 +147,7 @@ let rec string_of_set set =
     | EquivProp -> "EquivProp"
     | Rz set -> "rz (" ^ toStr set ^ ")"
     | Set_mproj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
-    | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " | " ^ 
+    | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " with " ^ 
 	                     string_of_term term ^ " }"
     | Quotient (st, trm) ->
 	(match st with

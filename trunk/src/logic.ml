@@ -238,7 +238,7 @@ let rec string_of_set = function
 	  ) lst)
       ) ^ "]"
 
-  | Subset _ -> "{...}"
+  | Subset _ -> "{... with ...}"
   | Rz s -> "rz " ^ (string_of_set s)
   | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (string_of_ln n)
   | PROP -> "PROP"
