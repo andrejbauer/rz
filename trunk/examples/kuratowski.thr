@@ -15,9 +15,11 @@ end
 
 theory Kuratowski (A : thy set a end) =
 thy
+
   set fin
   const empty : fin
   const union : fin -> fin -> fin
+
   const singleton : A.a -> fin
 
   # at this point we want to say that (s, zero, union) is a semilattice
@@ -41,4 +43,5 @@ thy
           g (union u v) = S.join (g u) (g v)
         )
     )
+
 end

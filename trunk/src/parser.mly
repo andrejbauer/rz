@@ -12,7 +12,7 @@
 
   (** XXX Could we ever have infix sets ? *)
   let makeSetVar stnm  = Set_name stnm
-  let makeSetPath mdl lbl = Set_mproj (mdl, lbl)
+  let makeSetPath mdl strng = Set_mproj (mdl, strng)
 
 %}
 
@@ -222,7 +222,7 @@ longtermname:
   | LPAREN STAR RPAREN            { makeTermVar "*" Infix3 } 
 
 longsetname:
-    path LABEL                    { makeSetPath $1 $2 }
+    path NAME                     { makeSetPath $1 $2 }
   | NAME                          { makeSetVar $1 }
 
 name_typed:

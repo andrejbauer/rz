@@ -139,7 +139,7 @@ let rec string_of_set set =
     | StableProp -> "StableProp"
     | EquivProp -> "EquivProp"
     | Rz set -> "rz (" ^ toStr set ^ ")"
-    | Set_mproj (mdl, lbl) -> string_of_model mdl ^ "::" ^ lbl
+    | Set_mproj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
     | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " | " ^ 
 	                     string_of_term term ^ " }"
     | Quotient (st, trm) ->
@@ -175,8 +175,8 @@ and string_of_term trm =
     | Choose _ -> "..."
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
-    | MProj(mdl, lbl, Word) -> string_of_model mdl ^ "::" ^ lbl
-    | MProj(mdl, lbl, _) -> "(" ^ string_of_model mdl ^ "::" ^ lbl ^ ")"
+    | MProj(mdl, lbl, Word) -> string_of_model mdl ^ "." ^ lbl
+    | MProj(mdl, lbl, _) -> "(" ^ string_of_model mdl ^ "." ^ lbl ^ ")"
     | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
     | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
@@ -206,7 +206,7 @@ and string_of_bnd = function
 
 and string_of_model = function
     ModelName strng -> strng
-  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "::" ^ lbl
+  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
 
 
 (* Substitution functions.

@@ -23,12 +23,12 @@ theory FiniteSubsets ( a : set ) =
 thy
    theory L :  Semilattice
 
-   const incl : a -> L::t
+   const incl : a -> L.t
 
-   axiom init (M : Semilattice) (f : a -> M::t) =
+   axiom init (M : Semilattice) (f : a -> M.t) =
    begin
      semilattice_morphism(f) =>
-     exists1 (phi : L::t -> M::t) . (
+     exists1 (phi : L.t -> M.t) . (
 	phi L.z = M.z and
         (forall x . forall y . phi (L.join x y) = M.join (phi x) (phi y)) and
         forall (x : a) . (phi (incl x) = f a)

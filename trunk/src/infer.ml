@@ -364,6 +364,7 @@ let rec peekTheoryof' subst0 cntxt pathtohere desired_mdlnm =
           Some (theory, substitution)
         else
           loop (addModelToSubst substitution mdlnm pathtohere) rest
+    | spc :: rest -> loop (addToSubst substitution pathtohere spc) rest
   in loop subst0 cntxt
 
 let peekTheoryof cntxt desired_mdlnm = 
@@ -695,7 +696,11 @@ and annotateProp cntxt =
         | Equal (None, t1, t2) ->
             let    (t1', ty1) = annotateTerm cntxt t1
             in let (t2', ty2) = annotateTerm cntxt t2
-            in let ty3 = joinSet cntxt ty1 ty2
+            in let ty3 = try (joinSet cntxt ty1 ty2) with
+		             TypeError -> tyGenericError 
+			       ("Cannot compare " ^ string_of_term t1 ^ " and "
+				  ^ string_of_term t2 ^ " for equality")
+                          
             in
 	      Equal(Some ty3, t1', t2'), Stable
 
@@ -706,7 +711,11 @@ and annotateProp cntxt =
             in if (subSet cntxt ty1 ty) && (subSet cntxt ty2 ty) then
                 Equal (Some ty, t1', t2'), Stable
               else
-                tyGenericError "Operands of equality don't match constraint"
+	        tyGenericError 
+		  ("Cannot compare " ^ string_of_term t1 ^ " and "
+		   ^ string_of_term t2 ^ " for equality in set " ^
+		  string_of_set s)
+
         | Forall(bnd, p) ->
             let (bnd',cntxt') = annotateBinding cntxt bnd in
             let (p', stb) = annotateProp cntxt' p

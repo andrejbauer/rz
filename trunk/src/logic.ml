@@ -20,8 +20,8 @@ exception HOL             (* If the input is trying to do HOL *)
 (* Abstract Syntax *)
 (*******************)
 
-(** labels in sums *)
-type label = string
+(** labels in sums and model components *)
+type label = Syntax.label
 
 (** names of identifiers *)
 type name = Syntax.name
@@ -29,15 +29,19 @@ type name = Syntax.name
 (** names of sets *)
 type set_name = Syntax.set_name
 
+(** names of models; must be capitalized *)
 type model_name = Syntax.model_name
 
+(** names of theories *)
 type theory_name = Syntax.theory_name
 
+(** sorts of sentences *)
 type sentence_type = Syntax.sentence_type
 
 (** a binding in a quantifier or lambda *)
 type binding = name * set
 
+(** a binding in a parameterized theory *)
 and model_binding = model_name * theory
 
 (** first-order proposition, without accompanying context  *)
@@ -50,7 +54,6 @@ and proposition =
   | Iff    of proposition * proposition
   | Or     of proposition list
   | Forall of binding * proposition
-  | ForallModels of model_binding * proposition
   | Exists of binding * proposition
   | Not    of proposition
   | Equal  of set * term * term
@@ -65,7 +68,8 @@ and set =
   | Sum     of (label * set option) list
   | Subset  of binding * proposition
   | Rz      of set (** the set of realizers *)
-  | Quotient of set * set_longname
+  | Quotient of set * longname
+  | SetMProj of model * label
   | PROP (** we pretend propositions form a set *)
   | STABLE (** we pretend not-not stable propositions form a set *)
   | EQUIV (** we even pretend not-not stable equivalences form a set *)
@@ -83,7 +87,7 @@ and term =
   | Case   of term * (label * binding option * term) list
   | RzQuot of term
   | RzChoose of binding * term * term
-  | Quot   of term * set_longname
+  | Quot   of term * longname
   | Choose of binding * set_longname * term * term
   | Let    of binding * term * term
   | Subin  of term * set
