@@ -3,21 +3,26 @@
 module S = Syntax
 module O = Outsyn 
 
+
 (** AB
-Translation functions should be:
+Translation functions should be (roughly):
 
-translateSet s translates a set s to a pair (ty, re) where ty is a
-type and re describes the realizability relation on ty.
+translateSet s
+  translates a set s to a pair (ty, re) where ty is a
+  type and re describes the realizability relation on ty.
 
-translateTerm t translates a term t to (ty, u) where u is a value of
-type ty.
+translateTerm t
+  translates a term t to (ty, u) where u is a value of
+  type ty.
 
-translatePred p translate a predicate p to (ty, s) where ty is a type
-and s tells which values of ty are realizers for p
+translatePred phi
+  translate a formula phi to (ty, s) where ty is a type
+  and s tells which values of ty are realizers for phi.
 
-I am not quite sure this is right. I need to think more. One thing
-that would be cool would be treatment predicates as ordinary terms of
-type Omega. Then we can avoid separate translation of terms and types.
+I am not quite sure this is right. I need to think more.
+At some point we need to separate logical formulas from terms
+(they're not in syntax.ml). Also, it seems likely we need to drag
+around typing contexts.
 
 *)
 
