@@ -82,8 +82,6 @@ type theory_element =
   | Let_term      of binding * term
   | Value         of name * set
   | Variable      of name * set
-  | Define        of name * term   (* CS: what's the semantic difference
-                                      between Let_term and Define? *)
   | Sentence      of sentence_type * name * binding list * term
   | Model         of string * theory
   | Subtheory     of theoryspec (* AB: Do we want subtheories? *)

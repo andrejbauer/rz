@@ -506,16 +506,6 @@ let translateTheoryElement ctx = function
       ],
       addBind n s ctx
 
-  | L.Define (n, s, t) ->
-      (let {ty=ty; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
-       let t' = translateTerm ctx t in
-	 [ValSpec (n, ty);
-	  AssertionSpec ("???", [], substProp ctx [(x, Id n)] p);
-	  AssertionSpec ("???", [], substProp ctx [(y, Id n); (y', t')] q)
-	 ]
-      ),
-      addBind n s ctx
-
   | L.Sentence (_, n, bind, p) ->
       begin
 	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in

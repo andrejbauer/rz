@@ -9,9 +9,9 @@ thy
   set r
 
   # we pretend nat is a subset of r
-  constant i : n -> r
-  constant z : n
-  constant succ : n -> n
+  constant i : nat -> r
+  constant z : nat
+  constant succ : nat -> nat
 
   constant zero : r
   constant one : r
@@ -69,6 +69,8 @@ thy
 
   stable relation ( < ) : r * r
 
+  stable relation ( <= ) x y = not (y < x)
+
   axiom assymetry x y =
 	not (x < y and y < x)
 
@@ -91,9 +93,27 @@ thy
 	zero < x => zero < (inv (x :> r') :< r)
   	
   axiom archimedean x =
-	zero < x => some (n : nat) . x < n
+	zero < x => some (n : nat) . x < i n
+
+  ##################################################
+  # reals form a lattice
+
+  const max : r -> r -> r
+  const min : r -> r -> r
+
+  axiom max_is_lub x y =
+	x <= max x y and y <= max x y and
+        all z. ((x <= z and y <= z) => max x y <= z)
+
+  axiom min_is_glb x y =
+	min x y <= x and min x y <= y and
+        all z. ((z <= x and z <= y) => z <= min x y)
+
+  const (abs : r -> r) = lam x . (max x (~ x))
 
   ##################################################
   # Cauchy completeness
+
+  # we can't really do this without natural numbers
 
 end
