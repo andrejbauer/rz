@@ -23,6 +23,7 @@ type modest = {
 
 and term =
     Ident of name
+  | Constant of name
   | Star
   | App of term * term
   | Lambda of name * modest * term

@@ -9,3 +9,5 @@ tex.cmo: logic.cmo
 tex.cmx: logic.cmx 
 toplevel.cmo: message.cmo parser.cmi 
 toplevel.cmx: message.cmx parser.cmx 
+translate.cmo: logic.cmo outsyn.cmo 
+translate.cmx: logic.cmx outsyn.cmx 
