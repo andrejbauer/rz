@@ -50,18 +50,6 @@ let tyCaseError expr term ty1 ty2 =
      print_string "\n\n";
      raise TypeError)
 
-(*
-let tyCondError expr ty1 ty2 =
-    (print_string "Type error in conditional expression: ";
-     print_string (string_of_term expr);
-     print_string "\nThe first branch has type: ";
-     print_string (string_of_set ty1);
-     print_string "\nand the second branch has type: ";
-     print_string (string_of_set ty2);
-     print_string "\n\n";
-     raise TypeError)
-*)
-
 let tyWrongSortError expr sort ty =
     (print_string "\nTYPE ERROR: ";
      print_string (string_of_term expr);
@@ -111,12 +99,15 @@ let rec isSet = function
   | StableProp -> false
   | EquivProp  -> false
 
-(** Determines whether the given ANNOTATED "set" classifies
-    either a proposition or (despite the name) a predicate.
 
-    This isn't just the negation of isSet because a pair containing,
-    say, a boolean and a proposition is neither a proper set nor a
-    proper logical entity. 
+(** isProp : set -> bool
+
+    Determines whether the given ANNOTATED "set" classifies
+    either a proposition or in general (despite the name) a predicate.
+
+    This can just be defined as the negation of isSet; a pair
+    containing, say, a boolean and a proposition is neither a proper
+    set nor a proper logical entity.
 *)
 and isProp = function
     Empty | Unit | Bool | Set_name _ | Product _
@@ -128,6 +119,11 @@ and isProp = function
 
   | Exp (s, t) -> isSet s && isProp t
 
+(** propKind: set -> propKind
+
+    Translates the type of a set satisfying isProp (the classifier
+    of a predicate) into the sort of such predicates. 
+ *)
 let rec propKind = function
     Prop -> Unstable
   | StableProp -> Stable
@@ -135,33 +131,54 @@ let rec propKind = function
   | Exp (s, t) -> propKind t
   | t -> failwith ("propKind of a non-proposition: " ^ (string_of_set t))
 
-(** Determines whether a name is infix. 
+(** isInfix : name -> bool
+  
+    Determines whether a name is infix. 
  *)
 let isInfix = function
-    N(_, (Infix0|Infix1|Infix2|Infix3|Infix4)) -> true
+    N( _ , ( Infix0 | Infix1 | Infix2 | Infix3 | Infix4  ) )  -> true
   | _ -> false
 
+
+(** makeBinaryCurried: set -> set
+
+    Forces the type of a binary relation (curried or uncurried)
+    into curried form.
+ *)
 let makeBinaryCurried = function
-    Exp (s1, Exp (s2, ((Prop|StableProp|EquivProp) as p)))
-  | Exp (Product [s1; s2], ((Prop|StableProp|EquivProp) as p)) ->
-      Exp (s1, Exp (s2, p))
+    Exp ( s1, Exp ( s2, ( ( Prop | StableProp | EquivProp ) as p ) ) )
+  | Exp ( Product [s1; s2], ( (Prop | StableProp | EquivProp ) as p) ) ->
+      Exp ( s1, Exp ( s2, p ) )
   | _ -> failwith "Invalid type of infix binary relation"
 
-let rec makeProp n prp s =
-  if isSet s then
-    Exp (s, prp)
-  else if isProp s then
-    s
+(** makeProp: name -> set -> set -> set
+
+    makeProp nm st prp is called for a relation with the name nm;
+    st is the set declared for the relation; prp is the set corresponding
+    to the sort of relation being defined (e.g., Prop or StableProp).
+ 
+    If st is a proper set, then st must be the domain of the relation.
+    Otherwise, if st classifies propositions, then this must describe
+    the relation in toto.
+ *)
+let rec makeProp nm st prp =
+  if isSet st then
+    Exp (st, prp)
+  else if isProp st then
+    st
   else
-    tyGenericError ("Invalid type for predicate " ^ (string_of_name n))
-    
+    tyGenericError ("Invalid type for predicate " ^ (string_of_name nm))
+
+(** makeStable : set -> set
+
+    Translates a set classifying a relation into the corresponding
+    set classifying a stable relation.
+ *)
 let rec makeStable = function
     Prop | StableProp -> StableProp
   | EquivProp -> EquivProp
   | Exp (s, t) -> Exp (s, makeStable t)
   | _ -> failwith "Internal error: cannot make a non-predicate stable"
-
-(** ------------------- *)
 
 
 (*********************************)
@@ -188,6 +205,10 @@ type theory_summary_item =
 
 (** Representation of the context itself.  The implicits and theories
     are stored separately, because they are not components of any model.
+    (Theories can refer to top-level models defined previously, however.)
+
+    XXX Once theories can depend on models, is there any reason to
+    forbid theories from being defined inside models?
 *)
 
 type cntxt = {implicits: set StringMap.t;
@@ -198,14 +219,17 @@ type cntxt = {implicits: set StringMap.t;
 (** The empty context *)
 
 let emptyCtx : cntxt = {implicits = StringMap.empty; 
-			theories = StringMap.empty;
-			items = []}
+			theories  = StringMap.empty;
+			items     = []              }
 
 (***************************)
 (** {3 Lookup Functions } **)
 (***************************)
 
-(** Check for a previous "implicit" declaration for the given name.
+(** peekImplicit: cntxt -> nm -> set option
+
+    Returns any previous "implicit" declaration for a variable of
+    the given name.
 *)
 let peekImplicit (cntxt : cntxt) (N(namestring, _)) = 
    if StringMap.mem namestring cntxt.implicits then
@@ -213,7 +237,9 @@ let peekImplicit (cntxt : cntxt) (N(namestring, _)) =
    else 
       None
 
-(** Searches the specs so far for the definition of a theory
+(** peekTheory: cntxt -> theory_name -> theory_summary_item list
+
+    Searches the specs so far for the definition of a theory
     named by the given string.  Takes the whole context
     (unlike some of the other peek functions) because theories
     can be defined only at top level; we're never searching
@@ -225,9 +251,12 @@ let peekTheory (cntxt : cntxt) desired_thrynm =
    else 
       None
 
+(** toModel: model_name list -> model
 
-(** Helper functions converting a list of model names to and from
-    the corresponding (model) path.
+    Converts a non-empty list of model names to and from the
+    corresponding (model) path.
+
+    E.g., toModel [M1,M2,M3] == M1.M2.M3
 *)
 let toModel mdlnms = 
   let rec loop = function
@@ -236,47 +265,61 @@ let toModel mdlnms =
     | strng::strngs -> ModelProj(loop strngs, strng)
   in loop (List.rev mdlnms)
 
-let rec fmModel = function
-    ModelName mdlnm -> [mdlnm]
-  | ModelProj(mdl, lbl) -> fmModel mdl @ [lbl]
 
+(** addSetToSubst : subst -> set_name -> model_name list -> subst
 
-(** Given a substitution, a set name, and the sequence of models 
-    inside which the set name occurs, extends the substitution to
-    replace all references to the name by the appropriate projection
-    from models.  Of course if the set name is declared at top-level,
-    the substitution would be a no-op and so we don't bother to extend the
-    substitution.
+    Given a substitution, a set name, and the sequence of model_names
+    representing the model where that set name occurs, extends the
+    substitution to replace all direct references to the set by the
+    appropriate projection from models.  Of course if the set name is
+    declared at top-level, this would be an identity and so so we
+    don't bother extending the substitution.
 
     The following two functions addModelToSubst and addTermToSubst work 
     similarly, but are given a model name or a term name respectively.
  *)
-let addSetToSubst (substitution : subst) (nm : set_name) = function
-    [] -> substitution
-  | mdls  -> ((* print_string "inserting set ";
-	      print_string nm;
-	      print_string "\n"; *)
-	      Syntax.insertSetvar substitution nm (Set_name(Some(toModel mdls), nm)))
+let addSetToSubst ( sub : subst ) ( stnm : set_name ) = function
+    []    -> sub
+  | mdls  -> ( (* print_string "inserting set ";
+	          print_string stnm;
+	           print_string "\n"; *)
+	       Syntax.insertSetvar sub stnm 
+                      ( Set_name ( Some ( toModel mdls ), stnm ) ) )
 
-let addModelToSubst (substitution : subst) mdlnm = function
-    [] -> substitution
-  | mdls  -> Syntax.insertModelvar substitution mdlnm 
-      (ModelProj(toModel mdls, mdlnm))
+(** addModelToSubst : subst -> model_name -> model_name list -> subst
+  *)
+let addModelToSubst (sub : subst) mdlnm = function
+    []    -> sub
+  | mdls  -> Syntax.insertModelvar sub mdlnm 
+               ( ModelProj ( toModel mdls, mdlnm ) )
 
-let addTermToSubst (substitution : subst) nm = function
-    [] -> substitution
-  | mdls  -> Syntax.insertTermvar substitution nm 
-      (Var(Some(toModel mdls),nm))
+(** addTermToSubst : subst -> name -> model_name list -> subst
+  *)
+let addTermToSubst (sub : subst) nm = function
+    []    -> sub
+  | mdls  -> Syntax.insertTermvar sub nm 
+               ( Var ( Some ( toModel mdls ), nm ) )
+
+(** addToSubst : subst -> model_name list -> theory_summary_item -> subst
+
+    Generic function that updates a substitution as above to include the
+    mapping for a single item in a theory. 
+*)
+let addToSubst sub pathtohere = function
+    TermSpec ( nm   , _ ) -> addTermToSubst  sub nm    pathtohere
+  | SetSpec  ( stnm , _ ) -> addSetToSubst   sub stnm  pathtohere
+  | ModelSpec( mdlnm, _ ) -> addModelToSubst sub mdlnm pathtohere
+  | OtherSpec             -> sub    (** Parts never referenced in a theory *)
 
 
 (**  
     The key idea for lookup of long-names/module projections
     is to maintain two values as we go along:  
     (1) where we are in reference to the top level
-        (a list of model names representing the start of a path)
+        (a list of model_names representing the start of a path)
     (2) a substitution mapping all theory-component names in scope to the
         paths that would be used to access these values from
-        the top-level.  so, e.g., if we had
+        the top-level.  So, e.g., if we had
 
     thy
       set s
@@ -298,35 +341,34 @@ let addTermToSubst (substitution : subst) nm = function
 *)
 
 
-(* Given the guts of a context and a desired set name, determine
+(* peekSet' : theory_summary_item list -> set_name -> bool.
+
+   Given the contents of a theory and a desired set name, determine
    whether a set of that name exists (with or without a definition).
 
-   Simpler than peekTydef and peekTypeof because we are just
+   This code is simpler than peekTydef and peekTypeof below.  We are just
    returning a boolean, so there's no need to maintain the substitution.
 
-   This function takes the items, rather than a whole context,
+   This function takes just the items, rather than a whole context,
    because this helper function is also used to search inside models,
    which have no implicit or theory components.
  *)
 let rec peekSet' items desired_stnm =
       (* let _ = print_string ("looking for " ^ desired_stnm ^ "\n")
       in *) 
-  let rec loop = function
-      [] -> false
-    | SetSpec(this_stnm, _) :: rest -> 
-	(this_stnm = desired_stnm) || (loop rest)
-    | _ ::rest -> loop rest
+  let rec loop = function                (* loop over the items *)
+      []                               -> false
+    | SetSpec ( this_stnm, _ ) :: rest -> this_stnm = desired_stnm || loop rest
+    | _ ::rest                         -> loop rest
   in loop items
-       
-let peekSet cntxt desired_stnm = peekSet' cntxt.items desired_stnm
+   
+(* peekSet : context -> set_name -> bool.
 
-(** Helper function that updates the substitution to include the
-    mapping for a single item in a theory. *)
-let addToSubst substitution pathtohere = function
-    TermSpec(nm,_) -> (addTermToSubst substitution nm pathtohere)
-  | SetSpec(stnm,_) -> (addSetToSubst substitution stnm pathtohere)
-  | ModelSpec(mdlnm,_) -> (addModelToSubst substitution mdlnm pathtohere)
-  | OtherSpec       -> (substitution) (** Never referenced in a theory  *)
+   Like peekSet', but takes the whole context.
+ *)    
+let peekSet cntxt desired_stnm =  peekSet' cntxt.items desired_stnm
+
+
 
 (** Given the guts of a context and a desired set name, determine
     whether a set of that name exists (with or without a definition).
@@ -468,20 +510,26 @@ let rec annotateModel cntxt = function
 				      string_of_model main_mdl)
 	    | Some (thr'',subst'') ->
 		(ModelProj(mdl',lbl), thr'', subst'', pathtohere @ [lbl]))
+  | ModelApp (mdl1, mdl2) ->
+     let    (mdl1', thr1', subst1, pathtohere1) = annotateModel cntxt mdl1
+     in let (mdl1', thr1', subst2, pathtohere2) = annotateModel cntxt mdl2
+     in raise Impossible
 
 (** Expand out any top-level definitions for a (well-formed) set 
   *)
 let rec hnfSet cntxt = function
-    Set_name (None, stnm) ->
+    Set_name ( None, stnm ) ->
       (match (peekTydef cntxt stnm) with
-           Some st -> hnfSet cntxt st
-	 | None -> Set_name (None, stnm))
-  | Set_name (Some mdl, lbl) -> 
+        Some st -> hnfSet cntxt st
+      | None -> Set_name ( None, stnm ) )
+
+  | Set_name ( Some mdl, stnm ) -> 
       let (_, thryspecs, subst, pathtohere) = annotateModel cntxt mdl
-      in (match (peekTydef' subst thryspecs pathtohere lbl) with
-		 None -> Set_name(Some mdl, lbl)
+      in (match (peekTydef' subst thryspecs pathtohere stnm) with
+		 None    -> Set_name ( Some mdl, stnm ) 
 	       | Some st -> hnfSet cntxt st)
-  | set -> set
+
+  | st -> st
 
 
 (** eqSet': bool -> cntxt -> set -> set -> bool
@@ -514,8 +562,10 @@ let rec eqSet' do_subset cntxt =
 
 	       | ( Bool, Bool )   -> true       (** Bool <> Sum() for now *)
 
-               | ( Set_name(None,n1), Set_name(None,n2))  -> 
-                    (n1 = n2)                 (** Neither has a definition *)
+               | ( Set_name (mdlopt1, nm1), Set_name (mdlopt2, nm2) )  -> 
+                    (** Neither has a definition *)
+                    eqModelOpt cntxt mdlopt1 mdlopt2 
+                    && (nm1 = nm2) 
 
  	       | ( Product ss1, Product ss2 ) -> 
                     cmps (ss1,ss2)
@@ -532,9 +582,9 @@ let rec eqSet' do_subset cntxt =
                     cmpbnd(b1,b2)
 	            (** Alpha-vary the propositions so that they're using the
                         same (fresh) variable name *)
-                    && let nm3 = N(Syntax.freshNameString(), Word)
-                       in let sub1 = insertTermvar emptysubst nm1 (Var(None,nm3))
-         	       in let sub2 = insertTermvar emptysubst nm2 (Var(None,nm3))
+                    && let trm = Var(None, N(Syntax.freshNameString(), Word))
+                       in let sub1 = insertTermvar emptysubst nm1 trm
+         	       in let sub2 = insertTermvar emptysubst nm2 trm
 	               in let p1' = subst sub1 p1
 	               in let p2' = subst sub2 p2
 	               in 
@@ -589,6 +639,8 @@ and eqProp ctx prp1 prp2 = (prp1 = prp2)  (* XXX: Should allow alpha-equiv
 
 and eqTerm ctx trm1 trm2 = (trm1 = trm2)  (* XXX: Should allow alpha-equiv
                                                   and set-equiv *)
+
+and eqModelOpt ctx mdlopt1 mdlopt2 = (mdlopt1 = mdlopt2)
 
 and eqSet cntxt st1 st2 = eqSet' false cntxt st1 st2
 
@@ -757,16 +809,16 @@ let rec annotateSet cntxt =
 			("Wrong domain for equivalence relation in " ^
 			 string_of_set (Quotient(st,trm))))
         | Rz st -> Rz (ann st)
-        | Set_name(None,stnm) ->
+        | Set_name (None, stnm) as orig_set ->
              (if (peekSet cntxt stnm) then
-		 Set_name(None,stnm)
+		 orig_set
 	      else tyGenericError ("Set not found: " ^ stnm))
-	| Set_name(Some mdl, stnm) as main_set -> 
+	| Set_name (Some mdl, stnm) as orig_set -> 
 	    let (mdl', thryspecs, _, _) = annotateModel cntxt mdl
 	    in if (peekSet' thryspecs stnm) then
-		Set_name(Some mdl',stnm)
-	      else
-		tyGenericError ("Unknown component " ^ string_of_set main_set)
+		 Set_name(Some mdl', stnm)
+	       else
+		 tyGenericError ("Unknown component " ^ string_of_set orig_set)
         | s -> s
      in
         ann)
@@ -973,17 +1025,17 @@ and addMbindings cntxt = function
 *)
 and annotateTerm cntxt = 
   (let rec ann = function 
-       Var(None,nm) -> 
+       Var (None, nm) as orig_trm -> 
 	 (match (peekTypeof cntxt nm) with
-	      Some ty -> (Var(None,nm), ty)
-	    | None -> tyUnboundError (Var(None,nm)))
+	      Some ty -> (orig_trm, ty)
+	    | None -> tyUnboundError orig_trm)
 
-     | Var(Some mdl, nm) as main_trm ->
+     | Var (Some mdl, nm) as orig_trm -> 
 	 let (mdl', thryspecs, subst, pathtohere) = annotateModel cntxt mdl
-	 in (match (peekTypeof' subst thryspecs pathtohere nm) with
+	 in (match (peekTypeof' subst thryspecs pathtohere nm)with
 		 None -> tyGenericError ("Unknown component " ^
-					 string_of_term main_trm)
-	       | Some st -> (Var(Some mdl, nm), st))
+					 string_of_term orig_trm)
+	       | Some st -> (Var(Some mdl', nm), st))
 
      | Constraint(t,s) ->
          let    (t',ty) = ann t
@@ -1232,11 +1284,8 @@ and annotateTheoryElem cntxt = function
         (cntxt, Comment cmmnt, OtherSpec)
 
   | Predicate (nm, stblty, st) ->
-      (* XXX Code appears to be trying to allow user to explicitly say
-	 the predicate is PROP/STABLEPROP (via makeProp), but I think
-	 that annotateSet immediately rejects PROP/STABLEPROP as non-sets.  *)
       let st' = annotateSet cntxt st in
-      let st1 = makeProp nm (mkKind stblty) st' in
+      let st1 = makeProp nm st' (mkKind stblty) in
       let st2 = (if isInfix nm then makeBinaryCurried st1 else st1) in
       let st3 = (if stblty = Equivalence then makeEquivalence cntxt nm st2
 		 else st2) in
