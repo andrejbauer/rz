@@ -359,6 +359,19 @@ let translateTheoryElement ctx = function
       addSet n s ctx
 
   | L.Predicate (n, stb, s) ->
+(*
+      let nty = (match stb with Syntax.Stable -> TopTy | Syntax.Unstable -> NamedTy n) in
+      let {ty=t; tot=(x,p); per=(y,z,q)} = translateSet ctx s in
+      let r = fresh ["r"; "s"; "t"] [n] in
+      let x' = fresh [x] [r;n] ctx in
+      let y' = fresh [y] [r;n] ctx in
+      let z' = fresh [z] [y;r;n] ctx in
+	[AssertionSpec ([(r, nty); (x',t)],
+			Imply (NamedProp(n, Id r, x'), substProp ctx [(x, Id x')] p));
+	 AssertionSpec ([(r, nty); (y',t); (z',t)],
+			Imply (And (), NamedProp(n, Id (**UNFINISHED**) ))
+	]
+*)
       (if stb = Syntax.Stable then [] else [TySpec (n, None)]),
       addProp n (stb, None) ctx
 

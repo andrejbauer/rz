@@ -60,6 +60,7 @@ type signat_element =
     ValSpec of name * ty
   | AssertionSpec of binding list * proposition
   | TySpec of set_name * ty option
+  | PredicateSpec of name * ty
 
 type signat = {
   s_name : string;
