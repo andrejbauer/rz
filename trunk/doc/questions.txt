@@ -11,8 +11,7 @@
     Why is there no case for Quotients in the Logic.set type?
     Also, no case for Choose in Logic.term.
 
-
-
-    
-    
-  
+(4) [April 3, CS]
+    Will we need dependent types for functions/tuples/records (e.g., Pi
+    and Sigma types)
+ 

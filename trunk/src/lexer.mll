@@ -17,6 +17,7 @@
       "false", FALSE;
       "all", FORALL;
       "iff", IFF;
+      "implicit", IMPLICIT;
       "implies", IMPLY;
       "in", IN;
       "lam", LAMBDA;

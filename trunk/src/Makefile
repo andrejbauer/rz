@@ -17,6 +17,7 @@ BYTE_OBJS = syntax.cmo \
 	parser.cmo \
 	lexer.cmo \
 	context.cmo \
+        infer.cmo \
 	logic.cmo \
         outsyn.cmo \
         translate.cmo \

@@ -29,6 +29,7 @@
 %token HASH
 %token IFF
 %token IMPLY
+%token IMPLICIT
 %token IN
 %token <string> INFIXOP0
 %token <string> INFIXOP1
@@ -154,6 +155,11 @@ theory_element:
   | COROLLARY name args EQUAL term   { Sentence (Corollary, $2, $3, $5) }
   | MODEL NAME COLON theory      { Model($2, $4) }
   | STRUCTURE NAME COLON theory      { Model($2, $4) }
+  | IMPLICIT name_list COLON set  { Implicit($2, $4) }
+
+name_list:
+  | NAME                        { [$1] }
+  | NAME COMMA name_list        { $1 :: $3 }
 
 args:
                                 { [] }

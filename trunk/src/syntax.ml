@@ -78,6 +78,7 @@ type theory_element =
   | Sentence      of sentence_type * name * binding list * term
   | Model         of string * theory
   | Subtheory     of theoryspec (* AB: Do we want subtheories? *)
+  | Implicit      of string list * set
       
 and theoryspec = {t_arg  : theory_element list option;
                   t_name : string ;
