@@ -16,7 +16,7 @@ thy
   # the existential in the following axiom should really
   # be unique existential, which we don't have right now
 
-  axiom recursion [I : thy set a const x : a const s : a -> a end] =
+  axiom recursion [I : Iteration] =
     some (f : nat -> I.a) . (
       f zero = I.x and
       all (n : nat) . (f (succ n) = I.s (f n))

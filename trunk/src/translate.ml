@@ -21,6 +21,7 @@ type ctxElement =
   | CtxSet of L.set
   | CtxProp of Syntax.propKind * (L.binding list * L.proposition) option
   | CtxModel of context
+  | CtxTheory of L.model_binding list * L.theory
 
 and context = (L.name * ctxElement) list
 
@@ -30,7 +31,9 @@ let addBind  (n : L.name) s ctx = (n, CtxBind s) :: ctx
 let addTerm  (n : L.name) t ctx = (n, CtxTerm t) :: ctx
 let addSet   (n : L.name) s ctx = (n,  CtxSet s) :: ctx
 let addProp  (n : L.name) (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
-let addModel n ctx' ctx = (Syntax.N(n,Syntax.Word), CtxModel ctx') :: ctx
+let addModel n th ctx = (Syntax.N(n,Syntax.Word), CtxModel th) :: ctx
+let addTheory n args th ctx =
+  (Syntax.N(n,Syntax.Word), CtxTheory (args, th)) :: ctx
 
 let addBinding bind ctx =
   List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
@@ -72,6 +75,16 @@ let getModel n ctx =
       [] -> raise Not_found
     | (Syntax.N(m,_), CtxModel thr) :: ctx' -> if n = m then thr else find ctx'
     | _ :: ctx' -> find ctx'
+  in
+    find ctx
+
+let getTheory n ctx =
+  let rec find = function
+      [] -> (failwith ("No such theory " ^ n))
+    | (Syntax.N(m,_), CtxTheory (args, th)) :: ctx' ->
+	if n = m then (args, th) else find ctx'
+    | (Syntax.N(m,_), _) :: ctx' ->
+	find ctx'
   in
     find ctx
 
@@ -537,42 +550,53 @@ and translateTheoryElement ctx = function
 
   | L.Sentence (_, n, mbind, bind, p) ->
       begin
-	let prep m (Syntax.N(s,t)) = Syntax.LN(s,[m],t) in
+	let prep m (Syntax.N(s,t)) = Syntax.LN(m,[s],t) in
 	let rec extract (bad, bind, varsubst, setsubst, precond) = function
 	    [] -> bad, bind, varsubst, setsubst, precond
-	  | (m, Signat sg) :: rest ->
-	      let (bad', bind', varsubst', setsubst', precond') =
+	  | (m, sg) :: rest ->
+	      let (bad', bind', varsubst', setsubst', _, precond') =
 		List.fold_left
-		  (fun (bad, bind, varsubst, setsubst, precond) -> function
+		  (fun (bad, bind, varsubst, setsubst, sb, precond) -> function
 		       ValSpec (n, ty) ->
 			 let n' = fresh [n] bad ctx in
-			   (n'::bad, (n',ty)::bind,
-			    (prep m n, Id (Syntax.toLN(n')))::varsubst,
-			    setsubst,
+			   (n'::bad, (n', substTYType ctx sb ty)::bind,
+			    (prep m n, Syntax.toLN(n'))::varsubst,
+			    setsubst, sb,
 			    precond)
 		     | AssertionSpec (str, bnd, p) ->
-			 (bad, bind, varsubst, setsubst, precond)
+			 let p' = List.fold_right (
+			   fun (n,ty) q -> 
+			     let n' = fresh [n] bad ctx in
+			       substTYProp ctx sb
+				 (Forall ((n', ty), substProp ctx [(n, toId n')] q))) bnd p
+			 in
+			   (bad, bind, varsubst, setsubst, sb, p' :: precond)
 		     | TySpec (s, None) -> 
 			 let s' = fresh [s] bad ctx in
 			   (s'::bad, bind, varsubst,
-			    (prep m s, PolyTy s') :: setsubst,
+			    (prep m s, mk_poly s') :: setsubst,
+			    (Syntax.toLN(s), mk_poly s') :: sb,
 			    precond)
 		     | TySpec (s, Some t) ->
-			 (bad, bind, varsubst, (prep m s, t) :: setsubst, precond)
-		  ) (bad, bind, varsubst, setsubst, precond) sg
+			 failwith "Type definitions in arguments not implemented"
+		  ) (bad, bind, varsubst, setsubst, [], precond) sg
 	      in
 		extract (bad', bind', varsubst', setsubst', precond') rest
 	in
 	let (_, bind', varsubst, setsubst, precond) =
-	  extract ([], [], [], [], []) (fst (translateModelBinding ctx mbind)) in
+	  extract ([], [], [], [], []) (fst (processModelBinding ctx mbind)) in
 	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in
 	let (ty, x, p') = translateProp ctx' p in
-	let p'' = substProp ctx'
-		    [(x, App (toId n, Tuple (List.map (fun (x,_) -> toId x) bind')))] p'
+	let p'' =
+	  substTYProp ctx setsubst (
+	    substLNProp ctx varsubst (
+	      substProp ctx' [(x, App (toId n, Tuple
+					 (List.map (fun (x,_) -> toId x) bind')))] p'
+	  ))
 	in
 	let rec fold cx tots = function
 	    [] -> [],
-	      (match List.rev tots with
+	      (match precond @ (List.rev tots) with
 		   [] -> p''
 		 | [q] -> Imply (q, p'')
 		 | qs -> Imply (And qs, p'')
@@ -591,7 +615,7 @@ and translateTheoryElement ctx = function
       addProp n (Syntax.Unstable, Some (bind, p)) ctx
 
 and translateModelBinding ctx = function
-    [] -> [], emptyCtx
+    [] -> [], ctx
   | (m, th) :: rest ->
       let th', ctx' = translateTheory ctx th in
       let rest', ctx'' = translateModelBinding ctx rest in
@@ -607,9 +631,37 @@ and translateTheoryBody ctx = function
 and translateTheory ctx = function
     L.Theory body -> 
       let body', ctx' = translateTheoryBody ctx body in
-	(Signat body'), ctx'      
-  | L.TheoryID id -> SignatID id, getModel id ctx
+	Signat body', ctx'
+  | L.TheoryID id -> SignatID id, ctx
+
+
+and processModelBinding ctx = function
+    [] -> [], emptyCtx
+  | (m, th) :: rest ->
+      let th', ctx' = processTheory ctx th in
+      let rest', ctx'' = processModelBinding ctx rest in
+	(m, th') :: rest', (addModel m ctx' ctx'')
+
+and processTheory ctx = function
+    L.Theory body -> 
+      let body', ctx' = translateTheoryBody ctx body in
+	body', ctx'
+  | L.TheoryID id -> 
+      let args, body = getTheory id ctx in
+	if args <> [] then
+	  failwith "Cannot accept functors as arguments to sentences"
+	else
+	  let body', ctx' = processTheory ctx body in
+	    body', ctx'
+
 
 let translateTheorydef ctx (L.Theorydef (n, args, th)) =
   let args', ctx' = translateModelBinding ctx args in
-    Signatdef (n, args', (fst (translateTheory ctx' th)))
+    Signatdef (n, args', fst (translateTheory ctx' th))
+
+let rec translateTheorydefs ctx = function
+    [] -> []
+  | ((L.Theorydef (n, args, th)) as thr) :: ths ->
+      let signat = translateTheorydef ctx thr in
+	signat :: (translateTheorydefs (addTheory n args th ctx) ths)
+

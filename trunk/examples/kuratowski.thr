@@ -16,7 +16,6 @@ thy
 
   axiom bottom (x : s) =  (join x zero = x)
 
-  stable predicate leq x y = (join x y = y)
 end
 
 

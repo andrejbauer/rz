@@ -10,11 +10,9 @@ type set_longname = Syntax.set_longname
 
 type ty =
     NamedTy of set_longname    (* 0 *)
-  | PolyTy of set_name         (* 0 *)
   | UnitTy                     (* 0 *)
   | VoidTy                     (* 0 *)
   | TopTy                      (* 0 *)
-  | ListTy of ty               (* 1 *)
   | SumTy of (label * ty option) list (* 1 *)
   | TupleTy of ty list         (* 2 *)
   | ArrowTy of ty * ty         (* 3 *)
@@ -76,7 +74,7 @@ type signatdef = Signatdef of string * struct_binding list * signat
 let mk_word str = Syntax.N(str, Syntax.Word)
 let mk_longword str = Syntax.LN(str, [], Syntax.Word)
 let mk_id str = Id (mk_longword str)
-
+let mk_poly (Syntax.N(str, _)) = mk_longword ("'" ^ str)
 let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
 
 let tupleOrDagger = function
@@ -239,6 +237,122 @@ and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
   }
 
 
+let rec namesLNSubst = function
+    [] -> []
+  | (_, Syntax.LN(n,[],t)) :: s -> Syntax.N(n,t) :: (namesLNSubst s)
+  | _ :: s -> namesLNSubst s
+
+let string_of_lnSubst s =
+  "[" ^
+  (String.concat "," (
+     List.map (fun (n,m) -> (Syntax.string_of_longname n) ^ "->" ^ (Syntax.string_of_longname m)) s
+   ))
+  ^ "]"
+
+let rec substLNTerm ctx s = function
+  | Id ln -> 
+      Id (try List.assoc ln s with Not_found -> ln)
+  | Star -> Star
+  | Dagger -> Dagger
+  | App (t, u) -> App (substLNTerm ctx s t, substLNTerm ctx s u)
+  | Lambda ((n, ty), t) ->
+      let n' = fresh [n] (namesLNSubst s) ctx in
+	Lambda ((n', ty), substLNTerm ctx s (substTerm ctx [(n,Id(Syntax.toLN n'))] t))
+  | Let (n, t, u) ->
+      let n' = fresh [n] (namesLNSubst s) ctx in
+	Let (n', substLNTerm ctx s t,
+	     substLNTerm ctx s (substTerm ctx [(n, Id(Syntax.toLN(n')))] t))
+  | Tuple lst -> Tuple (List.map (substLNTerm ctx s) lst)
+  | Proj (k, t) -> Proj (k, substLNTerm ctx s t)
+  | Inj (k, None) -> Inj (k, None)
+  | Inj (k, Some t) -> Inj (k, Some (substLNTerm ctx s t))
+  | Case (t, lst) -> 
+      Case (substLNTerm ctx s t,
+	     List.map (function
+			   (lb, None, t) -> (lb, None, substLNTerm ctx s t)
+			 | (lb, Some (n, ty), t) ->
+			     let n' = fresh [n] (namesLNSubst s) ctx in
+			       (lb, Some (n', ty),
+				substLNTerm ctx s (substTerm ctx [(n, Id (Syntax.toLN n'))] t))
+		      ) lst)
+  | Obligation ((x, ty), p) ->
+      let x' = fresh [x] (namesLNSubst s) ctx in
+	Obligation ((x', ty), substLNProp ctx s (substProp ctx [(x,Id (Syntax.toLN(x')))] p))
+
+and substLNProp ctx s = function
+  | True -> True
+  | False -> False
+  | NamedTotal (r, t) -> NamedTotal (r, substLNTerm ctx s t)
+  | NamedPer (r, u, v) -> NamedPer (r, substLNTerm ctx s u, substLNTerm ctx s v)
+  | NamedProp (n, u, v) -> NamedProp (n, substLNTerm ctx s u, substLNTerm ctx s v)
+  | Equal (u, v) -> Equal (substLNTerm ctx s u, substLNTerm ctx s v)
+  | And lst -> And (List.map (substLNProp ctx s) lst)
+  | Cor lst -> Cor (List.map (substLNProp ctx s) lst)
+  | Imply (p, q) -> Imply (substLNProp ctx s p, substLNProp ctx s q)
+  | Iff (p, q) -> Iff (substLNProp ctx s p, substLNProp ctx s q)
+  | Not p -> Not (substLNProp ctx s p)
+  | Forall ((n, ty), q) ->
+      let n' = fresh [n] (namesLNSubst s) ctx in
+	Forall ((n', ty), substLNProp ctx s (substProp ctx [(n,Id(Syntax.toLN n'))] q))
+  | Cexists ((n, ty), q) ->
+      let n' = fresh [n] (namesLNSubst s) ctx in
+	Cexists ((n', ty), substLNProp ctx s (substProp ctx [(n,Id(Syntax.toLN n'))] q))
+
+let replaceType s n =
+  try List.assoc n s with Not_found -> n
+
+let rec substTYTerm ctx s = function
+  | Id ln -> Id ln
+  | Star -> Star
+  | Dagger -> Dagger
+  | App (t, u) -> App (substTYTerm ctx s t, substTYTerm ctx s u)
+  | Lambda ((n, ty), t) -> Lambda ((n, substTYType ctx s ty), t)
+  | Let (n, t, u) -> Let (n, substTYTerm ctx s t, substTYTerm ctx s u)
+  | Tuple lst -> Tuple (List.map (substTYTerm ctx s) lst)
+  | Proj (k, t) -> Proj (k, substTYTerm ctx s t)
+  | Inj (k, None) -> Inj (k, None)
+  | Inj (k, Some t) -> Inj (k, Some (substTYTerm ctx s t))
+  | Case (t, lst) -> 
+      Case (substTYTerm ctx s t,
+	     List.map (function
+			   (lb, None, t) -> (lb, None, substTYTerm ctx s t)
+			 | (lb, Some (n, ty), t) ->
+			     (lb, Some (n, substTYType ctx s ty), substTYTerm ctx s t)
+		      ) lst)
+  | Obligation ((x, ty), p) -> Obligation ((x, substTYType ctx s ty), substTYProp ctx s p)
+
+and substTYProp ctx s = function
+  | True -> True
+  | False -> False
+  | NamedTotal (r, t) -> NamedTotal (replaceType s r, substTYTerm ctx s t)
+  | NamedPer (r, u, v) ->
+      NamedPer (replaceType s r, substTYTerm ctx s u, substTYTerm ctx s v)
+  | NamedProp (n, u, v) -> NamedProp (n, substTYTerm ctx s u, substTYTerm ctx s v)
+  | Equal (u, v) -> Equal (substTYTerm ctx s u, substTYTerm ctx s v)
+  | And lst -> And (List.map (substTYProp ctx s) lst)
+  | Cor lst -> Cor (List.map (substTYProp ctx s) lst)
+  | Imply (p, q) -> Imply (substTYProp ctx s p, substTYProp ctx s q)
+  | Iff (p, q) -> Iff (substTYProp ctx s p, substTYProp ctx s q)
+  | Not p -> Not (substTYProp ctx s p)
+  | Forall ((n, ty), q) ->
+      Forall ((n, substTYType ctx s ty), substTYProp ctx s q)
+  | Cexists ((n, ty), q) ->
+      Cexists ((n, substTYType ctx s ty), substTYProp ctx s q)
+
+and substTYType ctx s = function
+    NamedTy ln -> NamedTy (try List.assoc ln s with Not_found -> ln)
+  | UnitTy -> UnitTy
+  | VoidTy -> VoidTy
+  | TopTy -> TopTy
+  | SumTy lst -> SumTy (List.map
+			  (function
+			       (lb, None) -> (lb, None)
+			     | (lb, Some ty) -> (lb, Some (substTYType ctx s ty))) lst)
+  | TupleTy lst -> TupleTy (List.map (substTYType ctx s) lst)
+  | ArrowTy (u, v) -> ArrowTy (substTYType ctx s u, substTYType ctx s v)
+  | TYPE -> TYPE
+
+
 let string_of_name = function
     Syntax.N(n, Syntax.Word) -> n
   | Syntax.N(n, _) -> "( " ^ n ^ " )"
@@ -267,10 +381,8 @@ let rec string_of_ty' level t =
   in let (level', str ) = 
        (match t with
             NamedTy lname  -> (0, string_of_longname lname)
-	  | PolyTy name    -> (0, "'" ^ string_of_name name)
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
-          | ListTy t       -> (1, (string_of_ty' 1 t) ^ "list")
 	  | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
           | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2)))
