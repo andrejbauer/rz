@@ -1,10 +1,10 @@
-\documentclass{article}
+\documentclass{entcs}
+\usepackage{prentcsmacro}
 
-\usepackage{fullpage}
-\usepackage{times}
+%\usepackage{times}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{theorem}
+%\usepackage{theorem}
 \usepackage{fancyvrb,xspace}
 
 %% MACROS
@@ -16,7 +16,7 @@
 \newcommand{\RZ}{RZ\xspace}
 \newcommand{\Mod}[1]{\mathsf{Mod}(#1)}
 \newcommand{\rz}{\Vdash}
-\newcommand{\note}[1]{\texttt{[#1]}}
+%\newcommand{\note}[1]{\texttt{[#1]}}
 \newcommand{\fst}[1]{\texttt{fst}\,#1}
 \newcommand{\snd}[1]{\texttt{snd}\,#1}
 \newcommand{\inl}[1]{\texttt{inl}\,#1}
@@ -26,27 +26,6 @@
 
 %% THEOREM-LIKE ENVIRONMENTS
 
-{
-  \theorembodyfont{\itshape}
-
-%  \newtheorem{theorem}{Theorem}[chapter]
-  \newtheorem{theorem}{Theorem}[section]
-  \newtheorem{Axiom}{Axiom}[section]
-  \newtheorem{lemma}[theorem]{Lemma}
-  \newtheorem{proposition}[theorem]{Proposition}
-  \newtheorem{corollary}[theorem]{Corollary}
-  \newtheorem{conjecture}[theorem]{Conjecture}
-%  \newtheorem{exercise}[theorem]{Exercise}
-}
-
-{
-  \theorembodyfont{\rmfamily}
-  \newtheorem{definition}[theorem]{Definition}
-  \newtheorem{example}[theorem]{Example}
-  \newtheorem{remark}[theorem]{Remark}
-  \newtheorem{question}[theorem]{Question}
-  \newtheorem{problem}{Problem}
-}
 
 \newcommand{\keywd}[1]{\mbox{\texttt{#1}}\xspace}
 \newcommand{\ALL}{\keywd{all}}
@@ -143,25 +122,20 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \begin{document}
 
-\twocolumn
-
-\title{Specifications via Realizability}
-
-\author{
-  Andrej Bauer\\
-  {\small Department of Mathematics and Physics}\\
-  {\small University of Ljubljana, Slovenia}\\
-  {\small \texttt{Andrej.Bauer@andrej.com}}
-  \and
-  Christopher Stone\\
-  {\small Computer Science Department}\\
-  {\small Harvey Mudd College, USA}\\
-  {\small \texttt{stone@cs.hmc.edu}}
-}
-
-\maketitle
-
-\begin{abstract}
+\def\lastname{Bauer and Stone}
+\begin{frontmatter}
+  \title{Specifications via Realizability} 
+  \author{Andrej Bauer\thanksref{myemail}}
+  \address{Department of Mathematics and Physics\\ 
+    University of Ljubljana\\
+    Ljubljana, Slovenia} \author{Christopher A. Stone\thanksref{coemail}}
+  \address{Computer Science Department\\Harvey Mudd College\\
+    Claremont, CA, USA} \thanks[myemail]{Email:
+    \href{mailto:Andrej.Bauer@andrej.com} {\texttt{\normalshape
+        Andrej.Bauer@andrej.com}}} \thanks[coemail]{Email:
+    \href{mailto:stone@cs.hmc.edu} {\texttt{\normalshape
+        stone@cs.hmc.edu}}}
+\begin{abstract} 
   We present a system, called~\RZ, for automatic generation of program
   specifications from mathematical theories. We translate mathematical
   theories to specifications by computing their realizability
@@ -172,6 +146,10 @@
   etc.), it also elucidates the relationship between data structures
   and constructive mathematics.
 \end{abstract}
+\begin{keyword}
+  Realizability, Constructive Logic, ML.
+\end{keyword}
+\end{frontmatter}
 
 \input{intro.tex}
 

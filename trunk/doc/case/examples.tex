@@ -11,8 +11,7 @@ The input to RZ is
 %
 {\small\VerbatimInput{decidable.thy}}%
 %
-\noindent
-and the output is
+\noindent and the output is
 %
 {\small\VerbatimInput{decidable.mli}}
 %
@@ -20,9 +19,10 @@ and the output is
 The output signature asks for \Verb|decidable| to be a function
 accepting two realizers~$x$ and~$y$ and returning one of two tokens
 \Verb|`or0| and \Verb|`or1|, depending on whether~$x$ and~$y$ realize
-the same element. This is nothing but a computable decision procedure
-for equality on \Verb|s|, with respect to \Verb|=s=| of course, as
-should be expected.
+the same element. (Disjunction is written \Verb|cor| to emphasize that
+it is classical or.) This is nothing but a computable decision procedure
+for equality on \Verb|s| with respect to \Verb|=s=|, as
+should be expected. 
 
 We remark that nothing requires the partial equivalence relation
 \Verb|=s=| to be computable, so not every modest set is decidable. In
@@ -61,7 +61,6 @@ function from natural numbers to \Verb|I.s| by simple recursion.
   \label{fig:nat}
 \end{figure*}
 
-
 \paragraph{Axiom of Choice.}
 \label{sec:axiom-choice}
 
@@ -69,12 +68,12 @@ As a third example, we look at the realizability interpretation of the
 Axiom of Choice. We work with the formulation of the axiom which
 states that every total relation has a choice function:
 %
-\begin{multline*}
-  (\forall x \in A .\,
-   \exists y \in B .\, R(x, y)) \implies \\
-  \exists g \in B^A .\,
-  \forall x \in A .\, R(x, g(x)) \;.
-\end{multline*}
+\[
+  (\forall x \in A.\,
+   \exists y \in B.\, R(x, y)) \implies %\\
+  \exists g \in B^A.\,
+  \forall x \in A.\, R(x, g(x)) \;.
+\]
 %
 We could write this as a theory parameterized by sets $A$, $B$ and the
 relation~$R$, but to keep things simple, we use the following version:

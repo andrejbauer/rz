@@ -1,6 +1,4 @@
-theory DecidableSet =
-thy
+theory DecidableSet = thy
   set s
-  axiom decidable (x:s) (y:s) =
-    x = y or not (x = y)
+  axiom decidable (x:s) (y:s)  =  (x = y) or not (x = y)
 end

@@ -16,16 +16,13 @@ provide the necessary intuition behind the original logic, and better
 explain why one might want to work with constructive rather than
 classical logic to begin with.
 
-\bigskip
- 
 Axioms parameterized by models (e.g., initiality) currently translate
 into signatures of ML functors.  We have experimented with an
 alternative translation of such axioms into polymorphic types.  In
 this case the \Verb|initial| axiom of the natural numbers yields
 the specification
 \begin{Verbatim}
-   val initial: 
-      'a -> ('a -> 'a) -> N.s -> 'a
+   val initial: 'a -> ('a -> 'a) -> N.s -> 'a
 \end{Verbatim}
 which is exactly the familiar iterator for natural numbers (i.e.,
 given an initial value, a function, and a natural number, apply the

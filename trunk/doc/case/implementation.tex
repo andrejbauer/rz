@@ -16,12 +16,12 @@ involve different tags.  Therefore, a very small amount of implicit
 subtyping is done between sums.  Otherwise, if we had a
 specifiation of queues of integers that included
 \begin{Verbatim}
-  set queue
+  set iqueue
   const emptyQueue
   const enqueue : int*iqueue -> iqueue
-  const dequeue : 
-     iqueue -> `None + `Some:int*iqueue
+  const dequeue : iqueue -> `None + `Some:int*iqueue
 \end{Verbatim}
+\goodbreak\noindent
 then the axiom
 \begin{Verbatim}
   dequeue emptyQueue = `None
@@ -29,26 +29,26 @@ then the axiom
 would fail to typecheck (the most-precise set for the left-hand-side
 is a two-element disjoint unition, while the most-precise set
 for the right is a one-element disjoint union.)
+\goodbreak
 
-The type checker will also try to convert between $\Set$ and $\LBRACE
+The type checker will also try to convert between $\Set$ and a
+subset type $\LBRACE
 x \ \COLON \Setexp\ \BAR \Proposition \RBRACE$ as necessary in order
-to type check.  Thus, one can write
+to type check.  Thus, 
 \begin{Verbatim}
   set real
   set nz_real = {x:real | not (x=zero)}
-  const one : real
-  const inv: nz_real -> nz_real
+  const one   : real
+  const inv   : nz_real -> nz_real
   const ( * ) : real * real -> real
 
   axiom field (x : real) =
-    not (x=zero) => x * (inv x) = one
+    not (x=zero)  =>  x * (inv x) = one
 \end{Verbatim}
-instead of needing to write
+is allowed, instead of requiring
 \begin{Verbatim}
- axiom field (x : real) =
-  not (x=zero) => 
-   x * ((inv (x:>nz_real)) :< real)
-                               = one
+  axiom field (x : real) =
+    not (x=zero)  =>  x * ((inv (x:>nz_real)) :< real) = one
 \end{Verbatim}
 In this case, since \Verb|:>| and \Verb|:<| has computational content
 (going into a subset involves pairing the item with the realizer of
@@ -164,7 +164,6 @@ Pfenning~\cite{pfenning01:_inten_exten_proof_irrel_modal_type_theor}.
 This is not surprising in view of the well known fact that double
 negation enjoys many formal properties of a modal possibility
 operator.
-
 
 \subsection{Optimization}
 

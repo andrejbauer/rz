@@ -10,8 +10,8 @@ specify how the values of type~$\ut{S}$ represent, or \emph{realize},
 elements of the set~$S$. For example, consider how we might represent
 the set~$D$ of simple finite directed graphs (whose vertices are
 labeled by integers). As the underlying datatype we might choose
-$\ut{D} = \mathtt{int} \; \mathtt{list} * (\mathtt{int} *
-\mathtt{int}) \; \mathtt{list}$, and represent a graph~$G \in D$ as a
+$\ut{D} = \mathtt{int} \; \mathtt{list} *\, (\mathtt{int} *
+\mathtt{int}) \mathtt{list}$, and represent a graph~$G \in D$ as a
 pair of lists $(v,e)$ where $v = [x_1; \ldots; x_n]$ is the list of
 vertices and $e = [e_1; \ldots; e_m]$ is the list of edges. Formally,
 we write
@@ -29,8 +29,10 @@ mean that $t$ is a closed expression of type $\ut{S}$.
 
 
 \begin{figure*}
-  \centering
-  \parbox[t]{0.35\textwidth}{
+\[
+  \hspace{-0.5truecm}
+  \parbox[t]{0.28\textwidth}{
+\footnotesize
     \begin{align*}
       \ut{\top} &= \mathtt{unit} \\
       \ut{\bot} &= \mathtt{unit} \\
@@ -42,9 +44,9 @@ mean that $t$ is a closed expression of type $\ut{S}$.
       \ut{\exists x \in A .\, \phi(x)} &= \ut{A} \times \ut{\phi}
     \end{align*}
   }
-  \vline
-  \quad
+\ \vrule\ 
   \parbox[t]{0.5\textwidth}{
+\footnotesize
     \begin{align*}
       () \rz \top &
       \\
@@ -78,6 +80,7 @@ mean that $t$ is a closed expression of type $\ut{S}$.
         \text{$t_1 \rz_A x$ and $t_2 \rz \phi(x)$}
     \end{align*}
   }
+\]
   \caption{Realizability interpretation of logic (outline)}
   \label{fig:rz-logic}
 \end{figure*}
@@ -141,7 +144,7 @@ though, which we first take care of. A modest set is a triple $(S,
 system it would be convenient if it did not have to refer to arbitrary
 sets but rather just to ingredients that are already present in the
 programming language, such as types and sets of expressions. Up to
-equivalence of categories, modest sets can be construed as triples
+equivalence of categories, modest sets can be constructed as triples
 $(\ut{S}, \tot{S}, {\per{S}})$ where $\ut{S}$ is a type, $\tot{S}$ is
 a subset of expressions of type~$\ut{S}$, called the \emph{total
   values},\footnote{We do \emph{not} require that a total value must

@@ -19,8 +19,7 @@ sig
   *)
   val sqrt : s -> s
   (**  Assertion sqrt (x:||s||) =
-    sqrt x : ||s|| and
-      sqrt x * sqrt x =s= x
+    sqrt x : ||s||  and  sqrt x * sqrt x =s= x
   *)
 end
 

@@ -4,6 +4,8 @@
 
 \begin{figure*}[t]
 \[
+\footnotesize
+\renewcommand{\arraystretch}{1.0}
 \begin{array}[t]{l}
 \mbox{\textbf{Theory Elements}}\\
 \SET\ s\ [\EQUALS\ \mathit{set}\ ]\\
@@ -55,9 +57,10 @@ x\\
 \Term \SUBIN \Set\\
 \Term \SUBOUT \Set\\
 \THE\ x\ [\COLON\Set\ ] \PERIOD \Prop\\
-\LET\ x\ [\COLON\Set\ ] \EQUALS\Term\ \IN\ \Term\\
+\LET\ x\ [\COLON\Set\ ] \EQUALS\Term\ \IN\ \Term
 \end{array}
 \]  
+\vspace{-0.6truecm}
 \caption{Input Language Summary}
 \label{fig:input}  
 \end{figure*}
@@ -84,10 +87,13 @@ semigroup is a set with an associative binary operation and a neutral
 element.\footnote{An example of a semigroup with square roots is the
   complex numbers with multiplication as the binary operation.} In our
 system it could be written as follows:
-%
+\vspace{-0.2truecm}
+{
+\small
 \VerbatimInput{semigroup.thy}
-%
-The theory is enclosed by \Verb|thy|\ldots\Verb|end|. This theory
+}
+\goodbreak\goodbreak
+\noindent The theory is enclosed by \Verb|thy|\ldots\Verb|end|. This theory
 defines one basic set \Verb|s|, and two basic constants: an element
 \Verb|e| of \Verb|s| and a (curried) binary infix operator \Verb|*| on
 the set \Verb|s|. The \Verb|implicit| operator is not part of the
@@ -114,7 +120,7 @@ Theories may declare or define relations. They may be \Verb|stable|,
 i.e., their computational interpretation is trivial (see
 Section~\ref{sec:implementation} for further discussion of this
 point). Axioms can universally quantify over all models of a theory.
-This is useful for describing universaility properties, such as
+This is useful for describing universality properties, such as
 initiality of an algebra or finality of a coalgebra.
   
 The propositions are the familiar ones from first-order logic;
@@ -156,7 +162,7 @@ assertions, as \RZ does not attempt to do any theorem proving.
 Assertions are written in ordinary classical first-order logic. Since
 programmers typically are not trained in constructive logic, this may
 make it easier to verify the assertions.
-
+\goodbreak
 The output for the theory \Verb|SQGROUP| above is then:
 {\small \VerbatimInput{semigroup.mli}}
 
@@ -194,11 +200,11 @@ For example, a theory \Verb|Real| of the reals may be parameterized in
 terms of a model \Verb|N| of the naturals.  A theory of free groups may be
 parameterized in terms of the generating set.
 
-Parameterized theories serve two purposes.  First a model of a
-parameterized theory would be a generic implementation that, given any
+Parameterized theories serve two purposes.  A model of a
+parameterized theory is a generic implementation that, given any
 implementation of the parameters, returns an implementation of the
 resulting theory.  At the level of ML, this would be a function from
-modules to modules, which is called a \emph{functor}, and so a
+modules to modules, a so-called \emph{functor}, and so a
 parameterized theory can be translated into the signature of a
 functor.
 
