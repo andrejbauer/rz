@@ -331,6 +331,13 @@ and optProp ctx = function
       | (TopTy,_) -> p'
       | (ty',_) -> Forall((n,ty'), p'))
 
+  | Cexists ((n, ty), p) ->
+      let p' = optProp (insertType ctx n ty) p in
+	(match optTy ctx ty, p with
+	     (_, False) -> False
+	   | (TopTy, _) -> p'
+	   | (ty', _) -> Cexists((n, ty'), p'))
+
       
 and optElems ctx = function
     [] -> []

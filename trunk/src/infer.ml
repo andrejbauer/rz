@@ -339,7 +339,11 @@ let rec makeStable = function
   | _ -> failwith "Internal error: cannot make a non-predicate stable"
 
 let rec makeEquivalence n ctx = function
-    Exp (Product [s1; s2], (Prop|StableProp|EquivProp))
+    Exp (Product [s1; s2], (Prop|StableProp|EquivProp)) ->
+      if eqSet ctx s1 s2 then
+	Exp (Product [s1; s2], EquivProp)
+      else
+	tyGenericError ("Ill-typed equivalence " ^ (fst n))
   | Exp (s1, Exp (s2, (Prop|StableProp|EquivProp))) ->
       if eqSet ctx s1 s2 then
 	Exp (s1, Exp (s2, EquivProp))

@@ -72,6 +72,8 @@ type signat = {
 let mk_word n = (n, Syntax.Word)
 let mk_id n = Id (mk_word n)
 
+let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
+
 let tupleOrDagger = function
     [] -> Dagger
   | xs -> Tuple xs

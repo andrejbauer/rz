@@ -176,6 +176,33 @@ and subst x t =
               (l, None, sub u) :: (subarms rest)
      in sub)
 *)
+
+let rec string_of_set = function
+    Empty -> "empty"
+  | Unit -> "unit"
+  | Bool -> "bool"
+  | Basic (n, _) -> n
+  | Product lst ->
+      "(" ^ (String.concat " * " (List.map string_of_set lst)) ^ ")"
+  | Exp (s, t) -> "(" ^ (string_of_set s) ^ " -> " ^ (string_of_set t) ^ ")"
+  | Sum lst ->
+      "[" ^ (
+	String.concat " + " (
+	  List.map (function
+			lb, None -> lb
+		      | lb, Some s -> lb ^ " of " ^ (string_of_set s)
+	  ) lst)
+      ) ^ "]"
+
+  | Subset _ -> "{...}"
+  | Rz s -> "rz " ^ (string_of_set s)
+  | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (fst n)
+  | PROP -> "PROP"
+  | STABLE -> "STABLE"
+  | EQUIV -> "EQUIV"
+  | SET -> "SET"
+
+
 (** *** *)
 module S = Syntax
 
@@ -270,8 +297,7 @@ and make_term = function
 and make_theory_element = function
     S.Set (n, None)-> Set n
   | S.Set (n, Some t) -> Let_set (n, make_set t)
-  | S.Predicate (n, stab, t) ->
-      Predicate (n, stab, Exp (make_set t, (if stab = S.Stable then STABLE else PROP)))
+  | S.Predicate (n, stab, t) -> Predicate (n, stab, make_set t)
   | S.Let_predicate (n, stab, b, p) ->
       Let_predicate (n, stab, make_bindings b, make_proposition p)
   | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)

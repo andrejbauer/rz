@@ -106,13 +106,6 @@ module NameMap = Map.Make(NameOrder)
 
 module NameSet = Set.Make(NameOrder)
 
-
-let rec intersperse mid = function
-      [] -> ""
-    | [str] -> str
-    | str::strs -> str ^ mid ^ (intersperse mid strs)
-
-   
 let rec string_of_name = function 
     (str,Word) -> str
   | (str,_) -> "(" ^ str ^ ")"
@@ -123,8 +116,8 @@ let rec string_of_set set =
     | Unit  -> "1"
     | Bool  -> "2"
     | Set_name name -> string_of_name name
-    | Product sets -> "(" ^ intersperse " * " (List.map toStr sets) ^ ")"
-    | Sum sumarms -> "(" ^ intersperse " + " (List.map sumarmToStr sumarms) ^ ")"
+    | Product sets -> "(" ^ String.concat " * " (List.map toStr sets) ^ ")"
+    | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"
     | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
     | Prop -> "Prop"
     | StableProp -> "StableProp"
@@ -153,7 +146,7 @@ and string_of_term trm =
     | Star -> "()"
     | False -> "false"
     | True -> "true"
-    | Tuple trms -> "(" ^ intersperse ", " (List.map toStr trms) ^ ")"
+    | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
     | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
     | Inj (lbl, Some trm) -> "(" ^ lbl ^ " " ^ toStr trm ^ ")"
@@ -165,10 +158,10 @@ and string_of_term trm =
     | Choose _ -> "..."
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
-    | And trms -> "(" ^ intersperse " && " (List.map toStr trms) ^ ")"
+    | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
     | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
-    | Or trms -> "(" ^ intersperse " || " (List.map toStr trms) ^ ")"
+    | Or trms -> "(" ^ String.concat " || " (List.map toStr trms) ^ ")"
     | Not trm -> "(not " ^ toStr trm ^ ")"
     | Equal(None,trm1,trm2) -> "(" ^ toStr trm1 ^ " = " ^ toStr trm2 ^ ")"
     | Equal(Some set, trm1, trm2) -> 

@@ -249,10 +249,7 @@ let rec translateSet ctx = function
 	  per = (y, y', Equal (Id y, Id y'));
 	}
 
-(* remaining cases:
-  | Sum of (label * set option) list
-  | RZ of set
-*)
+  | L.PROP | L.STABLE | L.EQUIV -> failwith "Cannot translate higher-order logic"
 
 and translateTerm ctx = function
     L.Var n -> Id n
@@ -410,9 +407,29 @@ and translateProp ctx = function
 let translateBinding ctx bind =
   List.map (fun (n, s) -> n, (translateSet ctx s).ty) bind
 
+let rec domain = function
+  | L.Exp (s, t) -> s :: (domain t)
+  | L.PROP | L.STABLE | L.EQUIV -> []
+  | _ -> failwith "Internal error: invalid domain of a predicate"
+
 let translateTheoryElement ctx = function
     L.Set n -> 
-      [TySpec (n, None)],
+      [TySpec (n, None);
+       (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
+	  AssertionSpec ([(x, NamedTy n)],
+			 Imply (NamedPer (n, Id x, Id x), NamedTotal (n, Id x))));
+       (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
+	let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
+	  AssertionSpec ([(x, NamedTy n); (x', NamedTy n)],
+			 Imply (NamedPer (n, Id x, Id x'), NamedPer (n, Id x', Id x))));
+       (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
+	let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
+	let x''= fresh [mk_word "x"; mk_word "y"; mk_word "z"; mk_word "v"] [x;x'] ctx in
+	  AssertionSpec (
+	    [(x, NamedTy n); (x', NamedTy n); (x'', NamedTy n)],
+	    Imply (And [NamedPer (n, Id x, Id x'); NamedPer (n, Id x', Id x'')],
+		   NamedPer (n, Id x, Id x''))))
+      ],
       addBind n L.SET ctx
 
   | L.Let_set (n, s) ->
@@ -425,10 +442,39 @@ let translateTheoryElement ctx = function
       addSet n s ctx
 
   | L.Predicate (n, stab, s) ->
-      (if stab = Syntax.Stable or stab = Syntax.Equivalence then
-	 []
-       else
-	 [TySpec (n, None)]),
+      let ty = (if stab = Syntax.Stable or stab = Syntax.Equivalence then TopTy else NamedTy n) in
+	((if stab = Syntax.Stable or stab = Syntax.Equivalence then [] else [TySpec (n, None)])) @
+	[(
+	   let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
+	   let _, bind, app, tots =
+	     List.fold_left
+	       (fun (bad, bind, app, tots) d ->
+		  let {ty=t; tot=(x,p)} = translateSet ctx d in
+		  let x' = fresh [x] bad ctx in
+		    (x'::bad, (x',t)::bind, (Id x')::app, (substProp ctx [(x, Id x')] p)::tots))
+	       ([r; n],[],[],[]) (domain s)
+	   in
+	     AssertionSpec ((r, ty)::bind, Imply (
+			      NamedProp (n, Id r, tuplify app),
+			      And tots
+			    )));
+	 (let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
+	  let _, bind, app1, app2, eqs =
+	    List.fold_left
+	      (fun (bad, bind, app1, app2, eqs) d ->
+		 let {ty=t; per=(x,y,p)} = translateSet ctx d in
+		 let x' = fresh [x] bad ctx in
+		 let y' = fresh [y] (x'::bad) ctx in
+		   (x'::y'::bad, (x',t)::(y',t)::bind,
+		    (Id x')::app1, (Id y')::app2,
+		    (substProp ctx [(x, Id x'); (y, Id y')] p)::eqs))
+	      ([r;n], [], [], [], []) (domain s)
+	  in
+	    AssertionSpec (
+	      (r, ty)::bind, Imply (
+		And ((NamedProp (n, Id r, tuplify app1))::eqs),
+		NamedProp (n, Id r, tuplify app2)
+	      )))] ,
       addProp n (stab, None) ctx
 
   | L.Let_predicate (n, stab, bind, p) ->

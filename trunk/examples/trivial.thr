@@ -2,6 +2,6 @@ theory Trivial =
 thy
  set s
 
- predicate r : s * s
+ stable predicate r : s * s
 
 end
