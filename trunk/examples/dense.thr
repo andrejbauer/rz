@@ -13,5 +13,5 @@ thy
 
   axiom linear x y z = (x < y => x < z or z < y)
 
-  axiom dense = all x . all y . some z . (x < z and z < y)
+  axiom dense = all x . all y . x < y => some z . (x < z and z < y)
 end
