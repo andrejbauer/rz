@@ -21,13 +21,21 @@ We emphasize that RZ does \emph{not} extract programs from proofs---in
 fact, there is no way to write a proof in our system. We work ``one
 level above'', so to speak, and just determine what the programs are
 supposed to do, i.e., we provide specifications for them. We leave it
-to the programmer, or to another tool, to construct such programs as
-he or she best knows. This leaves the programmer completely free to
-write programs that are efficient and may not correspond naturally to
-any constructive proofs.
+to the programmer, or to another tool, to construct the programs as he
+or she best knows. This leaves the programmer completely free to write
+the most efficient programs that do not necessarily correspond to any
+proofs.
 
-We hope for RZ 
-
+The original aim of RZ was to help with development of data structures
+for computable mathematics. If one sets out to actually compute
+realizability interpretations of theories of constructive mathematics,
+one quickly wishes for an automated way of doing it. With a tool like
+RZ it is much easier to experiment and try out variations of a theory
+until a suitable specification is obtained. We have also discovered
+that RZ can be used to explain and teach constructive mathematics to
+programmers, who are typically trained in classical mathematics,
+because it translates constructive statements to easily understood
+requirements about programs (expressed in classical logic).
 
 We assume throughout that we have chosen a fixed programming
 language~$\PL$. Any ML-like language will
@@ -36,15 +44,14 @@ Caml~\cite{ocaml} but could easily be adopted to other variants of ML.
 The essential features we require of~$\PL$ are product, function, and
 sum types, as well as support for module interfaces.
 
-Other points:
+The paper is organized as follows. Section~\ref{sec:realizability}
+contains a brief overview of realizability. In
+Section~\ref{sec:theories-signatures} we describe theories and
+signatures, which are the inputs and the outputs of RZ, respectively. In
+Section~\ref{sec:implementation} we discuss various point of
+implementation. In Section~\ref{sec:examples} we show typical examples
+and conclude with Section~\ref{sec:conclusion}.
 
-Allow programmer to write the most efficient program. Contrast with
-extraction of programs from proofs, where presently one cannot expect
-to get useful programs (also, who writes really long formal proofs?)
-
-Bring constructive reasoning closer to programmers.
-
-Overview.
 
 %%% Local Variables: 
 %%% mode: latex
