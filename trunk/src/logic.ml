@@ -335,7 +335,8 @@ and make_term = function
   | S.RzChoose ((n, Some s), t, u) -> RzChoose ((n, make_set s), make_term t, make_term u)
   | S.Choose ((n, Some s), r, t, u) -> Choose ((n, make_set s), ln_of_term r, make_term t, make_term u)
   | S.Let (n, t, u) -> failwith "Let not impliemented"
-  | _ -> (print_string "unrecognized term\n";
+  | trm -> (print_string "unrecognized term: ";
+	    print_string (S.string_of_term trm);
 	  raise HOL)
 
 and make_theory_element = function

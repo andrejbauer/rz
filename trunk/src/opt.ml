@@ -367,8 +367,17 @@ and optProp ctx = function
       in (match (optTy ctx ty, p') with
         (_, True) -> True
       | (TopTy,_) -> p'
+      | (NamedTy n1,Imply(NamedTotal (n2,Id n3),p'')) ->
+	  if (Logic.ln_of_name n = n3) && (n1 = n2) then
+	    ForallTotal((n,NamedTy n1), p'')
+	  else
+	    Forall((n,NamedTy n1),p')
       | (ty',_) -> Forall((n,ty'), p'))
-
+ 
+  | ForallTotal((n,ty),p) ->
+      let p' = optProp (insertType ctx n ty) p
+      in Forall((n,optTy ctx ty), p')
+ 
   | Cexists ((n, ty), p) ->
       let p' = optProp (insertType ctx n ty) p in
 	(match optTy ctx ty, p with
@@ -394,7 +403,16 @@ and optElems ctx = function
        let rest', ctx'' = optElems ctx rest in
 	 (AssertionSpec (name, bnds', optProp ctx' prop) :: rest'), ctx''
 
-  | StructureSpec _ :: rest -> failwith "Optimization of StructureSpec not implemented"
+  | StructureSpec (name,sbnds,signat) :: rest -> 
+      let (sbnds',ctx') = optStructBindings ctx sbnds
+      in let (signat',ctx'') = optSignat ctx' signat
+      in let ctx''' = if List.length sbnds = 0 then
+	                insertModel ctx name ctx''
+	              else
+			ctx
+      in let (rest', ctx'''') = optElems ctx''' rest 
+      in (StructureSpec (name, sbnds', signat') :: rest',
+	  ctx'''')
 
   |  TySpec(nm, None) :: rest -> 
        let rest', ctx' = optElems ctx rest in
@@ -410,24 +428,24 @@ and optElems ctx = function
 	 (Comment cmmnt :: rest', ctx')
 
 
-let optSignat ctx = function
+and optSignat ctx = function
     SignatID s ->
       SignatID s, lookupModel ctx s
   | Signat body -> 
       let body', ctx' = optElems ctx body in
 	Signat body', ctx'
 
-let rec optStructBinding ctx = function
+and optStructBindings ctx = function
     [] -> [], ctx
   | (m, signat) :: bnd ->
       let signat', ctx' = optSignat ctx signat in
-      let bnd', ctx'' = optStructBinding ctx bnd in
+      let bnd', ctx'' = optStructBindings ctx bnd in
 	(m, signat') :: bnd',
 	insertModel ctx'' m ctx'
 
 let optToplevel ctx = function
     (Signatdef (s, args, signat)) ->
-      let args', ctx' = optStructBinding ctx args in
+      let args', ctx' = optStructBindings ctx args in
       let signat', ctx'' = optSignat ctx' signat in
 	Signatdef (s, args', signat'), 
 	insertModel ctx s ctx''

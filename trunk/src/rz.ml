@@ -21,6 +21,8 @@ else
   let lthy = List.map Logic.make_toplevel thy' in
   let spec = Translate.translateToplevels Translate.emptyCtx lthy in
   let spec2 = if opt then Opt.optToplevels Opt.emptyCtx spec else spec in
-(List.iter (fun s -> print_string ((Outsyn.string_of_toplevel s) ^ "\n")) spec2;
+(
+(* List.iter (fun s -> print_string ((Outsyn.string_of_toplevel s) ^ "\n")) spec2;
 print_string "-------------\n";
+*)
 List.iter (fun s -> Pp.output_toplevel Format.std_formatter s) spec2)

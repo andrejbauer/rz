@@ -1,10 +1,20 @@
-(** {1 Pretty-Printing of Caml Output} *)
+(** {1 Pretty-Printing of Caml Output} 
+    @author Chris Stone
+    @see <http://www.cs.uwm.edu/classes/cs790/types-f2003/ocaml-manual/manual055.html> for the % codes in format strings
+    @see <http://caml.inria.fr/ocaml/htmlman/libref/Format.html#VALfprintf> for the @ codes in format strings.
+*)
 
 open Format
 open Outsyn
 
+exception Unimplemented
+
 let string_of_name = Syntax.string_of_name
 
+(** Outputs a term to the pretty-printing formatter ppf.
+      The various output_term_n functions each will display a term of 
+      level <=n without enclosing parentheses, or a term of level
+      >n with parens. *)
 let rec output_term ppf = function
     trm -> output_term_13 ppf trm
 
@@ -131,6 +141,17 @@ and output_binds ppf lst =
       in
 	output_loop ppf lst
 
+and output_totalbinds ppf lst =
+      let outputer ppf (n,t) = 
+	fprintf ppf "%s:||%a||" (string_of_name n)  output_ty t
+      in let rec output_loop ppf = function
+	    [] -> ()
+	| [trm] -> outputer ppf trm
+	| trm::trms -> fprintf ppf "%a%s@,%a"
+	    outputer trm  ", "  output_loop trms
+      in
+	output_loop ppf lst
+
 
 and output_term_0 ppf = function
     Id ln -> output_longname ppf ln
@@ -149,6 +170,10 @@ and output_name ppf nm =
 and output_longname ppf ln = 
     fprintf ppf "%s" (string_of_ln ln)
 
+(** Outputs a proposition to the pretty-printing formatter ppf.
+      The various output_prop_n functions each will display a proposition of 
+      level <=n without enclosing parentheses, or a proposition of level
+      >n with parens. *)
 and output_prop ppf = function
     prp -> output_prop_14 ppf prp
 
@@ -161,8 +186,18 @@ and output_prop_14 ppf = function
 	| prp -> ([],prp)
       in let (alls, prp') = extract_foralls all_ty
       in
-	fprintf ppf "@[<hov 2>all (%a).@ %a@]" 
+	fprintf ppf "@[<hov 2>all (%a). @ %a@]" 
 	  output_binds alls   output_prop_14 prp'
+  | ForallTotal ((n, ty), p) as all_ty -> 
+      let rec extract_foralls = function
+	  (ForallTotal((nm,typ),prp)) ->
+	    let (alls,prp') = extract_foralls prp
+	    in ((nm,typ) ::alls,prp')
+	| prp -> ([],prp)
+      in let (alls, prp') = extract_foralls all_ty
+      in
+	fprintf ppf "@[<hov 2>all (%a). @ %a@]" 
+	  output_totalbinds alls   output_prop_14 prp'
   | Cexists ((n, ty), p) as cexists_ty -> 
       let rec extract_somes = function
 	  (Cexists((nm,typ),prp)) ->
@@ -171,14 +206,14 @@ and output_prop_14 ppf = function
 	| prp -> ([],prp)
       in let (somes, prp') = extract_somes cexists_ty
       in
-	fprintf ppf "@[<hov 2>some (%a).@ %a@]" 
+	fprintf ppf "@[<hov 2>some (%a). @ %a@]" 
 	  output_binds  somes   output_prop_14 prp'
+  | Imply (p, q) -> 
+      fprintf ppf "%a =>@ %a"  output_prop_11 p   output_prop_14 q
   | prp -> output_prop_13 ppf prp
     
 and output_prop_13 ppf = function
-    Imply (p, q) -> 
-      fprintf ppf "%a =>@ %a"  output_prop_11 p   output_prop_13 q
-  | Iff (p, q) ->
+    Iff (p, q) ->
       fprintf ppf "%a <=>@ %a"  output_prop_11 p   output_prop_11 q
   | prp -> output_prop_11 ppf prp
   
@@ -194,7 +229,7 @@ and output_prop_10 ppf = function
 
 and output_prop_9 ppf = function
     NamedPer (ln, t, u) -> 
-      fprintf ppf "%a =_%a %a" 
+      fprintf ppf "%a =%a= %a" 
         output_term_9 t   output_longname ln   output_term_8 u
   | NamedProp (n, Dagger, u) -> 
        output_app ppf (n,u)  (* ??? *)
@@ -212,7 +247,7 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
-  | IsPer stnm -> fprintf ppf "PER(=_%s)" stnm
+  | IsPer stnm -> fprintf ppf "PER(=%s=)" stnm
   | IsPredicate prdct -> fprintf ppf "PREDICATE(%s)" (string_of_name prdct)
   | NamedTotal (ln, t) -> 
       fprintf ppf "%a : ||%a||"  
@@ -229,6 +264,10 @@ and output_app ppf = function
       fprintf ppf "%a %a" 
 	 output_longname ln   (output_term_components output_term " ") trms
 
+(** Outputs a type to the pretty-printing formatter ppf.
+      The various output_ty_n functions each will display a type of 
+      level <=n without enclosing parentheses, or a type of level
+      >n with parens. *)
 and output_ty ppf = function
     typ -> output_ty_3 ppf typ
 
@@ -262,6 +301,7 @@ and output_ty_0 ppf = function
   | typ        -> ((* print_string (string_of_ty typ); *)
 		   fprintf ppf "(%a)"  output_ty typ)
 
+
 and output_spec ppf = function
     ValSpec (nm, ty) ->
       fprintf ppf "@[val %s : %a@]" 
@@ -273,10 +313,22 @@ and output_spec ppf = function
   | AssertionSpec (nm, [], p) ->
       fprintf ppf "@[<hov 2>(** Assertion %s =@ %a@ *)@]"  nm   output_prop p
   | AssertionSpec (nm, binds, p) ->
-      fprintf ppf "@[<hov 7>(** Assertion %s (%a) =@\n@ %a@ *)@]" 
+      fprintf ppf "@[<hov 7>(** Assertion %s (%a) =@\n%a@ *)@]" 
 	nm   output_binds binds   output_prop p
   | Comment cmmnt ->
       fprintf ppf "(**%s*)" cmmnt
+  | StructureSpec (nm, [], sgntr) ->
+      fprintf ppf "@[module %s : %a@]"   nm   output_signat sgntr
+  | StructureSpec (nm, mdlbind, sgntr) ->
+      let rec output_args ppf = function
+	  [] -> ()
+        | [(n,t)] -> fprintf ppf "%s:%a"  n  output_signat t
+	| (n,t)::args -> 
+	    fprintf ppf "%s:%a,@ %a" 
+	      n   output_signat t   output_args args
+      in
+	fprintf ppf "@[<v>module %s(%a) :@.    @[%a@]@]@."  
+	  nm   output_args mdlbind   output_signat sgntr
 
 and output_specs ppf = function
     [] -> ()
@@ -296,10 +348,13 @@ and output_toplevel ppf = function
 	    fprintf ppf "@,functor (%s : %a) ->@ %a" 
 	      n   output_signat t   output_args args
       in
-	fprintf ppf "@[<v>module type %s = %a@,%a@]@."  
+	fprintf ppf "@[<v>module type %s = %a@,%a@]@.@."  
 	  s   output_args args   output_signat body
   | TopComment cmmnt -> 
-      fprintf ppf "@[(*%s*)@]@." cmmnt
+      fprintf ppf "@[(**%s*)@]@." cmmnt
+  | TopModule (mdlnm, signat) ->
+      fprintf ppf "@[module %s : %a@]@.@."
+	  mdlnm   output_signat signat
 
 
 	  

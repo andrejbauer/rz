@@ -58,6 +58,7 @@ and proposition =
   | Iff of proposition * proposition
   | Not of proposition
   | Forall of binding * proposition
+  | ForallTotal of binding * proposition
   | Cexists of binding * proposition (** classical existential *)
 
 type signat_element =
@@ -167,6 +168,7 @@ and fvProp' flt acc = function
   | Cor lst -> List.fold_left (fun a t -> fvProp' flt a t) acc lst
   | Imply (u, v) -> fvProp' flt (fvProp' flt acc v) u
   | Forall ((n, _), p) -> fvProp' (n::flt) acc p
+  | ForallTotal ((n, _), p) -> fvProp' (n::flt) acc p
 
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
@@ -198,6 +200,10 @@ let rec substProp ctx s = function
       let s' = substRemove n s in
       let n' = fresh [n] (fvSubst s') ctx in
 	Forall ((n', ty), substProp ctx (substAdd (n,n') s') q)
+  | ForallTotal ((n, ty), q) as p ->
+      let s' = substRemove n s in
+      let n' = fresh [n] (fvSubst s') ctx in
+	ForallTotal ((n', ty), substProp ctx (substAdd (n,n') s') q)
   | Cexists ((n, ty), q) as p ->
       let s' = substRemove n s in
       let n' = fresh [n] (fvSubst s') ctx in
@@ -310,6 +316,9 @@ and substLNProp ctx s = function
   | Forall ((n, ty), q) ->
       let n' = fresh [n] (namesLNSubst s) ctx in
 	Forall ((n', ty), substLNProp ctx s (substProp ctx [(n,Id(ln_of_name n'))] q))
+  | ForallTotal ((n, ty), q) ->
+      let n' = fresh [n] (namesLNSubst s) ctx in
+	ForallTotal ((n', ty), substLNProp ctx s (substProp ctx [(n,Id(ln_of_name n'))] q))
   | Cexists ((n, ty), q) ->
       let n' = fresh [n] (namesLNSubst s) ctx in
 	Cexists ((n', ty), substLNProp ctx s (substProp ctx [(n,Id(ln_of_name n'))] q))
@@ -354,6 +363,8 @@ and substTYProp ctx s = function
   | Not p -> Not (substTYProp ctx s p)
   | Forall ((n, ty), q) ->
       Forall ((n, substTYType ctx s ty), substTYProp ctx s q)
+  | ForallTotal ((n, ty), q) ->
+      ForallTotal ((n, substTYType ctx s ty), substTYProp ctx s q)
   | Cexists ((n, ty), q) ->
       Cexists ((n, substTYType ctx s ty), substTYProp ctx s q)
 
@@ -485,6 +496,8 @@ and string_of_prop level p =
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
     | Forall ((n, ty), p) -> (14, "all (" ^ (Syntax.string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
+    | ForallTotal ((n, ty), p) -> (14, "all (" ^ (Syntax.string_of_name n) ^ " : ||" ^
+			      (string_of_ty ty) ^ "||) . " ^ (string_of_prop 14 p))
     | Cexists ((n, ty), p) -> (14, "some (" ^ (Syntax.string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
   in
