@@ -1,0 +1,74 @@
+- BUG (2004-06-17):
+  a realizer for an axiom is not applied to the correct
+  arguments in the corresponding assertion (some are missing)
+
+- BUG (2004-06-17):
+  when a parametrized axiom is translated, some assertions are
+  missing in the hypotheses (the "trivial" ones)
+
+- BUG (2004-06-17):
+  missing obligations in output code for "let [x] = p in e"
+  and "let x % r = p in e ".
+
+- VERIFY (2004-06-17):
+  do we allow sum type subtyping? What form precisely? Should we do this?
+
+- IMPROVEMENT (2004-06-17):
+  Make variable names more consistent. The rule is: delete all the
+  vowels, except in the following cases:
+
+    totality -> tot
+    substitution -> sub
+
+  Make sure that all the exceptional names contain vowels.
+
+- IMPROVEMENT (2004-06-17):
+  Rename "thy" to "thr" OR rename ".thr" to ".thy"
+
+- IMPROVEMENT (2004-06-17):
+  Use fewer implementations of contexts.
+
+- NEW (2004-06-17):
+  Add abbreviations for common groups of assertions (such as "is a per").
+  Allow the use to use or not use them via run-time option.
+
+- IMPROVEMENT (2004-06-17):
+  Comment source code.
+    
+- IMPROVEMENT (2004-06-17):
+  Improve pretty-printing of output.
+    
+- NEW (2004-06-17):
+  Add implicit superset conversions, if this is a reasonable thing to do.
+
+- VERIFY (2004-06-17):
+  Make sure only first-order functors are allowed.
+
+- IMPROVEMENT (2004-06-17):
+  Allow top level model declarations.
+
+- BUG (2004-06-17):
+  Disallow shadowing of sets, values and arguments of
+  axioms.
+
+- IMPROVEMENT (2004-06-17):
+  Allow constant definitions of functions with arguments. Right now
+  a function must be defined as an explicit lambda abstraction.
+
+- NEW (2004-06-17):
+  Add "there exists exactly one"
+
+- NEW (2004-06-17):
+  Add the description operator "the x : s . phi"
+
+- NEW (2004-06-17):
+  Copy comments from the theory files to the output.
+
+- IMPROVEMENT (2004-06-17):
+  Improve the toplevel program.
+
+- NEW (2004-06-17):
+  Write more examples
+
+- NEW (2004-06-17):
+  Write paper & tutorial (2004-06-17)
