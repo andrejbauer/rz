@@ -220,6 +220,16 @@ and string_of_bnd = function
         (name, None    ) -> string_of_name name
      |  (name, Some set) -> string_of_name name  ^  ":"  ^  string_of_set set
 
+and string_of_mbnd = function
+        (mdlnm, thry) -> mdlnm ^ " : " ^ string_of_theory thry
+
+and string_of_theory = function
+    Theory _ -> "thy ... end"
+  | TheoryName thrynm -> thrynm
+  | TheoryApp (thry, mdl) -> 
+      string_of_theory thry ^ "(" ^ string_of_model mdl ^ ")"
+  | TheoryFunctor (mbnd, thry) ->
+      "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_model = function
     ModelName strng -> strng
@@ -369,7 +379,8 @@ let rec substTheory sub =
   in dosub
 
 and substTheoryElts sub = function
-    Set ( stnm, stopt ) :: rest -> 
+    [] -> []
+  | Set ( stnm, stopt ) :: rest -> 
        let this' = Set ( stnm, substSetOption sub stopt )
        in let sub' = insertSetvar sub stnm ( Set_name ( None, stnm ))
        in let rest' = substTheoryElts sub' rest
@@ -438,4 +449,5 @@ let freshNameString =
   in
      function () -> (incr counter;
 	             "]" ^ string_of_int (!counter) ^ "[")
+
 

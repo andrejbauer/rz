@@ -192,16 +192,69 @@ let rec makeStable = function
 (** A summary of one item that might appear in a theory.
 *)
 type theory_summary_item = 
-    TermSpec of name * set                   (** Term and its type *)
-  | SetSpec  of set_name * set option        (** Set and its definition *)
-  | ModelSpec  of model_name * theory_summary_item list 
-     (** Model and its contents.  NB: The contents are stored with the
-       first item in the list being the first item in the model! 
-       This is BACKWARDS from the items list of a typing context,
-       where the first item in the model becomes the last item of
-       the list, but both make sense. *)
+    TermSpec  of name * set                   (** Term and its type *)
+  | SetSpec   of set_name * set option        (** Set and its definition *)
+  | ModelSpec of model_name * theory_summary 
   | OtherSpec (** Some logical sentence or a comment; 
 		  details aren't important *) 
+
+and theory_summary =
+     (** NB: The contents are stored with the
+         first item in the list being the first item in the model! 
+         This is BACKWARDS from the items list of a typing context,
+         where the first item in the model becomes the last item of
+         the list, but both make sense. *)
+    Thry_Struct of theory * theory_summary_item list
+  | Thry_Functor of (model_name * theory) * theory_summary
+
+(** summaryTotheory : theory_summary -> theory 
+
+    Each theory summary is easier to search for its components,
+    but it also includes enough information to reconstruct the
+    theory in its entirety.
+ *)
+let rec summaryToTheory = function
+    Thry_Struct  ( thry, _ )      -> thry
+  | Thry_Functor ( bnd, summary ) -> 
+      TheoryFunctor ( bnd, summaryToTheory summary )
+
+(** substSummary : Syntax.subst -> theory_summary -> theory_summary 
+
+    XXX Not capture avoiding!
+ *)
+let rec substSummary sub = function
+    Thry_Struct (thry, items) -> 
+      Thry_Struct ( substTheory sub thry, 
+		    substItems sub items )
+  | Thry_Functor ( ( mdlnm, thry ), summary ) ->
+      let    thry'    = substTheory sub thry
+      in let sub'     = insertModelvar sub mdlnm ( ModelName mdlnm )
+      in let summary' = substSummary sub' summary
+      in Thry_Functor ( ( mdlnm, thry' ), summary' )
+
+and substItems sub = function
+    [] -> []
+  | TermSpec ( nm, st ) :: rest -> 
+      let st' = substSet sub st
+      in let this' = TermSpec ( nm, st' )
+      in let sub'  = insertTermvar sub nm ( Var ( None, nm ) )
+      in let rest' = substItems sub' rest
+      in this' :: rest'
+  | SetSpec ( stnm, stopt ) :: rest -> 
+      let stopt' = substSetOption sub stopt
+      in let this' = SetSpec ( stnm, stopt' )
+      in let sub'  = insertSetvar sub stnm ( Set_name ( None, stnm ) )
+      in let rest' = substItems sub' rest
+      in this' :: rest'
+  | ModelSpec ( mdlnm, summary ) :: rest ->
+      let summary' = substSummary sub summary
+      in let this' = ModelSpec ( mdlnm, summary' )
+      in let sub'  = insertModelvar sub mdlnm ( ModelName mdlnm ) 
+      in let rest' = substItems sub' rest
+      in this' :: rest'
+  | OtherSpec :: rest ->
+      OtherSpec :: ( substItems sub rest )
+	  
 
 (** Representation of the context itself.  The implicits and theories
     are stored separately, because they are not components of any model.
@@ -212,10 +265,9 @@ type theory_summary_item =
     permit signatures to be defined inside other signatures.
 *)
 
-type cntxt = {implicits: set StringMap.t;
-	      theories : ((model_name * theory) list * 
-			      theory_summary_item list) StringMap.t;
-              items    : theory_summary_item list}
+type cntxt = { implicits: set StringMap.t;
+	       theories : theory_summary StringMap.t;
+               items    : theory_summary_item list    }
 
 (** The empty context *)
 
@@ -238,7 +290,7 @@ let peekImplicit (cntxt : cntxt) (N(namestring, _)) =
    else 
       None
 
-(** peekTheory: cntxt -> theory_name -> theory_summary_item list
+(** peekTheory: cntxt -> theory_name -> theory_summary option
 
     Searches the specs so far for the definition of a theory
     named by the given string.  Takes the whole context
@@ -251,21 +303,6 @@ let peekTheory (cntxt : cntxt) desired_thrynm =
       Some (StringMap.find desired_thrynm cntxt.theories)
    else 
       None
-
-(** toModel: model_name list -> model
-
-    Converts a non-empty list of model names to and from the
-    corresponding (model) path.
-
-    E.g., toModel [M1,M2,M3] == M1.M2.M3
-*)
-let toModel mdlnms = 
-  let rec loop = function
-      []            -> raise Impossible
-    | [strng]       -> ModelName strng
-    | strng::strngs -> ModelProj(loop strngs, strng)
-  in loop (List.rev mdlnms)
-
 
 (** addSetToSubst : subst -> set_name -> model -> subst
 
@@ -406,7 +443,7 @@ let peekTydef cntxt desired_stnm =
 
 
 (* peekTheoryof' : Syntax.subst -> items -> model_name list -> model_name 
-                         -> (Syntax.subst * theory_summary_item list) option
+                         -> (theory_summary * Syntax.subst) option
 
     Given the items from a context and a desired model_name, find the
     corresponding theory for that model in that context; returns None
@@ -425,18 +462,18 @@ let peekTydef cntxt desired_stnm =
     substitution for the subst0 parameter.
 *)
 let rec peekTheoryof' subst0 cntxt whereami desired_mdlnm = 
-  let rec loop substitution = function
+  let rec loop sub = function
       [] -> None
-    | ModelSpec (mdlnm, theory) :: rest ->
+    | ModelSpec (mdlnm, summary) :: rest ->
         if mdlnm = desired_mdlnm then
-          Some (theory, substitution)
+          Some (summary, sub)
         else
-          loop (addModelToSubst substitution mdlnm whereami) rest
-    | spc :: rest -> loop (addToSubst substitution whereami spc) rest
+          loop (addModelToSubst sub mdlnm whereami) rest
+    | spc :: rest -> loop (addToSubst sub whereami spc) rest
   in loop subst0 cntxt
 
 (** peekTheoryof : cntxt -> model_name
-                           -> (Syntax.subst * theory_summary_item list) option
+                         -> (theory_summary * Syntax.subst) option
  *)
 let peekTheoryof cntxt desired_mdlnm = 
   peekTheoryof' emptysubst cntxt.items None desired_mdlnm
@@ -477,9 +514,10 @@ let peekTypeof cntxt desired_nm =
 
 (** Takes the context and adds a new model of the given name, with the
   given theory summary (represented as a list of theory_summary_item_item's *)
-let insertModel cntxt mdlnm thry = 
+let insertModel cntxt mdlnm summary = 
   (match peekTheoryof cntxt mdlnm with
-       None -> {cntxt with items = ModelSpec(mdlnm,thry)::cntxt.items }
+       None -> {cntxt with items = ModelSpec ( mdlnm, summary )
+                                     :: cntxt.items }
      | _ -> tyGenericError ("Shadowing of model name: " ^  mdlnm))
 
 
@@ -506,12 +544,12 @@ let insertVar  cntxt nm st =
      | _ -> tyGenericError ("Shadowing of name: " ^  string_of_name nm))
 
 (** Takes the context and adds a new theory definition, with the
-  given list of arguments and the given list of theory_summary_item's *)
-let insertTheory cntxt thrynm args items =
+  given summary *)
+let insertTheory cntxt thrynm summary =
   (match peekTheory cntxt thrynm with
-       None -> {cntxt with theories = StringMap.add thrynm (args,items) 
-					cntxt.theories}
-     | _ -> tyGenericError ("Shadowing of theory name: " ^  thrynm))
+       None -> { cntxt with theories = StringMap.add thrynm summary 
+	                                             cntxt.theories }
+     | _ -> tyGenericError ("Shadowing of theory name: " ^  thrynm) )
 
 (** Takes the context and a list of strings and remembers these names
   as implicitly ranging over the given set, unless otherwise explicitly
@@ -534,26 +572,46 @@ let insertImplicits cntxt (namestrings : string list) st =
 (** Given a context and a model, returns 
      (a) the annotated model [currently this never changes, since
          models are just paths, with no place for sets to be inferred.]
-     (b) the theory of the model 
-     (c) A substitution that must be applied to the theory (b) in
-         order for it to be well-formed
+     (b) A summary of the theory of the model 
+     (c) A substitution that must be applied to (c) in
+         order for it to be well-formed at top-level
 *)
 let rec annotateModel cntxt = function
     ModelName mdlnm ->
      (match (peekTheoryof cntxt mdlnm) with
-	None -> tyGenericError ("Unknown Model " ^ mdlnm)
-     | Some (thr,_) -> (ModelName mdlnm, thr, emptysubst))
+	None                  -> tyGenericError ("Unknown Model " ^ mdlnm)
+     |  Some (summary, subst) -> (ModelName mdlnm, summary, subst))
+
   | ModelProj (mdl, lbl) as main_mdl ->
-      let (mdl' as whereami, thr', subst) = annotateModel cntxt mdl
-      in (match (peekTheoryof' subst cntxt.items (Some whereami) lbl) with
-	      None -> tyGenericError ("Unknown Model" ^ 
-				      string_of_model main_mdl)
-	    | Some (thr'',subst'') ->
-		(ModelProj(mdl',lbl), thr'', subst''))
-  | ModelApp (mdl1, mdl2) ->
-     let    (mdl1', thr1', subst1) = annotateModel cntxt mdl1
-     in let (mdl2', thr2', subst2) = annotateModel cntxt mdl2
-     in raise Impossible
+      let ((mdl' as whereami), summary, subst) = annotateModel cntxt mdl
+      in (match summary with
+            Thry_Struct(_, items) ->
+             (match (peekTheoryof' subst items (Some whereami) lbl) with
+	       None -> tyGenericError ("Unknown Model" ^ 
+				       string_of_model main_mdl)
+	     | Some (summary'', subst'') ->
+		 (ModelProj(mdl',lbl), summary'', subst''))
+          | _ -> tyGenericError 
+		   ( "Projection from parameterized model in\n  " ^
+		      string_of_model main_mdl ) )
+
+  | ModelApp (mdl1, mdl2) as main_mdl ->
+     let    (mdl1', summary1, sub1) = annotateModel cntxt mdl1
+     in let (mdl2', summary2, sub2) = annotateModel cntxt mdl2
+     in match ( substSummary sub1 summary1 ) with
+          Thry_Functor ( ( mdlnm, thry11 ), summary12 ) ->  
+            if ( thry11 = substTheory sub2 ( summaryToTheory summary2 ) ) then
+	       let    newapp     = ModelApp (mdl1', mdl2')
+               in let sub        = insertModelvar emptysubst mdlnm mdl2'
+               in ( ModelApp (mdl1', mdl2'), summary12, sub )
+	    else
+	      tyGenericError 
+		( "Incompatible model argument in\n  " ^ 
+		  string_of_model main_mdl )
+
+        | _ -> tyGenericError 
+	         ( "Application of non-parameterized model in\n  " ^ 
+		   string_of_model main_mdl )
 
 (** Expand out any top-level definitions for a (well-formed) set 
   *)
@@ -564,10 +622,13 @@ let rec hnfSet cntxt = function
       | None -> Set_name ( None, stnm ) )
 
   | Set_name ( Some mdl, stnm ) -> 
-      let (whereami, thryspecs, subst) = annotateModel cntxt mdl
-      in (match (peekTydef' subst thryspecs (Some whereami) stnm) with
-		 None    -> Set_name ( Some mdl, stnm ) 
-	       | Some st -> hnfSet cntxt st)
+      let (whereami, summary, subst) = annotateModel cntxt mdl
+      in ( match summary with
+	     Thry_Struct ( _, items ) -> 
+	       ( match (peekTydef' subst items (Some whereami) stnm) with
+	           None    -> Set_name ( Some mdl, stnm ) 
+	         | Some st -> hnfSet cntxt st )
+           | _ -> raise Impossible )
 
   | st -> st
 
@@ -854,11 +915,16 @@ let rec annotateSet cntxt =
 		 orig_set
 	      else tyGenericError ("Set not found: " ^ stnm))
 	| Set_name (Some mdl, stnm) as orig_set -> 
-	    let (mdl', thryspecs, _) = annotateModel cntxt mdl
-	    in if (peekSet' thryspecs stnm) then
-		 Set_name(Some mdl', stnm)
-	       else
-		 tyGenericError ("Unknown component " ^ string_of_set orig_set)
+	    let (mdl', summary, _) = annotateModel cntxt mdl
+	    in (match summary with
+	          Thry_Struct(_, items) -> 
+		    if (peekSet' items stnm) then
+		      Set_name(Some mdl', stnm)
+		    else
+		      tyGenericError ( "Unknown component " ^ 
+				       string_of_set orig_set )
+  	        | _ -> tyGenericError 
+		           "Set projection from parameterized model")
         | s -> s
      in
         ann)
@@ -1071,19 +1137,26 @@ and annotateTerm cntxt =
 	    | None -> tyUnboundError orig_trm)
 
      | Var (Some mdl, nm) as orig_trm -> 
-	 let (mdl' as whereami, thryspecs, subst) = annotateModel cntxt mdl
-	 in (match (peekTypeof' subst thryspecs (Some whereami) nm)with
-		 None -> tyGenericError ("Unknown component " ^
-					 string_of_term orig_trm)
-	       | Some st -> (Var(Some mdl', nm), st))
+	 let (mdl' as whereami, summary, subst) = annotateModel cntxt mdl
+	 in ( match summary with
+	        Thry_Struct ( _ , items) ->
+		  (match (peekTypeof' subst items (Some whereami) nm)with
+		    None -> tyGenericError ("Unknown component " ^
+					    string_of_term orig_trm)
+	          | Some st -> ( Var ( Some mdl', nm ), st ) )
+              | _ -> tyGenericError 
+		    ( "Term projection from parameterized model in:\n  " ^ 
+		      string_of_term orig_trm ) )
 
      | Constraint(t,s) ->
-         let    (t',ty) = ann t
-         in let s' = annotateSet cntxt s
-         in (match (coerce cntxt t' ty s') with
-               Some trm'' -> (Constraint(trm'',s'), s')
-             | None       -> tyMismatchError t s' ty )
-
+         let (t',ty) = ann t  in
+         let s'      = annotateSet cntxt s  in
+         begin
+	   match (coerce cntxt t' ty s') with
+             Some trm'' -> (Constraint(trm'',s'), s')
+           | None       -> tyMismatchError t s' ty 
+	 end
+    
      | Star -> (Star, Unit)
 
      | Tuple ts ->
@@ -1146,7 +1219,8 @@ and annotateTerm cntxt =
 	       
      | Quot(t, r) -> 
 	 let (t', ty) = ann t in
-	   (match equivalenceAt cntxt r with
+	 begin
+	   match equivalenceAt cntxt r with
 		None -> 
 		  failwith (string_of_term r ^ " is not a stable equivalence")
 	      | Some(domain_st, r') ->
@@ -1156,7 +1230,8 @@ and annotateTerm cntxt =
 		    tyGenericError
 		      ("Term " ^ string_of_term t ^ " is in " ^
 		       string_of_set ty ^ "\nbut " ^ string_of_term r ^
-		       "is a relation on " ^ string_of_set domain_st))
+		       "is a relation on " ^ string_of_set domain_st)
+	 end
 	     
      | RzQuot t ->
 	 let (t', ty) = ann t in
@@ -1168,18 +1243,20 @@ and annotateTerm cntxt =
 	 let (t1', ty1) = ann t1 in
 	 let ((nm, Some ty), cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
 	 let (t2', ty2) = annotateTerm cntxt' t2 in
-	   (match hnfSet cntxt ty with
-		Rz ty' ->
-		  if eqSet cntxt ty1 ty' then begin
-		    (try (ignore(annotateSet cntxt ty2)) with
-			 _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
-					      "defns; maybe add a constraint?")) ;
-		    RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
-		  end
-		  else
-		    failwith "type mismatch in let [...] = "
-	      | _ -> failwith "type mismatch in let [...] = "),
-	   ty2
+	 (begin
+	   match hnfSet cntxt ty with
+	     Rz ty' ->
+	       if eqSet cntxt ty1 ty' then begin
+		 (try (ignore(annotateSet cntxt ty2)) with
+		   _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
+					"defns; maybe add a constraint?")) ;
+		 RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
+	       end
+	       else
+		 failwith "type mismatch in let [...] = "
+	   | _ -> failwith "type mismatch in let [...] = "
+	 end,
+	 ty2 )
 
      | Choose (bnd, r, t1, t2, None) ->
 	 let (t1', ty1) = ann t1 in
@@ -1355,12 +1432,12 @@ and annotateTheoryElem cntxt = function
 		    (string_of_name n) ^ " is stable")
 
   | Model (mdlnm, thry) ->
-      let (thry', [], contents) = annotateTheory cntxt thry
-      in let cntxt' = insertModel cntxt mdlnm contents
+      let ( thry', summary ) = annotateTheory cntxt thry
+      in let cntxt' = insertModel cntxt mdlnm summary
       in 
-        (cntxt', 
-	 Model(mdlnm, thry'), 
-	 ModelSpec(mdlnm, contents))
+        ( cntxt', 
+	  Model ( mdlnm, thry' ), 
+	  ModelSpec ( mdlnm, summary ) )
 
   | _ -> raise Impossible
 
@@ -1381,62 +1458,60 @@ and annotateTheoryElems cntxt = function
 and annotateModelBindings cntxt = function
     [] -> [], cntxt
   | (m, th) :: bnd ->
-      let (th', [], specs) = annotateTheory cntxt th in
+      let (th', summary) = annotateTheory cntxt th in
       let (bnd', cntxt') = annotateModelBindings cntxt bnd in
-	((m, th') :: bnd', (insertModel cntxt' m specs))
+	((m, th') :: bnd', (insertModel cntxt' m summary))
 
 and annotateTheory cntxt = function
     Theory elems ->
-	let ( elems', specs ) = annotateTheoryElems cntxt elems
-        in  ( Theory elems', [], specs )
+	let ( elems', items ) = annotateTheoryElems cntxt elems
+        in  ( Theory elems', Thry_Struct (Theory elems', items ) )
 
   | TheoryName str -> (match peekTheory cntxt str with
-			 Some (args,specs) -> (TheoryName str, args, specs)
+			 Some summary -> (TheoryName str, summary)
 		       | None -> tyGenericError ("Unknown theory: " ^ str))
 
-  | _ -> raise Impossible
-(*
- 
   | TheoryFunctor ( arg, thry ) ->
 	let ( [arg'], cntxt' ) = annotateModelBindings cntxt [arg] in
-	let (thry', args', body_items) = annotateTheory cntxt' thry in 
-          ( TheoryFunctor ( args', thry'), arg' :: args', body_items)
+	let (thry', summary) = annotateTheory cntxt' thry in 
+          ( TheoryFunctor ( arg', thry'), summary)
 
-   | TheoryApp (thry, mdl) -> 
-        let (thry', args, body_items) = annotateTheory cntxt thry in
-        let (mdl', thry_specs, sub) = annotateModel cntxt mdl in
-          match args with
-            (* XXX We want a Syntax.string_of_theory function!!! 
-             *)
-            []        -> tyGenericError 
-                            "Application of non-parameterized theory"
-          | (arg,argthry)::rest -> 
-                (* XXX is not checking the validity of the application!!! 
-                 *)
-                ( TheoryApp ( thry', mdl' ),
-                  (* XXX  substTheory isn't capture avoiding!!!
+   | TheoryApp (thry, mdl) as main_thry -> 
+        let (thry', summary_thry) = annotateTheory cntxt thry in
+        let (mdl', summary_mdl, sub) = annotateModel cntxt mdl in
+	begin
+          match summary_thry with
+             Thry_Struct ( _ , _ ) -> 
+               tyGenericError 
+		 ( "Application of non-parameterized theory in:\n  " ^
+		   string_of_theory main_thry )
+           | Thry_Functor ( ( arg, argthry ), summary_result ) -> 
+                  (* XXX  substTheory isn't capture avoiding!!! 
                    *)
+               if ( argthry = 
+		      substTheory sub (summaryToTheory summary_mdl) ) then
                   let sub = insertModelvar emptysubst arg mdl'
-                  in let (mbnds', sub') = substMBnds sub rest
-                  in let body_items' = substItems sub' body_items
-                  in  substTheory (insertModelvar emptysubst arg mdl')
-                              thr'
-*)            
-
+                  in ( TheoryApp ( thry', mdl' ),
+		       substSummary sub summary_result )
+	       else
+		 tyGenericError 
+		   ( "Incompatible model argument in:\n  " ^ 
+		     string_of_theory main_thry )
+	end
 
 and annotateToplevel cntxt = function
       Theorydef (str, thry) ->
-        let (thry', args, body_items) =  annotateTheory cntxt thry
+        let (thry', summary) =  annotateTheory cntxt thry
 	in (Theorydef (str, thry'), 
-	    insertTheory cntxt str args body_items)
+	    insertTheory cntxt str summary)
 
   |  TopComment cmmnt ->
        (TopComment cmmnt, cntxt)
 
   |  TopModel (mdlnm, thry) ->
-      let (thry', [], specs) = annotateTheory cntxt thry in
+      let (thry', summary) = annotateTheory cntxt thry in
 	(TopModel(mdlnm, thry'),
-	 insertModel cntxt mdlnm specs)
+	 insertModel cntxt mdlnm summary)
 
 and annotateToplevels cntxt = function
     [] -> ([], cntxt)

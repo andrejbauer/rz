@@ -517,7 +517,7 @@ and optStructBindings ctx = function
     [] -> [], ctx
   | (m, signat) :: bnd ->
       let signat', ctxopt' = optSignat ctx signat in
-      let bnd', ctx'' = optStructBindings ctx bnd in
+      let bnd', ctx'' = optStructBinding ctx bnd in
 	( (m, signat') :: bnd',
 	  (match ctxopt' with
              Some ctx' -> insertModul ctx'' m ctx'
