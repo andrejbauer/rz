@@ -80,6 +80,14 @@ let rec process = function
       let (thy', infer_state') = 
 	Infer.annotateToplevels infer_state thy in
 
+(*
+      let _ = 
+        let print_item tplvl = 
+	   (print_endline (Syntax.string_of_toplevel tplvl);
+	    print_endline "")
+	in List.iter print_item thy' in
+*)
+
       let lthy = 
 	(* The translation to Logic form is syntax-directed and 
 	   doesn't need to maintain any state *)

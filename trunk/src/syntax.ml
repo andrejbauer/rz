@@ -272,16 +272,61 @@ and string_of_bnd = function
         (name, None    ) -> string_of_name name
      |  (name, Some set) -> string_of_name name  ^  ":"  ^  string_of_set set
 
+and string_of_bnds = function
+    [] -> ""
+  | [bnd] -> string_of_bnd bnd
+  | bnd :: bnds -> string_of_bnd bnd ^ " " ^ string_of_bnds bnds
+
 and string_of_mbnd = function
         (mdlnm, thry) -> mdlnm ^ " : " ^ string_of_theory thry
 
+and string_of_mbnds = function
+    [] -> ""
+  | [mbnd] -> string_of_mbnd mbnd
+  | mbnd :: mbnds -> string_of_mbnd mbnd ^ " " ^ string_of_mbnds mbnds
+
+
 and string_of_theory = function
-    Theory _ -> "thy ... end"
+    Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
   | TheoryName thrynm -> thrynm
   | TheoryApp (thry, mdl) -> 
       string_of_theory thry ^ "(" ^ string_of_model mdl ^ ")"
   | TheoryFunctor (mbnd, thry) ->
       "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
+
+and string_of_theory_element = function
+    Set ( stnm , None ) -> "set " ^ stnm
+  | Set ( stnm , Some st ) -> "set " ^ stnm ^ " = " ^ string_of_set st
+  | Predicate ( nm, pk, st ) -> 
+      string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^
+      string_of_set st
+  | Let_predicate ( nm, pk, bnds, trm ) ->
+      string_of_pk pk ^ " " ^ string_of_name nm ^ string_of_bnds bnds ^ 
+      " = " ^ string_of_term trm
+  | Let_term ( bnd , trm ) -> 
+      "let " ^ string_of_bnd bnd ^ " = " ^ string_of_term trm
+  | Value ( nm , st ) ->
+      "const " ^ string_of_name nm ^ " : " ^ string_of_set st
+  | Sentence ( ssort, nm, mbnds, bnds, trm ) ->
+      "axiom  " ^ string_of_name nm ^ " " ^ 
+      string_of_mbnds mbnds ^ " " ^ string_of_bnds bnds ^ " =\n " ^
+      string_of_term trm
+  | Model ( mdlnm, thry) -> 
+      "model " ^ mdlnm ^ " : " ^ string_of_theory thry
+  | Implicit ( strs , st ) -> 
+      "implicit " ^ (String.concat "," strs) ^ " : " ^ string_of_set st
+  | Comment strng -> 
+      "(* " ^ strng ^ " *)"
+
+and string_of_theory_elements = function
+    [] -> ""
+  | elt :: elts -> string_of_theory_element elt ^ "\n" ^ 
+                   string_of_theory_elements elts
+ 
+and string_of_pk = function
+    Stable -> "stable relation"
+  | Unstable -> "relation"
+  | Equivalence -> "equivalence " 
 
 and string_of_model = function
     ModelName strng -> strng
@@ -289,6 +334,13 @@ and string_of_model = function
       string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
   | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
 
+and string_of_toplevel = function
+    Theorydef ( thrynm, thry ) -> 
+      "theory " ^ thrynm ^ " = " ^ string_of_theory thry
+  | TopComment strng ->
+      "(* " ^ strng ^ " *)"
+  | TopModel ( mdlnm, thry ) ->
+      "model " ^ mdlnm ^ " = " ^ string_of_theory thry
 
 (* Substitution functions.
 
