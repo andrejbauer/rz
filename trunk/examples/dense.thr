@@ -1,8 +1,8 @@
 theory Semilattice =
 thy
   set t
-  const 0 : t
-  join : t -> t -> t
+  const z : t
+  const join : t -> t -> t
 
   (* + axioms *)
 end
@@ -18,7 +18,7 @@ thy
      axiom init (f : a -> M.t) =
      begin
        exists1 (phi : L.t -> M.t) . (
-	 phi L.0 = M.0 and
+	 phi L.z = M.z and
          (forall x . forall y . phi (L.join x y) = M.join (phi x) (phi y)) and
          forall (x : a) . (phi (incl x) = f a)
        )
@@ -33,13 +33,13 @@ thy
   set s
   relation ( < ) : s * s
 
-  axiom ireflexive x = (not (x < x))
+  axiom irreflexive x = (not (x < x))
 
-  axiom transitive x y z = (x < y and y < z ==> x < z)
+  axiom transitive x y z = (x < y and y < z => x < z)
 
   axiom asymmetric x y = not (x < y and y < x)
 
-  axiom linear x y z = (x < y ==> x < z or z < y)
+  axiom linear x y z = (x < y => x < z or z < y)
 
-  axiom dense = forall x . forall y . exists z . (x < z and z < y)
+  axiom dense = all x . all y . some z . (x < z and z < y)
 end
