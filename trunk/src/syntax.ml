@@ -233,10 +233,17 @@ and string_of_term trm =
     | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
     | Inj (lbl, None) -> "`" ^ lbl 
     | Case (_,_) -> "..."
-    | Quot (_,_) -> "..."
+    | Quot (trm1,trm2) -> "(" ^ string_of_term trm1 ^ " % " ^ string_of_term trm2 ^ ")"
     | RzQuot t -> "[" ^ (toStr t) ^ "]"
-    | RzChoose _ -> "..."
-    | Choose _ -> "..."
+    | RzChoose (bnd, trm1, trm2, st_opt) -> 
+	"let [" ^ string_of_bnd bnd ^ "] = " ^
+	string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ " end" ^
+	(match st_opt with None -> "" | Some st -> ": " ^ string_of_set st)
+
+    | Choose (bnd, trm1, trm2, trm3, st_opt) -> 
+	"let " ^ string_of_bnd bnd ^ " % " ^ string_of_term trm1 ^ " = " ^
+	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ " end" ^
+	(match st_opt with None -> "" | Some st -> ": " ^ string_of_set st) 
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
@@ -270,7 +277,7 @@ and string_of_term trm =
 
 and string_of_bnd = function
         (name, None    ) -> string_of_name name
-     |  (name, Some set) -> string_of_name name  ^  ":"  ^  string_of_set set
+     |  (name, Some set) -> "(" ^ string_of_name name  ^  ":"  ^  string_of_set set ^ ")"
 
 and string_of_bnds = function
     [] -> ""

@@ -51,7 +51,7 @@ $(TARGETS): %: $(BYTE_OBJS) %.cmo
 	$(OCAMLC) -o rz $(OCAMLFLAGS) $(LIB_OBJS) $+ 
 
 $(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx 
-	$(OCAMLOPT) -o toplevel.opt $(OCAMLOPTFLAGS) $(LIB_OPT_OBJS) $+
+	$(OCAMLOPT) -o rz.opt $(OCAMLOPTFLAGS) $(LIB_OPT_OBJS) $+
 
 # Suffixes.
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
