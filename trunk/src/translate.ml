@@ -174,14 +174,14 @@ let rec translateSet ctx = function
 
   | L.Subset ((n, s), phi) ->
       let {ty=u; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
-      let (v,z,r) = translateProp ctx phi in
+      let (v,z,r) = translateProp (addBind n s ctx) phi in
 	{
 	  ty = TupleTy [u; v];
 	  tot = (
 	    let k = fresh [mk_word "k"; mk_word "j"; mk_word "x"] [] ctx in
 	      (k,
 	       And [substProp ctx [(x, Proj (0, Id k))] p;
-		    substProp ctx [(z, Proj (1, Id k))] r]
+		    substProp ctx [(n, Proj (0, Id k)); (z, Proj (1, Id k))] r]
 	      )
 	  );
 	  per = (
@@ -223,7 +223,7 @@ and translateTerm ctx = function
 		      let ctx' = addBind n s ctx in
 			(lb, (n, (translateSet ctx' s).ty), translateTerm ctx' t)
                   | (lb, None, t) ->
-                      (lb, (any, UnitTy), translateTerm (addBind any L.Unit ctx) t)
+                      (lb, (any, TopTy), translateTerm (addBind any L.Unit ctx) t)
 	       )
                lst
 	    )
