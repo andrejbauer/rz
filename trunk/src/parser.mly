@@ -6,10 +6,15 @@
     raise (Message.Parse (Message.loc_here 1, "parse error"))
 
   exception Impossible
-  let makeLN strs str sort = 
+
+  (* Creates a path, given a list of (nested) structure names, the
+     name of component to find in the innermost structure, and the
+     fixity of that component.
+   *)
+  let makeLN strs str fixity = 
     (match strs @ [str] with
       [] -> raise Impossible
-    | first::rest -> LN(first, rest, sort))
+    | first::rest -> LN(first, rest, fixity))
 
 %}
 
@@ -333,6 +338,8 @@ term:
   | LAMBDA name_typed PERIOD term { Lambda ($2, $4) }
   | FORALL name_typed PERIOD term { Forall ($2, $4) }
   | EXISTS name_typed PERIOD term { Exists ($2, $4) }
+  | FORALL TNAME COLON TNAME PERIOD term  { ForallModels ($2, TheoryID $4, $6) }
+  | FORALL TNAME COLON THY theory_elements END PERIOD term  { ForallModels ($2, Theory {t_arg=[]; t_body = $5}, $8) }
 
 term_seq:
     term COMMA term             { [$1; $3] }

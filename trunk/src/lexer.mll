@@ -40,7 +40,7 @@
       "set", SET;
       "stable", STABLE;
       "Stable", STABLEPROP;
-      "structure", STRUCTURE;
+      "structure", MODEL;
       "theorem", THEOREM;
       "theory", THEORY;
       "thy", THY ;

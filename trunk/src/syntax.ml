@@ -67,6 +67,7 @@ and term =
   | Lambda of binding * term
   | Forall of binding * term
   | Exists of binding * term
+  | ForallModels of string * theory * term
 
 (********************************************************************)
 

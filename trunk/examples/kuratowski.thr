@@ -40,12 +40,14 @@ thy
   # we really want unique existence, but we don't have the some1
   # quantifier yet
 
-  axiom initial (model S : Semilattice) (f : A::a -> S::s) =
-    some (f' : s -> S::s) . (
-      f' empty = S::zero and
-      all (x : A::a) . (f a = f' (singleton x)) and
-      all (u : s) . all (v : s) . (
-        f' (union u v) = S::join (f' u) (f' v)
+  axiom initial =
+    all S : Semilattice.
+      all (f : A::a -> S::s).
+        some (f' : s -> S::s) . (
+          f' empty = S::zero and
+          all (x : A::a) . (f a = f' (singleton x)) and
+          all (u : s) . all (v : s) . (
+          f' (union u v) = S::join (f' u) (f' v)
       )
     )
 

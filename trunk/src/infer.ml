@@ -139,7 +139,7 @@ let rec peekLong peeker ctx = function
   | (LN(str, lab::labs, namesort) as lname) ->
       (match (peekModel ctx str) with
         Some ctx' -> peekLong peeker ctx' (LN(lab, labs, namesort))
-      | None -> tyGenericError ("Unbound model" ^ str))
+      | None -> tyGenericError ("Unbound model " ^ str))
 
 (** Insertion functions.
  *)
@@ -165,6 +165,7 @@ let emptyCtx = {implicits = NameMap.empty;
                 sets      = NameSet.empty;
                 models  = StringMap.empty;
 	        theories = StringMap.empty}
+
 
 
 
@@ -467,6 +468,12 @@ and annotateProp ctx =
             let (bnd',ctx') = annotateBinding ctx bnd
             in
 	      Exists (bnd', fst (annotateProp ctx' p)), Unstable
+
+        | ForallModels (str, thr, p) ->
+	    let (thr', ctx_thr) = annotateTheory ctx thr
+	    in let ctx' = insertModel ctx str ctx_thr
+	    in let (p',stb) = annotateProp ctx' p
+            in (ForallModels(str,thr',p'), stb) (** XXX Right stability? *)
 
 	| Case(e, arms) -> 
 	    let (e', ty) = annotateTerm ctx e
