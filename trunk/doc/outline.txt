@@ -1,0 +1,32 @@
+Module Syntax:
+- describes the (abstract) syntax of the input files
+
+
+Module Outsyn:
+
+- describes the (abstract) syntax of the output
+
+- note that the translation of a theory consists not just of an
+ordinary ML signature, but, but also a specification. This
+specification is given in classical logic.
+
+
+Module Logic:
+- it serves as an intermediate level between Syntax and Outsyn.
+The parsed input is hard to translate directly to output. It seems to
+me that it is easier to first clean it up a bit.
+
+
+The program is supposed to work as follows:
+
+1. parser parses the input and gives syntax expressed
+   by using module Syntax.
+
+2. the functions make_* in module Logic translate from Syntax to
+   Logic. Presumably these function will do type inference and
+   type checking at some point.
+
+3. the functions translate* translate from Logic to Outsyn
+
+
+
