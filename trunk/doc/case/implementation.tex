@@ -52,8 +52,12 @@ instead of needing to write
 In this case, since \Verb|:>| and \Verb|:<| has computational content
 (going into a subset involves pairing the item with the realizer of
 the proposition; going out of a subset is then a first projection),
-the typechecker rewrites the former version of \Verb|field|
-into the latter before passing it on to the translation phase.
+the typechecker rewrites the former version of \Verb|field| into the
+latter before passing it on to the translation phase.  If injections
+into subsets are cannot be justified in the theory (e.g., if the
+\Verb|field| axiom lacked the premise \Verb|not (x=zero)|) then the
+theory will still translate, the generated assertions will not be
+satisfied by any implementation.
 
 \subsection{Realizability Translation}
 Here we provide more details about the translation.
