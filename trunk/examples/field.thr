@@ -26,7 +26,7 @@ thy
     x <> y => (x <> z or y <> z)
 
   axiom inverse x =
-    x <> 0 =>
+    x <> zero =>
       x * inv (x :> s') = one and inv (x :> s') * x = one
 
 end
