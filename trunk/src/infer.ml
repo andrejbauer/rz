@@ -1101,6 +1101,18 @@ and annotateBindingWithDefault cntxt default_st = function
                                  | None -> default_st))
       in let cntxt' = insertVar cntxt x s'
       in ((x, Some s'), cntxt')
+
+and annotateBindingWithCheckedDefault cntxt default_st = function
+    (x, None) -> annotateBindingWithDefault cntxt default_st (x, None)
+  | (x, Some s2) -> let s2' = annotateSet cntxt s2 in
+                    if (eqSet cntxt default_st s2') then
+		      let cntxt' = insertVar cntxt x s2' in
+		      ((x, Some s2'), cntxt')
+		    else
+		      tyGenericError ( "Annotated Binding " ^ 
+				       string_of_bnd (x, Some s2) ^
+				       "doesn't match inferred set " ^ 
+				       string_of_set default_st )
 		 
 		 
 (**  Given a context and some bindings, annotate all the bindings.
@@ -1263,7 +1275,7 @@ and annotateTerm cntxt =
 
      | RzChoose (bnd, t1, t2, None) ->
 	 let (t1', ty1) = ann t1 in
-	 let ((nm, Some ty), cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
+	 let ((nm, Some ty), cntxt') = annotateBindingWithCheckedDefault cntxt (Rz ty1) bnd in
 	 let (t2', ty2) = annotateTerm cntxt' t2 in
 	 (begin
 	   match hnfSet cntxt ty with
@@ -1281,25 +1293,36 @@ and annotateTerm cntxt =
 	 ty2 )
 
      | Choose (bnd, r, t1, t2, None) ->
-	 let (t1', ty1) = ann t1 in
-	 let ((nm, Some ty), cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
-	 let (t2', ty2) = annotateTerm cntxt' t2 in
-	   (match hnfSet cntxt ty with
-		Quotient (ty', r') ->
-		  if eqSet cntxt (hnfSet cntxt ty1) (Quotient (ty', r)) then begin
-		    (try (ignore(annotateSet cntxt ty2)) with
-			 _ -> tyGenericError ("Inferred let%-body type depends on local " ^ 
-					      "defns; maybe add a constraint?")) ;
-		    Choose ((nm, Some ty'), r', t1', t2', Some ty2)
-		  end
-		  else
-		    failwith "type mismatch in let % = "
-	      | _ -> failwith "type mismatch in let % = "),
-	   ty2
-
+         (* let  nm      % r = t1 in t2
+            let (nm : s) % r = t1 in t2 
+          *)
+	 let ( t1', typ_of_eqclass ) = ann t1 in
+	 begin
+           match ( hnfSet cntxt typ_of_eqclass ) with
+	     Quotient( ty_member, r' ) ->
+	       if ( r = r' ) then
+		 let ((nm, _) as bnd', cntxt') = 
+		   annotateBindingWithCheckedDefault cntxt ty_member bnd in 
+		 let ( t2', typ_of_body ) = 
+		   annotateTerm cntxt' t2  in
+		 begin
+                   ( try  ( ignore ( annotateSet cntxt typ_of_body ) ) with
+		     _ -> tyGenericError ("Inferred let%-body type " ^ 
+					  string_of_set typ_of_body ^ 
+                                          "\ndepends on local defns; " ^
+					  "maybe add a constraint?")) ;
+		   (Choose (bnd', r, t1', t2', Some typ_of_body), typ_of_body )
+		 end
+	       else
+		 tyGenericError "Mismatch in let% equivalence relations"
+	   | _ -> tyGenericError ("Bound value " ^ (string_of_term t1) ^ 
+				  "\nin let% inferred as " ^
+				  (string_of_set typ_of_eqclass) )
+	 end
+	   
      | Choose (bnd, r, t1, t2, Some st) ->
 	 let (t1', ty1) = ann t1 in
-	 let ((_, Some ty) as bnd', cntxt') = annotateBindingWithDefault cntxt ty1 bnd in
+	 let ((_, Some ty) as bnd', cntxt') = annotateBindingWithCheckedDefault cntxt ty1 bnd in
 	 let (t2', ty2) = annotateTerm cntxt' t2 in
 	 let st' = annotateSet cntxt st in
 	   if eqSet cntxt (hnfSet cntxt ty1) (Quotient (ty, r)) then begin
@@ -1314,7 +1337,7 @@ and annotateTerm cntxt =
         
      | Let (bnd, t1, t2, None) ->
          let    (t1', ty1) = ann t1
-         in let (bnd',cntxt') = annotateBindingWithDefault cntxt ty1 bnd
+         in let (bnd',cntxt') = annotateBindingWithCheckedDefault cntxt ty1 bnd
          in let (t2', ty2) = annotateTerm cntxt' t2
          in ((try (ignore(annotateSet cntxt ty2)) with
                _ -> tyGenericError ("Inferred let-body type depends on local " ^ 
@@ -1323,7 +1346,7 @@ and annotateTerm cntxt =
 
      | Let (bnd, t1, t2, Some st) ->
          let    (t1', ty1) = ann t1
-         in let (bnd',cntxt') = annotateBindingWithDefault cntxt ty1 bnd
+         in let (bnd',cntxt') = annotateBindingWithCheckedDefault cntxt ty1 bnd
          in let (t2', ty2) = annotateTerm cntxt' t2
 	 in let st' = annotateSet cntxt st
          in if (subSet cntxt' ty2 st') then
@@ -1402,24 +1425,24 @@ and annotateTheoryElem cntxt = function
   | Let_term(bnd, None, trm) ->
       let   (trm', ty1) = annotateTerm cntxt trm
       in let ((nm,Some ty2) as bnd', cntxt') = 
-	  annotateBindingWithDefault cntxt ty1 bnd
+	  annotateBindingWithCheckedDefault cntxt ty1 bnd
       in if (subSet cntxt ty1 ty2) then
           (cntxt', Let_term(bnd',None,trm'), TermSpec(nm,ty2))
-        else
-          tyGenericError ("Definition doesn't match constraint for " ^ 
-			  string_of_bnd bnd)
-
+      else
+        tyGenericError ("Definition doesn't match constraint for " ^ 
+			string_of_bnd bnd)
+	  
   | Let_term(bnd, Some args, trm) ->
-      let    (args', cntxt') = annotateBindings cntxt args
-      in let (trm', ty1) = annotateTerm cntxt' trm
-      in let ty1' = List.fold_right (fun (_, Some s) t -> Exp (s, t)) args' ty1
-      in let ((nm, Some ty2) as bnd', cntxt'') = 
-	  annotateBindingWithDefault cntxt (ty1') bnd
-      in if (subSet cntxt ty1' ty2) then
-          (cntxt'', Let_term(bnd', Some args', trm'), TermSpec(nm, ty2))
-        else
-          tyGenericError ("Definition doesn't match constraint for " ^ 
-			  string_of_bnd bnd)
+       let    (args', cntxt') = annotateBindings cntxt args
+       in let (trm', ty1) = annotateTerm cntxt' trm
+       in let ty1' = List.fold_right (fun (_, Some s) t -> Exp (s, t)) args' ty1
+       in let ((nm, Some ty2) as bnd', cntxt'') = 
+         annotateBindingWithCheckedDefault cntxt (ty1') bnd
+       in if (subSet cntxt ty1' ty2) then
+         (cntxt'', Let_term(bnd', Some args', trm'), TermSpec(nm, ty2))
+       else
+         tyGenericError ("Definition doesn't match constraint for " ^ 
+			 string_of_bnd bnd)
 
   | Sentence(sort, sentence_nm, mbnds, bnds, p) ->
       let (mbnds', cntxt') = annotateModelBindings cntxt mbnds in
