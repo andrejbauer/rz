@@ -11,7 +11,7 @@ thy
                          const x : s
                          const f : s -> s
                        end] =
-  some (g : nat -> A.s) . (
+  some1 (g : nat -> A.s) . (
     g zero = A.x and
     all (n : nat) . (g (succ n) = A.f (g n))
   )
@@ -73,7 +73,7 @@ thy
   # r is a field
 
   axiom field x =
-	not (x = zero) => x * (inv (x :> r') :< r) = one
+	not (x = zero) => x * (inv x) = one
 
   ##################################################
   # linear order

@@ -11,7 +11,7 @@
 open Outsyn
 
 exception Unimplemented
-exception Impossible
+exception Impossible of string
 
 (** XXX:  Shouldn't cut-and-paste from infer.ml!!! *)
 
@@ -72,7 +72,7 @@ let rec lookupModulLong ctx = function
        begin
 	 match ( lookupModulLong ctx mdl ) with
            ( Summary_Struct ctx', sub ) -> ( lookupModul ctx' mdlnm, sub )
-	 | _ -> raise Impossible
+	 | _ -> raise (Impossible "lookupModulLong")
        end
   | ModulApp (mdl1, mdl2)  -> 
        let    ( Summary_Functor ( mdlnm, summary11 ), sub) = lookupModulLong ctx mdl1
@@ -91,7 +91,7 @@ let lookupTypeLong  ctx = function
        begin
 	 match (lookupModulLong ctx mdl) with
            ( Summary_Struct ctx', sub ) -> substTy sub (lookupType ctx' nm)
-	 | _                -> raise Impossible
+	 | _                -> raise (Impossible "lookupTypeLong")
        end
 
 
@@ -105,7 +105,7 @@ let peekTydefLong ctx = function
        begin
 	 match (lookupModulLong ctx mdl) with
            ( Summary_Struct ctx', sub ) -> substTyOption sub (peekTydef ctx' nm)
-	 | _                -> raise Impossible
+	 | _                -> raise (Impossible "peekTydefLong")
        end
 
 
@@ -169,7 +169,7 @@ let joinTy ctx s1 s2 =
 	      try
 		let None = List.assoc l1 s2s
 		in (l1,None) :: joinSums(s1s, s2s)
-              with _ -> raise Impossible
+              with _ -> raise (Impossible "jointTy 1")
 	    else (l1,None) :: joinSums(s1s, s2s))
         | ((l1,Some s1)::s1s, s2s) ->
 	    (if (List.mem_assoc l1 s2s) then
@@ -177,7 +177,7 @@ let joinTy ctx s1 s2 =
 		let Some s2 = List.assoc l1 s2s
 		in (** Assume input to optimizer typechecks *)
 		   (l1,None) :: joinSums(s1s, s2s)
-              with _ -> raise Impossible
+              with _ -> raise (Impossible "jointTy 2")
 	    else (l1,None) :: joinSums(s1s, s2s))
 
 
@@ -281,9 +281,9 @@ let rec optTerm ctx = function
      in let tys = 
                match  hnfTy ctx ty with
 		 TupleTy tys -> tys
-	       |  ty_bad -> (print_string (Outsyn.string_of_ty ty ^ "\n");
-			     print_string (Outsyn.string_of_ty ty_bad ^ "\n");
-			     raise Impossible)
+	       | ty_bad -> (print_string (Outsyn.string_of_ty ty ^ "\n");
+			    print_string (Outsyn.string_of_ty ty_bad ^ "\n");
+			    raise (Impossible "Proj"))
      in let rec loop = function
          (ty::tys, TopTy::tys', nonunits, index) ->
          if index == n then
@@ -308,7 +308,7 @@ let rec optTerm ctx = function
 			    print_string (string_of_int (List.length tys'));
 			    print_string (string_of_int n);
 			    print_string (string_of_int index);
-			    raise Impossible)
+			    raise (Impossible "deep inside"))
      in 
         loop (tys, List.map (optTy ctx) tys, 0, 0) 
  | Inj (lbl, None) -> (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
@@ -330,7 +330,7 @@ let rec optTerm ctx = function
 	   let (ty3, e3', ty3') = optTerm ctx e3
 	   in (ty3, (lbl, None, e3'), ty3')
      in let rec doArms = function
-	 [] -> raise Impossible
+	 [] -> raise (Impossible "Case")
        | [arm] -> let (tyarm, arm', tyarm') = doArm arm
 	          in (tyarm, [arm'], tyarm')
        | arm::arms -> let (tyarm, arm', tyarm') = doArm arm

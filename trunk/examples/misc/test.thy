@@ -1,19 +1,13 @@
 theory TestQuot =
 thy
-  set nat
-  equivalence ( =~= ) : nat * nat
+  set s
+  equivalence r : s * s
 
-  equivalence ( =/= ) (x : nat) (y : nat) = true
+  axiom foo (x : s) =
+    (let (y : s) % r = x % r in y) = x
 
-  # This should not type check!
-  axiom foo (x : nat) =
-    (=~=) x x and
-    (let y % (=~=) = x % (=~=) in y) = x % (=~=)
-
-  # This should type check!
-  #axiom bar (x : nat) =
-  #  (let [y] = x in [y]) = x
-
+  axiom bar (x : s) =
+    (let y % r = x % r in y) = x
 end
 
 theory Nat =
