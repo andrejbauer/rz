@@ -285,7 +285,13 @@ and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
   | IsPer stnm -> fprintf ppf "PER(=%s=)" stnm
-  | IsPredicate prdct -> fprintf ppf "PREDICATE(%s)" (Syntax.string_of_name prdct)
+  | IsPredicate (prdct,t,x,y,p) ->
+      fprintf ppf "PREDICATE(%s,%a,lam %s %s.(%a))"
+        (Syntax.string_of_name prdct)
+        output_ty t
+        (Syntax.string_of_name x)
+        (Syntax.string_of_name y)
+        output_prop p
   | NamedTotal (ln, t) -> 
       fprintf ppf "%a : ||%a||"  
 	output_term t   output_tln ln

@@ -561,14 +561,17 @@ and translateTheoryElements ctx = function
 
   | L.Predicate (n, stab, s) :: rest -> begin
       let sgnt, smmry = translateTheoryElements (addProp n stab ctx) rest in
+      let {ty=t; per=(y,y',p)} = translateSet ctx s in
 	(match stab with
 	     S.Unstable ->
 	       TySpec (L.typename_of_name n,
 		       None,
-		       [("predicate_" ^ (S.string_of_name n), [], IsPredicate n)]
+		       [("predicate_" ^ (S.string_of_name n), [],
+			 IsPredicate (n,t,y,y',p))]
 		      )
 	   | S.Stable | S.Equivalence ->
-	     AssertionSpec ("predicate_" ^ (S.string_of_name n), [], IsPredicate n)
+	     AssertionSpec ("predicate_" ^ (S.string_of_name n), [],
+			    IsPredicate (n,t,y,y',p))
 	) :: sgnt,
 	addProp n stab smmry
     end

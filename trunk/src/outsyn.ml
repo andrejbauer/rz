@@ -59,7 +59,7 @@ and proposition =
   | True
   | False
   | IsPer of ty_name
-  | IsPredicate of name
+  | IsPredicate of name * ty * name * name * proposition
   | NamedTotal of ty_longname * term
   | NamedPer of ty_longname * term * term
   | NamedProp of longname * term * term list
@@ -269,7 +269,11 @@ and substProp ?occ sbst = function
     True -> True
   | False -> False
   | IsPer nm -> IsPer nm
-  | IsPredicate prdct -> IsPredicate prdct
+  | IsPredicate (prdct,t,x,y,p) ->
+      let x' = freshName [x] [] ?occ sbst in
+      let y' = freshName [y] [x'] ?occ sbst in
+	IsPredicate (prdct, substTy ?occ sbst t, x', y',
+		     substProp ?occ (insertTermvar (insertTermvar sbst x (id x')) y (id y')) p)
   | NamedTotal (tln, t) -> NamedTotal (substTLN ?occ sbst tln, substTerm ?occ sbst t)
   | NamedPer (tln, u, v) -> NamedPer (substTLN ?occ sbst tln, substTerm ?occ sbst u, substTerm ?occ sbst v)
   | NamedProp (ln, u, vs) ->
@@ -510,7 +514,7 @@ and string_of_prop level p =
       True -> (0, "true")
     | False -> (0, "false")
     | IsPer nm -> (0, "PER(=_" ^ nm ^ ")")
-    | IsPredicate prdct -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ")")
+    | IsPredicate (prdct,_,_,_,_) -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ",...)")
     | NamedTotal (n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_tln n) ^ "||")
     | NamedPer (n, t, u) -> (9, (string_of_term' 9 t) ^ " =_" ^
 			       (string_of_tln n) ^ " " ^ (string_of_term' 9 u))

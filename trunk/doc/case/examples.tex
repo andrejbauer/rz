@@ -1,21 +1,57 @@
 \section{Examples}
 \label{sec:examples}
 
-Here are some possible examples.
+In this section we show typical examples of RZ at work.
 
-Decidable sets to point out the difference between a general modest
-set and one whose equality is actually computable.
+\paragraph{Decidable set.}
+\label{sec:decidable-set}
 
-The difference between the theory of a group and theory of (finitely
-presentable) groups.
+As the first example, we formulate the theory of a decidable set.
+Recall that in constructive mathematics a set~$S$ is said to be
+\emph{decidable} if $x = y$ or $x \neq y$ for all $x, y \in S$.
+The input to RZ is
+%
+{\small
+\VerbatimInput{decidable.thy}
+}
+%
+and the output is
+%
+{\small
+\VerbatimInput{decidable.mli}
+}
+%
+The output signature asks for a function \Verb|decidable| which
+accepts two realizers~$x$ and~$y$ and returns one of two tokens
+\Verb[`or0] and \Verb[`or1], depending on whether~$x$ and~$y$ realize
+the same element. This is nothing but a computable decision procedure
+for equality on \Verb|s|, with respect to \Verb|=s=| of course, as
+should be expected.
 
-Finite sets as the free join-semilattice.
+We remark that nothing requires the partial equivalence relation
+\Verb|=s=| to be computable, so not every modest set is decidable. In
+fact, there are many natural examples of non-computable partial
+equivalence relations, such as \emph{extensional equality} of function
+from natural numbers to natural numbers. (If we could computably
+decide whether two functions always give equal results on equal
+arguments, we could write a Halting Oracle.)
+
+\paragraph{The Free Join-Semilattice}
+\label{sec:free-join-semil}
+
+
+
+\paragraph{Axiom of Choice}
+\label{sec:axiom-choice}
 
 Axiom of choice is not realizable. This example is needed to point out
 that we are not doing propositions-as-types. But intensional axiom of
 choice is realized.
 
-Real numbers and exact arithmetic, if there is space.
+Also demonstrates how to express an axiom schema.
+
+mention ZF.
+
 
 
 %%% Local Variables: 

@@ -387,7 +387,8 @@ and optProp ctx = function
     True                    -> True
   | False                   -> False
   | IsPer nm                -> IsPer nm
-  | IsPredicate nm          -> IsPredicate nm
+  | IsPredicate (nm,ty,x,y,p) ->
+      IsPredicate (nm, optTy ctx ty, x, y, optProp (insertType (insertType ctx x ty) y ty) p)
   | NamedTotal(str, e)      -> 
       NamedTotal(str, optTerm' ctx e)
   | NamedPer(str, e1, e2)   -> 
