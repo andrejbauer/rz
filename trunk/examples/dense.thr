@@ -13,20 +13,16 @@ thy
 
    const incl : a -> L.t
 
-   theory Initiality (M : Semilattice) =
-   thy
-     axiom init (f : a -> M.t) =
-     begin
-       exists1 (phi : L.t -> M.t) . (
-	 phi L.z = M.z and
-         (forall x . forall y . phi (L.join x y) = M.join (phi x) (phi y)) and
-         forall (x : a) . (phi (incl x) = f a)
-       )
-     end
+   axiom init (M : Semilattice) (f : a -> M.t) =
+   begin
+     semilattice_morphism(f) =>
+     exists1 (phi : L.t -> M.t) . (
+	phi L.z = M.z and
+        (forall x . forall y . phi (L.join x y) = M.join (phi x) (phi y)) and
+        forall (x : a) . (phi (incl x) = f a)
+     )
    end
 end
-
-
 
 theory DenseLinearOrder =
 thy
