@@ -3,8 +3,8 @@
 
 By translating only at the level of specifications, \RZ provides a
 useful middle ground between ad-hoc implementations and
-machine-generated implementations --- allowing much more flexible
-implementation strategies, but relying on the programmer to
+machine-generated implementations.  It allows much more flexible
+implementation strategies, but relies on programmers to
 verify properties of their code.
 
 Further, \RZ can serve as a means of explaining constructive
@@ -21,7 +21,7 @@ classical logic to begin with.
 Axioms parameterized by models (e.g., initiality) currently translate
 into signatures of ML functors.  We have experimented with an
 alternative translation of such axioms into polymorphic types.  In
-this case the \Verb|inital| axiom of the natural numbers yields
+this case the \Verb|initial| axiom of the natural numbers yields
 the specification
 \begin{Verbatim}
    val initial: 
