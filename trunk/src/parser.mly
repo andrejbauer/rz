@@ -1,3 +1,4 @@
+
 %{
   (* header *)
   open Syntax
@@ -6,6 +7,8 @@
     raise (Message.Parse (Message.loc_here 1, "parse error"))
 
   exception Impossible
+
+  let foldTheoryFunctor = List.fold_right (fun a t -> TheoryFunctor (a, t))
 
   let makeTermVar strng fxty = Var(None, N(strng, fxty))
   let makeTermPath mdl strng fxty = Var(Some mdl, N(strng, fxty))
@@ -138,7 +141,7 @@ toplevels:
   | toplevel toplevels      { $1 :: $2 }
 
 toplevel:
-  | THEORY TNAME thargs EQUAL theory                  { Theorydef ($2, $3, $5) }
+  | THEORY TNAME thargs EQUAL theory                  { Theorydef ($2, foldTheoryFunctor $3 $5) }
   | COMMENT                                           { TopComment($1) }
   | MODEL TNAME COLON theory                          { TopModel($2, $4) }
 

@@ -95,9 +95,12 @@ and theory_element =
   | Implicit      of string list * set
   | Comment       of string
 
+and model_binding = model_name * theory
+
 and theory = 
     Theory of theory_element list
   | TheoryName of theory_name
+  | TheoryFunctor of model_binding * theory
   | TheoryApp of theory * model
 
 and model = 
@@ -106,7 +109,7 @@ and model =
   | ModelApp of model * model
 
 and toplevel = 
-    Theorydef of theory_name * (model_name * theory) list * theory
+    Theorydef of theory_name * theory
   | TopComment of string
   | TopModel  of string * theory
 
