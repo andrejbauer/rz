@@ -1,0 +1,18 @@
+(1) [April 2, CS] 
+    Is the boolean type in the abstract syntax an
+    abbreviation for a specific sum type, or is it distinct?
+    This would mean True and False are/are not abbreviating injections.
+
+(2) [April 2, CS]
+    If we're really not going to allow higher-order logic, shouldn't
+    the parser reflect this?
+
+(3) [April 2, CS]
+    Why is there no case for Quotients in the Logic.set type?
+    Also, no case for Choose in Logic.term.
+
+
+
+    
+    
+  

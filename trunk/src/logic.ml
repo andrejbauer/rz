@@ -44,7 +44,7 @@ and term =
   | Lambda of binding  * term
   | Inj of label * term
   | Case of term * (label * binding * term) list
-  | Let of name * term * term
+  | Let of binding * term * term
 
 (********************************************************************)
 
@@ -67,9 +67,75 @@ type theory = {
   t_body : theory_element list
 }
 
-module S = Syntax
+(********************************************************************)
+
+(* Substitution functions.
+
+     WARNING:  Not capture-avoiding, so either use this
+     only for closed terms or terms with free variables that
+     are "fresh".
+*)
+
+let rec substProp x t =
+  (let rec sub = function
+      And ps           -> And  (List.map sub ps)
+    | Imply (p1,p2)    -> Imply (sub p1, sub p2)
+    | Iff (p1,p2)      -> Iff  (sub p1, sub p2)
+    | Or  ps           -> Or   (List.map sub ps)
+    | Forall((y,s),p1) -> Forall ((y,substSet x t s), 
+				    if (x=y) then p1 else sub p1)
+    | Exists((y,s),p1) -> Exists ((y,substSet x t s), 
+				    if (x=y) then p1 else sub p1)
+    | Not p1           -> Not (sub p1)
+    | Equal (s,t1,t2)  -> Equal (substSet x t s, subst x t t1, subst x t t2)
+    | t                -> t (* False, True, Atomic n *)
+  in sub)
+
+and substSet x t =
+     (let rec sub = function
+           Product ss       -> Product (List.map sub ss)
+         | Exp (s1,s2)      -> Exp (sub s1, sub s2)
+         | Sum lss          -> Sum (List.map 
+                                      (function (l,s) -> (l, sub s)) 
+                                    lss)
+         | Subset ((y,s),p) -> Subset ((y,sub s),
+				       if (x=y) then p else substProp x t p )
+         | RZ s             -> RZ(sub s)
+(*         | Quotient(s,u)   -> Quotient(sub s, subst x t u) *)
+         | s                    -> s  (* Empty, Unit, InvisibleUnit, *)
+                                      (* Bool, and Basic *)
+     in sub)
+
+and subst x t = 
+    (let rec sub = function
+          Var y             -> if (x=y) then t else Var y
+        | Tuple ts          -> Tuple (List.map sub ts)
+        | Proj (n,t1)       -> Proj (n, sub t1)
+        | App (t1,t2)       -> App (sub t1, sub t2)
+        | Inj (l,t1)        -> Inj (l, sub t1)
+        | Case (t1,arms)    -> Case (t1, subarms arms)
+        | Let ((y,s),t1,t2) -> Let((y,substSet x t s),
+				   sub t1, 
+				   if (x=y) then t2 else sub t2)
+(*
+        | Choose((y,s),t1,t2) ->
+            Choose((y,substSet x t s),
+                     sub t1, 
+                     if (x=y) then t2 else sub t2)
+*)
+        | Star          -> Star
+
+     and subarms = function
+          [] -> []
+        | (l,(y,s),u)::rest ->
+              (l, (y,substSet x t s),
+               if (x=y) then u else sub u ) :: (subarms rest)
+     in sub)
 
 (********************************************************************)
+
+
+module S = Syntax
 
 let rec make_set = function
     S.Empty -> Empty

@@ -17,10 +17,9 @@ BYTE_OBJS = syntax.cmo \
 	parser.cmo \
 	lexer.cmo \
 	context.cmo \
+	logic.cmo \
         outsyn.cmo \
         translate.cmo \
-        outsyn.cmo \
-	logic.cmo
 
 OPT_OBJS = $(subst .cmo,.cmx,$(BYTE_OBJS))
 

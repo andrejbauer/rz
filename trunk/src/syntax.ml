@@ -18,37 +18,37 @@ type set_name = string
 type binding = name * set option
 
 and set =
-    Empty (** empty set *)
-  | Unit (** unit set *)
-  | Bool (** booleans *)
-  | Set_name of set_name (** atomic set *)
-  | Product of set list (** finite product *)
-  | Sum of (label * set option) list (** finite coproduct *)
-  | Exp of set * set (** function space *)
-  | Subset of binding * term (** subset *)
-  | Quotient of set * term (** quotent set *)
-  | RZ of set (** the set of realizers *)
+    Empty                            (** empty set, a.k.a, void *)
+  | Unit                             (** unit set *)
+  | Bool                             (** booleans *)
+  | Set_name of set_name             (** atomic set *)
+  | Product  of set list             (** finite product *)
+  | Sum      of (label * set option) list (** finite coproduct *)
+  | Exp      of set * set            (** function space *)
+  | Subset   of binding * term       (** subset *)
+  | Quotient of set * term           (** quotent set *)
+  | RZ of set                        (** the set of realizers *)
 
 and term =
-    Var of name
+    Var        of name
   | Constraint of term * set
   | Star (** the member of Unit *)
   | False
   | True
-  | Tuple of term list
-  | Proj of int * term (** projection from a tuple *)
-  | App of term * term
-  | Inj of label * term (** injection into a sum type *)
-  | Case of term * (label * binding option * term) list
-  | Quot of term * term (** quotient under equivalence relation *)
+  | Tuple  of term list
+  | Proj   of int   * term (** projection from a tuple *)
+  | App    of term  * term
+  | Inj    of label * term (** injection into a sum type *)
+  | Case   of term  * (label * binding option * term) list
+  | Quot   of term  * term (** quotient under equivalence relation *)
   | Choose of binding * term * term (** elimination of equivalence class *)
-  | And of term list
-  | Imply of term * term
-  | Iff of term * term
-  | Or of term list
-  | Not of term
-  | Equal of set option * term * term
-  | Let of binding * term * term
+  | And    of term list
+  | Imply  of term  * term
+  | Iff    of term  * term
+  | Or     of term list
+  | Not    of term
+  | Equal  of set option * term * term
+  | Let    of binding * term * term
   | Lambda of binding * term
   | Forall of binding * term
   | Exists of binding * term
@@ -67,17 +67,17 @@ type sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 type stability = Stable | Unstable
 
 type theory_element =
-    Set of set_name * set option
-  | Predicate of name * stability * set
+    Set           of set_name * set option
+  | Predicate     of name * stability * set
   | Let_predicate of name * binding list * term
-  | Let_term of binding * term
-  | Value of name * set
-  | Variable of name * set
-  | Define of name * term       (* CS: what's the semantic difference
-                                   between Let_term and Define? *)
-  | Sentence of sentence_type * name * binding list * term
-  | Model of string * theory
-  | Subtheory of theoryspec (* AB: Do we want subtheories? *)
+  | Let_term      of binding * term
+  | Value         of name * set
+  | Variable      of name * set
+  | Define        of name * term   (* CS: what's the semantic difference
+                                      between Let_term and Define? *)
+  | Sentence      of sentence_type * name * binding list * term
+  | Model         of string * theory
+  | Subtheory     of theoryspec (* AB: Do we want subtheories? *)
       
 and theoryspec = {t_arg  : theory_element list option;
                   t_name : string ;
@@ -86,3 +86,68 @@ and theoryspec = {t_arg  : theory_element list option;
 and theory = 
      Theory of theory_element list
   |  TheoryID of string
+
+
+(* Substitution functions.
+
+     WARNING:  Not capture-avoiding, so either use this
+     only for closed terms or terms with free variables that
+     are "fresh".
+*)
+
+exception Unimplemented
+
+let rec subst x t = 
+     let rec sub = function
+          Var y           -> if (x=y) then t else Var y
+        | Constraint(u,s) -> Constraint(sub u, substSet x t s)
+        | Tuple ts      -> Tuple(List.map sub ts)
+        | Proj(n,t1)    -> Proj(n, sub t1)
+        | App(t1,t2)    -> App(sub t1, sub t2)
+        | Inj(l,t1)     -> Inj(l, sub t1)
+        | Case(t1,arms) -> Case(t1,subarms arms)
+        | Quot(t1,t2)   -> Quot(sub t1, sub t2)
+        | Choose((y,sopt),t1,t2) ->
+            Choose((y,substSetOption x t sopt),
+                     sub t1, 
+                     if (x=y) then t2 else sub t2)
+        | And ts        -> And(List.map sub ts)
+        | Imply(t1,t2)  -> Imply(sub t1, sub t2)
+        | Iff(t1,t2)    -> Iff(sub t1, sub t2)
+        | Or ts         -> Or(List.map sub ts)
+        | Not t         -> Not(sub t)
+        | Equal(sopt,t1,t2) -> Equal(substSetOption x t sopt,
+                                         sub t1, sub t2)
+        | Let((y,sopt),t1,t2) ->
+            Let((y,substSetOption x t sopt),
+                  sub t1, 
+                  if (x=y) then t2 else sub t2)
+        | Forall((y,sopt),t1) -> 
+            Forall((y,substSetOption x t sopt),
+                     if (x=y) then t1 else sub t1)
+        | Exists((y,sopt),t1) -> 
+            Exists((y,substSetOption x t sopt),
+                     if (x=y) then t1 else sub t1)
+        | t               -> t
+     and subarms = function
+          [] -> []
+        | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
+        | (l,Some(y,sopt),u)::rest ->
+              (l,Some(y,substSetOption x t sopt),
+               if (x=y) then u else sub u        )::(subarms rest)
+     in sub
+
+and substSet x t =
+     let rec sub = function
+           Product ss         -> Product(List.map sub ss)
+         | Exp(s1,s2)         -> Exp(sub s1, sub s2)
+         | Subset((y,sopt),u) ->
+              Subset((y,substSetOption x t sopt),
+                       if (x=y) then u else subst x t u )
+         | Quotient(s,u)      -> Quotient(sub s, subst x t u)
+         | s                    -> s
+     in sub
+
+and substSetOption x t = function
+      None   -> None
+    | Some s -> Some (substSet x t s)

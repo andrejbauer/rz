@@ -22,69 +22,6 @@ let rec isNegative = function
     | S.And ps        -> List.for_all isNegative ps
     | _               -> false
 
-(* Substitution functions.
-
-     WARNING:  Not capture-avoiding, so either use this
-     only for closed terms or terms with free variables that
-     are "fresh".
-*)
-
-exception Unimplemented
-
-let rec subst x t = 
-     let rec sub = function
-          S.Var y           -> if (x=y) then t else S.Var y
-        | S.Constraint(u,s) -> S.Constraint(sub u, substSet x t s)
-        | S.Tuple ts      -> S.Tuple(List.map sub ts)
-        | S.Proj(n,t1)    -> S.Proj(n, sub t1)
-        | S.App(t1,t2)    -> S.App(sub t1, sub t2)
-        | S.Inj(l,t1)     -> S.Inj(l, sub t1)
-        | S.Case(t1,arms) -> S.Case(t1,subarms arms)
-        | S.Quot(t1,t2)   -> S.Quot(sub t1, sub t2)
-        | S.Choose((y,sopt),t1,t2) ->
-            S.Choose((y,substSetOption x t sopt),
-                     sub t1, 
-                     if (x=y) then t2 else sub t2)
-        | S.And ts        -> S.And(List.map sub ts)
-        | S.Imply(t1,t2)  -> S.Imply(sub t1, sub t2)
-        | S.Iff(t1,t2)    -> S.Iff(sub t1, sub t2)
-        | S.Or ts         -> S.Or(List.map sub ts)
-        | S.Not t         -> S.Not(sub t)
-        | S.Equal(sopt,t1,t2) -> S.Equal(substSetOption x t sopt,
-                                         sub t1, sub t2)
-        | S.Let((y,sopt),t1,t2) ->
-            S.Let((y,substSetOption x t sopt),
-                  sub t1, 
-                  if (x=y) then t2 else sub t2)
-        | S.Forall((y,sopt),t1) -> 
-            S.Forall((y,substSetOption x t sopt),
-                     if (x=y) then t1 else sub t1)
-        | S.Exists((y,sopt),t1) -> 
-            S.Exists((y,substSetOption x t sopt),
-                     if (x=y) then t1 else sub t1)
-        | t               -> t
-     and subarms = function
-          [] -> []
-        | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
-        | (l,Some(y,sopt),u)::rest ->
-              (l,Some(y,substSetOption x t sopt),
-               if (x=y) then u else sub u        )::(subarms rest)
-     in sub
-
-and substSet x t =
-     let rec sub = function
-           S.Product ss         -> S.Product(List.map sub ss)
-         | S.Exp(s1,s2)         -> S.Exp(sub s1, sub s2)
-         | S.Subset((y,sopt),u) ->
-              S.Subset((y,substSetOption x t sopt),
-                       if (x=y) then u else subst x t u )
-         | S.Quotient(s,u)      -> S.Quotient(sub s, subst x t u)
-         | s                    -> s
-     in sub
-
-and substSetOption x t = function
-      None   -> None
-    | Some s -> Some (substSet x t s)
       
 (* Generates variable names x0, x1, ...
    For now we will hope that the user doesn't use these names too.
@@ -166,6 +103,8 @@ around typing contexts.
 
 *)
 
+exception Unimplemented
+
 let rec translateSet = function
     L.Empty -> 
       { ty = VoidTy;
@@ -197,7 +136,7 @@ let rec translateSet = function
 	      (t, And (
 		 let k = ref 0 in
 		   List.map (fun {tot=(x,p)} ->
-			       let q = subst [(x, Proj (!k, Ident t))] p in incr k ; q) us
+			       let q = subst_negative [(x, Proj (!k, Ident t))] p in incr k ; q) us
 	       )
 	      )
 	  );
@@ -207,7 +146,7 @@ let rec translateSet = function
 	      (t, u, And (
 		 let k = ref 0 in
 		   List.map (fun {per=(x,y,p)} ->
-			       let q = subst [(x, Proj (!k, Ident t)), (y, Proj (!k, Ident u))] p in
+			       let q = subst_negative [(x, Proj (!k, Ident t)); (y, Proj (!k, Ident u))] p in
 				 incr k; q
 			    ) us
 	       )
@@ -219,74 +158,79 @@ let rec translateSet = function
       let v = translateSet t in
 	{ ty = ArrowTy (u.ty, v.ty);
 	  tot = (
-	    let x = fst u.tot in
-	    let y = fst v.tot in
+	    let (x,uneg) = u.tot in
+	    let (y,vneg) = v.tot in
 	    let f = find_name ["f"; "g"; "h"] [x; y] in
-	      (f, Forall (x, u.ty, Imply (snd u.tot, subst [y, (App (f, x))] (snd v.tot)))
+	      (f, Forall (x, u.ty, Imply (uneg, subst_negative [(y, (App (Ident f, Ident x)))] (vneg)))
 	      )
 	  );
 	  per = (
-	    let x1, x2 = fst u.per in
-	    let y1, y2 = fst v.per in
+	    let (x1, x2, uneg) = u.per in
+	    let (y1, y2, vneg) = v.per in
 	    let f = find_name ["f"; "g"; "h"] [x1; x2] in
 	    let g = find_name ["f"; "g"; "h"] [x1; x2; f] in
 	      (f, g, (Forall (x1, u.ty,
 				Forall (x2, u.ty,
-					Imply (snd u.per, subst [(y1, App (f, x1)); (y2, App (g, x2))] (snd v.per))
-				))))
+					Imply (uneg, subst_negative [(y1, App (Ident f, Ident x1)); (y2, App (Ident g, Ident x2))] (vneg))
+				)))) 
 	  )
+
 	}
+
 (* remaining cases:
   | Sum of (label * set) list
   | Subset of binding * proposition
   | RZ of set
+  | Quotient, if we add this to Logic
 *)
 
 let rec translateTerm = function
-    L.Var n -> Ident n
+    L.Var (n,_) -> Ident n
   | L.Star -> Star
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
   | L.Proj (k, t) -> Proj (k, translateTerm t)
   | L.App (u, v) -> App (translateTerm u, translateTerm v)
-  | L.Lambda ((n, s), t) -> Lambda (n, translateSet s, translateTerm t)
+  | L.Lambda (((n,_), s), t) -> Lambda (n, translateSet s, translateTerm t)
   | L.Inj (lb, t) -> Inj (lb, translateTerm t)
-  | L.Case (t, lst) -> Cases (translateTerm t, List.map (fun (lb, (n, s), t) -> (lb, n, (translateSet s).ty, translateTerm)) lst)
-  | L.Let (n, u, v) -> Let (n, translateTerm u, translateTerm v)
+  | L.Case (t1, lst) -> Cases (translateTerm t1, List.map (fun (lb, ((n,_), s), t) -> (lb, n, (translateSet s).ty, translateTerm t)) lst)
+  | L.Let (((n,_),s), u, v) -> Let (n, translateTerm u, translateTerm v)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
 let rec translateProposition ctx = function
     L.False -> (VoidTy, "_", False)
   | L.True -> (UnitTy, "_", True)
-  | L.Atomic (n, t) -> (NamedTy n, translateTerm t, raise Unimplemented)
+  | L.Atomic ((n,_), t) -> (NamedTy n, raise Unimplemented, raise Unimplemented)
   | L.And lst ->
       let lst' = List.map (translateProposition ctx) lst in
       let t = find_name ["t"; "p"; "u"; "q"; "r"] (List.map fst ctx) in
-	(TupleTy (List.map fst lst'), t,
+	(TupleTy (List.map (function(s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
-		List.map (fun (_, x, p) -> let q = subst [(x, Proj (!k, t))] p in incr k ; q) lst))
+		List.map (fun (_, x, p) -> let q = subst_negative [(x, Proj (!k, Ident t))] p in incr k ; q) lst'))
   | L.Imply (p, q) ->
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
       let f = find_name ["f"; "g"; "h"; "p"; "q"] (x :: (List.map fst ctx)) in
-	(ArrowTy (t, u), f, Forall (x, t, Imply (p, subst [(y, App (f, x))] q)))
+	(ArrowTy (t, u), f, Forall (x, t, Imply (p', subst_negative [(y, App (Ident f, Ident x))] q')))
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
       let f = find_name ["f"; "g"; "h"; "p"; "q"; "r"] (x :: y :: (List.map fst ctx)) in
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
-	 f, And (
-	   Forall (x, t, Imply (p, subst [(y, App (Proj (0, f), x))] q)),
-	   Forall (y, u, Imply (q, subst [(x, App (Proj (1, f), y))] p))
-	 ))
+	 f, And [
+	   Forall (x, t, Imply (p', subst_negative [(y, App (Proj (0, Ident f), Ident x))] q'));
+	   Forall (y, u, Imply (q', subst_negative [(x, App (Proj (1, Ident f), Ident y))] p'))])
 
   | L.Or ps -> raise Unimplemented
 
-  | L.Forall ((n, s), p) ->
+  | L.Forall (((n,_), s), p) -> raise Unimplemented
+(*
+  need to translate p too
       let s' = translateSet s in
       let n' = find_name [n] (List.map fst ctx) in
 	Forall (n', s', p)
+*)
 
-  | L.Exists ((n, s), p) -> raise Unimplemented
+  | L.Exists (((n,_), s), p) -> raise Unimplemented
 
   | L.Not p -> raise Unimplemented
 
