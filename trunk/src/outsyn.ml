@@ -14,6 +14,8 @@ type ty =
 
 type name = Syntax.name
 
+type set_name = Syntax.set_name
+
 type modest = {
   ty : ty;
   tot : name *  proposition;
@@ -40,9 +42,9 @@ and term =
 and proposition =
   | True
   | False
-  | NamedTotal of string * term
-  | NamedPer of string * term * term
-  | NamedProp of string * term * term
+  | NamedTotal of set_name * term
+  | NamedPer of set_name * term * term
+  | NamedProp of set_name * term * term
   | Equal of term * term
   | And of proposition list
   | Cor of proposition list (** classical or *)
@@ -52,9 +54,9 @@ and proposition =
   | Forall of binding * proposition
 
 type signat_element =
-    ValSpec of name * modest * term option
-  | TySpec of string * modest option  (* monomorphic for now *)
-  | SentenceSpec of name * binding list * (ty * name * proposition)
+    ValSpec of name * ty
+  | AssertionSpec of binding list * proposition
+  | TySpec of set_name * ty option
 
 type signat = {
   s_name : string;
@@ -265,9 +267,9 @@ and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
-    | NamedTotal (n, t) -> (0, "Tot_" ^ n ^ "(" ^ (string_of_term t) ^ ")")
-    | NamedPer (n, t, u) -> (9, (string_of_term' 9 u) ^ " =_" ^ n ^ " " ^ (string_of_term' 9 t))
-    | NamedProp (n, t, u) -> (9, "Rz_" ^ n ^ "(" ^ (string_of_term t) ^ ", " ^
+    | NamedTotal (n, t) -> (0, "Tot_" ^ (string_of_name n) ^ "(" ^ (string_of_term t) ^ ")")
+    | NamedPer (n, t, u) -> (9, (string_of_term' 9 u) ^ " =_" ^ (string_of_name n) ^ " " ^ (string_of_term' 9 t))
+    | NamedProp (n, t, u) -> (9, "Rz_" ^ (string_of_name n) ^ "(" ^ (string_of_term t) ^ ", " ^
 				(string_of_term u) ^ ")")
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
     | And [] -> (0, "true")
@@ -284,30 +286,18 @@ and string_of_prop level p =
     
 and string_of_proposition p = string_of_prop 999 p
 
+let string_of_bind bind =
+    String.concat ", " (List.map (fun (n,t) -> (string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
+
 let string_of_spec ctx = function
-      ValSpec (name, {ty=t; tot=(x,p); per=(y,z,q)}, v) ->
-	"val " ^ (string_of_name name) ^ " : " ^ (string_of_ty t) ^ "\n" ^
-	"(** " ^ (string_of_proposition (substProp ctx [(x, Id name)] p)) ^ " *)" ^
-	(match v with
-	     None -> ""
-	   | Some v -> " (** " ^ (string_of_proposition (substProp ctx [(y, Id name); (z, v)] q)) ^ " *)\n"
-	)
-    | TySpec  (name, None) ->
-	"type " ^ name
-    | TySpec  (name, Some {ty=t; tot=(x,p); per=(y,z,q)}) ->
-	"type " ^ name ^ " = " ^ (string_of_ty t) ^ "\n(**\n" ^ (
-	  (string_of_name x) ^ " : " ^ (string_of_proposition p) ^ "\n" ^
-	  (string_of_name y) ^ ", " ^ (string_of_name z) ^ " : " ^
-	  (string_of_proposition q)
-	) ^ "\n*)"
-    | SentenceSpec (name, bind, (t, n, p)) ->
-	let u = ArrowTy (TupleTy (List.map snd bind), t) in
-	let tp = Tuple (List.map (fun b -> Id (fst b)) bind)
-	in
-	  "val " ^ (string_of_name name) ^ " : " ^ (string_of_ty u) ^ "\n(** " ^
-	  (string_of_term tp) ^ " : " ^
-	  (string_of_proposition (substProp ctx [(n, App (Id name, tp))] p)
-	  ) ^ " *)"
+    ValSpec (name, ty) ->
+      "val " ^ (string_of_name name) ^ " : " ^ (string_of_ty ty)
+    | TySpec (name, None) -> "type " ^ (string_of_name name)
+    | TySpec (name, Some ty) -> "type " ^ (string_of_name name) ^ " = " ^ (string_of_ty ty)
+    | AssertionSpec (bind, p) ->
+	"(**\n" ^
+	(if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
+	(string_of_proposition p) ^ "\n*)"
 
 let string_of_signat { s_name = s; s_arg = arg; s_body = body } = 
   "module type " ^ s ^

@@ -76,6 +76,7 @@ let rec toSubset ctx = function
 
 let any = mk_word "_"
 
+(*
 let make_type_name _ = function
     (n, Syntax.Word) -> n
   | ("<", _) -> "lt"
@@ -85,6 +86,7 @@ let make_type_name _ = function
   | ("=", _) -> "eq"
   | ("<>", _) -> "neq"
   | (s, _) -> s
+*)
 
 (** translation functions *)
 
@@ -108,10 +110,10 @@ let rec translateSet ctx = function
                           Equal (Id x, mk_id "false")]));
 	  per = (x, y, Equal (Id x, Id y))
       }
-  | L.Basic (s, _) ->
+  | L.Basic s ->
       let x = fresh [mk_word "x"; mk_word "u"] [] ctx in
       let y = fresh [mk_word "y"; mk_word "v"] [x] ctx in
-	{ ty = NamedTy s;
+	{ ty = NamedTy (fst s);
 	  tot = (x, NamedTotal (s, Id x));
 	  per = (x, y, NamedPer (s, Id x, Id y))
 	}
@@ -246,8 +248,7 @@ and translateProp ctx = function
 
   | L.Atomic (n, t) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
-      let n' = make_type_name ctx n in
-	(NamedTy n', r, NamedProp (n', Id r, translateTerm ctx t))
+	(NamedTy (fst n), r, NamedProp (n, Id r, translateTerm ctx t))
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
@@ -337,45 +338,79 @@ and translateProp ctx = function
       let u' = translateTerm ctx u in
 	(UnitTy, any, substProp ctx [(x,t'); (y,u')] p)
 
-let translateBinding ctx (n, s) = (n, (translateSet ctx s).ty)
+let translateBinding ctx bind = List.map (fun (n, s) -> (n, (translateSet ctx s).ty)) bind
 
 let translateTheoryElement ctx = function
     L.Set n -> 
-      TySpec (fst n, None),
+      [TySpec (n, None)],
       addBind n L.SET ctx
 
   | L.Let_set (n, s) ->
-      TySpec (fst n, Some (translateSet ctx s)),
+      (let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
+	[TySpec (n, Some t);
+	 AssertionSpec ([(x,t)], Iff (NamedTotal (n, Id x), p));
+	 AssertionSpec ([(y,t); (y',t)], Iff (NamedPer (n, Id y, Id y'), q))
+	]
+      ),
       addSet n s ctx
 
   | L.Predicate (n, _, s) ->
-      TySpec (make_type_name ctx n, None),
+      [TySpec (n, None)],
       addBind n (L.Exp (s, L.PROP)) ctx
 
   | L.Let_predicate (n, bind, p) ->
       failwith "predicate definitions not implemented"
 
-  | L.Let_term (n, s, t) -> raise Unimplemented
+  | L.Let_term (n, s, t) ->
+      failwith "term definitions not implemented"
 
   | L.Value (n, s) ->
-      ValSpec (n, translateSet ctx s, None),
+      let {ty=t; tot=(x,p)} = translateSet ctx s in
+      [ValSpec (n, t);
+       AssertionSpec ([], substProp ctx [(x, Id n)] p)
+      ],
       addBind n s ctx
 
   | L.Define (n, s, t) ->
-      ValSpec (n, translateSet ctx s, Some (translateTerm ctx t)),
-      addTerm n t ctx
+      (let {ty=ty; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
+       let t' = translateTerm ctx t in
+	 [ValSpec (n, ty);
+	  AssertionSpec ([], substProp ctx [(x, Id n)] p);
+	  AssertionSpec ([], substProp ctx [(y, Id n); (y', t')] q)
+	 ]
+      ),
+      addBind n s ctx
 
   | L.Sentence (_, n, bind, p) ->
-	SentenceSpec (n, List.map (translateBinding ctx) bind,
-		      translateProp (addBinding bind ctx) p),
-	addProp n (bind, p) ctx
+      begin
+	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in
+	let (ty, x, p') = translateProp ctx' p in
+	let p'' = substProp ctx' [(x, App (Id n, Tuple (List.map (fun (x,_) -> Id x) bind)))] p' in
+	let rec fold cx tots = function
+	    [] -> [],
+	      (match List.rev tots with
+		   [] -> p''
+		 | [q] -> Imply (q, p'')
+		 | qs -> Imply (And qs, p'')
+	      )
+	  | (x, s) :: bs ->
+	      let {ty=t; tot=(y,q)} = translateSet cx s in
+	      let (cx, r) = fold (addBind x s cx) ((substProp cx [(y, Id x)] q)::tots) bs in
+		((x,t)::cx), r
+	in
+	let (b, r) = fold ctx [] bind in 
+	  [ ValSpec (n, ArrowTy (TupleTy (List.map snd b), ty));
+	    AssertionSpec (b, r)
+	  ]
+      end,
+      addProp n (bind, p) ctx
 
 let rec translateTheoryBody ctx = function
     [] -> ctx, []
   | elem::elems ->
-      let e, ctx' = translateTheoryElement ctx elem in
+      let es, ctx' = translateTheoryElement ctx elem in
       let ctx'', th = translateTheoryBody ctx' elems in
-	ctx'', (e :: th)
+	ctx'', (es @ th)
 
 let translateTheory {L.t_name=name; L.t_arg=args; L.t_body=body} =
   let ctx, args' =
