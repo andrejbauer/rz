@@ -577,7 +577,7 @@ and translateTheory ctx = function
     L.Theory body -> 
       let body', ctx' = translateTheoryBody ctx body in
 	Signat body', ctx'
-  | L.TheoryID id -> SignatID id, ctx
+  | L.TheoryName id -> SignatName id, ctx
 
 (*
 and processModelBinding ctx = function

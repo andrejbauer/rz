@@ -1,11 +1,28 @@
-theory UniqueExistence =
+theory Nat =
 thy
-  set s
-  set t
+  set nat
+end
 
-  stable predicate p : s * t
+theory Real(N : Nat) =
+thy
+  set real
+  const inject : N.nat -> real
+end
 
-  axiom hh (x : s) = some1 (y:t) . p(x,y)
+theory Foo =
+thy
+  model N : Nat
+  model R : Real
 
+  model F2 : Real(N)
+
+  set s = R(N).real
+
+  const x : R(N).real
+
+  const i = R(N).inject
+
+  (* Here is an application of theory to a model *)
+  model Q : Real(N)
 
 end

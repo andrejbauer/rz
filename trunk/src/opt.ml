@@ -465,8 +465,8 @@ and optElems ctx = function
 
 
 and optSignat ctx = function
-    SignatID s ->
-      SignatID s, lookupModel ctx s
+    SignatName s ->
+      SignatName s, lookupModel ctx s
   | Signat body -> 
       let body', ctx' = optElems ctx body in
 	Signat body', ctx'

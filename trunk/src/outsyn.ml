@@ -70,7 +70,7 @@ type signat_element =
   | Comment of string
 
 and signat =
-    SignatID of string
+    SignatName of string
   | Signat of signat_element list
 
 and struct_binding = string * signat
@@ -549,7 +549,7 @@ let rec string_of_spec = function
     | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
 and string_of_signat = function
-    SignatID s -> s
+    SignatName s -> s
   | Signat body -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
 
 let string_of_toplevel = function

@@ -138,19 +138,17 @@ toplevels:
   | toplevel toplevels      { $1 :: $2 }
 
 toplevel:
-  | THEORY TNAME thargs EQUAL TNAME                   { Theorydef ($2, [], TheoryID $5) }
-  | THEORY TNAME thargs EQUAL THY theory_elements END { Theorydef ($2, $3, Theory $6) }
-  | COMMENT                                    { TopComment($1) }
-  | MODEL TNAME COLON TNAME                    { TopModel($2, TheoryID $4) }
-  | MODEL TNAME COLON THY theory_elements END  { TopModel($2, Theory $5) }
-
+  | THEORY TNAME thargs EQUAL theory                  { Theorydef ($2, $3, $5) }
+  | COMMENT                                           { TopComment($1) }
+  | MODEL TNAME COLON theory                          { TopModel($2, $4) }
 
 thargs:
   |                                         { [] }
   | LPAREN TNAME COLON theory RPAREN thargs { ($2, $4) :: $6 }
 
 theory:
-  | TNAME                               { TheoryID $1 }
+  | TNAME                               { TheoryName $1 }
+  | theory LPAREN model RPAREN          { TheoryApp ($1, $3) }
   | THY theory_elements END             { Theory $2 }
 
 theory_elements:
@@ -173,8 +171,7 @@ theory_element:
   | EQUIVALENCE name COLON set   { Predicate ($2, Equivalence, $4) }
   | EQUIVALENCE name args EQUAL term  { Let_predicate ($2, Equivalence, $3, $5) }
   | thm name margs args EQUAL term    { Sentence ($1, $2, $3, $4, $6) }
-  | MODEL TNAME COLON TNAME                  { Model($2, TheoryID $4) }
-  | MODEL TNAME COLON THY theory_elements END    { Model($2, Theory $5) }
+  | MODEL TNAME COLON theory          { Model($2, $4) }
   | IMPLICIT name_list COLON set  { Implicit($2, $4) }
   | COMMENT                       { Comment($1) }
 
@@ -207,10 +204,14 @@ name:
   | LPAREN INFIXOP3 RPAREN        { N($2, Infix3) }
   | LPAREN STAR RPAREN            { N("*", Infix3) }
 
+model:
+    TNAME                        { ModelName $1 }
+  | model PERIOD TNAME           { ModelProj ($1, $3) }
+  | model LPAREN model RPAREN    { ModelApp ($1, $3) }
+	
 path:
-    TNAME PERIOD                 { ModelName $1 }
-  | path TNAME PERIOD            { ModelProj ($1, $2) }
-
+    model PERIOD                 { $1 }
+ 
 longtermname:
     path NAME                     { makeTermPath $1 $2 Word }
   | LPAREN path PREFIXOP RPAREN   { makeTermPath $2 $3 Prefix }

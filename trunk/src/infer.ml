@@ -1301,8 +1301,8 @@ and annotateTheory cntxt = function
 	let (elems',specs) = annotateTheoryElems cntxt elems
         in (Theory elems', specs)
 
-  | TheoryID str -> (match peekTheory cntxt str with
-			 Some ([],specs) -> (TheoryID str, specs)
+  | TheoryName str -> (match peekTheory cntxt str with
+			 Some ([],specs) -> (TheoryName str, specs)
                        | Some (_,_) -> 
 			   tyGenericError ("Use of parameterized theory: " ^
 					   str)

@@ -41,10 +41,6 @@ and set =
   | EquivProp                        (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
 
-and model = 
-  | ModelName of model_name
-  | ModelProj of model * label
-
 and term =
     Var        of name
   | Constraint of term * set
@@ -103,7 +99,13 @@ and theory_element =
 
 and theory = 
     Theory of theory_element list
-  | TheoryID of theory_name
+  | TheoryName of theory_name
+  | TheoryApp of theory * model
+
+and model = 
+  | ModelName of model_name
+  | ModelProj of model * label
+  | ModelApp of model * model
 
 and toplevel = 
     Theorydef of theory_name * (model_name * theory) list * theory
@@ -173,8 +175,8 @@ and string_of_term trm =
     | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
     | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
-    | Inj (lbl, Some trm) -> "(" ^ lbl ^ " " ^ toStr trm ^ ")"
-    | Inj (lbl, None) -> lbl 
+    | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
+    | Inj (lbl, None) -> "`" ^ lbl 
     | Case (_,_) -> "..."
     | Quot (_,_) -> "..."
     | RzQuot t -> "[" ^ (toStr t) ^ "]"

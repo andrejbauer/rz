@@ -378,7 +378,7 @@ and output_specs ppf = function
       fprintf ppf "%a@, @,%a" output_spec spec output_specs specs
 
 and output_signat ppf = function
-    SignatID s -> fprintf ppf "%s" s
+    SignatName s -> fprintf ppf "%s" s
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
 
 and output_toplevel ppf = function

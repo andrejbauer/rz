@@ -115,7 +115,7 @@ and theory_element =
 
 and theory = 
     Theory of theory_element list
-  | TheoryID of string
+  | TheoryName of string
 
 and toplevel =
     Theorydef of string * model_binding list * theory
@@ -407,7 +407,7 @@ and make_theory_element = function
 
 and make_theory = function
     S.Theory elems -> Theory (List.map make_theory_element elems)
-  | S.TheoryID id -> TheoryID id
+  | S.TheoryName id -> TheoryName id
 
 and make_toplevel = function
     S.Theorydef(str, args, thr) ->
