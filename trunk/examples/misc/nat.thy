@@ -17,7 +17,7 @@ thy
                          const x : a
                          const s : a -> a
                      end] =
-    some1 (f : nat -> I.a) . (
+    unique (f : nat -> I.a) . (
       f zero = I.x and
       (all (n : nat) . f (succ n) = I.s (f n))
       and

@@ -48,6 +48,7 @@
       "theory", THEORY;
       "thy", THY ;
       "true", TRUE;
+      "unique", UNIQUE;
       "with", WITH
     ]
 
