@@ -31,6 +31,9 @@ let addTerm n t ctx = (n, CtxTerm t) :: ctx
 let addSet  n s ctx = (n,  CtxSet s) :: ctx
 let addProp n (b,p) ctx = (n, CtxProp (b,p)) :: ctx
 
+let addBinding bind ctx =
+  List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
+
 let getBind n ctx =
   let rec find = function
       [] -> raise Not_found
@@ -363,8 +366,9 @@ let translateTheoryElement ctx = function
       addTerm n t ctx
 
   | L.Sentence (_, n, bind, p) ->
-      SentenceSpec (n, List.map (translateBinding ctx) bind, translateProp ctx p),
-      addProp n (bind, p) ctx
+	SentenceSpec (n, List.map (translateBinding ctx) bind,
+		      translateProp (addBinding bind ctx) p),
+	addProp n (bind, p) ctx
 
 let rec translateTheoryBody ctx = function
     [] -> ctx, []
