@@ -386,6 +386,14 @@ and annotateTheoryElem ctx =
            in
 	     (Predicate (n, stab, s'),
               insertType ctx n (Exp (s', Prop)))
+       |  Let_predicate(n, bnds, p) ->
+	   let    (bnds', ctx') = annotateBindings ctx bnds
+	   in let tys = List.map (function (_,Some ty) -> ty) bnds'
+	   in let p' = annotateProp ctx' p
+	   in
+	     (Let_predicate(n, bnds', p'),
+	      insertType ctx n (List.fold_right 
+				  (fun x y -> Exp(x,y)) tys Prop))
        | Implicit(_,_) -> raise Impossible (* see below *)
     in
       ann
