@@ -197,7 +197,7 @@ type theory_summary_item =
   | ModelSpec  of model_name * theory_summary_item list 
      (** Model and its contents.  NB: The contents are stored with the
        first item in the list being the first item in the model! 
-       This is backwards from the items list of a typing context,
+       This is BACKWARDS from the items list of a typing context,
        where the first item in the model becomes the last item of
        the list, but both make sense. *)
   | OtherSpec (** Some logical sentence or a comment; 
@@ -207,8 +207,9 @@ type theory_summary_item =
     are stored separately, because they are not components of any model.
     (Theories can refer to top-level models defined previously, however.)
 
-    XXX Once theories can depend on models, is there any reason to
-    forbid theories from being defined inside models?
+    Question:  Once theories can depend on models, is there any reason to
+    forbid theories from being defined inside models?  Yes; ML doesn't
+    permit signatures to be defined inside other signatures.
 *)
 
 type cntxt = {implicits: set StringMap.t;
@@ -1354,7 +1355,7 @@ and annotateTheoryElem cntxt = function
 		    (string_of_name n) ^ " is stable")
 
   | Model (mdlnm, thry) ->
-      let (thry', contents) = annotateTheory cntxt thry
+      let (thry', [], contents) = annotateTheory cntxt thry
       in let cntxt' = insertModel cntxt mdlnm contents
       in 
         (cntxt', 
@@ -1380,33 +1381,60 @@ and annotateTheoryElems cntxt = function
 and annotateModelBindings cntxt = function
     [] -> [], cntxt
   | (m, th) :: bnd ->
-      let (th',specs) = annotateTheory cntxt th in
+      let (th', [], specs) = annotateTheory cntxt th in
       let (bnd', cntxt') = annotateModelBindings cntxt bnd in
 	((m, th') :: bnd', (insertModel cntxt' m specs))
 
 and annotateTheory cntxt = function
-  | Theory elems ->
-	let (elems',specs) = annotateTheoryElems cntxt elems
-        in (Theory elems', specs)
+    Theory elems ->
+	let ( elems', specs ) = annotateTheoryElems cntxt elems
+        in  ( Theory elems', [], specs )
 
   | TheoryName str -> (match peekTheory cntxt str with
-			 Some ([],specs) -> (TheoryName str, specs)
-                       | Some (_,_) -> 
-			   tyGenericError ("Use of parameterized theory: " ^
-					   str)
+			 Some (args,specs) -> (TheoryName str, args, specs)
 		       | None -> tyGenericError ("Unknown theory: " ^ str))
+
+  | _ -> raise Impossible
+(*
+ 
+  | TheoryFunctor ( arg, thry ) ->
+	let ( [arg'], cntxt' ) = annotateModelBindings cntxt [arg] in
+	let (thry', args', body_items) = annotateTheory cntxt' thry in 
+          ( TheoryFunctor ( args', thry'), arg' :: args', body_items)
+
+   | TheoryApp (thry, mdl) -> 
+        let (thry', args, body_items) = annotateTheory cntxt thry in
+        let (mdl', thry_specs, sub) = annotateModel cntxt mdl in
+          match args with
+            (* XXX We want a Syntax.string_of_theory function!!! 
+             *)
+            []        -> tyGenericError 
+                            "Application of non-parameterized theory"
+          | (arg,argthry)::rest -> 
+                (* XXX is not checking the validity of the application!!! 
+                 *)
+                ( TheoryApp ( thry', mdl' ),
+                  (* XXX  substTheory isn't capture avoiding!!!
+                   *)
+                  let sub = insertModelvar emptysubst arg mdl'
+                  in let (mbnds', sub') = substMBnds sub rest
+                  in let body_items' = substItems sub' body_items
+                  in  substTheory (insertModelvar emptysubst arg mdl')
+                              thr'
+*)            
 
 
 and annotateToplevel cntxt = function
-      Theorydef (str, args, thr) -> 
-	let (args', cntxt') = annotateModelBindings cntxt args in
-	let (thr', body_items) = annotateTheory cntxt' thr
-	in (Theorydef (str, args', thr'), 
+      Theorydef (str, thry) ->
+        let (thry', args, body_items) =  annotateTheory cntxt thry
+	in (Theorydef (str, thry'), 
 	    insertTheory cntxt str args body_items)
+
   |  TopComment cmmnt ->
        (TopComment cmmnt, cntxt)
+
   |  TopModel (mdlnm, thry) ->
-      let (thry',specs) = annotateTheory cntxt thry in
+      let (thry', [], specs) = annotateTheory cntxt thry in
 	(TopModel(mdlnm, thry'),
 	 insertModel cntxt mdlnm specs)
 
