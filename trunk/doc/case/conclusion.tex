@@ -1,24 +1,13 @@
 \section{Conclusions and Future Work}
 \label{sec:conclusion}
 
-We have presented the current prototype implementation of 
-\emph{RZ}, for automatic generation of
-program specifications from mathematical theories. We translate
-mathematical theories to specifications by computing their
-realizability interpretations in an ML-like language augmented with
-assertions. While the system is best suited for descriptions of those
-programming tasks that can be easily described in mathematical
-language (e.g., algorithms on finitely presented groups, exact real
-arithmetic, algorithms on graphs, etc.), it also elucidates the
-relationship between data structures and constructive mathematics.
-
 By translating only at the level of specifications, \emph{RZ} provides a
 useful middle ground between ad-hoc implementations and
 machine-generated implementations --- allowing much more flexible
 implementation strategies, but relying on the programmer to
 verify properties of their code.
 
-Further, \emph{RZ} can serve as tool for explain constructive
+Further, \emph{RZ} can serve as a means of explaining constructive
 mathematics to programmers.  Programmers who are not knowledgeable
 about constructive mathematics can still understand the output of the
 translation, which involves familiar concepts such as abstract types
@@ -31,16 +20,24 @@ classical logic to begin with.
  
 Axioms parameterized by models (e.g., initiality) currently translate
 into signatures of ML functors.  We have experimented with an
-alternative translation of such axioms into polymorphic types.
-\comment{show the polymorphic type that would be generated for natural
-numbers.}  Such types would be more natural and much simpler for
-ML programmers to understand.  The theory behind the translation is
-well understood, as it is exactly the phase-splitting translation of
+alternative translation of such axioms into polymorphic types.  In
+this case the \Verb|inital| axiom of the natural numbers yields
+the specification
+\begin{Verbatim}
+   val initial: 
+      'a -> ('a -> 'a) -> N.s -> 'a
+\end{Verbatim}
+which is exactly the familiar iterator for natural numbers (i.e., given
+an initial value, a function, and a natural number, apply the function 
+that many times to the initial value).  
+Such types can be much more natural and much simpler for
+programmers to understand.  The theory behind the translation is
+well understood, being the phase-splitting translation of
 Harper, Mitchell, and Moggi \cite{harper+:popl90}.  Because of
-limitations of the target ML language not every such axiom can be
-turned into polymorphism (ML allows only prenex quantifiers, and the
-quantifiers can range over types but not type operators), but we would
-like to do so where possible (which also appears to be the common
+limitations of ML not every parameterized axiom can be
+turned into polymorphism. (ML allows only prenex quantifiers, and the
+quantifiers can range over types but not type operators.)  However
+we would like to do so where it is possible (the common
 case).  As an alternative, we could retarget the output to a language
 like Haskell~\cite{haskell} which supports the necessary polymorphic types.
 

@@ -1,19 +1,19 @@
 \section{Introduction}
 \label{sec:introduction}
 
-We present a system, called~\emph{RZ}, for automatic generation of
-program specifications from mathematical theories. We translate
-mathematical theories to specifications by computing their
-realizability interpretations in an ML-like language augmented with
-assertions. While the system is best suited for descriptions of those
-programming tasks that can be easily described in mathematical
-language (e.g., algorithms on finitely presented groups, exact real
-arithmetic, algorithms on graphs, etc.), it also elucidates the
-relationship between data structures and constructive mathematics.
+Kleene~\cite{KleeneSC:intint} introduced realizability as a model of
+intuitionistic arithmetic based on partial computable functions. The
+idea has been studied and generalized by various
+authors~\cite{TroelstraA:rea,HylandJ:efft,HylandJ:trit,OostenJ:exer}.
+Building on the idea of \emph{typed realizability} by
+Longley~\cite{Longley00}, we have constructed a tool \emph{RZ} which
+can translate mathematical theories into specifications for code,
+explaining what is necessary in order to believe that we have a correct
+implementation of the mathematical theory.
 
 As the realizability interpretation validates the laws of
 \emph{intuitionistic} logic, our input theories are intuitionistic or
-constructive. Thus, RZ is a tool that extracts the computational
+constructive. Thus, \emph{RZ} extracts the computational
 meaning of a constructive theory and expresses it as a programming
 specification.
 
