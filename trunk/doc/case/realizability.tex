@@ -33,7 +33,7 @@ mean that $t$ is a closed expression of type $\ut{S}$.
   \parbox[t]{0.35\textwidth}{
     \begin{align*}
       \ut{\top} &= \mathtt{unit} \\
-      \ut{\bot} &= \mathtt{void} \\
+      \ut{\bot} &= \mathtt{unit} \\
       \ut{x =_S y} &= \mathtt{unit} \\
       \ut{\phi \land \psi} &= \ut{\phi} * \ut{\psi} \\
       \ut{\phi \implies \psi} &= \ut{\phi} \to \ut{\psi} \\
@@ -112,7 +112,7 @@ an ``implementation of~$f$'' or an ``algorithm for computing~$f$''.
 
 Modest sets and realized functions form a category of \emph{modest
   sets~$\Mod{\PL}$}. In realizability theory this is a well known
-category with good properties. It is regular and locally cartesian
+category with good properties. It is regular and locally bi-cartesian
 closed, which allows us to interpret first-order logic and a rich type
 theory. Here we only outline the main ideas behind the realizability
 interpretation of logic. See e.g.~\cite{Bauer:00} for details.

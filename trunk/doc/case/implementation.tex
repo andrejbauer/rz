@@ -45,9 +45,10 @@ to type check.  Thus, one can write
 \end{Verbatim}
 instead of needing to write
 \begin{Verbatim}
-  axiom field (x : real) =
-    not (x=zero) => 
-      x * ((inv (x :> r)) :< r') = one
+ axiom field (x : real) =
+  not (x=zero) => 
+   x * ((inv (x:>nz_real)) :< real)
+                               = one
 \end{Verbatim}
 In this case, since \Verb|:>| and \Verb|:<| has computational content
 (going into a subset involves pairing the item with the realizer of
@@ -60,7 +61,83 @@ theory will still translate, the generated assertions will not be
 satisfied by any implementation.
 
 \subsection{Realizability Translation}
-Here we provide more details about the translation.
+
+We first discuss the realizability translation of sets and terms, and
+then focus on the translation of logic, which is the interesting part.
+
+A set~$S$ is translated into a modest set $(\ut{S}, \tot{S},
+{\per{S}})$ according to its structure: a basic set is translated to a
+modest set whose underlying type is abstract, a product is translated
+to a product of modest sets, a function space is translated to the
+exponential of modest sets, etc. Thus we simply use the rich
+categorical structure of~$\Mod{\PL}$ to interpret all the set
+constructors.
+
+Similarly, terms are translated to suitable ML terms according to
+their structure. Note however, that there are terms whose validity
+cannot be checked by RZ because that would require it to prove
+arbitrary theorems. Such an example is the definite description
+operator $\THE\ x \,.\, \phi(x)$, whose validity can be confirmed only
+by proving that there exists a unique~$x$ satisfying~$\phi(x)$. In
+such cases RZ emits proof obligations for the programmer to verify.
+Note however, that the translated terms always have valid ML types,
+even if the accompanying proof obligations are not satisfied.
+
+The driving force behind the realizability translation of logic is a
+theorem, see e.g.\ \cite[Thm.~4.4.10]{Troelstra:van-Dalen:88:1}, which
+says that under the realizability interpretation every formula~$\phi$
+is equivalent to one that says, informally speaking, ``there
+exists~$r$, such that $r$ realizes $\phi$''. Furthermore, the formula
+``$r$ realizes $\phi$'' is computationally trivial. We explain what
+precisely this means next.
+
+In classical logic a doubly negated formula $\lnot\lnot\phi$ is
+equivalent to~$\phi$. Constructively, this is not true in general. To
+see this, recall that in constructive logic $\lnot\phi$ is defined as
+$\phi \implies \bot$ and observe that the underlying type of realizers
+of $\lnot\lnot\phi$ is $(\ut{\phi} \to \mathtt{unit}) \to
+\mathtt{unit}$. Terms of this type cannot be converted to terms of
+type $\ut{\phi}$ in a general way (although conversion in the reverse
+direction can be done quite easily, which shows that $\phi$ implies
+$\lnot\lnot\phi$). Furthermore, terms of type $(\ut{\phi} \to
+\mathtt{unit}) \to \mathtt{unit}$ do not compute much of anything, so
+we might as well replace them by a special \emph{trivial realizer}
+devoid of any computational meaning. We can think of the trivial
+realizer as a term which witnesses validity of a formula but does not
+compute anything.
+
+In some cases it may happen even in constructive logic that
+$\lnot\lnot\phi$ is equivalent to~$\phi$. When this is so we
+call~$\phi$ a \emph{$\lnot\lnot$-stable formula}, or just \emph{stable
+  formula} for short. Stable formulas have trivial realizers, as they
+are equivalent to doubly negated formulas. Among the stable formulas
+the \emph{almost negative} formulas are important because they can be
+easily recognized syntactically: they are built from any combination
+of $\land$, $\implies$, $\forall$, $=$, and those basic predicates
+that are known to be stable, but $\exists$ and $\lor$ are only allowed
+to appear on the left side of an~$\implies$.\footnote{A
+  \emph{negative} formula is one that does not contain any $\exists$
+  and $\lor$ at all.}
+
+The following theorem is a precise formulation of the claims we made
+in a paragraph above.
+
+\begin{theorem}
+  For every formula $\phi$ there exists a set~$R_\phi$ and an almost
+  negative formula $\phi'$ such that in the realizability
+  interpretation $\phi$ is equivalent to $\exists r \in R_\phi . \,
+  \phi'(r)$.
+\end{theorem}
+
+We omit the proof, as it is fairly standard and involves a
+straightforward induction on the structure of~$\phi$. The set~$R_\phi$
+in the theorem is simply the set of terms of the underlying
+type~$\ut{\phi}$ of realizers, while the intuitive meaning of
+$\phi'(r)$ is ``$r$ realizes $\phi$''.
+
+
+
+
 
 \subsection{Optimization}
 Propositions without constructive content have trivial realizers, and
@@ -69,12 +146,12 @@ peephole simplification of the resulting signature.   Without an optimizer,
 the axioms of the theory \Verb|SQGROUP| would produce
 \begin{Verbatim}
 val unit : s -> top * top
-(** Assertion unit (x:s) =  
+(** Assertion unit (x:||s||) =  
      x * e =s= x and e * x =s= x
 *)
 
 val sqrt : s -> s * top
-(** Assertion sqrt (x:s) =  
+(** Assertion sqrt (x:||s||) =  
      pi0(sqrt x) : ||s|| and 
      pi0(sqrt x) * pi0(sqrt x) =s= x
 *)
