@@ -375,8 +375,14 @@ and output_signat ppf = function
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
          m   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl,sgnt2) ->
-      fprintf ppf "@[<v>(** %a(WHERE IS MODUL NAME?) *)@,%a@]"
-         output_signat sgnt1     output_signat sgnt2
+      fprintf ppf "@[<v>(** %a(%a) *)@,%a@]"
+         output_signat sgnt1  output_modul mdl  output_signat sgnt2
+
+and output_modul ppf = function
+    ModulName s -> fprintf ppf "%s" s
+  | ModulProj (mdl, s) -> fprintf ppf "%a.%s"  output_modul mdl   s
+  | ModulApp (mdl1, mdl2) -> fprintf ppf "%a(%a)"
+      output_modul mdl1   output_modul mdl2
 
 and output_toplevel ppf = function
     Signatdef (nm, signat) ->

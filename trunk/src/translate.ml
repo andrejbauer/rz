@@ -24,7 +24,7 @@ type ctxElement =
 
 and theorySummary = 
     Ctx of ctxElement list
-  | CtxParam of L.model_name * theorySummary
+  | CtxParam of L.model_name * signat * theorySummary
 
 let emptyCtx = []
 
@@ -87,6 +87,16 @@ let rec getModel n ctx =
   in
     find ctx
 
+
+let rec translateModel = function
+    L.ModelName nm -> ModulName nm
+  | L.ModelProj (mdl, nm) -> ModulProj (translateModel mdl, nm)
+  | L.ModelApp (mdl1, mdl2) -> ModulApp (translateModel mdl1, translateModel mdl2)
+
+let translateLN = function
+    L.LN (None, nm) -> LN (None, nm)
+  | L.LN (Some mdl, nm) -> LN (Some (translateModel mdl), nm)
+
 let rec substMCtx m mdl = function
     [] -> []
   | CtxBind (nm,st) :: lst -> CtxBind (nm, L.substMSet m mdl st) :: (substMCtx m mdl lst)
@@ -98,8 +108,12 @@ let rec substMCtx m mdl = function
 
 and substMSummary m mdl = function
     Ctx elems -> Ctx (substMCtx m mdl elems)
-  | (CtxParam (m', summary)) as s ->
-      if m = m' then s else CtxParam (m', substMSummary m mdl summary)
+  | (CtxParam (m', sgnt, summary)) as s ->
+      if m = m' then
+	s
+      else CtxParam (m',
+		     substSignat (insertModulvar emptysubst m (translateModel mdl)) sgnt,
+		     substMSummary m mdl summary)
 
 let rec normalizeModel ctx = function
     L.ModelName n -> getModel n ctx
@@ -110,7 +124,7 @@ let rec normalizeModel ctx = function
   | L.ModelApp (mdl1, mdl2) ->
       (match normalizeModel ctx mdl1 with
 	   Ctx _ -> failwith "normalizeModel: cannot apply a non-parametrized model"
-	 | CtxParam (m, summary) -> substMSummary m mdl2 summary)
+	 | CtxParam (m, _, smmry) -> substMSummary m mdl2 smmry)
 
 let rec getLong getter ctx ln =
   let rec find = function
@@ -122,12 +136,12 @@ let rec getLong getter ctx ln =
   in 
     find ln
 
-let rec getLongSet getter ctx ln =
+let rec getLongSet ctx ln =
   let rec find = function
-      L.SLN(None, nm) -> getter nm ctx
+      L.SLN(None, nm) -> getSet nm ctx
     | L.SLN(Some mdl, nm) ->
 	(match normalizeModel ctx mdl with
-	     Ctx elems -> getter nm elems
+	     Ctx elems -> getSet nm elems
 	   | CtxParam _ -> failwith "getLong: cannot project from a functor")
   in 
     find ln
@@ -137,7 +151,7 @@ let rec getLongSet getter ctx ln =
 
 let rec toSubset ctx = function
     L.Subset ((x,s), p) -> ((x, s), p)
-  | L.Basic ln -> toSubset ctx (getLongSet getSet ctx ln)
+  | L.Basic ln -> toSubset ctx (getLongSet ctx ln)
   | _ -> failwith "not a subset"
 
 let any = mk_word "_"
@@ -315,15 +329,6 @@ let rec translateSet (ctx : ctxElement list) = function
 	}
 
   | L.PROP | L.STABLE | L.EQUIV -> failwith "Cannot translate higher-order logic"
-
-and translateLN = function
-    L.LN (None, nm) -> LN (None, nm)
-  | L.LN (Some mdl, nm) -> LN (Some (translateModel mdl), nm)
-
-and translateModel = function
-    L.ModelName nm -> ModulName nm
-  | L.ModelProj (mdl, nm) -> ModulProj (translateModel mdl, nm)
-  | L.ModelApp (mdl1, mdl2) -> ModulApp (translateModel mdl1, translateModel mdl2)
 
 and translateTerm ctx = function
     L.Var ln -> Id (translateLN ln)
@@ -648,19 +653,16 @@ and translateTheory ctx = function
   | L.TheoryFunctor ((nm,thr1),thr2) ->
       let sgnt1, smmry1 = translateTheory ctx thr1 in
       let sgnt2, smmry2 = translateTheory (addModel nm smmry1 ctx) thr2 in
-	SignatFunctor ((nm, sgnt1), sgnt2), CtxParam (nm, smmry2)
+	SignatFunctor ((nm, sgnt1), sgnt2), CtxParam (nm, sgnt2, smmry2)
   | L.TheoryApp (thr, mdl) ->
       let sgnt, smmry = translateTheory ctx thr in
       let modul = translateModel mdl in
-	(match sgnt with
-	     SignatFunctor ((m,s),sgnt') ->
-		 SignatApp (sgnt, modul, substSignat (insertModulvar emptysubst m modul) sgnt')
-	   | _ -> failwith "translateTheory: cannot apply a non-functor signature to a module"
-	),
 	(match smmry with
-	    Ctx _ -> failwith "translateTheory: cannot apply a non-parametrized theory"
-	  | CtxParam (m, smmry') -> substMSummary m mdl smmry')
-
+	     Ctx _ -> failwith "translateTheory: cannot apply a non-parametrized theory"
+	   | CtxParam (m, sgnt', smmry') ->
+	       SignatApp (sgnt, modul, substSignat (insertModulvar emptysubst m modul) sgnt'),
+	       substMSummary m mdl smmry')
+		 
 let attachSignat s (ss, ctx) = s::ss, ctx
 
 let rec translateToplevel ctx = function

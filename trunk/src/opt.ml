@@ -138,8 +138,8 @@ let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; moduli = []}
 let rec hnfTy ctx = function
     NamedTy tynm ->
       (match (peekTydefLong ctx tynm) with
-        Some s' -> hnfTy ctx s'
-      | None -> NamedTy tynm)
+      | None | Some TYPE -> NamedTy tynm
+      | Some s' -> hnfTy ctx s')
   | s -> s
 
 
@@ -525,7 +525,11 @@ and optSignat ctx = function
       in let ( body', summary ) = optSignat ctx' body
       in ( SignatFunctor ( arg', body' ), 
 	   Summary_Functor (mdlnm, summary) )
-
+  | SignatApp(sgnt1,mdl,sgnt2) ->
+      let sgnt2', smmry = optSignat ctx sgnt2 in
+	SignatApp(fst (optSignat ctx sgnt1), mdl, sgnt2'),
+	smmry
+      
 and optStructBindings ctx = function
     [] -> [], ctx
   | (m, signat) :: bnd ->

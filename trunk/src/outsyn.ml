@@ -101,6 +101,7 @@ let ln_of_name nm = LN (None, nm)
 let string_of_name = Syntax.string_of_name
 
 let id nm = Id (ln_of_name nm)
+let namedty nm = NamedTy (tln_of_tyname nm)
 
 let mk_word str = Syntax.N(str, Syntax.Word)
 let mk_id str = Id (LN(None, Syntax.N(str,Syntax.Word)))
@@ -339,8 +340,43 @@ and substModest ?occ sbst {ty=ty; tot=(x,p); per=(y,z,q)} =
 	     (y',z', substProp ?occ (insertTermvar (insertTermvar sbst y (id y')) z (id z')) q));
   }
 
-and substSignat ?occ sbst = failwith "substSignat: not implemented"
-    
+and substSignat ?occ sbst = function
+    SignatName nm -> SignatName nm
+  | Signat lst -> Signat (substSignatElements ?occ sbst lst)
+  | SignatFunctor ((m,sgnt1), sgnt2) ->
+      let sbst' = insertModulvar sbst m (ModulName m) in
+	SignatFunctor ((m, substSignat ?occ sbst sgnt1), substSignat ?occ sbst' sgnt2)
+  | SignatApp (sgnt1, mdl, sgnt2) ->
+      SignatApp (substSignat ?occ sbst sgnt1,
+		 substModul ?occ sbst mdl,
+		 substSignat ?occ sbst sgnt2)
+
+and substSignatElements ?occ sbst =
+  let rec subst sbst = function
+      [] -> []
+    | ValSpec (nm, ty, lst) :: rest ->
+	ValSpec (nm, substTy ?occ sbst ty, List.map (substAssertion ?occ sbst) lst) ::
+	(subst (insertTermvar sbst nm (id nm)) rest)
+    | ModulSpec (mdlnm, sgnt) :: rest ->
+	ModulSpec (mdlnm, substSignat ?occ sbst sgnt) ::
+	(subst (insertModulvar sbst mdlnm (ModulName mdlnm)) rest)
+    | AssertionSpec assr :: rest ->
+	AssertionSpec (substAssertion ?occ sbst assr) ::
+	(subst sbst rest)
+    | TySpec (tynm, ty, lst) :: rest ->
+	TySpec (tynm, substTyOption ?occ sbst ty, List.map (substAssertion ?occ sbst) lst) ::
+	(subst (insertTyvar sbst tynm (namedty tynm)) rest)
+    | (Comment _ as cmnt) :: rest ->
+	cmnt :: (subst sbst rest)
+  in
+    subst sbst
+
+and substAssertion ?occ sbst (nm, lst, prop) =
+  (nm, List.map (substBinding  ?occ sbst) lst, substProp ?occ sbst prop)
+
+and substBinding ?occ sbst (nm, ty) = (nm, substTy ?occ sbst ty)
+
+
 
 (**** SOMEWHAT OLD CODE OLD CODE OLD CODE OLD CODE IS STILL USED IS STILL USED *)
 

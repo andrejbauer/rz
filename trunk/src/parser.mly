@@ -8,7 +8,7 @@
 
   exception Impossible
 
-  let foldTheoryFunctor = List.fold_right (fun a t -> TheoryFunctor (a, t))
+  let foldTheoryFunctor bnd bdy = List.fold_right (fun bnd thr -> TheoryFunctor (bnd, thr)) bnd bdy
 
   let makeTermVar strng fxty = Var(None, N(strng, fxty))
   let makeTermPath mdl strng fxty = Var(Some mdl, N(strng, fxty))

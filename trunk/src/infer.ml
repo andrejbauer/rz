@@ -105,7 +105,7 @@ let rec isSet = function
     Determines whether the given ANNOTATED "set" classifies
     either a proposition or in general (despite the name) a predicate.
 
-    This can just be defined as the negation of isSet; a pair
+    This cannot just be defined as the negation of isSet; a pair
     containing, say, a boolean and a proposition is neither a proper
     set nor a proper logical entity.
 *)
@@ -600,7 +600,7 @@ let rec annotateModel cntxt = function
      in let (mdl2', summary2, sub2) = annotateModel cntxt mdl2
      in match ( substSummary sub1 summary1 ) with
           Thry_Functor ( ( mdlnm, thry11 ), summary12 ) ->  
-            if ( thry11 = substTheory sub2 ( summaryToTheory summary2 ) ) then
+            if true or ( thry11 = substTheory sub2 ( summaryToTheory summary2 ) ) then
 	       let    newapp     = ModelApp (mdl1', mdl2')
                in let sub        = insertModelvar emptysubst mdlnm mdl2'
                in ( ModelApp (mdl1', mdl2'), summary12, sub )
@@ -1474,36 +1474,38 @@ and annotateTheory cntxt = function
   | TheoryFunctor ( arg, thry ) ->
 	let ( [arg'], cntxt' ) = annotateModelBindings cntxt [arg] in
 	let (thry', summary) = annotateTheory cntxt' thry in 
-          ( TheoryFunctor ( arg', thry'), summary)
+          ( TheoryFunctor (arg', thry'),
+	    Thry_Functor (arg', summary))
 
-   | TheoryApp (thry, mdl) as main_thry -> 
-        let (thry', summary_thry) = annotateTheory cntxt thry in
-        let (mdl', summary_mdl, sub) = annotateModel cntxt mdl in
+  | TheoryApp (thry, mdl) as main_thry -> 
+      let (thry', summary_thry) = annotateTheory cntxt thry in
+      let (mdl', summary_mdl, sub) = annotateModel cntxt mdl in
 	begin
           match summary_thry with
-             Thry_Struct ( _ , _ ) -> 
-               tyGenericError 
-		 ( "Application of non-parameterized theory in:\n  " ^
-		   string_of_theory main_thry )
-           | Thry_Functor ( ( arg, argthry ), summary_result ) -> 
-                  (* XXX  substTheory isn't capture avoiding!!! 
-                   *)
-               if ( argthry = 
-		      substTheory sub (summaryToTheory summary_mdl) ) then
+              Thry_Struct ( _ , _ ) -> 
+		tyGenericError 
+		( "Application of non-parameterized theory in:\n  " ^
+		  string_of_theory main_thry )
+            | Thry_Functor ( ( arg, argthry ), summary_result ) -> 
+                (* XXX  substTheory isn't capture avoiding!!! 
+                 *)
+		if true or ( argthry = 
+		       substTheory sub (summaryToTheory summary_mdl) ) then
                   let sub = insertModelvar emptysubst arg mdl'
                   in ( TheoryApp ( thry', mdl' ),
 		       substSummary sub summary_result )
-	       else
-		 tyGenericError 
-		   ( "Incompatible model argument in:\n  " ^ 
-		     string_of_theory main_thry )
+		else
+		  tyGenericError 
+		    ( "Incompatible model argument in:\n  " ^ 
+		      string_of_theory main_thry )
 	end
 
 and annotateToplevel cntxt = function
       Theorydef (str, thry) ->
         let (thry', summary) =  annotateTheory cntxt thry
-	in (Theorydef (str, thry'), 
-	    insertTheory cntxt str summary)
+	in
+	  (Theorydef (str, thry'), 
+	   insertTheory cntxt str summary)
 
   |  TopComment cmmnt ->
        (TopComment cmmnt, cntxt)
