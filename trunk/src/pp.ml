@@ -56,43 +56,43 @@ and output_term_12 ppf = function
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
-    App (App (Id (LN(_, Syntax.N(_, Syntax.Infix0)) as ln), t), u) -> 
-      fprintf ppf "%a %a %a"
+    App (App (Id (LN(None, Syntax.N(op, Syntax.Infix0))), t), u) -> 
+      fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_9 t  output_ln ln  output_term_8 u *)
-        output_term_8 t  output_ln ln  output_term_8 u
+        output_term_8 t   op   output_term_8 u
   | trm -> output_term_8 ppf trm
       
 and output_term_8 ppf = function
-    App (App (Id (LN(_,Syntax.N(_,Syntax.Infix1)) as ln), t), u) -> 
-      fprintf ppf "%a %a %a"
+    App (App (Id (LN(None, Syntax.N(op,Syntax.Infix1))), t), u) -> 
+      fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_8 t  output_ln ln  output_term_7 u *)
-        output_term_7 t  output_ln ln  output_term_7 u
+        output_term_7 t  op  output_term_7 u
   | trm -> output_term_7 ppf trm
       
 and output_term_7 ppf = function
-    App (App (Id (LN(_,Syntax.N(_,Syntax.Infix2)) as ln), t), u) -> 
-      fprintf ppf "%a %a %a"
+    App (App (Id (LN(None, Syntax.N(op,Syntax.Infix2))), t), u) -> 
+      fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_7 t  output_ln ln  output_term_6 u *)
-        output_term_6 t  output_ln ln  output_term_6 u
+        output_term_6 t  op  output_term_6 u
   | trm -> output_term_6 ppf trm
 
 and output_term_6 ppf = function
-     App (App (Id (LN(_,Syntax.N(_,Syntax.Infix3)) as ln), t), u) -> 
-      fprintf ppf "%a %a %a"
+     App (App (Id (LN(None, Syntax.N(op,Syntax.Infix3))), t), u) -> 
+      fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
-(*        output_term_6 t  output_ln ln  output_term_5 u *)
-        output_term_5 t  output_ln ln  output_term_5 u
+(*        output_term_6 t  op  output_term_5 u *)
+        output_term_5 t  op  output_term_5 u
   | trm -> output_term_5 ppf trm
 
 and output_term_5 ppf = function
-     App (App (Id (LN(_,Syntax.N(_,Syntax.Infix4)) as  ln), t), u) -> 
-      fprintf ppf "%a %a %a"
+     App (App (Id (LN(None,Syntax.N(op,Syntax.Infix4))), t), u) -> 
+      fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_5 t  output_ln ln  output_term_4 u *)
-        output_term_4 t  output_ln ln  output_term_4 u
+        output_term_4 t   op   output_term_4 u
   | trm -> output_term_4 ppf trm
 
 and output_term_4 ppf = function
@@ -100,7 +100,7 @@ and output_term_4 ppf = function
        inner ones to accidentally use the "default" case for
        ordinary non-infix applications
      *)
-    App (App (Id (LN(_,Syntax.N(_, (Syntax.Infix1 | Syntax.Infix2 |
+    App (App (Id (LN(None, Syntax.N(_, (Syntax.Infix1 | Syntax.Infix2 |
 					    Syntax.Infix3 | Syntax.Infix4))   )), _), _) 
     as trm -> 
       output_term_0 ppf trm
@@ -283,9 +283,9 @@ and output_prop_0 ppf = function
   | prp -> fprintf ppf "(@[<hov>%a@])"   output_prop prp
     
 and output_app ppf = function
-    ((LN(_, Syntax.N(_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4))) as ln), [u;v]) ->
-       fprintf ppf "%a %a %a" 
-         output_term u  output_ln ln  output_term v
+    ((LN(None, Syntax.N(op, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)))), [u;v]) ->
+       fprintf ppf "%a %s %a" 
+         output_term u  op  output_term v
   | (ln, trms) -> 
       fprintf ppf "%a %a" 
 	 output_ln ln   (output_term_components output_term_8 " ") trms
