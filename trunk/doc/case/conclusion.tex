@@ -1,8 +1,34 @@
-\section{Conclusion}
+\section{Conclusions and Future Work}
 \label{sec:conclusion}
 
-We are the champions.
+By translating only at the level of specifications, we provide a
+useful middle ground between ad-hoc implementations and machine-checked
+implementations --- trading guaranteed correctness for 
+Further, even if it turns out not to be useful on the 
+addition, \emph{RZ} allows the constructive
+content of mathematics to be made con
 
+A prototype implementation of \emph{RZ} has been implemented that can
+handle a number of small examples, including those shown here.
+
+
+
+We have presented the current prototype implementation of 
+\emph{RZ}, for automatic generation of
+program specifications from mathematical theories. We translate
+mathematical theories to specifications by computing their
+realizability interpretations in an ML-like language augmented with
+assertions. While the system is best suited for descriptions of those
+programming tasks that can be easily described in mathematical
+language (e.g., algorithms on finitely presented groups, exact real
+arithmetic, algorithms on graphs, etc.), it also elucidates the
+relationship between data structures and constructive mathematics.
+ 
+
+We could do polymorphism
+We could do dependent types: translates to non-dependent types, but generates many proof obligations.
+Need to try it on larger examples.
+doc/case/
 \comment{The following either goes into future work, or else into a
   discussion of the free join semilattice (where polymorphism would
   yield a fold-like operator).}  The translation of axioms

@@ -286,7 +286,7 @@ and output_prop_0 ppf = function
   | False -> fprintf ppf "false"
   | IsPer stnm -> fprintf ppf "PER(=%s=)" stnm
   | IsPredicate (prdct,t,x,y,p) ->
-      fprintf ppf "PREDICATE(%s,%a,lam %s %s.(%a))"
+      fprintf ppf "@[PREDICATE(@[<hov>%s,@ %a,@ @[lam %s %s.(@[%a@])@]@])@]"
         (Syntax.string_of_name prdct)
         output_ty t
         (Syntax.string_of_name x)

@@ -19,7 +19,8 @@ let command_line_options =
    ("--sigapp", Arg.Set Flags.do_sigapp, "Retain signature applications");
    ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)");
    ("--dump_infer", Arg.Set Flags.do_dumpinfer, "Dump result of type inference");
-   ("--redo_infer", Arg.Set Flags.do_redoinfer, "Check the results of type inference")
+   ("--redo_infer", Arg.Set Flags.do_redoinfer, "Check the results of type inference");
+   ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
   ]
 
 (** One-line usage message
