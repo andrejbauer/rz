@@ -1,12 +1,6 @@
 theory Trivial =
 thy
  set s
- predicate p : s
  implicit x, y : s
-
- set t = s * s -> s
-
- axiom foo x = all y . x = y
- axiom bar = all x . some y . x = y
- axiom baz = all x . p(x)
+ axiom f x = some y . not (x = y)
 end
