@@ -1,0 +1,9 @@
+theory TestSubset =
+thy
+  set s
+  predicate p : s
+  predicate q : {x : s | p(x) }
+
+  axiom foo (x:s) =
+    p(x) => q(x :> {y : s | p(y)})
+end

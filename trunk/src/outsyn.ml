@@ -254,7 +254,7 @@ let rec string_of_term' level t =
 	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
     | Obligation ((n, ty), p) ->
 	(12,
-	 "[some " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " : " ^
+	 "[? " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
 	 (string_of_proposition p) ^ "]")
   in
     if level' > level then "(" ^ str ^ ")" else str
