@@ -26,6 +26,10 @@ around typing contexts.
 
 *)
 
+let rec translateSet ctx = function
+    Empty -> (O.voidTy, S.False)
+
+
 
 let rec extractTy = function
     S.True -> O.unitTy
