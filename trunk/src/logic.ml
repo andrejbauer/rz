@@ -199,13 +199,24 @@ and make_proposition = function
     S.False -> False
   | S.True -> True
   | S.App (S.Var n, t) -> Atomic (n, make_term t)
+  | S.App (_, _) -> (print_string "Application of non-variable\n";
+                     raise Unimplemented)
   | S.And lst -> And (List.map make_proposition lst)
   | S.Imply (phi, psi) -> Imply (make_proposition phi, make_proposition psi)
   | S.Or lst -> Or (List.map make_proposition lst)
   | S.Not phi -> Not (make_proposition phi)
   | S.Equal (Some s, u, v) -> Equal (make_set s, make_term u, make_term v)
+  | S.Equal (None, _, v) -> (print_string "Equality missing type annotation\n";
+                             raise Unimplemented)
   | S.Forall ((n, Some s), phi) -> Forall ((n, make_set s), make_proposition phi)
-  | S.Exists ((n, Some s), phi) -> Exists ((n, make_set s), make_proposition phi)
+  | S.Forall ((_, None), _) -> 
+                            (print_string "Forall missing type annotation\n";
+                            raise Unimplemented)
+  | S.Exists ((n, Some s), phi) -> 
+                            Exists ((n, make_set s), make_proposition phi)
+  | S.Exists ((_, None), _) -> 
+                            (print_string "Exists missing type annotation\n";
+                            raise Unimplemented)
   | _ -> raise HOL
 
 and make_term = function
@@ -231,7 +242,10 @@ and make_theory_element = function
   | S.Predicate (n, stab, t) -> Predicate (n, stab, make_set t)
   | S.Let_predicate (n, b, p) -> Let_predicate (n, make_bindings b, make_proposition p)
   | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
+  | S.Let_term ((_, None), t) -> (print_string "Let_term without ty ann.\n";
+                                  raise Unimplemented)
   | S.Sentence (st, n, b, t) -> Sentence (st, n, make_bindings b, make_proposition t)
+  | S.Value (n,s) ->  Value (n, make_set s)
 
 and make_theoryspec {S.t_arg=args; S.t_name=name; S.t_body=body} =
   { t_name = name;

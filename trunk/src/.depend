@@ -7,7 +7,7 @@ parser.cmo: message.cmo syntax.cmo parser.cmi
 parser.cmx: message.cmx syntax.cmx parser.cmi 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
-toplevel.cmo: message.cmo parser.cmi 
-toplevel.cmx: message.cmx parser.cmx 
+toplevel.cmo: logic.cmo message.cmo parser.cmi 
+toplevel.cmx: logic.cmx message.cmx parser.cmx 
 translate.cmo: logic.cmo outsyn.cmo syntax.cmo 
 translate.cmx: logic.cmx outsyn.cmx syntax.cmx 

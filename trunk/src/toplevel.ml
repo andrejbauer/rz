@@ -17,6 +17,8 @@ if Array.length(Sys.argv) <> 2 then
    raise BadArgs)
 else
   let thy = read Sys.argv.(1) in
-  thy 
+  let lthy = List.map Logic.make_theoryspec thy in
+  let _ = print_string "Translated to Logic form\n" in
+  lthy 
 
 
