@@ -56,7 +56,7 @@ and output_term_12 ppf = function
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
-    App (App (Id (Logic.LN(_, Syntax.N(_, Syntax.Infix0)) as ln), t), u) -> 
+    App (App (Id (LN(_, Syntax.N(_, Syntax.Infix0)) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_9 t  output_ln ln  output_term_8 u *)
@@ -64,7 +64,7 @@ and output_term_9 ppf = function
   | trm -> output_term_8 ppf trm
       
 and output_term_8 ppf = function
-    App (App (Id (Logic.LN(_,Syntax.N(_,Syntax.Infix1)) as ln), t), u) -> 
+    App (App (Id (LN(_,Syntax.N(_,Syntax.Infix1)) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_8 t  output_ln ln  output_term_7 u *)
@@ -72,7 +72,7 @@ and output_term_8 ppf = function
   | trm -> output_term_7 ppf trm
       
 and output_term_7 ppf = function
-    App (App (Id (Logic.LN(_,Syntax.N(_,Syntax.Infix2)) as ln), t), u) -> 
+    App (App (Id (LN(_,Syntax.N(_,Syntax.Infix2)) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_7 t  output_ln ln  output_term_6 u *)
@@ -80,7 +80,7 @@ and output_term_7 ppf = function
   | trm -> output_term_6 ppf trm
 
 and output_term_6 ppf = function
-     App (App (Id (Logic.LN(_,Syntax.N(_,Syntax.Infix3)) as ln), t), u) -> 
+     App (App (Id (LN(_,Syntax.N(_,Syntax.Infix3)) as ln), t), u) -> 
       fprintf ppf "%a %a %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_6 t  output_ln ln  output_term_5 u *)
@@ -88,7 +88,7 @@ and output_term_6 ppf = function
   | trm -> output_term_5 ppf trm
 
 and output_term_5 ppf = function
-     App (App (Id (Logic.LN(_,Syntax.N(_,Syntax.Infix4)) as  ln), t), u) -> 
+     App (App (Id (LN(_,Syntax.N(_,Syntax.Infix4)) as  ln), t), u) -> 
       fprintf ppf "%a %a %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_5 t  output_ln ln  output_term_4 u *)
@@ -100,7 +100,7 @@ and output_term_4 ppf = function
        inner ones to accidentally use the "default" case for
        ordinary non-infix applications
      *)
-    App (App (Id (Logic.LN(_,Syntax.N(_, (Syntax.Infix1 | Syntax.Infix2 |
+    App (App (Id (LN(_,Syntax.N(_, (Syntax.Infix1 | Syntax.Infix2 |
 					    Syntax.Infix3 | Syntax.Infix4))   )), _), _) 
     as trm -> 
       output_term_0 ppf trm
@@ -191,10 +191,10 @@ and output_name ppf nm =
   fprintf ppf "%s" (Syntax.string_of_name nm)
       
 and output_ln ppf ln = 
-  fprintf ppf "%s" (Logic.string_of_ln ln)
+  fprintf ppf "%s" (string_of_ln ln)
 
-and output_sln ppf ln =
-  fprintf ppf "%s" (Logic.string_of_sln ln)
+and output_tln ppf ln =
+  fprintf ppf "%s" (string_of_tln ln)
   
 (** Outputs a proposition to the pretty-printing formatter ppf.
       The various output_prop_n functions each will display a proposition of 
@@ -256,7 +256,7 @@ and output_prop_10 ppf = function
 and output_prop_9 ppf = function
     NamedPer (ln, t, u) -> 
       fprintf ppf "%a =%a= %a" 
-        output_term_9 t   output_sln ln   output_term_8 u
+        output_term_9 t   output_tln ln   output_term_8 u
   | NamedProp (n, Dagger, u) -> 
        output_app ppf (n,u)  (* ??? *)
   | NamedProp (n, t, u) ->
@@ -277,13 +277,13 @@ and output_prop_0 ppf = function
   | IsPredicate prdct -> fprintf ppf "PREDICATE(%s)" (Syntax.string_of_name prdct)
   | NamedTotal (ln, t) -> 
       fprintf ppf "%a : ||%a||"  
-	output_term t   output_sln ln
+	output_term t   output_tln ln
   | And [] -> fprintf ppf "true"
   | Cor [] -> fprintf ppf "false"
   | prp -> fprintf ppf "(@[<hov>%a@])"   output_prop prp
     
 and output_app ppf = function
-    ((Logic.LN(_, Syntax.N(_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4))) as ln), [u;v]) ->
+    ((LN(_, Syntax.N(_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4))) as ln), [u;v]) ->
        fprintf ppf "%a %a %a" 
          output_term u  output_ln ln  output_term v
   | (ln, trms) -> 
@@ -318,7 +318,7 @@ and output_ty_1 ppf = function
   | typ -> output_ty_0 ppf typ
 
 and output_ty_0 ppf = function
-    NamedTy ln -> output_sln ppf ln
+    NamedTy ln -> output_tln ppf ln
   | UnitTy     -> fprintf ppf "unit"
   | TopTy      -> fprintf ppf "top"
   | TYPE       -> fprintf ppf "TYPE"
@@ -359,7 +359,7 @@ and output_spec ppf = function
   | AssertionSpec assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
       fprintf ppf "(**%s*)" cmmnt
-  | StructureSpec (nm, sgntr) ->
+  | ModulSpec (nm, sgntr) ->
       fprintf ppf "@[module %s : %a@]"   nm   output_signat sgntr
 
 and output_specs ppf = function
@@ -387,9 +387,7 @@ and output_toplevel ppf = function
 	  s   output_args args   output_signat body
   | TopComment cmmnt -> 
       fprintf ppf "@[(**%s*)@]@." cmmnt
-  | TopStructure (mdlnm, signat) ->
+  | TopModul (mdlnm, signat) ->
       fprintf ppf "@[module %s : %a@]@.@."
 	  mdlnm   output_signat signat
-
-
-	  
+	

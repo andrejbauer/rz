@@ -115,26 +115,101 @@ and theory_element =
   | Let_term of name * set * term
   | Value of name * set
   | Sentence of sentence_type * name * model_binding list * binding list * proposition
-  | Model of string * theory
+  | Model of model_name * theory
   | Comment of string
 
 and theory = 
     Theory of theory_element list
-  | TheoryName of string
+  | TheoryName of theory_name
+  | TheoryFunctor of model_binding * theory
   | TheoryApp of theory * model
     
 and toplevel =
-    Theorydef of string * model_binding list * theory
+    Theorydef of theory_name * theory
   | TopComment of string
   | TopModel  of model_name * theory
-
-type context = (string * theory_element) list
-
 
 
 (****************************************)
 (* Substitution functions for Logic.xxx *)
 (****************************************)
+
+let rec substMModel m mdl = function
+    (ModelName m') as mdl' -> if m = m' then mdl else mdl'
+  | ModelProj (mdl', n) -> ModelProj (substMModel m mdl mdl', n)
+  | ModelApp (mdl1, mdl2) -> ModelApp (substMModel m mdl mdl1, substMModel m mdl mdl2)
+      
+and substMLN m mdl = function
+    (LN (None, _)) as ln -> ln
+  | LN (Some mdl', nm) -> LN (Some (substMModel m mdl mdl'), nm)
+       
+and substMSLN m mdl = function
+    (SLN (None, _)) as ln -> ln
+  | SLN (Some mdl', nm) -> SLN (Some (substMModel m mdl mdl'), nm)
+       
+and substMProp m mdl p =
+  let rec subst = function
+      False -> False
+    | True -> True
+    | Atomic (ln, lst) -> Atomic (substMLN m mdl ln, List.map (substMTerm m mdl) lst)
+    | And lst -> And (List.map subst lst)
+    | Imply (p, q) -> Imply (subst p, subst q)
+    | Iff (p, q) -> Iff (subst p, subst q)
+    | Or lst -> Or (List.map subst lst)
+    | Forall ((n,s),p) -> Forall ((n, substMSet m mdl s), subst p)
+    | Exists ((n,s),p) -> Exists ((n, substMSet m mdl s), subst p)
+    | Unique ((n,s),p) -> Unique ((n, substMSet m mdl s), subst p)
+    | Not p -> Not (subst p)
+    | Equal (s, t, u) -> Equal (substMSet m mdl s, substMTerm m mdl t, substMTerm m mdl u)
+  in
+    subst p
+
+and substMTerm m mdl t =
+  let rec subst = function
+      Star -> Star
+    | Var ln -> Var (substMLN m mdl ln)
+    | Tuple lst -> Tuple (List.map subst lst)
+    | Proj (i,t) -> Proj (i, subst t)
+    | App (t, u) -> App (subst t, subst u)
+    | Lambda ((n,s), t) -> Lambda ((n, substMSet m mdl s), subst t)
+    | The ((n,s), p) -> The ((n, substMSet m mdl s), substMProp m mdl p)
+    | Inj (_, None) as t -> t
+    | Inj (lbl, Some t) -> Inj (lbl, Some (subst t))
+    | Case (t, lst) -> Case (subst t,
+			     List.map (function
+					   lbl, None, t -> lbl, None, subst t
+					 | lbl, Some (n,s), t -> lbl, Some (n, substMSet m mdl s), subst t)
+			       lst)
+    | RzQuot t -> RzQuot (subst t)
+    | RzChoose ((n,s), t, u, s') ->
+	RzChoose ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
+    | Quot (t, ln) -> Quot (subst t, substMLN m mdl ln)
+    | Choose ((n,s),ln,t,u,s') ->
+	Choose ((n, substMSet m mdl s), substMLN m mdl ln, subst t, subst u, substMSet m mdl s')
+    | Let ((n,s), t, u, s') -> Let ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
+    | Subin (t, s) -> Subin (subst t, substMSet m mdl s)
+    | Subout (t, s) -> Subout (subst t, substMSet m mdl s)
+  in
+    subst t
+
+and substMSet m mdl s =
+  let rec subst = function
+      Empty -> Empty
+    | Unit -> Unit
+    | Bool -> Bool
+    | Basic ln -> Basic (substMSLN m mdl ln)
+    | Product lst -> Product (List.map subst lst)
+    | Exp (s, t) -> Exp (subst s, subst t)
+    | Sum lst -> Sum (List.map (function lbl, None -> lbl, None | lbl, Some s -> lbl, Some (subst s)) lst)
+    | Subset ((n,s),p) -> Subset((n, subst s), substMProp m mdl p)
+    | Rz s -> Rz (subst s)
+    | Quotient (s, ln) -> Quotient (subst s, substMLN m mdl ln)
+    | PROP -> PROP
+    | STABLE -> STABLE
+    | EQUIV -> EQUIV
+    | SET -> SET
+  in
+    subst s
 
 (*
      substProp:  name -> term -> proposition -> proposition
@@ -411,10 +486,11 @@ and make_theory_element = function
 and make_theory = function
     S.Theory elems -> Theory (List.map make_theory_element elems)
   | S.TheoryName id -> TheoryName id
+  | S.TheoryFunctor ((m,thr1),thr2) -> TheoryFunctor((m, make_theory thr1), make_theory thr2)
+  | S.TheoryApp (thy, mdl) -> TheoryApp (make_theory thy, make_model mdl)
 
 and make_toplevel = function
-    S.Theorydef(str, args, thr) ->
-      Theorydef (str, make_model_bindings args, make_theory thr)
+    S.Theorydef(str, thr) -> Theorydef (str, make_theory thr)
   | S.TopComment cmmnt -> TopComment cmmnt
   | S.TopModel (mdlnm, thry) -> TopModel(mdlnm, make_theory thry)
 

@@ -16,24 +16,23 @@ exception Unimplemented
 *)
 
 type ctxElement =
-    CtxBind of L.set
-  | CtxTerm of L.term
-  | CtxSet of L.set
-  | CtxProp of S.propKind * (L.binding list * L.proposition) option
-  | CtxModel of context
-  | CtxTheory of L.model_binding list * L.theory
+    CtxBind of L.name * L.set
+  | CtxSet of L.set_name * L.set
+  | CtxProp of L.name * S.propKind
+  | CtxModel of L.model_name * theorySummary
+  | CtxTheory of L.theory_name * theorySummary
 
-and context = (L.name * ctxElement) list
+and theorySummary = 
+    Ctx of ctxElement list
+  | CtxParam of L.model_name * theorySummary
 
-let emptyCtx : context = []
+let emptyCtx = []
 
-let addBind  (n : L.name) s ctx = (n, CtxBind s) :: ctx
-let addTerm  (n : L.name) t ctx = (n, CtxTerm t) :: ctx
-let addSet   (n : L.name) s ctx = (n,  CtxSet s) :: ctx
-let addProp  (n : L.name) (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
-let addModel n thry ctx = (S.N(n,S.Word), CtxModel thry) :: ctx
-let addTheory n args th ctx =
-  (S.N(n,S.Word), CtxTheory (args, th)) :: ctx
+let addBind  n s ctx = CtxBind(n,s) :: ctx
+let addSet   n s ctx = CtxSet(n,s) :: ctx
+let addProp  n stb ctx = CtxProp(n,stb) :: ctx
+let addModel n thr ctx = CtxModel(n,thr) :: ctx
+let addTheory n thr ctx = CtxTheory(n,thr) :: ctx
 
 let addBinding bind ctx =
   List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
@@ -41,15 +40,7 @@ let addBinding bind ctx =
 let getBind n ctx =
   let rec find = function
       [] -> raise Not_found
-    | (m, CtxBind s) :: ctx' -> if n = m then s else find ctx'
-    | _ :: ctx' -> find ctx'
-  in
-    find ctx
-    
-let getTerm n ctx =
-  let rec find = function
-      [] -> raise Not_found
-    | (m, CtxTerm t) :: ctx' -> if n = m then t else find ctx'
+    | CtxBind (m,s) :: ctx' -> if n = m then s else find ctx'
     | _ :: ctx' -> find ctx'
   in
     find ctx
@@ -57,23 +48,15 @@ let getTerm n ctx =
 let getSet n ctx =
   let rec find = function
       [] -> raise Not_found
-    | (m, CtxSet s) :: ctx' -> if n = m then s else find ctx'
+    | CtxSet(m,s) :: ctx' -> if n = m then s else find ctx'
     | _ :: ctx' -> find ctx'
   in
     find ctx
     
 let getProp n ctx =
   let rec find = function
-      [] -> failwith ("No such proposition " ^ (match n with S.N(str,_) -> str))
-    | (m, CtxProp (stb, x)) :: ctx' -> if n = m then (stb,x) else find ctx'
-    | _ :: ctx' -> find ctx'
-  in
-    find ctx
-
-let getModel n ctx =
-  let rec find = function
-      [] -> raise Not_found
-    | (S.N(m,_), CtxModel thr) :: ctx' -> if n = m then thr else find ctx'
+      [] -> failwith ("No such proposition " ^ (L.string_of_name n))
+    | CtxProp (m,stb) :: ctx' -> if n = m then stb else find ctx'
     | _ :: ctx' -> find ctx'
   in
     find ctx
@@ -81,18 +64,56 @@ let getModel n ctx =
 let getTheory n ctx =
   let rec find = function
       [] -> (failwith ("No such theory " ^ n))
-    | (S.N(m,_), CtxTheory (args, th)) :: ctx' ->
-	if n = m then (args, th) else find ctx'
-    | (S.N(m,_), _) :: ctx' ->
-	find ctx'
+    | CtxTheory (m,thr) :: ctx' -> if n = m then thr else find ctx'
+    | _ :: ctx' -> find ctx'
   in
     find ctx
 
-let rec getLong getter ctx = function
-    (L.LN(str, [], namesort) as lname) -> getter (S.N(str,namesort)) ctx
-  | (L.LN(str, lab::labs, namesort) as lname) ->
-      let ctx' = getModel str ctx
-      in getLong getter ctx' (L.LN(lab, labs, namesort))
+let rec getModel n ctx =
+  let rec find = function
+      [] -> raise Not_found
+    | CtxModel(m,thr) :: ctx' -> if n = m then thr else find ctx'
+    | _ :: ctx' -> find ctx'
+  in
+    find ctx
+
+let rec substMCtx m mdl = function
+    [] -> []
+  | CtxBind (nm,st) :: lst -> CtxBind (nm, L.substMSet m mdl st) :: (substMCtx m mdl lst)
+  | CtxSet (stnm,st) :: lst -> CtxSet (stnm, L.substMSet m mdl st) :: (substMCtx m mdl lst)
+  | (CtxProp _ as el) :: lst -> el :: (substMCtx m mdl lst)
+  | CtxModel (nm, summary) :: lst ->
+      CtxModel (nm, substMSummary m mdl summary) :: (if nm = m then lst else substMCtx m mdl lst)
+  | CtxModel (nm, (CtxParam (m', summary) as s)) :: lst ->
+      CtxModel (nm, if m' = m then s else CtxParam (m, substMSummary m mdl summary)) ::
+      (if nm = m then lst else substMCtx m mdl lst)
+  | CtxTheory _ :: _ -> failwith "substMCtx: cannot have a theory inside a theory"
+
+and substMSummary m mdl = function
+    Ctx elems -> Ctx (substMCtx m mdl elems)
+  | (CtxParam (m', summary)) as s ->
+      if m = m' then s else CtxParam (m', substMSummary m mdl summary)
+
+let rec normalizeModel ctx = function
+    L.ModelName n -> getModel n ctx
+  | L.ModelProj (mdl, n) ->
+      (match normalizeModel ctx mdl with
+	   Ctx elems -> getModel n elems
+	 | CtxParam _ -> failwith "normalizeModel: cannot project from a functor")
+  | L.ModelApp (mdl1, mdl2) ->
+      (match normalizeModel ctx mdl1 with
+	   Ctx _ -> failwith "normalizeModel: cannot apply a non-parametrized model"
+	 | CtxParam (m, summary) -> substMSummary m mdl2 summary)
+
+let rec getLong getter ctx ln =
+  let rec find = function
+      L.LN(None, nm) -> getter ctx nm
+    | L.LN(Some mdl, nm) ->
+	(match normalizeModel ctx mdl with
+	     Ctx elems -> getter elems nm
+	   | CtxParam _ -> failwith "getLong: cannot project from a functor")
+  in 
+    find ln
 
 
 (** *** *)
@@ -366,7 +387,7 @@ and translateProp ctx = function
 
   | L.Atomic (n, trms) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
-      let ty = (match fst (getLong getProp ctx n) with
+      let ty = (match getLong getProp ctx n with
 		    S.Unstable -> NamedTy (L.typename_of_longname n)
 		  | S.Stable | S.Equivalence -> TopTy)
       in
@@ -508,7 +529,7 @@ and translateTheoryElement ctx = function
 	 | S.Stable | S.Equivalence ->
 	     AssertionSpec ("predicate_" ^ (S.string_of_name n), [], IsPredicate n)
       ],
-      addProp n (stab, None) ctx
+      addProp n stab ctx
     end
 
   | L.Let_predicate (n, stab, bind, p) ->
@@ -522,7 +543,7 @@ and translateTheoryElement ctx = function
 	   Iff (NamedProp (toLN n, toId r', List.map (fun (y,_) -> toId y) bind),
 		substProp ctx ([(r, toId r')]) p'))])]
 	,
-	addProp n (stab, Some (bind, p)) ctx
+	addProp n stab ctx
 
   | L.Let_term (n, s, t) ->
       let {ty=u; per=(y,y',q)} = translateSet ctx s in
@@ -549,71 +570,48 @@ and translateTheoryElement ctx = function
 	let typ' = List.fold_right (fun (_,t) a -> ArrowTy (t, a)) bnd typ in
 	let app = List.fold_left (fun a (n,_) -> App (a, toId n)) (toId nm) bnd in
 	let elems =
-	  [ ValSpec (nm, typ', [(S.string_of_name nm, bnd, 
-				substProp ctx'' [(x, app)] prp')]) ]
+	  [ ValSpec (nm, typ', [(string_of_name nm, bnd, 
+				 substProp ctx'' [(x, app)] prp')]) ]
 	in
 	  if mdlbind = [] then
 	    elems
 	  else
-	    [ StructureSpec (String.capitalize (S.string_of_name nm), strctbind, Signat elems) ]
+	    [ StructureSpec (String.capitalize (string_of_name nm), strctbind, Signat elems) ]
       end, ctx
 
 and translateModelBinding ctx = function
     [] -> [], ctx
   | (m, th) :: rest ->
-      let th', ctx' = translateTheory ctx th in
-      let rest', ctx'' = translateModelBinding ctx rest in
-	(m, th') :: rest', (addModel m ctx' ctx'')
+      let signat = translateTheory ctx th in
+      let signats, ctx' = translateModelBinding (addModel m th ctx) rest in
+	(m, signat) :: signats, ctx'
 
 and translateTheoryBody ctx = function
-    [] -> [], emptyCtx
+    [] -> []
   | elem::elems ->
-      let es, ctx' = translateTheoryElement ctx elem in
-      let th, ctx'' = translateTheoryBody ctx' elems in
-	(es @ th), ctx''
+      let e, ctx' = translateTheoryElement ctx elem in
+	e :: (translateTheoryBody ctx' elems)
 
 and translateTheory ctx = function
-    L.Theory body -> 
-      let body', ctx' = translateTheoryBody ctx body in
-	Signat body', ctx'
-  | L.TheoryName id -> SignatName id, ctx
-
-(*
-and processModelBinding ctx = function
-    [] -> [], emptyCtx
-  | (m, th) :: rest ->
-      let th', ctx' = processTheory ctx th in
-      let rest', ctx'' = processModelBinding ctx rest in
-	(m, th') :: rest', (addModel m ctx' ctx'')
-
-and processTheory ctx = function
-    L.Theory body -> 
-      let body', ctx' = translateTheoryBody ctx body in
-	body', ctx'
-  | L.TheoryID id -> 
-      let args, body = getTheory id ctx in
-	if args <> [] then
-	  failwith "Cannot accept functors as arguments to sentences"
-	else
-	  let body', ctx' = processTheory ctx body in
-	    body', ctx'
-*)
+    L.Theory body -> Signat (fst (translateTheoryBody ctx body))
+  | L.TheoryName id -> SignatName id
+  | L.TheoryFunctor ((nm,thr1),thr2) ->
+      SignatFunctor ((nm, translateTheory ctx thr1), translateTheory (addModel nm thr1 ctx) thr2)
+  | L.TheoryApp (thy, mdl) -> translateTheory ctx (applyTheory ctx thy mdl)
 
 let translateToplevel ctx = function
-    (L.Theorydef (n, args, th)) -> 
-      let args', ctx' = translateModelBinding ctx args in
-	(Signatdef (n, args', fst (translateTheory ctx' th)),  
-	 addTheory n args th ctx)
-  | (L.TopComment cmmnt) -> (TopComment cmmnt,  ctx)
-  | (L.TopModel (mdlnm, thry)) ->
-      let (thry',ctx') = translateTheory ctx thry
-      in (TopModule(mdlnm,thry'),  ctx')
-      
+    L.Theorydef (n, thr) -> 
+      let signat = translateTheory ctx thr in
+	(Signatdef (n, thr), addTheory n thr ctx)
+  | L.TopComment cmmnt -> (TopComment cmmnt, ctx)
+  | L.TopModel (mdlnm, thry) ->
+      let signat = translateTheory ctx thry in
+	(TopModul (mdlnm, signat), addModel mdlnm thry ctx)
 
 let rec translateToplevels ctx = function
     [] -> ([], ctx)
   | thr :: ths ->
-      let (signat,ctx') = translateToplevel ctx thr in
-      let (signats,ctx'') = translateToplevels ctx' ths in
-	(signat :: signats, ctx'')
+      let (el,ctx') = translateToplevel ctx thr in
+      let (els,ctx'') = translateToplevels ctx' ths in
+	(el :: els, ctx'')
 
