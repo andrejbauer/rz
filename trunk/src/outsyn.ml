@@ -4,6 +4,7 @@ type label = string
 
 type ty = NamedTy of string          (* 0 *)
         | ListTy of ty               (* 1 *)
+	| SumTy of ty list           (* 1 *)
         | TupleTy of ty list         (* 2 *)
         | ArrowTy of ty * ty         (* 3 *)
 
@@ -12,18 +13,31 @@ type spec = ValSpec of label * ty
 
 type signat = spec list
 
+let unitTy = TupleTy []
+
 let rec tyToString' level (t : ty) =
   let rec makeTupleTy = function
-         []   -> "unit"
-      | [t]   -> tyToString' 1 t
-      | t::ts -> (tyToString' 1 t) ^ "*" ^ (makeTupleTy ts)
+      []    -> "void"
+    | [t]   -> tyToString' 1 t
+    | t::ts -> (tyToString' 1 t) ^ " * " ^ (makeTupleTy ts)
+
+  in let rec makeSumTy = function
+      [] -> "void"
+    | [t] -> tyToString' 1 t
+    | ts -> 
+	let rec make k = function
+	    [] -> []
+	  | t::ts -> ("`in" ^ (string_of_int k) ^ " of " ^ (tyToString' 1 t)) :: (make (k+1) ts)
+	in
+	  "[" ^ (String.concat " | " (make 0 ts) ^ "]"
 
   in let (level', str ) = 
        (match (t:ty) with
           NamedTy name   -> (0, name)
         | ListTy t       -> (1, (tyToString' 1 t) ^ "list")
+	| SumTy ts       -> (1, makeSumTy ts)
         | TupleTy ts     -> (2, makeTupleTy ts)
-        | ArrowTy(t1,t2) -> (3, (tyToString' 2 t1)^" -> "^(tyToString' 3 t2)))
+        | ArrowTy(t1,t2) -> (3, (tyToString' 2 t1) ^ " -> " ^ (tyToString' 3 t2)))
   in
     if (level' > level) then 
        "(" ^ str ^ ")"
@@ -38,9 +52,6 @@ let specToString = function
     | TySpec  (name,Some t) -> "type " ^ name ^ " = " ^ (tyToString t)
 
 let signatToString specs = 
- let rec specsToString = function
-          []    -> ""
-       |  s::ss -> "   " ^ (specToString s) ^ "\n" ^ 
-                             (specsToString ss)
- in
-   "sig\n" ^ (specsToString specs) ^ " end\n "
+  "sig\n" ^
+  (String.concat "\n" (List.map specToString specs)) ^
+  "\nend\n"

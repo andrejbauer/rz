@@ -6,7 +6,7 @@ let empty = []
 
 let get ctx a = List.assoc a ctx
 
-let update ctx a v = (a, v) :: ctx
+let add ctx a v = (a, v) :: ctx
 
 let occurs ctx a = List.exists (fun (b,_) -> a = b) ctx
 

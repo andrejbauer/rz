@@ -1,7 +1,7 @@
 (* Abstract syntax *)
 
 (* Labels are used to denote variants in sum types. We follow ocaml's
-syntax for polymorphic variants. *)
+   syntax for polymorphic variants. *)
 
 type label = string
 
@@ -75,7 +75,7 @@ type theory_element =
                                    between Let_term and Define? *)
   | Sentence of sentence_type * name * binding list * term
   | Model of string * theory
-  | Subtheory of theoryspec
+  | Subtheory of theoryspec (* AB: Do we want subtheories? *)
       
 and theoryspec = {t_arg  : theory_element list option;
                   t_name : string ;
@@ -84,4 +84,3 @@ and theoryspec = {t_arg  : theory_element list option;
 and theory = 
      Theory of theory_element list
   |  TheoryID of string
-
