@@ -5,6 +5,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{theorem}
+\usepackage{fancyvrb}
 
 %% MACROS
 
@@ -17,6 +18,8 @@
 \newcommand{\note}[1]{\texttt{[#1]}}
 \newcommand{\fst}[1]{\texttt{fst}\,#1}
 \newcommand{\snd}[1]{\texttt{snd}\,#1}
+
+\newcommand{\comment}[1]{\textbf{[#1]}}
 
 %% THEOREM-LIKE ENVIRONMENTS
 
@@ -123,7 +126,7 @@ the underlying datatype we might choose $\ut{D} = \mathtt{int} \;
 \mathtt{list} * (\mathtt{int} * \mathtt{int}) \; \mathtt{list}$, and
 represent a graph~$G \in D$ as a pair of lists $(v,e)$ where $v =
 [x_1; \ldots; x_n]$ is the list of vertices and $e = [(x_{i_1},
-x_{j_1}); \ldots, x_{i_m}, x_{j_m}]$ is the list of edges, given as
+x_{j_1}); \ldots, (x_{i_m}, x_{j_m})]$ is the list of edges, given as
 pairs of vertices. Formally, we write
 %
 \begin{equation*}
@@ -170,7 +173,13 @@ Modest sets and realized functions form a category of \emph{modest
 category with good properties. It is regular and locally cartesian
 closed, which allows us to interpret first-order logic and a rich type
 theory. Here we only outline how first-order logic is interpreted, see
-e.g.~\cite{Bauer:00} for details. Each first-order formula~$\phi$ has
+e.g.~\cite{Bauer:00} for details.  \comment{CAS: Everything before was
+  very good for the PL folk.  But this is going to lose people --- 
+  instead of realizing abstract data types, you're suddenly
+  talking about realizers for logical formulas, and it's not
+  obvious what it would mean to ``implement'' a formula.  We don't have
+  to give full details yet, but some intuition would be really quite helpful.}
+Each first-order formula~$\phi$ has
 an underlying type~$\ut{\phi}$ of realizers and a realizability
 relation~$\rz$. The type~$\ut{\phi}$ and~$\rz$ are defined inductively
 on the structure of the formula. For example, realizers for
@@ -188,19 +197,20 @@ conjunction and implication are defined as follows:
 %
 We shall not dwell any further on the technicalities involving the
 category of modest sets, but rather proceed to a concrete description
-of our relizability translation.
+of our realizability translation.
 
 There is one technical point, though, which we first take care of. A
 modest set is a triple $(S, \ut{S}, {\rz_S})$ in which~$S$ is an
 arbitrary set. For an automated system it would be convenient if it
-did not have to refer to arbitrary sets but rather just to ingridients
+did not have to refer to arbitrary sets but rather just to ingredients
 that are already present in the programming language, such as types
 and sets of expressions. Up to isomorphism, a modest set can be
-construed as a triple $(\ut{S}, \tot{S}, {\per{S}})$ where
-$\ut{S}$ is a type, $\tot{S}$ is a subset of expressions of
-type~$\ut{S}$, called the \emph{total values},\footnote{We do
-  \emph{not} require that a total value must be a terminating
-  expression.} and $\per{S}$ is an equivalence relation on~$\ut{S}$.
+construed as a triple $(\ut{S}, \tot{S}, {\per{S}})$ where $\ut{S}$ is
+a type, $\tot{S}$ is a subset of expressions of type~$\ut{S}$, called
+the \emph{total values},\footnote{We do \emph{not} require that a
+  total value must be a terminating expression.} and $\per{S}$ is an
+equivalence relation on~$\ut{S}$.  \comment{Shouldn't this be ``an
+  equivalence relation on $\tot{S}$?  Otherwise, it would be a PER.}
 The relationship between this representation of a modest set and the
 original one is as follows:
 %
@@ -227,7 +237,7 @@ Explain the basic setup:
 %
 \begin{itemize}
 \item a set is interpreted as a modest set
-\item thre realizers of a first-order sentence (closed formula) are
+\item the realizers of a first-order sentence (closed formula) are
   interpreted as certain expressions of a suitable type.
 \end{itemize}
 
@@ -247,26 +257,169 @@ Then go on to explaining what theories and signatures are.
 \subsection{Theories}
 \label{sec:theories}
 
-Describe what (non-parametrized) theories are: sets, constants, and
-sentences (axioms and theorems, really no difference between them as
-far as translation is concerned).
+In its simplest form a theory is a specification of what must exist
+(sets, constants, and relations).  A typical theory definition looks like
+\begin{Verbatim}
+theory Group =
+thy
+  set g  
 
+  const e     : g
+  const ( * ) : g -> g -> g
+  const i     : g -> g
+
+  implicit x,y,z : g
+
+  axiom unit x =
+    e * x = x and x * e = x
+
+  axiom associative x y z =
+    (x * y) * z = x * (y * z)
+
+  axiom inverse x =
+    x * (i x) =  e and (i x) * x = e
+end  
+\end{Verbatim}
+The theory is enclosed by \Verb|thy|\ldots\Verb|end|.  This theory
+defines a set \Verb|g|, and three constants: an element \Verb|e| of
+\Verb|g|, a (curried) binary infix operator \Verb|*| on the set
+\Verb|g|, and a mapping \Verb|i|.  The \Verb|implicit| operator is not
+part of the theory proper, but signals to the type checker that all
+bound variables named \Verb|x| or \Verb|y| or \Verb|z| should be
+assumed to range over elements in \Verb|g| unless otherwise specified.
+Finally, we have three axioms.  Axiom arguments (the single argument
+\Verb|x| in the case of the \Verb|unit| axiom, and the three arguments
+\Verb|x|, \Verb|y|, and \Verb|z|) are essentially universally
+quantified in the following proposition.  \comment{Or is there a subtle difference I'm missing?}
+
+It is important to note that theories do not include proofs, but
+rather just the statement of the axiom (or theorem) specified to hold.
+Thus although axioms can be defined, one cannot actually refer to
+the axioms within the theory.
+
+Features of theories not shown in this example include:
+\begin{itemize}
+\item A theory can describe predicates
+  or more general relations.  These can be declared 
+  \Verb|stable| \comment{meaning...} .  Stable binary relations can be 
+  declared to be equivalence relations.
+\item The language of sets includes cartesian product, disjoint
+  unions, subsets ($\{x\in S | \phi(x)\}$), 
+  equivalence classes ($S/\cong$), and sets of realizers.  The
+  corresponding introduction and elimination forms appear in
+  the language of terms.
+\item Constants, sets, and relations can all be defined in the theory;
+  these serve as abbreviations to allow more concise specifications.
+  For example, a theory might want to give a name to the set of 
+  non-zero numbers.
+\item A theory can postulate the existance of a model of some
+  theory.  For example, a theory of real numbers could start by
+  postulating a model \Verb|N| of the theory \Verb|Nat| of natural
+  numbers.
+\item Axioms can universally quantify over all models of a theory.
+  This is useful for describing initiality properties.
+\item Comments
+\end{itemize}
+
+\comment{Really, I should create a figure containing the abstract syntax.}
 
 \subsection{Signatures}
 \label{sec:signatures}
 
+On the logical side, we have models described by theories.  Thus on
+the programming side we should have implementations being described by
+specifications.  Our tool thus translates theories into
+\emph{signatures}, which are ML's module interfaces.
 
-Describe our notion of signatures (for structures), in particular, we
-have ML-like signatures with assertions. Assertions are written in
-ordinary classical first-order logic. Point out this is a plus since
-programmers typically are not trained in constructive logic.
+Signatures allow us to require the existence of certain types, as well
+as values of given type.  This allows decidable typechecking, but we
+need more expressiveness in order to faithfully translate the content
+of a theory.  We therefore generate signatures augmented by assertion
+comments, which specify constraints on the values and functions an
+implementation beyond their type.  It is the responsibility of the
+programmer to check that the implementation satisfies these
+assertions, as our tool does not attempt to do any theorem proving.
 
-\subsection{Parametrized Theories and Functor Signatures}
+Assertions are written in ordinary classical first-order logic. Since
+programmers typically are not trained in constructive logic, this
+may make it easier to verify the assertions.
+
+The output for the \Verb|Group| theory above is then:
+\begin{Verbatim}
+module type Group = 
+sig
+  type g
+  (**  Assertion per_g =  PER(=g=)
+  *)
+   
+  val e : g
+  (**  Assertion e_total =  e : ||g||
+  *)
+   
+  val ( * ) : g -> g -> g
+  (**  Assertion ( * )_total =
+         all (x:g, y:g).  x =g= y =>
+           all (x':g, y':g).  x' =g= y' => 
+             x * x' =g= y * y'
+  *)
+   
+  val i : g -> g
+  (**  Assertion i_total =  
+          all (x:g, y:g).  
+             x =g= y => i x =g= i y
+  *)
+   
+  (**  Assertion unit (x:g) =  
+          e * x =g= x and x * e =g= x
+  *)
+   
+  (**  Assertion associative (x:g,y:g,z:g) =  
+          (x * y) * z =g= x * (y * z)
+  *)
+   
+  (**  Assertion inverse (x:g) =  
+          x * i x =g= e and i x * x =g= e
+  *)
+end
+\end{Verbatim}
+\comment{Hmm...This really isn't interesting at all.  With the
+  exception of the totality predicates, it's just the same as the
+  input.  What would a better small example be?  Maybe something
+  that produces an obligation?
+  }
+
+\subsection{Parameterized Theories and Functor Signatures}
 \label{sec:param-theor-funct}
 
 
-Mention that we can handle parametrized theories and functor
+Mention that we can handle parameterized theories and functor
 signatures, but avoid explaining everything about them.
+
+\subsection{Implementation}
+
+\comment{Perhaps \emph{Implementation} should be the next section, of which
+\emph{The Realizibility Translation} is the biggest subsection?}
+
+After parsing, our implementation does type checking.  The type
+checker does rather limited type reconstruction; the types of all
+bound variables must either be given at the binding site, given
+through an \Verb|implicit| declaration, or be obvious from local
+context.  A very small amount of implicit subtyping is done (primarily
+between sums).  
+
+The system will also try to insert explicit coercions into or out of
+subset types where they were omitted by the theory author.  This can
+significantly improve readability.  \comment{give example!}
+
+After typechecking the theories are represented in abstract syntax and
+translated into ML signatures as described below.  
+
+Propositions without constructive content have trivial realizers, and
+so a final ``unit elimination'' pass removes these and does a few
+peephole simplifications of the resulting signature. \comment{give example!}
+
+\comment{I could say more about the typechecker and the optimizer, but
+  I'm not sure this audience would care much.}
 
 \section{The Realizability Translation}
 \label{sec:real-transl}
