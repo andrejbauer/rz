@@ -55,7 +55,7 @@ In this case, since \Verb|:>| and \Verb|:<| has computational content
 the proposition; going out of a subset is then a first projection),
 the typechecker rewrites the former version of \Verb|field| into the
 latter before passing it on to the translation phase. If injections
-into subsets are cannot be justified in the theory (e.g., if the
+into subsets cannot be justified in the theory (e.g., if the
 \Verb|field| axiom lacked the premise \Verb|not (x=zero)|) then the
 theory will still translate, but the generated assertions will not be
 satisfied by any implementation.
@@ -153,7 +153,7 @@ same as constructive reading. Therefore a constructive mathematician
 and a classical programmer will agree on the meaning of $\phi'(r)$.
 
 RZ recognizes almost negative formulas and optimizes away their
-realizers, as described in the next Subsection. In addition, the user
+realizers, as described below. In addition, the user
 may declare a basic predicate or relation to be stable, which will be
 taken into account by RZ during translation and optimization.
 
