@@ -160,7 +160,9 @@ let any = mk_word "_"
 
 let fresh good bad ctx = freshName good bad ~occ:(occursCtx ctx) emptysubst
 
-let sbp ctx lst = substProp ~occ:(occursCtx ctx) (termsSubst lst)
+let sbp ctx ?(bad=[]) lst =
+  substProp ~occ:(fun str -> List.exists (fun (Syntax.N(nm,_)) -> nm = str) bad ||
+		    occursCtx ctx str) (termsSubst lst)
 
 let sbt ctx lst = substTerm ~occ:(occursCtx ctx) (termsSubst lst)
 
@@ -231,8 +233,8 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (f,
 	       Forall ((z, u),
 	       Forall ((z', u),
-	         Imply (sbp ctx [(x, id z); (x', id z')] p,
-			sbp ctx [(y, App (id f, id z)); (y', App (id f, id z'))] q)
+	         Imply (sbp ctx ~bad:[z;z'] [(x, id z); (x', id z')] p,
+			sbp ctx ~bad:[z;z'] [(y, App (id f, id z)); (y', App (id f, id z'))] q)
 		      ))
 	      )
 	  );
@@ -240,8 +242,8 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (f, g,
 	       Forall ((z,u),
                Forall ((z',u),
-                 Imply (sbp ctx [(x, id z); (x', id z')] p,
-			sbp ctx [(y, App (id f, id x)); (y', App (id g, id x'))] q)
+                 Imply (sbp ctx ~bad:[z;z'] [(x, id z); (x', id z')] p,
+			sbp ctx ~bad:[z;z'] [(y, App (id f, id x)); (y', App (id g, id x'))] q)
 		      ))
 	      )
 	  )
@@ -299,7 +301,7 @@ let rec translateSet (ctx : ctxElement list) = function
 			 let x'' = fresh [x'] [x] ctx in
 			   Cexists ((x'', u),
 				   And [Equal (id x, Inj (lb, Some (id x'')));
-					sbp ctx [(x', id x'')] p]))
+					sbp ctx ~bad:[x''] [(x', id x'')] p]))
 		   lst')
 	  );
 	  per = (
@@ -315,7 +317,7 @@ let rec translateSet (ctx : ctxElement list) = function
 		           Cexists ((w',u),
 				    And [Equal (id y, Inj (lb, Some (id w)));
 					 Equal (id y', Inj (lb, Some (id w')));
-					 sbp ctx [(z, id w); (z', id w')] q])))
+					 sbp ctx ~bad:[w;w'] [(z, id w); (z', id w')] q])))
 		   lst')
 	  )
 	}
@@ -350,10 +352,10 @@ and translateTerm ctx = function
       let z' = fresh [z] [n;n'] ctx in
 	Obligation ((n, t), True,
 		    Obligation ((z',v),
-				And [sbp ctx [(z, id z')] q;
+				And [sbp ctx ~bad:[z'] [(z, id z')] q;
 				     Forall ((n',t),
-					     Imply (sbp ctx [(n, id n'); (z, id z')] q,
-						    sbp ctx [(x, id n); (y, id n')] p))], id n)
+					     Imply (sbp ctx ~bad:[z';n'] [(n, id n'); (z, id z')] q,
+						    sbp ctx ~bad:[z';n'] [(x, id n); (y, id n')] p))], id n)
 		   )
 
   | L.Inj (lb, None) -> Inj (lb, None)
@@ -382,8 +384,8 @@ and translateTerm ctx = function
 	Let (n, translateTerm ctx t,
 	     Obligation ((any, TopTy),
 			 Forall ((n', ty1), Imply (
-				   sbp ctx [(x1, id n); (y1, id n')] p1, 
-				   sbp ctx [(x2, v); (y2, v')] p2)),
+				   sbp ctx ~bad:[n'] [(x1, id n); (y1, id n')] p1, 
+				   sbp ctx ~bad:[n'] [(x2, v); (y2, v')] p2)),
 			 v))
 
   | L.Quot (t, _) -> translateTerm ctx t
@@ -398,7 +400,7 @@ and translateTerm ctx = function
 	     Obligation ((any, TopTy),
 			 Forall ((n', ty1), Imply (
 				   NamedProp(translateLN r, Dagger, [Tuple [id n; id n']]),
-				   sbp ctx [(x2, v); (y2, v')] p2)),
+				   sbp ctx ~bad:[n'] [(x2, v); (y2, v')] p2)),
 			 v))
 
   | L.Let ((n, s), u, v, _) ->
@@ -409,7 +411,7 @@ and translateTerm ctx = function
       let (ty, y, p') = translateProp (addBind x s ctx) p in
       let t' = translateTerm ctx t in
       let y' = fresh [y; mk_word "v"; mk_word "u"; mk_word "t"] [] ctx in
-	Obligation ((y', ty), sbp ctx [(y, id y'); (x,t')] p', Tuple [t'; id y'])
+	Obligation ((y', ty), sbp ctx ~bad:[y'] [(y, id y'); (x,t')] p', Tuple [t'; id y'])
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
 			     
@@ -445,8 +447,8 @@ and translateProp ctx = function
       let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"] [x'] ctx in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x', t), Imply (sbp ctx [(x, id x')] p',
-				 sbp ctx [(y, App (id f, id x'))] q')))
+	 Forall ((x', t), Imply (sbp ctx ~bad:[x'] [(x, id x')] p',
+				 sbp ctx ~bad:[x'] [(y, App (id f, id x'))] q')))
 
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProp ctx p in
@@ -457,10 +459,10 @@ and translateProp ctx = function
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
 	 f,
 	 And [
-	   Forall ((x', t), Imply (sbp ctx [(x, id x')] p',
-				   sbp ctx [(y, App (Proj (0, id f), id x))] q'));
-	   Forall ((y', u), Imply (sbp ctx [(y, id y')] q',
-				   sbp ctx [(x, App (Proj (1, id f), id y))] p'))
+	   Forall ((x', t), Imply (sbp ctx ~bad:[x'] [(x, id x')] p',
+				   sbp ctx ~bad:[x'] [(y, App (Proj (0, id f), id x))] q'));
+	   Forall ((y', u), Imply (sbp ctx ~bad:[y'] [(y, id y')] q',
+				   sbp ctx ~bad:[y'] [(x, App (Proj (1, id f), id y))] p'))
 	 ]
 	)
 
@@ -479,7 +481,7 @@ and translateProp ctx = function
 		(fun lb (t,x,p) ->
 		   let x' = fresh [x] [u] ctx in
 		     Cexists ((x',t), And [Equal(id u, Inj (lb, Some (id x')));
-					   sbp ctx [(x, id x')] p]))
+					   sbp ctx ~bad:[x'] [(x, id x')] p]))
 		lbs lst'
 	 ))
 
@@ -491,8 +493,8 @@ and translateProp ctx = function
       in
 	(ArrowTy (t, u),
 	 f,
-	 Forall ((x',t), Imply (sbp ctx [(x, id x')] q,
-				sbp ctx [(n, id x'); (y, App (id f, id x'))] p'))
+	 Forall ((x',t), Imply (sbp ctx ~bad:[x'] [(x, id x')] q,
+				sbp ctx ~bad:[x'] [(n, id x'); (y, App (id f, id x'))] p'))
 	)
 
   | L.Exists ((n, s), p) -> 
@@ -517,10 +519,10 @@ and translateProp ctx = function
 	   sbp ctx [(n, Proj (0, id w)); (y, Proj (1, id w))] p';
 	   Forall ((w', TupleTy [t; u]),
 		   Imply (
-		     sbp ctx [(x, Proj (0, id w'))] q,
+		     sbp ctx ~bad:[w'] [(x, Proj (0, id w'))] q,
 		     Imply (
-		       sbp ctx [(n, Proj (0, id w')); (y, Proj (1, id w'))] p',
-		       sbp ctx [(z,Proj(0, id w)); (z',Proj(0,id w'))] pr
+		       sbp ctx ~bad:[w'] [(n, Proj (0, id w')); (y, Proj (1, id w'))] p',
+		       sbp ctx ~bad:[w'] [(z,Proj(0, id w)); (z',Proj(0,id w'))] pr
 		     )
 		   )
 		  )
