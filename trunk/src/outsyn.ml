@@ -507,7 +507,10 @@ let rec string_of_spec = function
     | StructureSpec (nm, [], sgntr) ->
 	"module " ^ nm ^ " : " ^ (string_of_signat sgntr)
     | StructureSpec (nm, mdlbind, sgntr) ->
-	"module " ^ nm ^ (String.concat " " (List.map (fun mdl -> "foo") mdlbind)) ^ " : " ^ (string_of_signat sgntr)
+	"module " ^ nm ^ (String.concat " "
+			    (List.map (fun (nm, sgntr) ->
+					 "(" ^ nm ^ " : " ^ (string_of_signat sgntr) ^ ")")
+			       mdlbind)) ^ " : " ^ (string_of_signat sgntr)
     | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
 and string_of_signat = function
