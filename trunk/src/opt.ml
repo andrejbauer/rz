@@ -231,8 +231,12 @@ and optProp ctx = function
 and optElems ctx = function
     [] -> []
   |  ValSpec(name, ty) :: rest ->
-      ValSpec(name, optTy ctx ty) ::
-      optElems (insertType ctx name ty) rest
+      let    ty'   = optTy ctx ty
+      in let rest' = optElems (insertType ctx name ty) rest
+      in (match ty' with
+  	TopTy -> rest'
+      |	ty' ->   ValSpec(name, ty') :: rest')
+
   |  AssertionSpec(bnds, prop) :: rest ->
       (** XXX Eliminate unit bindings? *)
       let ctx' = insertTypeBnds ctx bnds
