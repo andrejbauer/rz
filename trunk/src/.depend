@@ -1,6 +1,4 @@
 parser.cmi: syntax.cmo 
-infer-bak.cmo: syntax.cmo 
-infer-bak.cmx: syntax.cmx 
 infer.cmo: syntax.cmo 
 infer.cmx: syntax.cmx 
 logic.cmo: syntax.cmo 
@@ -11,8 +9,10 @@ outsyn.cmo: syntax.cmo
 outsyn.cmx: syntax.cmx 
 parser.cmo: message.cmo syntax.cmo parser.cmi 
 parser.cmx: message.cmx syntax.cmx parser.cmi 
-rz.cmo: infer.cmo message.cmo parser.cmi 
-rz.cmx: infer.cmx message.cmx parser.cmx 
+rz.cmo: infer.cmo logic.cmo message.cmo opt.cmo outsyn.cmo parser.cmi \
+    translate.cmo 
+rz.cmx: infer.cmx logic.cmx message.cmx opt.cmx outsyn.cmx parser.cmx \
+    translate.cmx 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
 toplevel.cmo: infer.cmo logic.cmo message.cmo opt.cmo outsyn.cmo parser.cmi \

@@ -18,10 +18,8 @@ else
   let fn = (if opt then Sys.argv.(1) else Sys.argv.(2)) in
   let thy = read fn in
   let thy' = Infer.annotateTheoryDefs Infer.emptyCtx thy in
-(*
   let lthy = List.map Logic.make_theorydef thy' in
   let spec = Translate.translateTheorydefs Translate.emptyCtx lthy in
   let spec2 = if opt then Opt.optSignatdefs Opt.emptyCtx spec else spec in
     List.iter (fun s -> print_string ((Outsyn.string_of_signatdef s) ^ "\n")) spec2
-*)
   print_string "\nSUCCESS.\n"

@@ -16,27 +16,35 @@ exception Unimplemented
 
 exception HOL             (* If the input is trying to do HOL *)
 
+module S = Syntax
+
 (*******************)
 (* Abstract Syntax *)
 (*******************)
 
 (** labels in sums and model components *)
-type label = Syntax.label
+type label = S.label
 
 (** names of identifiers *)
-type name = Syntax.name
+type name = S.name
+
+(** names of components inside models *)
+type longname = LN of string * string list * S.name_type
 
 (** names of sets *)
-type set_name = Syntax.set_name
+type set_name = S.set_name
+
+(** names of sets *)
+type set_longname = longname
 
 (** names of models; must be capitalized *)
-type model_name = Syntax.model_name
+type model_name = S.model_name
 
 (** names of theories *)
-type theory_name = Syntax.theory_name
+type theory_name = S.theory_name
 
 (** sorts of sentences *)
-type sentence_type = Syntax.sentence_type
+type sentence_type = S.sentence_type
 
 (** a binding in a quantifier or lambda *)
 type binding = name * set
@@ -48,7 +56,7 @@ and model_binding = model_name * theory
 and proposition =
     False
   | True
-  | Atomic of longname * term (** atomic proposition *)
+  | Atomic of longname * term list (** atomic proposition *)
   | And    of proposition list
   | Imply  of proposition * proposition
   | Iff    of proposition * proposition
@@ -69,7 +77,6 @@ and set =
   | Subset  of binding * proposition
   | Rz      of set (** the set of realizers *)
   | Quotient of set * longname
-  | SetMProj of model * label
   | PROP (** we pretend propositions form a set *)
   | STABLE (** we pretend not-not stable propositions form a set *)
   | EQUIV (** we even pretend not-not stable equivalences form a set *)
@@ -96,8 +103,8 @@ and term =
 and theory_element =
     Set of set_name
   | Let_set of set_name * set
-  | Predicate of name * Syntax.propKind * set
-  | Let_predicate of name * Syntax.propKind * binding list * proposition
+  | Predicate of name * S.propKind * set
+  | Let_predicate of name * S.propKind * binding list * proposition
   | Let_term of name * set * term
   | Value of name * set
   | Sentence of sentence_type * name * model_binding list * binding list * proposition
@@ -190,11 +197,23 @@ and subst x t =
      in sub)
 *)
 
+let ln_of_name (S.N(str,sort)) = LN(str,[],sort)
+let ln_of_string str = LN (str, [], S.Word)
+
+let rec string_of_ln (LN (nm, nms, _)) = String.concat "." (nm :: nms)
+
+let ln_of_modelproj mdl nm =
+  let rec lom acc = function
+      S.ModelName m -> LN (m, acc, S.Word)
+    | S.ModelProj (mdl, lbl) -> lom (lbl :: acc) mdl
+  in
+    lom [nm] mdl
+
 let rec string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
   | Bool -> "bool"
-  | Basic lname -> Syntax.string_of_longname lname
+  | Basic lname -> string_of_ln lname
   | Product lst ->
       "(" ^ (String.concat " * " (List.map string_of_set lst)) ^ ")"
   | Exp (s, t) -> "(" ^ (string_of_set s) ^ " -> " ^ (string_of_set t) ^ ")"
@@ -209,7 +228,7 @@ let rec string_of_set = function
 
   | Subset _ -> "{...}"
   | Rz s -> "rz " ^ (string_of_set s)
-  | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (Syntax.string_of_longname n)
+  | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (string_of_ln n)
   | PROP -> "PROP"
   | STABLE -> "STABLE"
   | EQUIV -> "EQUIV"
@@ -217,26 +236,26 @@ let rec string_of_set = function
 
 
 (** *** *)
-module S = Syntax
 
 (************************************)
 (* Translation from Syntax to Logic *)
 (************************************)
 
-(* make_set           : Syntax.set -> Logic.set
-   make_bindings      : Syntax.binding list -> Logic.binding list
-   make_proposition   : Syntax.term -> Logic.proposition
-   make_term          : Syntax.term -> Logic.term
-   make_theoryelement : Syntax.theory_element -> Logic.theory_element
-   make_theoryspec    : Syntax.theoryspec -> Logic.theory
-   make_theory        : Syntax.theory -> Logic.theory_element list
+(* make_set           : S.set -> Logic.set
+   make_bindings      : S.binding list -> Logic.binding list
+   make_proposition   : S.term -> Logic.proposition
+   make_term          : S.term -> Logic.term
+   make_theoryelement : S.theory_element -> Logic.theory_element
+   make_theoryspec    : S.theoryspec -> Logic.theory
+   make_theory        : S.theory -> Logic.theory_element list
 *)
 
 let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
   | S.Bool -> Bool
-  | S.Set_name n -> Basic n
+  | S.Set_name nm -> Basic (ln_of_string nm)
+  | S.Set_mproj (mdl, lbl) -> Basic (ln_of_modelproj mdl lbl)
   | S.Product lst -> Product (List.map make_set lst)
   | S.Sum lst -> Sum (List.map
 			(function (lb, None) -> (lb, None) 
