@@ -1,4 +1,4 @@
-\documentclass{article}
+\documentclass[12pt]{article}
 \usepackage{fancyvrb,xspace,fullpage}
 
 \newcommand{\keywd}[1]{\mbox{\texttt{#1}}\xspace}
@@ -13,6 +13,7 @@
 \newcommand{\EQUIVPROP}{\keywd{Equiv}}
 \newcommand{\END}{\keywd{end}}
 \newcommand{\EXISTS}{\keywd{exists}}
+\newcommand{\EXISTSONE}{\keywd{exists1}}
 \newcommand{\FALSE}{\keywd{false}}
 \newcommand{\FORALL}{\keywd{forall}}
 \newcommand{\IMPLICIT}{\keywd{implicit}}
@@ -33,6 +34,7 @@
 \newcommand{\RZ}{\keywd{rz}}
 \newcommand{\SET}{\keywd{set}}
 \newcommand{\SOME}{\keywd{some}}
+\newcommand{\SOMEONE}{\keywd{some1}}
 \newcommand{\STABLE}{\keywd{stable}}
 \newcommand{\STABLEPROP}{\keywd{Stable}}
 \newcommand{\STRUCTURE}{\keywd{structure}}
@@ -154,7 +156,7 @@ Theories can be specified as follows:
 
 \noindent Theories can be defined as follows:
 \begin{itemize}
-\item $\THEORY\ \metav{Theoryname}\ [\MParam]^*\ [\Param]^*\ \EQUALS\ \Theoryexp$
+\item $\THEORY\ \metav{Theoryname}\ [\MParam]^*\ \EQUALS\ \Theoryexp$
 
    A named theory with the given definitions.  It may be parameterized
    by one or more models; each model parameter, if present, must be written
@@ -183,13 +185,16 @@ The \metav{constname} can either be
 \item An ordinary lowercase alphanumeric identifier (beginning with a
   letter or underscore, containing letters, digits, underscores, and
   single quotes).
+  \NB Integers such as \Verb|0| are therefore not valid names for constants.
 \item A unary operator (any purely symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses, in which the \Setexp should be of the form $\Setexp \TO \Setexp$;
 \item Or a binary operator (any other identifier composed only of
   symbolic characters) enclosed in parentheses, in which case the
   \Setexp should be curried with two arguments.
+  \NB The binary operator \Verb|*| must be written \Verb|(* )| rather than
+  as \Verb|(*)| in order to avoid confusion with the end-of-comment token.
 \end{enumerate}
 
-\NB Integers such as \Verb|0| are therefore not valid names for constants.
+
 
 \item \CONST \metav{constname} = \Term\\
       \CONST \LPAREN \metav{constname} \COLON \Setexp \RPAREN = \Term\\
@@ -201,22 +206,24 @@ The \metav{constname} can either be
 \item{} [\STABLE{}] \RELATION \metav{relationname} \COLON \Setexp\\
      {} [\STABLE{}] \PREDICATE \metav{relationname} \COLON \Setexp
   
-  A relation of the given name exists, with the given set as its
-  domain.  The relation is not assumed to be stable unless explicitly
-  stated with the \STABLE keyword.
-The name of the relation can be:
+     A relation of the given name exists, with the given set as its
+     domain (but see below).  The relation is not assumed to be stable
+     unless explicitly stated with the \STABLE keyword.  The name of
+     the relation can be:
 \begin{enumerate}
 \item  An ordinary alphanumeric identifier;
 \item  A unary operator (symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses;
 \item  Or a binary operator (any other identifier composed of symbolic characters) enclosed in parentheses, in which case the \Setexp should be of the (uncurried) form $\Setexp \TIMES \Setexp$
-\end{enumerate}
 
-\NB Despite the syntax of the specification, the system
-\emph{uncurries} all relations; if a relation \Verb|R| is defined on
-the set \Verb|s*t|, then it should be applied to two arguments as
-\Verb|R x y| rather than \Verb|R (x,y)|.  Binary operators such as
+\NB Despite the syntax of the specification, the system \emph{uncurries}
+binary operators ranging over a product of sets.  Thus uses of
 \Verb|<| can be written either in the usual infix form \Verb|x < y| or
 in the curried form \Verb|( < ) x y|.
+\end{enumerate}
+
+\NB If the set specified is of the (curried) form $\ldots \TO \PROP$,
+this declares not a predicate on functions, but rather a proposition
+that takes its arguments ($\cdots$) in curried form.
 
 \item{} [\STABLE{}] \RELATION \metav{relationname}\ \EQUALS\ \Proposition\\
      {} [\STABLE{}] \PREDICATE \metav{relationname}\ \EQUALS\ \Proposition
@@ -255,19 +262,21 @@ in the curried form \Verb|( < ) x y|.
 \item \EQUIV \Identifier \COLON \Setexp\\
       \EQUIVALENCE \Identifier \COLON \Setexp
   
-  An equivalence relation on the given set (i.e., a predicate on the
+  An stable equivalence relation on the given set (i.e., a predicate on the
   cartesian product of the set with itself) must exist.  The
   name can be alphanumeric or a binary operator in parentheses.
 
 \item $\EQUIV\ \Identifier\ \Param\ \Param\ =\ \Proposition$\\
       $\EQUIVALENCE\ \Identifier\ \Param\ \Param\ =\ \Proposition$
  
-  A local definition of an equivalence relation.  Both term parameters
+  A local definition of an stable equivalence relation.  Both term parameters
   must be present and must either be explicitly typed with the syntax
   $\LPAREN \Identifier \COLON \Setexp \RPAREN$ or must be a single
   $\Identifier$ that has previously appeared in an \IMPLICIT
   declaration.  
 
+  The proposition must be almost negative, so that the system can 
+  verify that the equivalence relation is indeed stable.
 
   \textbf{Bug:  Type inference doesn't appear to verify that both parameters 
   range over the same set for a defined equivalence relation, at least
@@ -332,10 +341,18 @@ Propositions can be:
 
 \item $\ALL\ \Param\ \PERIOD\ \Proposition$\\
       $\FORALL\ \Param\ \PERIOD\ \Proposition$
-      
+
+   Parameter must be implicitly typed or parenthesized, as usual.
 
 \item $\EXISTS\ \Param\ \PERIOD\ \Proposition$\\
       $\SOME\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\EXISTSONE\ \Param\ \PERIOD\ \Proposition$\\
+      $\SOMEONE\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
 
 \item $\MATCH\ \Term\ \WITH\ \Case\ [\BAR\ \Case\ ]^*\ \END$
   
@@ -362,13 +379,13 @@ Sets can be of the form:
 
 \begin{itemize}
 \item \ \keywd{0}\\
-      \LBRACE\RBRACE
+      \Verb|{}|
 
   The empty set.
 
 \item \keywd{1}
 
-  The unit set, whose only member is \LPAREN\RPAREN.
+  The unit set, whose only member is \Verb|()|.
 
 \item \keywd{2}\\
       \keywd{bool}
@@ -413,7 +430,7 @@ Sets can be of the form:
 
   \textbf{All functions?}
 
-\item \EQUIVPROP\\
+\item % \EQUIVPROP\\
       \PROP\\
       \STABLEPROP
 
@@ -423,9 +440,13 @@ Sets can be of the form:
   for a bound variable or in an \IMPLICIT declaration (though
   the error may not be caught by the typechecker until a later use).
 
-\textbf{Bug:  \EQUIVPROP is used internally by the typechecker,
+\iffalse
+\EQUIVPROP is used internally by the typechecker,
   but there's currently no way to specify this set in the source.
-  Is this a bug?}
+  Is this a bug?
+
+No --- it's not a set in the topos, so we don't 
+\fi
 
 \item \Setexp \PERCENT \metav{longrelationname}\\
       \Setexp \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN
@@ -436,7 +457,7 @@ Sets can be of the form:
 
 \item \RZ \Setexp
 
-  RZ.
+  Underlying set of realizers of the given set.
 \end{itemize}
 
 
@@ -474,7 +495,7 @@ Terms can be of the following forms:
 
   A $k$-tuple for $k\ge 2$.
 
-\item $\LPAREN \RPAREN$
+\item \Verb|()|
 
   The unique term of type \UNIT (i.e., the 0-tuple).
 
@@ -483,7 +504,7 @@ Terms can be of the following forms:
   Projection from a tuple, where \metav{n} is a natural number.  Projection
   is 0-based, i.e., \Verb|(x,y,z).1| is \Verb|y|.
 
-\item $\Label [\ \Term\ ]$
+\item $\Label\ [\ \Term\ ]$
 
   An injection into a sum type; if no term is given then it is
   assumed that the $\Label$ is non-value-carrying.
@@ -531,8 +552,9 @@ Terms can be of the following forms:
   for the argument, or \Param must be a lowercase variable that has
   appeared in a previous \IMPLICIT.  
 
-  \THE can be used only when there exists exactly one value making
-  the proposition true.
+  \THE should be used only when there exists exactly one value making
+  the proposition true; the system does not verify this, but produces
+  an obligation to be checked by the user.
 
 \item \Term \PERCENT \metav{longrelationname}\\
       \Term \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN
@@ -557,13 +579,17 @@ Terms can be of the following forms:
 
 \item \LBRACK \Term \RBRACK
 
-  RzQuot.  
+  The element whose realizer is the given term.
 
   \NB These brackets are concrete syntax rather than EBNF.
 
 \item \LET \LBRACK \Param \RBRACK \EQUALS \Term \IN \Term
 
-  RzChoose.
+  Picks an arbitrary realizer for the first term, to be used
+  in the last term.
+
+  \NB This should not be used unless the choice of representative has 
+  no effect on the value of this last term.
 
 \item \Term \SUBIN \Setexp
   

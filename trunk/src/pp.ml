@@ -46,6 +46,9 @@ and output_term_12 ppf = function
     Lambda ((n, ty), t) ->
       fprintf ppf "fun (%a : %a) ->@ %a" 
         output_name n  output_ty ty  output_term_12 t
+  | Obligation ((n, TopTy), p, trm) ->
+      fprintf ppf "assure %a in %a" 
+        output_prop p  output_term_5 trm
   | Obligation ((n, ty), p, trm) ->
       fprintf ppf "assure %a : %a . %a in %a" 
         output_name n  output_ty ty  output_prop p  output_term_5 trm
@@ -234,7 +237,7 @@ and output_prop_9 ppf = function
   | NamedProp (n, Dagger, u) -> 
        output_app ppf (n,u)  (* ??? *)
   | NamedProp (n, t, u) ->
-      fprintf ppf "%a |= %a"   output_term t   output_app (n,u)
+      fprintf ppf "%a |= %a"   output_term_8 t   output_app (n,u)
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
@@ -262,7 +265,7 @@ and output_app ppf = function
          output_term u  output_longname ln  output_term v
   | (ln, trms) -> 
       fprintf ppf "%a %a" 
-	 output_longname ln   (output_term_components output_term " ") trms
+	 output_longname ln   (output_term_components output_term_8 " ") trms
 
 (** Outputs a type to the pretty-printing formatter ppf.
       The various output_ty_n functions each will display a type of 

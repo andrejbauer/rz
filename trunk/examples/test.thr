@@ -1,15 +1,7 @@
 theory UniqueExistence =
 thy
   set s
-  set t
-  const f : t -> s -> s
-
-  stable predicate (<=) : s * s
-  predicate (!%%) : s
-
-  predicate (~) (y : t) = all (x:s) . (f y x = x)
-
-  implicit x : s
-
-  axiom blah x = some (z : t) . (~z and f z x = x)
+  stable predicate p : s
+ 
+ axiom blah = p(the (x:s). p(x))
 end
