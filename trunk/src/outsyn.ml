@@ -2,6 +2,8 @@
 
 type label = string
 
+(** XXX CS: Why isn't this NamedTy of set_name? *)
+
 type ty =
     NamedTy of string          (* 0 *)
   | UnitTy                     (* 0 *)

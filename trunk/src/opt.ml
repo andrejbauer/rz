@@ -11,6 +11,9 @@ open Outsyn
 exception Unimplemented
 exception Impossible
 
+(** XXX:  Shouldn't cut-and-paste from infer.ml!!! *)
+
+
 (*************************************)
 (** {2 Lookup Tables (Environments)} *)
 (*************************************)
@@ -20,8 +23,7 @@ let insert (x,s,env) = (x,s)::env
 let insertbnds (bnds, env) = bnds @ env
 exception NotFound
 let rec lookup = function
-      (y,[]) -> (print_string ("Unbound name: " ^ y ^ "\n");
-                 raise NotFound)
+      (y,[]) -> (raise NotFound)
     | (y,(k,v)::rest) -> if (y=k) then v else lookup(y,rest)
 
 let rec lookupName = function
@@ -29,31 +31,74 @@ let rec lookupName = function
                  raise NotFound)
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
 
+(*********************************)
+(** {2 The Typechecking Context} *)
+(*********************************)
+
+(** Context carried around by the type reconstruction algorithm.
+ *)
+type ctx = {types      : (name*ty) list;
+               (** Typing context; types for names in scope *)
+            tydefs     : (string*ty) list;
+               (** Definitions of type/set variables in scope *)
+           }
+
+(** Determines whether a variable has an implicitly declared type.
+     @param ctx  The type reconstruction context
+     @param str  The (string) name of the variable.
+  *)
+let lookupType     ctx   n = lookupName (n, ctx.types)
+let lookupTydef    ctx str = lookup (str, ctx.tydefs)
+
+let peekTydef ctx s = try Some(lookupTydef ctx s) with
+                        NotFound -> None
+
+let insertType ({types=types} as ctx) n ty = 
+       {ctx with types = insert(n,ty,types)}
+let insertTypeBnds ({types=types} as ctx) bnds = 
+       {ctx with types = insertbnds(bnds,types)}
+let insertTydef ({tydefs=tydefs} as ctx) str ty = 
+       {ctx with tydefs = insert(str,ty,tydefs)}
+
+let emptyCtx = {types = []; tydefs = []}
+
+
+(** Expand out any top-level definitions for a set *)
+let rec hnfTy ctx = function
+    NamedTy n ->
+      (match (peekTydef ctx n) with
+        Some s' -> hnfTy ctx s'
+      | None -> NamedTy n)
+  | s -> s
+
+
 (*******************)
 
-let notUnitTy = function
-      UnitTy -> false
+let notTopTy = function
+      TopTy -> false
     | _ -> true
 
-let unitTyize = function
-      TupleTy [] -> UnitTy
+let topTyize = function
+      TupleTy [] -> TopTy
     | ty -> ty
 
 (* optTy : ty -> ty
 
      Never returns TupleTy []
  *)
-let rec optTy = function
-   ArrowTy (ty1, ty2) -> 
-     (match (optTy ty1, optTy ty2) with
-        (UnitTy, ty2') -> ty2'
-      | (_, UnitTy)    -> UnitTy
+let rec optTy ctx ty = 
+  let ans = match (hnfTy ctx ty) with
+    ArrowTy (ty1, ty2) -> 
+      (match (optTy ctx ty1, optTy ctx ty2) with
+        (TopTy, ty2') -> ty2'
+      | (_, TopTy)    -> TopTy
       | (ty1', ty2')   -> ArrowTy(ty1', ty2'))
- | TupleTy tys -> unitTyize
-                    (TupleTy (List.filter notUnitTy
-                              (List.map optTy tys)))
- | nonunit_ty -> nonunit_ty
-
+  | TupleTy tys -> topTyize
+        (TupleTy (List.filter notTopTy
+                    (List.map (optTy ctx) tys)))
+  | nonunit_ty -> nonunit_ty
+  in
+    hnfTy ctx ty
 
 (* optTerm ctx e = (t, e', t')
       where e' is the optimized version of e
@@ -63,38 +108,39 @@ let rec optTy = function
       Never returns Tuple []
 *)       
 let rec optTerm ctx = function
-   Id n -> (let oldty = lookupName (n, ctx)
-            in  match (optTy oldty) with
-                   UnitTy -> (oldty, Star, UnitTy)
+   Id n -> (let oldty = lookupType ctx n
+            in  match (optTy ctx oldty) with
+                   TopTy -> (oldty, Star, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
  | Star -> (UnitTy, Star, UnitTy)
  | App(e1,e2) -> 
      let    (ArrowTy(ty2, oldty), e1', ty1') = optTerm ctx e1
      in let (_, e2', ty2') = optTerm ctx e2
-     in (match (optTy oldty, ty2') with
-           (UnitTy, _) -> (* Application can be eliminated entirely *)
-                            (oldty, Star, UnitTy)
-         | (_, UnitTy) -> (* Argument is unit and can be eliminated *)
+     in (match (optTy ctx oldty, hnfTy ctx ty2') with
+           (TopTy, _) -> (* Application can be eliminated entirely *)
+                            (oldty, Star, TopTy)
+         | (_, TopTy) -> (* Argument is unit and can be eliminated *)
                             (oldty, e1', ty1')
          | (ty', _)    -> (* Both parts matter *)
                             (oldty, App(e1', e2'), ty'))
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
-     in (unitTyize (TupleTy ts), Tuple es', unitTyize (TupleTy ts'))
+     in (topTyize (TupleTy ts), Tuple es', topTyize (TupleTy ts'))
  | Proj (n,e) ->
-     let (TupleTy tys, e', _) = optTerm ctx e
+     let (ty, e', _) = optTerm ctx e
+     in let TupleTy tys = hnfTy ctx ty
      in let rec loop = function
-         (ty::tys, UnitTy::tys', nonunits, index) ->
+         (ty::tys, TopTy::tys', nonunits, index) ->
          if index == n then
            (* Projection is unit-like and can be eliminated entirely *)
-           (ty, Star, UnitTy)
+           (ty, Star, TopTy)
 	 else
 	   loop(tys, tys', nonunits, index+1)
        | (ty::tys, ty'::tys', nonunits, index) ->
 	 if index = n then
            (* Projection returns some interesting value.
               Check if it's the only interesting value in the tuple. *)
-           if (nonunits = 0 && List.length(List.filter notUnitTy tys')=0) then
+           if (nonunits = 0 && List.length(List.filter notTopTy tys')=0) then
               (* Yes; there were no non-unit types before or after. *)
 	     (ty, e, ty')
            else
@@ -109,7 +155,7 @@ let rec optTerm ctx = function
 			    print_string (string_of_int index);
 			    raise Impossible)
      in 
-        loop (tys, List.map optTy tys, 0, 0) 
+        loop (tys, List.map (optTy ctx) tys, 0, 0) 
  | e -> (** XXX: Way wrong! *)
         (NamedTy "unknown", e, NamedTy "unknown")
 
@@ -118,8 +164,8 @@ and optTerms ctx = function
     [] -> ([], [], [])   
   | e::es -> let (ty, e', ty') = optTerm ctx e
 	     in let (tys, es', tys') = optTerms ctx es
-             in (match ty' with
-               UnitTy -> (ty :: tys, es', tys')
+             in (match (hnfTy ctx ty') with
+               TopTy -> (ty :: tys, es', tys')
              | _ -> (ty :: tys, e'::es', ty'::tys'))
            
 
@@ -134,8 +180,8 @@ and optProp ctx = function
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2
-      in (match ty1' with
-            UnitTy -> True
+      in (match (hnfTy ctx ty1') with
+            TopTy -> True
       | _ -> Equal(e1',e2'))
   | And ps ->
       let rec loop = function
@@ -168,26 +214,27 @@ and optProp ctx = function
     | p' -> Not p')
 
   | Forall((n,ty), p) ->
-      let p' = optProp (insert(n,ty,ctx)) p
-      in (match optTy ty with
-        UnitTy -> p'
+      let p' = optProp (insertType ctx n ty) p
+      in (match optTy ctx ty with
+        TopTy -> p'
       | ty' -> Forall((n,ty'), p'))
 
       
 and optElems ctx = function
     [] -> []
   |  ValSpec(name, ty) :: rest ->
-      ValSpec(name, optTy ty) ::
-      optElems (insert(name, ty, ctx)) rest
+      ValSpec(name, optTy ctx ty) ::
+      optElems (insertType ctx name ty) rest
   |  AssertionSpec(bnds, prop) :: rest ->
       (** XXX Eliminate unit bindings? *)
-      let ctx' = insertbnds(bnds,ctx)
+      let ctx' = insertTypeBnds ctx bnds
       in AssertionSpec(bnds, optProp ctx' prop) :: optElems ctx rest
-  |  TySpec(str, None) :: rest -> 
-      TySpec(str, None) :: optElems ctx rest
-  |  TySpec(str, Some ty) :: rest ->
+  |  TySpec(n, None) :: rest -> 
+      TySpec(n, None) :: optElems ctx rest
+  |  TySpec((str,_) as n, Some ty) :: rest ->
       (** XXX Need to add the definition into the context *)
-      TySpec(str, Some (optTy ty)) :: optElems ctx rest
+      TySpec(n, Some (optTy ctx ty)) :: 
+      optElems (insertTydef ctx str ty) rest
 
  
 (** XXX needs a context; body needs context from args *)
@@ -195,5 +242,5 @@ let optSignat {s_name = n; s_arg = a; s_body = b} =
    {s_name = n;
     s_arg = (match a with
               None -> None
-            | Some elts -> Some (optElems [] elts));
-    s_body = optElems [] b}
+            | Some elts -> Some (optElems emptyCtx elts));
+    s_body = optElems emptyCtx b}
