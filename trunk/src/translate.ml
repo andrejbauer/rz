@@ -4,84 +4,6 @@ module L = Logic
 module S = Syntax
 open Outsyn 
 
-(* 
-  isNegative : Syntax.term -> bool
-
-  Checks for a negative formula, as defined on slide 20
-  (plus the fact that Not and Iff can be defined in terms
-   of falsehood, and, and implication)
-*)
-let rec isNegative = function
-      S.False         -> true
-    | S.True          -> true
-    | S.Equal _       -> true
-    | S.Not p         -> isNegative p
-    | S.Forall(_,p)   -> isNegative p
-    | S.Imply (p1,p2) -> (isNegative p1) && (isNegative p2)
-    | S.Iff (p1,p2)   -> (isNegative p1) && (isNegative p2)
-    | S.And ps        -> List.for_all isNegative ps
-    | _               -> false
-
-      
-(* Generates variable names x0, x1, ...
-   For now we will hope that the user doesn't use these names too.
- *)
-(*
-let var_counter = ref 0
-let freshVar() =
-      let count = !var_counter
-      in let var_counter := !var_counter + 1
-      in "x" ^ string_of_int count
-
-
-let makesum n = 
-  let rec loop k = 
-           if (k<=n) then (string_of_int k,None)::loop(k+1) else []
-  in
-      S.Sum(loop 1)
-  end
-
-*)
-
-(*
-let rec normalize = function
-      S.Or ps -> 
-        let d = freshVar()
-        in let p' = S.Exists((d,Some (makesum (List.length p)),
-                             And(Equal(Some Bool,
-                               
-  *)
-          
-(*
-let rec extractTy = function
-      S.True -> O.TupleTy []
-    | S.False -> O.TupleTy [] 
-    | S.Equal(_, _, _) -> O.TupleTy []
-    | S.And ts -> O.TupleTy (List.map extractTy ts)
-    | S.Imply(t1,t2) -> O.ArrowTy(extractTy t1, extractTy t2)
-(*    | S.Or  ts -> O.SumTy   (List.map extractTy ts)  *)
-    | S.Exists((name,Some set), t) -> O.TupleTy[xSet set; extractTy t]
-    | S.Forall((name,Some set), t) -> O.ArrowTy(xSet set, extractTy t)
-
-and xElement = function
-      S.Set (name, None) -> O.TySpec(name, None)
-    | S.Set (name, Some set) -> O.TySpec(name, Some (xSet set))
-(*    | S.Predicate (name, stability, set) -> *)
-
-and xSet = function 
-      S.Empty -> O.NamedTy "void"
-    | S.Unit  -> O.TupleTy []
-    | S.Bool  -> O.NamedTy "bool"
-    | S.Set_name name -> O.NamedTy name
-    | S.Product sets -> O.TupleTy (List.map xSet sets)
-    | S.Exp (s1,s2) -> O.ArrowTy (xSet s1, xSet s2)
-
-*)
-
-
-
-
-
 (** AB
 Translation functions should be (roughly):
 
@@ -111,7 +33,7 @@ let rec translateSet = function
 	tot = ("_", False);
 	per = ("_", "_", False)
       }
-  | L.Unit | L.InvisibleUnit ->
+  | L.Unit ->
       { ty = UnitTy;
 	tot = ("x", Equal (Ident "x", Star));
 	per = ("x", "y", True)
@@ -178,7 +100,7 @@ let rec translateSet = function
 	}
 
 (* remaining cases:
-  | Sum of (label * set) list
+  | Sum of (label * set option) list
   | Subset of binding * proposition
   | RZ of set
   | Quotient, if we add this to Logic
@@ -192,7 +114,15 @@ let rec translateTerm = function
   | L.App (u, v) -> App (translateTerm u, translateTerm v)
   | L.Lambda (((n,_), s), t) -> Lambda (n, translateSet s, translateTerm t)
   | L.Inj (lb, t) -> Inj (lb, translateTerm t)
-  | L.Case (t1, lst) -> Cases (translateTerm t1, List.map (fun (lb, ((n,_), s), t) -> (lb, n, (translateSet s).ty, translateTerm t)) lst)
+  | L.Case (t1, lst) -> Cases (translateTerm t1, 
+                               List.map (function 
+                                            (lb, Some ((n,_), s), t) -> 
+                                               (lb, n, (translateSet s).ty, 
+                                                translateTerm t)
+                                          | (lb, None, t) ->
+                                               (lb, "_", UnitTy, 
+                                                translateTerm t))
+                                        lst)
   | L.Let (((n,_),s), u, v) -> Let (n, translateTerm u, translateTerm v)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
