@@ -65,27 +65,26 @@ peephole simplification of the resulting signature.   Without an optimizer,
 the axioms of the theory \Verb|SQGROUP| would produce
 \begin{Verbatim}
 val unit : s -> top * top
-(**  Assertion unit (x:s) =  
-      x * e =s= x and e * x =s= x
+(** Assertion unit (x:s) =  
+     x * e =s= x and e * x =s= x
 *)
-   
-val assoc : s -> s -> s -> top
-(**  Assertion assoc (x:s,y:s,z:s) =
-      x * (y * z) =s= (x * y) * z
-*)
-   
+
 val sqrt : s -> s * top
-(**  Assertion sqrt (x:s) =  
-      pi0(sqrt x) : ||s|| and 
-      pi0(sqrt x) * pi0(sqrt x) =s= x
+(** Assertion sqrt (x:s) =  
+     pi0(sqrt x) : ||s|| and 
+     pi0(sqrt x) * pi0(sqrt x) =s= x
 *)
 \end{Verbatim}
-where \Verb|top| is the type of trivial realizers.  The optimizer can
+where \Verb|top| is the type of trivial realizers; we use 
+\Verb|top| instead of \Verb|unit| to emphasize that these trivial realizers are terminating and hence safe to eliminate; this would not necessarily
+be true for terms of type \Verb|unit|.  The optimizer can
 easily tell from the types that the realizers for the \Verb|unit| and
 \Verb|assoc| axioms are trivial and can be discarded, and that
 although \Verb|sqrt| cannot be discarded entirely, part of its return
 value is unnecessary.  Assertions that reference discarded or optimized
-constants are automatically rewritten to preserve well-typedness, and we obtain the translation of \Verb|SQGROUP| shown previously.
+constants are automatically rewritten to preserve well-typedness, and we obtain the translation of \Verb|SQGROUP| shown previously, which contains no
+occurrences of \Verb|top|.
+
 
 %%% Local Variables: 
 %%% mode: latex

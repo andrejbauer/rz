@@ -1,18 +1,6 @@
 \section{Conclusions and Future Work}
 \label{sec:conclusion}
 
-By translating only at the level of specifications, we provide a
-useful middle ground between ad-hoc implementations and machine-checked
-implementations --- trading guaranteed correctness for 
-Further, even if it turns out not to be useful on the 
-addition, \emph{RZ} allows the constructive
-content of mathematics to be made con
-
-A prototype implementation of \emph{RZ} has been implemented that can
-handle a number of small examples, including those shown here.
-
-
-
 We have presented the current prototype implementation of 
 \emph{RZ}, for automatic generation of
 program specifications from mathematical theories. We translate
@@ -23,18 +11,44 @@ programming tasks that can be easily described in mathematical
 language (e.g., algorithms on finitely presented groups, exact real
 arithmetic, algorithms on graphs, etc.), it also elucidates the
 relationship between data structures and constructive mathematics.
- 
 
-We could do polymorphism
-We could do dependent types: translates to non-dependent types, but generates many proof obligations.
-Need to try it on larger examples.
-doc/case/
-\comment{The following either goes into future work, or else into a
-  discussion of the free join semilattice (where polymorphism would
-  yield a fold-like operator).}  The translation of axioms
-parameterized by models into polymorphism (instead of functors) is
-essentially the phase-splitting translation of Harper, Mitchell, and
-Moggi \cite{harper+:popl90}.
+By translating only at the level of specifications, \emph{RZ} provides a
+useful middle ground between ad-hoc implementations and
+machine-generated implementations --- allowing much more flexible
+implementation strategies, but relying on the programmer to
+verify properties of their code.
+
+Further, \emph{RZ} can serve as tool for explain constructive
+mathematics to programmers.  Programmers who are not knowledgeable
+about constructive mathematics can still understand the output of the
+translation, which involves familiar concepts such as abstract types
+and (classical) first-order logic.   Looking at such examples can
+provide the necessary intuition behind the original logic, and better
+explain why one might want to work with constructive rather than
+classical logic to begin with.
+
+\bigskip
+ 
+Axioms parameterized by models (e.g., initiality) currently translate
+into signatures of ML functors.  We have experimented with an
+alternative translation of such axioms into polymorphic types.
+\comment{show the polymorphic type that would be generated for natural
+numbers.}  Such types would be more natural and much simpler for
+ML programmers to understand.  The theory behind the translation is
+well understood, as it is exactly the phase-splitting translation of
+Harper, Mitchell, and Moggi \cite{harper+:popl90}.  Because of
+limitations of the target ML language not every such axiom can be
+turned into polymorphism (ML allows only prenex quantifiers, and the
+quantifiers can range over types but not type operators), but we would
+like to do so where possible (which also appears to be the common
+case).  As an alternative, we could retarget the output to a language
+like Haskell~\cite{haskell} which supports the necessary polymorphic types.
+
+Another possible extension would be to allow dependent families in the
+input language. Fortunately, this does not require finding a target
+language that supports dependent types; we can use the underlying
+(non-dependent) types, and then express the dependencies as additional
+properties that must be verified for the implementation.
 
 
 %%% Local Variables: 
