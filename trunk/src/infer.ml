@@ -1105,7 +1105,7 @@ and annotateBindingWithDefault cntxt default_st = function
 and annotateBindingWithCheckedDefault cntxt default_st = function
     (x, None) -> annotateBindingWithDefault cntxt default_st (x, None)
   | (x, Some s2) -> let s2' = annotateSet cntxt s2 in
-                    if (eqSet cntxt default_st s2') then
+                    if (subSet cntxt default_st s2') then
 		      let cntxt' = insertVar cntxt x s2' in
 		      ((x, Some s2'), cntxt')
 		    else
