@@ -21,4 +21,6 @@ else
   let lthy = List.map Logic.make_theorydef thy' in
   let spec = Translate.translateTheorydefs Translate.emptyCtx lthy in
   let spec2 = if opt then Opt.optSignatdefs Opt.emptyCtx spec else spec in
-    List.iter (fun s -> print_string ((Outsyn.string_of_signatdef s) ^ "\n")) spec2
+(List.iter (fun s -> print_string ((Outsyn.string_of_signatdef s) ^ "\n")) spec2;
+print_string "-------------\n";
+List.iter (fun s -> Pp.output_signatdef Format.std_formatter s) spec2)

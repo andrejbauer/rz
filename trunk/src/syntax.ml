@@ -324,3 +324,10 @@ and substTermOption substitution = function
 and substModel substitution = function
     ModelName strng -> getModelvar substitution strng
   | ModelProj (mdl, lbl) -> ModelProj(substModel substitution mdl, lbl)
+
+let freshNameString = 
+  let counter = ref 0
+  in
+     function () -> (incr counter;
+	             "]" ^ string_of_int (!counter) ^ "[")
+

@@ -20,6 +20,7 @@ BYTE_OBJS = syntax.cmo \
         infer.cmo \
 	logic.cmo \
         outsyn.cmo \
+	pp.cmo \
         opt.cmo \
         translate.cmo
 

@@ -3,3 +3,28 @@
   a realizer for an axiom is not applied to the correct
   arguments in the corresponding assertion (some are missing)
 
+- DONE [2004-06-28]
+  BUG (2004-06-17) [Chris]:
+  Disallow shadowing of sets, values and arguments of
+  axioms.
+
+- DONE [2004-06-28]
+  VERIFY (2004-06-17) [Chris]:
+  do we allow sum type subtyping? What form precisely? Should we do this?
+
+    [We do allow width subtyping on sums
+        t1 + ... + tn + ...  <:   t1 + ... + tn
+     because otherwise you could not pass the value `false to
+     a function expecting an argument of type `false+`true.]
+
+- DONE [2004-06-29]
+  NEW (2004-06-17) [Chris]:
+  Add implicit superset conversions, if this is a reasonable thing to do.
+
+    [I added an automatic conversion from a subset type to a
+     NON-subset type in some cases.  (For technical reasons, this
+     does not occur in an un-annotated equality; more precisely,
+     the conversion is done when computing subtyping but not when
+     computing joins.)
+   
+     Handling nested subset types in general would be more painful.]

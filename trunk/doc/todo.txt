@@ -10,9 +10,6 @@
   missing obligations in output code for "let [x] = p in e"
   and "let x % r = p in e ".
 
-- VERIFY (2004-06-17) [Chris]:
-  do we allow sum type subtyping? What form precisely? Should we do this?
-
 - IMPROVEMENT (2004-06-17) [Andrej & Chris]:
   Make variable names more consistent. The rule is: delete all the
   vowels, except in the following cases:
@@ -38,19 +35,12 @@
 - IMPROVEMENT (2004-06-17) [Andrej]:
   Improve pretty-printing of output.
     
-- NEW (2004-06-17) [Chris]:
-  Add implicit superset conversions, if this is a reasonable thing to do.
-
 - VERIFY (2004-06-17) [Chris]:
   Make sure only first-order functors are allowed.
      [2004-06-28  CAS: This is obsolete, right?]
 
 - IMPROVEMENT (2004-06-17) [Andrej & Chris]:
   Allow top level model declarations.
-
-- BUG (2004-06-17) [Chris]:
-  Disallow shadowing of sets, values and arguments of
-  axioms.
 
 - IMPROVEMENT (2004-06-17):
   Allow constant definitions of functions with arguments. Right now

@@ -168,25 +168,43 @@ let rec makeStable = function
 (** {2 The Typechecking Context} *)
 (*********************************)
 
-type theory_summary = 
-    TermSpec of name * set 
-  | SetSpec  of set_name * set option
-  | ModelSpec  of model_name * theory_summary list  (** pre-expanded *)
-     (* We can't apply a theory with arguments, so we don't even bother
-        remembering such theories exist.  Technically, this means
-        we don't detect shadowing *)
-  | SentenceSpec
+(********************************)
+(** {3 Context Representation} **)
+(********************************)
+
+(** A summary of one item that might appear in a theory.
+*)
+type theory_summary_item = 
+    TermSpec of name * set                   (** Term and its type *)
+  | SetSpec  of set_name * set option        (** Set and its definition *)
+  | ModelSpec  of model_name * theory_summary_item list 
+     (** Model and its contents.  NB: The contents are stored with the
+       first item in the list being the first item in the model! 
+       This is backwards from the items list of a typing context,
+       where the first item in the model becomes the last item of
+       the list, but both make sense. *)
+  | SentenceSpec (** Some logical sentence; details aren't important *) 
+
+(** Representation of the context itself.  The implicits and theories
+    are stored separately, because they are not components of any model.
+*)
 
 type cntxt = {implicits: set StringMap.t;
 	      theories : ((model_name * theory) list * 
-			  theory_summary list) StringMap.t;
-              items    : theory_summary list}
+			      theory_summary_item list) StringMap.t;
+              items    : theory_summary_item list}
+
+(** The empty context *)
 
 let emptyCtx : cntxt = {implicits = StringMap.empty; 
 			theories = StringMap.empty;
 			items = []}
 
-(** Check for an implicit declaration for the given name.
+(***************************)
+(** {3 Lookup Functions } **)
+(***************************)
+
+(** Check for a previous "implicit" declaration for the given name.
 *)
 let peekImplicit (cntxt : cntxt) (N(namestring, _)) = 
    if StringMap.mem namestring cntxt.implicits then
@@ -210,7 +228,6 @@ let peekTheory (cntxt : cntxt) desired_thrynm =
 (** Helper functions converting a list of model names to and from
     the corresponding (model) path.
 *)
-
 let toModel mdlnms = 
   let rec loop = function
       [] -> raise Impossible
@@ -230,8 +247,8 @@ let rec fmModel = function
     the substitution would be a no-op and so we don't bother to extend the
     substitution.
 
-    The following two functions work similarly, but are given a model name
-    or a term name respectively.
+    The following two functions addModelToSubst and addTermToSubst work 
+    similarly, but are given a model name or a term name respectively.
  *)
 let addSetToSubst (substitution : subst) (nm : set_name) = function
     [] -> substitution
@@ -251,24 +268,9 @@ let addTermToSubst (substitution : subst) (N(strng,fxty) as nm) = function
       (MProj(toModel mdls, strng, fxty))
 
 
-(** Given a theory (explicitly or by name), returns the specifications
-    it contains.  
-
-    XXX Doesn't really belong with the context functions, though.
-*)
-(*
-let rec expandTheory cntxt = function
-    Theory elems -> elems
-  | TheoryID thrynm -> 
-      (match (peekTheory cntxt thrynm) with
-           Some ([],elems) -> elems
-         | Some (_,_) -> tyGenericError ("Expanding a theory with args")
-	 | None -> tyGenericError ("Undefined theory " ^ thrynm))
-*)
-
-(** It would be preferable if the following routines shared more code.
-  
-    The Basic idea is to maintain two things:  
+(**  
+    The key idea for lookup of long-names/module projections
+    is to maintain two values as we go along:  
     (1) where we are in reference to the top level
         (a list of model names representing the start of a path)
     (2) a substitution mapping all theory-component names in scope to the
@@ -285,19 +287,13 @@ let rec expandTheory cntxt = function
                             end
                 end
     end
-  
-    assuming we're looking for M::N::x, by the time we
-    get to x the substitution contains
+
+    and assuming we're looking for M::N::x, by the time we
+    get to x the substitution (2) contains
       s -> s
       t -> M::t
       u -> M::N::u
-    and the "where am I" list would be [M ; N].
-
-    Warning:  references to TheoryID's from inside a 
-    strict subtheory are likely to fail.  (The problem is
-    that the "top-level" context that is passed to peekTypeof'
-    gets lost on the recursive call, when we descend into
-    a specific sub-model 
+    and the "where am I" list (1) would be [M ; N].
 *)
 
 
@@ -308,8 +304,8 @@ let rec expandTheory cntxt = function
    returning a boolean, so there's no need to maintain the substitution.
 
    This function takes the items, rather than a whole context,
-   because this will also be used to search inside a model,
-   where there are no implicits around.
+   because this helper function is also used to search inside models,
+   which have no implicit or theory components.
  *)
 let rec peekSet' items desired_stnm =
       (* let _ = print_string ("looking for " ^ desired_stnm ^ "\n")
@@ -323,6 +319,8 @@ let rec peekSet' items desired_stnm =
        
 let peekSet cntxt desired_stnm = peekSet' cntxt.items desired_stnm
 
+(** Helper function that updates the substitution to include the
+    mapping for a single item in a theory. *)
 let addToSubst substitution pathtohere = function
     TermSpec(nm,_) -> (addTermToSubst substitution nm pathtohere)
   | SetSpec(stnm,_) -> (addSetToSubst substitution stnm pathtohere)
@@ -331,9 +329,6 @@ let addToSubst substitution pathtohere = function
 
 (** Given the guts of a context and a desired set name, determine
     whether a set of that name exists (with or without a definition).
-
-    Simpler than peekTydef and peekTypeof because we are just
-    returning a boolean, so there's no need to maintain the substitution.
 
     This function takes the items, rather than a whole context,
     because this will also be used to search inside a model,
@@ -352,6 +347,7 @@ let rec peekTydef' subst0 cntxt pathtohere desired_stnm =
        
 let peekTydef cntxt desired_stnm = 
   peekTydef' emptysubst cntxt.items [] desired_stnm
+
 
 (* Rather than apply the substitution to the returned list of
    specs (describing the model's contents), we simply return
@@ -391,36 +387,51 @@ let rec peekTypeof' subst0 items pathtohere desired_nm =
 let peekTypeof cntxt desired_nm = 
   peekTypeof' emptysubst cntxt.items [] desired_nm
 
+(*****************************)
+(** {3 Insertion Functions} **)
+(*****************************)
 
-(** XXX should check for [and reject as erroneous] shadowing! *)
+(** Takes the context and adds a new model of the given name, with the
+  given theory summary (represented as a list of theory_summary_item_item's *)
 let insertModel cntxt mdlnm thry = 
   (match peekTheoryof cntxt mdlnm with
        None -> {cntxt with items = ModelSpec(mdlnm,thry)::cntxt.items }
      | _ -> tyGenericError ("Shadowing of model name: " ^  mdlnm))
 
+
+(** Takes the context and adds an abstract set of the given name *)
 let insertSet   cntxt stnm = 
   if peekSet cntxt stnm then
     tyGenericError ("Shadowing of set name: " ^  stnm)
   else
     {cntxt with items = SetSpec(stnm, None) :: cntxt.items }
   
+(** Takes the context and adds a new set of the given name, with the
+  given set as its definition *)
 let insertTydef cntxt stnm st =
   if peekSet cntxt stnm then
     tyGenericError ("Shadowing of set name: " ^  stnm)
   else
     {cntxt with items = SetSpec(stnm, Some st) :: cntxt.items }
 
+(** Takes the context and adds a new term variable of the given name
+  in the given set *)
 let insertVar  cntxt nm st = 
   (match peekTypeof cntxt nm with
        None -> {cntxt with items = TermSpec(nm,st) :: cntxt.items }
      | _ -> tyGenericError ("Shadowing of name: " ^  string_of_name nm))
 
+(** Takes the context and adds a new theory definition, with the
+  given list of arguments and the given list of theory_summary_item's *)
 let insertTheory cntxt thrynm args items =
   (match peekTheory cntxt thrynm with
        None -> {cntxt with theories = StringMap.add thrynm (args,items) 
 					cntxt.theories}
      | _ -> tyGenericError ("Shadowing of theory name: " ^  thrynm))
 
+(** Takes the context and a list of strings and remembers these names
+  as implicitly ranging over the given set, unless otherwise explicitly
+  specified *)
 let insertImplicits cntxt (namestrings : string list) st = 
   let rec loop = (* Add string/st pairs to the implicits mapping *)
     function 
@@ -429,11 +440,9 @@ let insertImplicits cntxt (namestrings : string list) st =
   in
     {cntxt with implicits = loop namestrings}
 
-
 (**********************************)
 (** {2 Set Comparison Operations} *)
 (**********************************)
-
 
 (** We also put in the annotateModel function here because it's
   used by hnfSet *)
@@ -496,14 +505,23 @@ let eqSet' do_subtyping cntxt s1 s2 =
 	      subsum (lsos1, lsos2) &&
               (do_subtyping || subsum (lsos2, lsos1))
         | (Exp(s3,s4), Exp(s5,s6))   -> cmp (s5,s3) && cmp (s4,s6)
-	| (Subset(b1,p1), Subset(b2,p2)) -> 
-            cmpbnd(b1,b2) && if (p1=p2) then
-                                true 
-		             else
-                                (print_string 
-		                   ("WARNING: cannot confirm " ^ 
-                                    "proposition equality\n");
-				 true)
+	| (Subset((nm1,_) as b1,p1), Subset((nm2,_) as b2,p2)) -> 
+            cmpbnd(b1,b2) && 
+	    (** Alpha-vary the propositions so that they're using the
+                same (fresh) variable name *)
+	    let nm3 = N(Syntax.freshNameString(), Word)
+            in let sub1 = insertTermvar emptysubst nm1 (Var nm3)
+	    in let sub2 = insertTermvar emptysubst nm2 (Var nm3)
+	    in let p1' = subst sub1 p1
+	    in let p2' = subst sub2 p2
+	    in p1' = p2'   (* Even if p1' and p2' are logically equivalent,
+			      their corresponding realizations may have
+			      different types and so the subsets are not
+			      *implicitly* convertible *)
+        | (Subset((_,Some st1),prp1), st2) -> 
+	    cmp(st1,st2)  (** Will automatically coerce a subset value to a 
+			      NON-subset value.  For nested subsets you're
+                              on your own. *)
         | (Quotient(s3,r3), Quotient(s4,r4)) -> r3 = r4 && cmp(s3,s4)
         | (Rz s3, Rz s4) -> cmp(s3, s4)
 
@@ -543,9 +561,10 @@ let eqSet' do_subtyping cntxt s1 s2 =
 let eqSet  = eqSet' false
 let subSet = eqSet' true
 
+(** Computes the join of the two sets s1 and s2 *)
 let joinSet cntxt s1 s2 = 
    if (s1 = s2) then
-      (* Short circuting *)
+      (* Short circut *)
       s1
    else
       let    s1' = hnfSet cntxt s1
