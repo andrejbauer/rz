@@ -1,7 +1,7 @@
 open Message
 
 let read fn =
-  let _ = print_string ("Parsing " ^ fn ^ "\n") in
+  print_string ("Parsing " ^ fn ^ "\n") ;
   let fin = open_in fn in
   let e = Parser.theoryspecs Lexer.token (Lexing.from_channel fin) in
   let _ = print_string ("Successfully parsed.\n") in
@@ -10,7 +10,10 @@ let read fn =
 
 let parse str = Parser.theoryspecs Lexer.token (Lexing.from_string str);;
 
-if Array.length(Sys.argv) = 2 then 
-  ignore (read Sys.argv.(1))
-else
+if Array.length(Sys.argv) <> 2 then 
   print_string ("Usage:  " ^ Sys.argv.(0) ^ " <filename to parse>\n");;
+else
+  let thy = read Sys.argv.(1) in
+    
+
+

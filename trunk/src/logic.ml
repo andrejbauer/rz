@@ -60,7 +60,8 @@ type theory_element =
   | Sentence of sentence_type * name * binding list * proposition
       
 type theory = {
-  t_name : string ;
+  t_name : string;
+  t_arg : theory_element list option;
   t_body : theory_element list
 }
 
@@ -68,15 +69,7 @@ module S = Syntax
 
 (********************************************************************)
 
-let rec make_theory = function
-    S.Set (n, None)-> Set n
-  | S.Set (n, Some t) -> Let_set (n, make_set t)
-  | S.Predicate (n, stab, t) -> Predicate (n, stab, make_set t)
-  | S.Let_predicate (n, b, p) -> Let_predicate (n, make_binding b, make_proposition p)
-  | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
-  | S.Sentence (st, n, b, t) -> Sentence (st, n, make_binding b, make_proposition t)
-
-and make_set = function
+let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
   | S.Bool -> Bool
@@ -117,3 +110,17 @@ and make_term = function
 			       ) lst)
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
 
+let make_theory_element = function
+    S.Set (n, None)-> Set n
+  | S.Set (n, Some t) -> Let_set (n, make_set t)
+  | S.Predicate (n, stab, t) -> Predicate (n, stab, make_set t)
+  | S.Let_predicate (n, b, p) -> Let_predicate (n, make_binding b, make_proposition p)
+  | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
+  | S.Sentence (st, n, b, t) -> Sentence (st, n, make_binding b, make_proposition t)
+
+let make_theoryspec {S.t_arg=args; S.t_name=name; S.t_body=body} =
+  { t_name = name;
+    t_arg = (match args with None -> None | Some args -> Some (List.map make_theory_element args));
+    t_body = (List.map make_theory_element body)
+  }
+    

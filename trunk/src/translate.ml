@@ -13,10 +13,9 @@ translateSet s
   type and re describes the realizability relation on ty.
 
 translateTerm t
-  translates a term t to (ty, u) where u is a value of
-  type ty.
+  translates a term t of Logic.term to a value of type Outsyn.term.
 
-translatePred phi
+translateProposition phi
   translate a formula phi to (ty, s) where ty is a type
   and s tells which values of ty are realizers for phi.
 
@@ -101,32 +100,52 @@ let rec translateSet = function
   | Subset of binding * proposition
   | RZ of set
 *)
-	  
-      
 
+let rec translateTerm = function
+    L.Var n -> Ident n
+  | L.Star -> Star
+  | L.Tuple lst -> Tuple (List.map translateTerm lst)
+  | L.Proj (k, t) -> Proj (k, translateTerm t)
+  | L.App (u, v) -> App (translateTerm u, translateTerm v)
+  | L.Lambda ((n, s), t) -> Lambda (n, translateSet s, translateTerm t)
+  | L.Inj (lb, t) -> Inj (lb, translateTerm t)
+  | L.Case (t, lst) -> Cases (translateTerm t, List.map (fun (lb, (n, s), t) -> (lb, n, (translateSet s).ty, translateTerm)) lst)
+  | L.Let (n, u, v) -> Let (n, translateTerm u, translateTerm v)
+			     
+let rec translateProposition ctx = function
+    L.False -> (VoidyTy, "_", False)
+  | L.True -> (UnitTy, "_", True)
+  | L.Atomic (n, t) -> (NamedTy n, translateTerm t, )
+  | L.And lst ->
+      let lst' = List.map (translateProposition ctx) lst in
+      let t = find_name ["t"; "p"; "u"; "q"; "r"] (List.map fst ctx) in
+	(TupleTy (List.map fst lst'), t,
+	 And (let k = ref 0 in
+		List.map (fun (_, x, p) -> let q = subst [(x, Proj (!k, t))] p in incr k ; q) lst))
+  | L.Imply (p, q) ->
+      let (t, x, p') = translateProposition ctx p in
+      let (u, y, q') = translateProposition ctx q in
+      let f = find_name ["f"; "g"; "h"; "p"; "q"] (x :: (List.map fst ctx)) in
+	(ArrowTy (t, u), f, Forall (x, t, Imply (p, subst [(y, App (f, x))] q)))
+  | L.Iff (p, q) -> 
+      let (t, x, p') = translateProposition ctx p in
+      let (u, y, q') = translateProposition ctx q in
+      let f = find_name ["f"; "g"; "h"; "p"; "q"; "r"] (x :: y :: (List.map fst ctx)) in
+	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
+	 f, And (
+	   Forall (x, t, Imply (p, subst [(y, App (Proj (0, f), x))] q)),
+	   Forall (y, u, Imply (q, subst [(x, App (Proj (1, f), y))] p))
+	 ))
 
+  | L.Or of proposition list
 
-let rec extractTy = function
-    L.True -> O.unitTy
-  | L.False -> O.voidTy
-  | L.Equal(_, _, _) -> O.unitTy
-  | L.And ts -> O.TupleTy (map extractTy ts)
-  | L.Imply(t1,t2) -> O.ArrowTy(extractTy t1, extractTy t2)
-  | L.Or ts -> O.SumTy   (map extractTy ts)
-  | L.Exists((name, Some set), t) -> O.TupleTy [xSet set; extractTy t]
-  | L.All((name, Some set), t) -> O.ArrowTy(xSet set; extractTy t)
-      
-and rec xElement = function
-    L.Set (name, None) -> O.TySpec(name, None)
-  | L.Set (name, Some set) -> O.TySpec(name, Some (xSet set))
-  | L.Predicate (name, stability, set) -> 
-      
-and rec xSet = function
-    L.Empty -> O.NamedTy "void"
-  | L.Unit  -> O.unitTy
-  | L.Bool  -> O.NamedTy "bool"
-  | L.Set_name name -> O.NamedTy name
-  | L.Product sets -> O.TupleTy (map xSet sets)
-  | L.Sum sets -> O.SumTy (map xSet sets)
-  | L.Exp (s1,s2) -> O.ArrowTy (xSet s1, xSet s2)
-  | L.Subset (_, Some s), p) -> O.TupleTy (xSet s, xTerm p)
+  | L.Forall ((n, s), p) ->
+      let s' = translateSet s in
+      let n' = find_name [n] (List.map fst ctx) in
+	Forall (n', s', p) (*AB: this line unfinished *)
+
+  | L.Exists ((n, s), p) ->
+
+  | L.Not p ->
+
+  | L.Equal (s, t, u) ->
