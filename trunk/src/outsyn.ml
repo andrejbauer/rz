@@ -36,8 +36,8 @@ and term =
 and negative =
   | True
   | False
-  | Total of modest * term
-  | Per of modest * term * term
+  | NamedTotal of  name * term
+  | NamedPer of name * term * term
   | Equal of term * term
   | And of negative list
   | Cor of negative list (** classical or *)
@@ -107,8 +107,8 @@ and fv_term flt acc = function
 and fv_neg flt acc = function
     True -> acc
   | False -> acc
-  | Total (s, t) -> fv_modest flt (fv_term flt acc t) s
-  | Per (s, u, v) -> fv_modest flt (fv_term flt (fv_term flt acc v) u) s
+  | NamedTotal (s, t) -> fv_term flt acc t
+  | NamedPer (s, u, v) -> fv_term flt (fv_term flt acc v) u
   | Equal (u, v) -> fv_term flt (fv_term flt acc u) v
   | And lst -> List.fold_left (fun a t -> fv_neg flt a t) acc lst
   | Cor lst -> List.fold_left (fun a t -> fv_neg flt a t) acc lst
@@ -128,8 +128,8 @@ let subst_add (n,n') s = (if n = n' then s else (n, Ident n')::s)
 let rec subst_negative s = function
     True -> True
   | False -> False
-  | Total (r, t) -> Total (subst_modest s r, subst_term s t)
-  | Per (r, u, v) -> Per (subst_modest s r, subst_term s u, subst_term s v)
+  | NamedTotal (r, t) -> NamedTotal (r, subst_term s t)
+  | NamedPer (r, u, v) -> NamedPer (r, subst_term s u, subst_term s v)
   | Equal (u, v) -> Equal (subst_term s u, subst_term s v)
   | And lst -> And (List.map (subst_negative s) lst)
   | Cor lst -> Cor (List.map (subst_negative s) lst)

@@ -29,6 +29,8 @@ let rec isNegative = function
      are "fresh".
 *)
 
+exception Unimplemented
+
 let rec subst x t = 
      let rec sub = function
           S.Var y           -> if (x=y) then t else S.Var y
@@ -183,8 +185,8 @@ let rec translateSet = function
       }
   | L.Basic s ->
       { ty = NamedTy s;
-	tot = ("x", Total ("s", Ident "x"));
-	per = ("x", "y", Per ("s", Ident "x", Ident "y"))
+	tot = ("x", NamedTotal (s, Ident "x"));
+	per = ("x", "y", NamedPer (s, Ident "x", Ident "y"))
       }
   | L.Product lst ->
       let us = List.map translateSet lst in
@@ -240,8 +242,6 @@ let rec translateSet = function
   | RZ of set
 *)
 
-exception Unimplemented
-
 let rec translateTerm = function
     L.Var n -> Ident n
   | L.Star -> Star
@@ -253,8 +253,9 @@ let rec translateTerm = function
   | L.Case (t, lst) -> Cases (translateTerm t, List.map (fun (lb, (n, s), t) -> (lb, n, (translateSet s).ty, translateTerm)) lst)
   | L.Let (n, u, v) -> Let (n, translateTerm u, translateTerm v)
 			     
+(* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
 let rec translateProposition ctx = function
-    L.False -> (VoidyTy, "_", False)
+    L.False -> (VoidTy, "_", False)
   | L.True -> (UnitTy, "_", True)
   | L.Atomic (n, t) -> (NamedTy n, translateTerm t, raise Unimplemented)
   | L.And lst ->
@@ -283,7 +284,7 @@ let rec translateProposition ctx = function
   | L.Forall ((n, s), p) ->
       let s' = translateSet s in
       let n' = find_name [n] (List.map fst ctx) in
-	Forall (n', s', p) (*AB: this line unfinished *)
+	Forall (n', s', p)
 
   | L.Exists ((n, s), p) -> raise Unimplemented
 
