@@ -1,0 +1,219 @@
+
+\section{Theories and Signatures}
+\label{sec:theories-signatures}
+
+In this section we describe first-order theories and signatures.
+Our system translates the former into the later.
+
+\subsection{Theories}
+\label{sec:theories}
+
+A \emph{theory} is a description of a mathematical structure, such as
+a group, a vector space, a directed graph, etc. A theory consists of
+%
+\begin{itemize}
+\item a list of \emph{basic sets},
+\item a list of \emph{basic constants} belonging to specified sets,
+\item a list of \emph{basic relations} on specified sets,
+\item a list of axioms.
+\end{itemize}
+%
+To take a simple example, consider the theory of a semigroup in which
+every element has a (possibly non-unique) square root; recall that a
+semigroup is a set with an associative binary operation and a neutral
+element.\footnote{An example of a semigroup with square roots is the
+  complex numbers with multiplication as the binary operation.} In our
+system it could be written as follows:
+%
+\VerbatimInput{semigroup.thy}
+%
+The theory is enclosed by \Verb|thy|\ldots\Verb|end|. This theory
+defines one basic set \Verb|s|, and two basic constants: an element
+\Verb|e| of \Verb|s| and a (curried) binary infix operator \Verb|*| on
+the set \Verb|s|. The \Verb|implicit| operator is not part of the
+theory proper, but signals to the type checker that all bound
+variables named \Verb|x| or \Verb|y| or \Verb|z| should be assumed to
+range over elements in \Verb|s| unless otherwise specified. Finally,
+we have three axioms. Axiom arguments, e.g., \Verb|x|, \Verb|y|, and
+\Verb|z| in the associativity axiom, name the free variables occuring
+in the axiom. It is not too big a mistake to think of them as being
+universally quantified.
+
+It is important to note that theories do not include proofs, but
+rather just the statements of the axioms (and theorems) specified to
+hold. Thus although axioms can be defined, one cannot actually refer
+to them within the theory.
+
+There are several features of theories that our system supports other
+than those shown in this example above; the input language is
+summarized in Figure~\ref{fig:input}, where brackets imply optional
+elements.
+
+
+Theories may declare or define relations.  They may be \Verb|stable|,
+i.e., their computational interpretation is trivial (see
+Section~\ref{sec:implementation} for further discussion of this point).
+Axioms can universally quantify over all models of a theory.
+  This is useful for describing universaility properties, such as
+  initiality of an algebra or finality of a coalgebra.
+  
+  The propositions are the familiar one from first-order logic;
+  $\SOMEONE$ is unique existence. In addition to the basic empty
+  ($\ZERO$) and unit ($\ONE$) sets, one can form cartesian products,
+  function spaces, tagged disjoint unions, subsets, and quotients by
+  stable equivalence relations. The corresponding introduction and
+  elimination forms appear in the language of terms. For example,
+  $\Term\PERCENT\ \metav{relation}$ is the equivalence class under
+  $\metav{relation}$ containing $\Term$, while $\LET\ x \PERCENT
+  \metav{relation} \mbox{\Verb| =|}$ $ \Term_1\ \IN\ \Term_2$ binds
+  $x$ to a representative of the equivalence class $\Term_1$ to be
+  used in $\Term_2$. $\Term \SUBIN \Set$ injects $\Term$ into a given
+  subset (recording a proof obligation of the term actually being a
+  member of the subset), while $\Term \SUBOUT \Set$ projects $\Term$
+  from a subset out into its superset $\Set$.
+
+\begin{figure}
+\[
+\begin{array}{l}
+\mbox{\textbf{Theory Elements}}\\
+\SET\ s\ [\EQUALS\ \mathit{set}\ ]\\
+\CONST\ c\ [\COLON \mathit{set}\ ]\ [\EQUALS\ \mathit{term}\ ]\\
+{}[\STABLE{}]\ \RELATION\ r\ [\COLON \mathit{set}\ ]\ [\EQUALS \mathit{prop}\ ]\\
+\EQUIVALENCE \COLON \mathit{set}\\
+\MODEL\ M\COLON\mathit{theory}\\
+\AXIOM\ a\ [\ M\COLON\mathit{theory}\ ]^{*}\ [x\COLON\mathit{set}\ ]^*\EQUALS\mathit{prop}\\
+\\
+\mbox{\textbf{Propositions}}\\
+\TRUE\\
+\FALSE\\
+\NOT\ \Prop\\
+\Prop \AAND \Prop\\
+\Prop \OOR \Prop\\
+\Prop \IIMPLY \Prop\\
+\Prop \IIFF \Prop\\
+r [\ \Term\ ]^*\\
+\Term\EQUALS\Term\\ %[\IN\ \Set]\\
+\ALL\ [x\COLON \Set] \PERIOD \Prop\\
+\SOME\ [x\COLON \Set] \PERIOD \Prop\\
+\SOME1\ [x\COLON \Set] \PERIOD \Prop\\
+\\
+\mbox{\textbf{Sets}}\\
+\ZERO\\
+\ONE\\
+\BOOL\\
+s\\
+\mathit{Model}\PERIOD \mathit{name}\\
+\Set \TIMES \cdots \TIMES \Set\\
+\Setexp \ARROW \Setexp\\
+\Label\ [\COLON \Setexp\ ]\ \PLUS \cdots \PLUS \Label\ [\COLON \Setexp\ ]\\
+\LBRACE \Ident [\ \COLON \Setexp\ ]\ \BAR \Proposition \RBRACE\\
+\Setexp \PERCENT \metav{relation}\\
+%\RZ\ \Setexp\\
+\\
+\mbox{\textbf{Terms}}\\
+x\\
+\LPAREN \Term\COMMA \cdots \COMMA \Term \RPAREN\\
+\Term\PERIOD \metav{n}\\
+\Label\ [\ \Term\ ]\\
+\MATCH\ \Term\ \WITH\ \mbox{\textit{pattern-matches}}\\
+\LAMBDA\ x\COLON\Set\ \PERIOD\ \Term\\
+\Term\ \Term\\
+\LET\ x\EQUALS\Term\ \IN\ \Term\\
+\THE\ x\COLON\Set \PERIOD \Prop\\
+\Term \PERCENT \metav{relation}\\
+\LET\ x \PERCENT \metav{relation}\ \IN\ \Term\EQUALS\Term\\
+\Term \SUBIN \Set\\
+\Term \SUBOUT \Set\\
+\end{array}
+\]  
+\caption{Input Language Summary}
+\label{fig:input}  
+\end{figure}
+
+\subsection{Signatures}
+\label{sec:signatures}
+
+On the logical side, we have models described by theories.  Thus on
+the programming side we should have implementations being described by
+specifications.  Our tool thus translates theories into
+\emph{signatures}, which are ML's module interfaces.
+
+Signatures allow us to require the existence of certain types, as well
+as values of given type.  This allows decidable typechecking, but we
+need more expressiveness in order to faithfully translate the content
+of a theory.  We therefore generate signatures augmented by assertion
+comments, which specify constraints on the values and functions an
+implementation beyond their type.  It is the responsibility of the
+programmer to check that the implementation satisfies these
+assertions, as our tool does not attempt to do any theorem proving.
+
+Assertions are written in ordinary classical first-order logic. (Since
+programmers typically are not trained in constructive logic, this
+may make it easier to verify the assertions.)
+
+The output for the theory \Verb|SQGROUP| above is then:
+\VerbatimInput{semigroup.mli} 
+
+At the ML level we have required a type \Verb|s|, a value \Verb|e| of
+type \Verb|s| and a binary function on \Verb|s|; \comment{I thought
+  that names like \Verb|( * )| here were supposed to be translated
+  away in the ML code?} these were mentioned explicitly in the theory.
+For interestingly, the constructive content of the existential in the
+\Verb|sqrt| axiom requires that a witness function be provided as
+well; thus, the ML signature further requires a function \Verb|sqrt|
+mapping \Verb|s| to \Verb|s|.
+
+Comments contain other properties (not expressible in ML) that further
+constrain the allowed implementations.  \Verb|PER(=s=)| requires a
+partial equivalence \Verb|=s=| on \Verb|s|; its domain \Verb+||s||+ is the
+subset of terms of type $s$ that represent group elements; the
+relation equates different implementations corresponding to the same
+abstract group element.  \Verb|e| must represent a
+group element, and the \Verb|*| operation must not be affected by the
+choice of representatives.  These must of course still satisfy the
+\Verb|unit| and \Verb|assoc| axioms.  Finally, the new function
+\Verb|sqrt| derived from the logic must compute square roots.  Since
+the theory requires existence but not uniqueness of square roots, its
+computational content does not require that \Verb|sqrt| be invariant
+with respect to the partial equivalence relation on \Verb|s|;
+different implementations of the same group element are allowed to produce
+(implementations of) different square roots.
+
+
+\subsection{Parameterized Theories}
+\label{sec:param-theor-funct}
+
+A theory may be parameterized by one or more models of other theories.
+For example, a theory \Verb|Real| of the reals may be parameterized in
+terms of a model \Verb|N| of the naturals.  A theory of free groups may be
+parameterized in terms of the generating set.
+
+Parameterized theories serve two purposes.  First a model of a
+parameterized theory would be a generic implementation that, given any
+implementation of the parameters, returns an implementation of the
+resulting theory.  At the level of ML, this would be a function from
+modules to modules, which is called a \emph{functor}, and so a
+parameterized theory can be translated into the signature of a
+functor.
+
+Alternatively, once we have described a parameterized theory
+\Verb|Real|, we may wish to use it to describe a single specific
+implementation of real numbers based on a specific model \Verb|N1|
+(implementation) of the natural numbers; this can be described as
+an implementation satisfying the theory \Verb|Real(N1)|.
+
+The dual nature of parameterized theories as being both a description
+of a parameterized model (a $\Pi$ type) and something which can be
+applied to a model to produce a specialized theory (a $\lambda$) is
+very reminiscent the type inclusion of Automath~\cite{automath}.  ML
+does not permit applications of functor signatures, however, so we
+beta-reduce all theory applications before generating signatures;
+\Verb|Real(N1)| would produce a signature for a real-number
+implementation that refers directly to \Verb|N1| rather than to a
+generic parameter \Verb|N|.
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "case"
+%%% End: 

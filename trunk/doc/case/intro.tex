@@ -1,0 +1,52 @@
+\section{Introduction}
+\label{sec:introduction}
+
+We present a system, called~\emph{RZ}, for automatic generation of
+program specifications from mathematical theories. We translate
+mathematical theories to specifications by computing their
+realizability interpretations in an ML-like language augmented with
+assertions. While the system is best suited for descriptions of those
+programming tasks that can be easily described in mathematical
+language (e.g., algorithms on finitely presented groups, exact real
+arithmetic, algorithms on graphs, etc.), it also elucidates the
+relationship between data structures and constructive mathematics.
+
+As the realizability interpretation validates the laws of
+\emph{intuitionistic} logic, our input theories are intuitionistic or
+constructive. Thus, RZ is a tool that extracts the computational
+meaning of a constructive theory and expresses it as a programming
+specification.
+
+We emphasize that RZ does \emph{not} extract programs from proofs---in
+fact, there is no way to write a proof in our system. We work ``one
+level above'', so to speak, and just determine what the programs are
+supposed to do, i.e., we provide specifications for them. We leave it
+to the programmer, or to another tool, to construct such programs as
+he or she best knows. This leaves the programmer completely free to
+write programs that are efficient and may not correspond naturally to
+any constructive proofs.
+
+We hope for RZ 
+
+
+We assume throughout that we have chosen a fixed programming
+language~$\PL$. Any ML-like language will
+do~\cite{milner+:definition}. Our implementation of RZ uses Objective
+Caml~\cite{ocaml} but could easily be adopted to other variants of ML.
+The essential features we require of~$\PL$ are product, function, and
+sum types, as well as support for module interfaces.
+
+Other points:
+
+Allow programmer to write the most efficient program. Contrast with
+extraction of programs from proofs, where presently one cannot expect
+to get useful programs (also, who writes really long formal proofs?)
+
+Bring constructive reasoning closer to programmers.
+
+Overview.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "case"
+%%% End: 

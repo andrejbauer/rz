@@ -1,0 +1,55 @@
+
+\section{Implementation}
+\label{sec:implementation}
+
+After parsing, our implementation does type checking.  The type
+checker does rather limited type reconstruction; the types of all
+bound variables must either be given at the binding site, given
+through an \Verb|implicit| declaration, or be obvious from local
+context.  A very small amount of implicit subtyping is done (primarily
+between sums).  
+
+The system will also try to insert explicit coercions into or out of
+subset types where they were omitted by the theory author.  This can
+significantly improve readability.  \comment{give example!}
+
+After typechecking the theories are represented in abstract syntax and
+translated into ML signatures as described below.  
+
+Propositions without constructive content have trivial realizers, and
+so a final ``unit elimination'' pass both removes these and does 
+peephole simplification of the resulting signature.   Without the optimizer,
+the axioms of the theory \Verb|SQGROUP| would produce
+\begin{Verbatim}
+val unit : s -> top * top
+(**  Assertion unit (x:s) =  
+      x * e =s= x and e * x =s= x
+*)
+   
+val assoc : s -> s -> s -> top
+(**  Assertion assoc (x:s,y:s,z:s) =
+      x * (y * z) =s= (x * y) * z
+*)
+   
+val sqrt : s -> s * top
+(**  Assertion sqrt (x:s) =  
+      pi0 (sqrt x) : ||s|| and 
+      pi0 (sqrt x) * pi0 (sqrt x) =s= x
+*)
+\end{Verbatim}
+requiring the presence of trivial realizers for the first two axioms,
+and a more complicated (but not more useful) realizer for the final
+axiom.
+
+
+Here we provide more details about the translation.
+
+
+The translation of axioms parameterized by models into polymorphism
+(instead of functors) is essentially the phase-splitting translation
+of Harper, Mitchell, and Moggi \cite{harper+:popl90}.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "case"
+%%% End: 
