@@ -314,6 +314,7 @@ and make_proposition = function
 
 and make_term = function
     S.Var n -> Var (ln_of_name n)
+  | S.MProj (mdl, nm, nmtyp) -> Var (ln_of_modelproj mdl nm nmtyp)
   | S.Constraint (t, _) -> make_term t
   | S.Star -> Star
   | S.Tuple lst -> Tuple (List.map make_term lst)
