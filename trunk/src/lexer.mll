@@ -58,6 +58,14 @@
      so we can more efficiently add them to the list as the
      comment is read. *)
   let current_comment : string list ref = ref []
+
+  (* http://pllab.kaist.ac.kr/~shoh/ocaml/ocamllex-ocamlyacc/ocamlyacc-tutorial/ocamlyacc-tutorial.html *)
+  let incr_linenum lexbuf =
+    let pos = lexbuf.Lexing.lex_curr_p in
+    lexbuf.Lexing.lex_curr_p <- { pos with
+      Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
+      Lexing.pos_bol = pos.Lexing.pos_cnum;
+    }
 }
 
 
@@ -69,8 +77,8 @@ let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
 
 rule token = parse
-    '#' [^'\n']* '\n' { incr Message.lineno; token lexbuf }
-  | '\n'            { incr Message.lineno; token lexbuf }
+    '#' [^'\n']* '\n' { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
+  | '\n'            { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
   | [' ' '\t' '\r']      { token lexbuf }
   | ['0'-'9']+      { match (int_of_string(Lexing.lexeme lexbuf)) with
 			  0 -> ZERO
@@ -145,6 +153,7 @@ and comment = parse
 		COMMENT ( String.concat "" (List.rev !current_comment)) }
   | "(*"    { commentdepth := !commentdepth + 1;
               comment lexbuf }
+  | "\n"    { incr_linenum lexbuf; comment lexbuf }
   | _       { current_comment := (Lexing.lexeme lexbuf) :: !current_comment;
 	      comment lexbuf }
 

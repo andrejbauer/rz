@@ -37,9 +37,21 @@ let read fn =
              then print_string ("[Processing " ^ fn ^ "]\n") 
           else () in
   let fin = open_in fn in
-  let e = Parser.toplevels Lexer.token (Lexing.from_channel fin) in
-    close_in fin ;
+  let lexbuf = Lexing.from_channel fin
+  try
+    let e = Parser.toplevels Lexer.token lexbuf
+      close_in fin ;
     e
+  with
+    Parsing.Parse_error ->
+      let ( pos : Lexer.position ) = lexbuf.Lexing.lex_curr_p in
+      begin
+        print "Syntax error detected at line ";
+        print ( string_of_int pos.Lexing.pos_lnum );
+        print " column ";
+        print ( string_of_int ( pos.Lexing.pos_cnum - pos.Lexing.pos_bol ) );
+        raise Parsing.Parse_Error 
+      end
 
 (* Helper function:  parses a string [currently unused]. *)
 let parse str = Parser.toplevels Lexer.token (Lexing.from_string str);;

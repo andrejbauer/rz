@@ -50,17 +50,34 @@ type ctx = {types      : ty NameMap.t;
                (** Typing context; types for names in scope *)
             tydefs     : ty TyNameMap.t;
                (** Definitions of type/set variables in scope *)
-            moduli     : (string*ctx) list
+            moduli     : (modul_name * sig_summary ) list
            }
 
-(* Unused and out-of-date
-let rec string_of_ctx {types=types; tydefs=tydefs; moduli=moduli} =
-  "{ types = [" ^ (String.concat "," (List.map (fun (n,t) ->
-				       (Syntax.string_of_name n) ^ ":" ^ (string_of_ty t)) types)) ^ "],\n" ^
-  "  tydefs = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ty t)) tydefs)) ^ "],\n" ^
-  "  moduli = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) moduli)) ^ "],\n" ^
- "}"
-*)
+and sig_summary = 
+    Summary_Struct  of ctx
+  | Summary_Functor of modul_name * sig_summary
+
+(* lookupModul : cntxt -> modul_name -> sig_summary
+ *)
+let lookupModul    ctx str = lookup (str, ctx.moduli) 
+       
+(* lookupModulLong : ctx -> sig_summary * subst
+
+   Despite the name, does more than lookup; figures out the
+   signature of the 
+ *)
+let rec lookupModulLong ctx = function
+    ModulName mdlnm        -> ( lookupModul ctx mdlnm, emptysubst )
+  | ModulProj (mdl, mdlnm) ->
+       begin
+	 match ( lookupModulLong ctx mdl ) with
+           ( Summary_Struct ctx', sub ) -> ( lookupModul ctx' mdlnm, sub )
+	 | _ -> raise Impossible
+       end
+  | ModulApp (mdl1, mdl2)  -> 
+       let    ( Summary_Functor ( mdlnm, summary11 ), sub) = lookupModulLong ctx mdl1
+       in  ( summary11, insertModulvar sub mdlnm mdl2 )
+
 
 let lookupType  ctx   nm = 
    try (NameMap.find nm ctx.types) with 
@@ -68,11 +85,31 @@ let lookupType  ctx   nm =
 				    "\n");
                      raise Not_found )
 
-let peekTydef ctx  tynm = 
+let lookupTypeLong  ctx = function
+    LN(None, nm)     ->  lookupType ctx nm
+  | LN(Some mdl, nm) ->
+       begin
+	 match (lookupModulLong ctx mdl) with
+           ( Summary_Struct ctx', sub ) -> substTy sub (lookupType ctx' nm)
+	 | _                -> raise Impossible
+       end
+
+
+let peekTydef ctx tynm = 
    try  Some (TyNameMap.find tynm ctx.tydefs)  with 
       Not_found -> None
 
-let lookupModul    ctx str = lookup (str, ctx.moduli)
+let peekTydefLong ctx = function
+    TLN(None, nm)     ->  peekTydef ctx nm
+  | TLN(Some mdl, nm) ->
+       begin
+	 match (lookupModulLong ctx mdl) with
+           ( Summary_Struct ctx', sub ) -> substTyOption sub (peekTydef ctx' nm)
+	 | _                -> raise Impossible
+       end
+
+
+
 
 let insertType ({types=types} as ctx) nm ty = 
        {ctx with types = NameMap.add nm ty types}
@@ -96,32 +133,11 @@ let insertModul ({moduli=moduli} as ctx) str ctx' =
 
 let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; moduli = []}
 
-(* lookupModulLong : ctx -> ctx
- *)
-let rec lookupModulLong ctx = function
-    ModulName mdlnm -> lookupModul ctx mdlnm
-  | ModulProj (mdl, mdlnm) ->
-       let ctx' = lookupModulLong ctx mdl
-       in lookupModul ctx' mdlnm
-  | ModulApp (mdl1, mdl2) ->
-       raise Impossible   (** Modul application not implemented yet *)
-
-let rec peekLong peeker ctx = function
-    LN(None, nm)     ->  peeker ctx nm
-  | LN(Some mdl, nm) ->
-       let ctx' = lookupModulLong ctx mdl
-       in peeker ctx' nm
-
-let rec peekTyLong peeker ctx = function
-    TLN(None, nm)     ->  peeker ctx nm
-  | TLN(Some mdl, nm) ->
-       let ctx' = lookupModulLong ctx mdl
-       in peeker ctx' nm
  
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
     NamedTy tynm ->
-      (match (peekTyLong peekTydef ctx tynm) with
+      (match (peekTydefLong ctx tynm) with
         Some s' -> hnfTy ctx s'
       | None -> NamedTy tynm)
   | s -> s
@@ -213,7 +229,7 @@ let simpleTerm = function
 let rec betaReduce = function
     App(Lambda ((nm, _), trm1), trm2) as trm ->
       if (simpleTerm trm2) then
-         betaReduce (substTerm [] [(nm, trm2)] trm1)
+         betaReduce (substTerm (insertTermvar emptysubst nm trm2) trm1)
       else
          trm
   | Proj(n, Tuple(trms)) ->
@@ -229,7 +245,7 @@ let rec betaReduce = function
       Never returns Tuple []
 *)       
 let rec optTerm ctx = function
-   Id n -> (let oldty = peekLong lookupType ctx n
+   Id n -> (let oldty = lookupTypeLong ctx n
             in  match (optTy ctx oldty) with
                    TopTy -> (oldty, Dagger, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
@@ -470,10 +486,8 @@ and optElems ctx = function
 	 (AssertionSpec assertion' :: rest'), ctx'
 
   | ModulSpec (name,signat) :: rest -> 
-      let (signat',ctxopt') = optSignat ctx signat
-      in let ctx'' = (match ctxopt' with
-	                 Some ctx' -> insertModul ctx name ctx'
-                       | None -> ctx)
+      let (signat',summary) = optSignat ctx signat
+      in let ctx'' = insertModul ctx name summary
       in let (rest', ctx''') = optElems ctx'' rest 
       in (ModulSpec (name, signat') :: rest',
 	  ctx''')
@@ -501,45 +515,37 @@ and optElems ctx = function
 
 and optSignat ctx = function
     SignatName s ->
-      ( SignatName s, Some ( lookupModul ctx s ) )
+      ( SignatName s, lookupModul ctx s )
   | Signat body -> 
       let body', ctx' = optElems ctx body in
-      ( Signat body', Some ctx' )
+      ( Signat body', Summary_Struct ctx' )
   | SignatFunctor(arg, body) ->
-      let    ( [arg'], ctx'  ) = optStructBindings ctx [arg]
-      in let ( body', ctx'' ) = optSignat ctx' body
-      in ( SignatFunctor ( arg', body' ), None )
-      (* XXX:  We are failing to put any information into the context
-         for functors, since the context doesn't support them yet *)
-
+      (* XXX: Just write optStructBinding directly *)
+      let    ( [(mdlnm, _) as arg'], ctx'  ) = optStructBindings ctx [arg]
+      in let ( body', summary ) = optSignat ctx' body
+      in ( SignatFunctor ( arg', body' ), 
+	   Summary_Functor (mdlnm, summary) )
 
 and optStructBindings ctx = function
     [] -> [], ctx
-  | (m, signat) :: bnds ->
-      let signat', ctxopt' = optSignat ctx signat in
-      let bnds', ctx'' = optStructBindings ctx bnds in
-	( (m, signat') :: bnds',
-	  (match ctxopt' with
-             Some ctx' -> insertModul ctx'' m ctx'
-           | None      -> ctx'') )
-        (* XXX: Again, ignoring functor variables ! *)
+  | (m, signat) :: bnd ->
+      let signat', summary = optSignat ctx signat in
+      let bnd', ctx'' = optStructBindings ctx bnd in
+	( (m, signat') :: bnd',
+	  insertModul ctx'' m summary )
 
 let optToplevel ctx = function
     (Signatdef (s, signat)) ->
-      let signat', ctxopt' = optSignat ctx signat in
+      let signat', summary' = optSignat ctx signat in
 	( Signatdef (s, signat'), 
-	  ( match ctxopt' with
-              Some ctx' -> insertModul ctx s ctx'
-            | None      -> ctx                   ) )
-          (* XXX: Again, ignoring functor variables ! *)
+          insertModul ctx s summary' )
+
   | TopComment cmmnt -> (TopComment cmmnt, ctx)
+
   | TopModul (mdlnm, signat) ->
-      let (signat', ctxopt') = optSignat ctx signat in
-	(TopModul(mdlnm, signat'), 
-	  ( match ctxopt' with
-              Some ctx' -> insertModul ctx mdlnm ctx'
-            | None      -> ctx                   ) )
-          (* XXX: Again, ignoring functor variables ! *)
+      let (signat', summary') = optSignat ctx signat in
+	( TopModul(mdlnm, signat'), 
+	  insertModul ctx mdlnm summary' )
 
 let rec optToplevels' ctx = function
     [] -> ([], ctx)
