@@ -3,15 +3,17 @@ infer.cmo: syntax.cmo
 infer.cmx: syntax.cmx 
 logic.cmo: syntax.cmo 
 logic.cmx: syntax.cmx 
+opt.cmo: outsyn.cmo 
+opt.cmx: outsyn.cmx 
 outsyn.cmo: syntax.cmo 
 outsyn.cmx: syntax.cmx 
 parser.cmo: message.cmo syntax.cmo parser.cmi 
 parser.cmx: message.cmx syntax.cmx parser.cmi 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
-toplevel.cmo: infer.cmo logic.cmo message.cmo outsyn.cmo parser.cmi \
+toplevel.cmo: infer.cmo logic.cmo message.cmo opt.cmo outsyn.cmo parser.cmi \
     translate.cmo 
-toplevel.cmx: infer.cmx logic.cmx message.cmx outsyn.cmx parser.cmx \
+toplevel.cmx: infer.cmx logic.cmx message.cmx opt.cmx outsyn.cmx parser.cmx \
     translate.cmx 
 translate.cmo: context.cmo logic.cmo outsyn.cmo syntax.cmo 
 translate.cmx: context.cmx logic.cmx outsyn.cmx syntax.cmx 

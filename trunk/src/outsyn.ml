@@ -5,7 +5,6 @@ type label = string
 type ty =
     NamedTy of string          (* 0 *)
   | UnitTy                     (* 0 *)
-  | InvisibleUnitTy            (* 0 *)
   | VoidTy                     (* 0 *)
   | ListTy of ty               (* 1 *)
   | SumTy of (label * ty) list (* 1 *)
@@ -188,9 +187,11 @@ and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
 	     (y',z', substProp ctx (substAdd (y,y') (substAdd (z,z') s)) q));
   }
 
+
 let string_of_name = function
     (n, Syntax.Word) -> n
   | (n, _) -> "( " ^ n ^ " )"
+
 
 let rec string_of_ty' level t =
   let rec makeTupleTy = function
@@ -207,7 +208,6 @@ let rec string_of_ty' level t =
        (match t with
             NamedTy name   -> (0, name)
 	  | UnitTy         -> (0, "unit")
-	  | InvisibleUnitTy -> (0, "invisible_unit")
 	  | VoidTy         -> (0, "void")
           | ListTy t       -> (1, (string_of_ty' 1 t) ^ "list")
 	  | SumTy ts       -> (1, makeSumTy ts)
@@ -242,7 +242,7 @@ let rec string_of_term' level t =
 	   (string_of_term' 12 t))
     | Tuple [] -> (0, "()")
     | Tuple [t] -> (0, string_of_term' 0 t)
-    | Tuple lst -> (0, "(" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ ")")
+    | Tuple lst -> (0, "{{" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ "}}")
     | Proj (k, t) -> (4, ("pi" ^ (string_of_int k) ^ " " ^ (string_of_term' 3 t)))
     | Inj (lb, t) -> (4, (lb ^ " " ^ (string_of_term' 3 t)))
     | Cases (t, lst) ->

@@ -180,14 +180,14 @@ let rec translateSet ctx = function
 	  tot = (
 	    let k = fresh [mk_word "k"; mk_word "j"; mk_word "x"] [] ctx in
 	      (k,
-	       And [substProp ctx [(x, Proj (1, Id k))] p;
-		    substProp ctx [(z, Proj (2, Id k))] r]
+	       And [substProp ctx [(x, Proj (0, Id k))] p;
+		    substProp ctx [(z, Proj (1, Id k))] r]
 	      )
 	  );
 	  per = (
 	    let w  = fresh [y; mk_word "w"] [] ctx in
 	    let w' = fresh [y'; mk_word "w'"] [w] ctx in
-	      (w, w', substProp ctx [(y, Proj (1, Id w)); (y', Proj (1, Id w'))] q)
+	      (w, w', substProp ctx [(y, Proj (0, Id w)); (y', Proj (0, Id w'))] q)
 	  )
 	}
 
@@ -237,7 +237,7 @@ and translateTerm ctx = function
       let t' = translateTerm ctx t in
       let y' = fresh [y; mk_word "v"; mk_word "u"; mk_word "t"] [] ctx in
 	Tuple [t'; Obligation ((y', ty), substProp ctx [(y, Id y'); (x,t')] p')]
-  | L.Subout (t, _) -> Proj (1, translateTerm ctx t)
+  | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
@@ -324,8 +324,8 @@ and translateProp ctx = function
       in
 	(TupleTy [t; u], w,
 	 And [
-	   substProp ctx [(x, Proj (1, Id w))] q;
-	   substProp ctx [(n, Proj (1, Id w)); (y, Proj (2, Id w))] p'
+	   substProp ctx [(x, Proj (0, Id w))] q;
+	   substProp ctx [(n, Proj (0, Id w)); (y, Proj (1, Id w))] p'
 	 ])
 
   | L.Not p ->
