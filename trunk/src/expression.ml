@@ -1,3 +1,10 @@
+(** I have no clue what this file is for. I suspect I copied syntax.ml
+  over with the intention of converting types to "expressions"
+  (as opposed to "abstract syntax trees"). Expressions are supposed to contain
+  explicit typing information for all variables. I don't know if this is a good
+  idea at all.
+*)
+
 type label = string
 
 type name_type = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4

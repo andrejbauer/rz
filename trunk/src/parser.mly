@@ -118,7 +118,7 @@ theory_body:
 
 theory_element:
     SET NAME  			{ Set $2 }
-  | SET NAME args EQUAL set	{ Let_set ($2, $4) }
+  | SET NAME EQUAL set		{ Let_set ($2, $4) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
   | CONSTANT name_typed EQUAL term { Let_term ($2, $4) }
   | PREDICATE name COLON set    { Predicate ($2, $4) }

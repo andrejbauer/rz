@@ -1,4 +1,7 @@
-(** Convert to TeX/LaTeX expressions *)
+(** Convert to TeX/LaTeX expressions. This is an outdated file but
+  I am keeping it around because it has a couple of useful (but annoying
+  to write) functions.
+*)
 
 open Logic
 

@@ -1,5 +1,5 @@
 type token =
-    AND
+  | AND
   | ARROW
   | AXIOM
   | BAR
@@ -62,7 +62,7 @@ type token =
   | WITH
   | ZERO
 
-open Parsing
+open Parsing;;
 # 2 "parser.mly"
   (* header *)
   open Syntax
@@ -70,7 +70,7 @@ open Parsing
   let parse_error _ =
     raise (Message.Parse (Message.loc_here 1, "parse error"))
 
-(* Line 10, file parser.ml *)
+# 74 "parser.ml"
 let yytransl_const = [|
   257 (* AND *);
   258 (* ARROW *);
@@ -1041,589 +1041,795 @@ let yyact = [|
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 5 : string) in
     let _5 = (peek_val parser_env 2 : 'theory_body) in
-    Obj.repr((
+    Obj.repr(
 # 113 "parser.mly"
-                                                {t_name = _2; t_body = _5} ) : Syntax.theory))
+                                              ( {t_name = _2; t_body = _5} )
+# 1048 "parser.ml"
+               : Syntax.theory))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 116 "parser.mly"
-                                  [] ) : 'theory_body))
+                                ( [] )
+# 1054 "parser.ml"
+               : 'theory_body))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'theory_element) in
     let _2 = (peek_val parser_env 0 : 'theory_body) in
-    Obj.repr((
+    Obj.repr(
 # 117 "parser.mly"
-                                 _1 :: _2 ) : 'theory_body))
+                                      ( _1 :: _2 )
+# 1062 "parser.ml"
+               : 'theory_body))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 0 : string) in
-    Obj.repr((
+    Obj.repr(
 # 120 "parser.mly"
-                   Set _2 ) : 'theory_element))
+                 ( Set _2 )
+# 1069 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : string) in
     let _4 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 121 "parser.mly"
-                          Let_set (_2, _4) ) : 'theory_element))
+                        ( Let_set (_2, _4) )
+# 1077 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name) in
     let _4 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 122 "parser.mly"
-                              Value (_2, _4) ) : 'theory_element))
+                            ( Value (_2, _4) )
+# 1085 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 123 "parser.mly"
-                                     Let_term (_2, _4) ) : 'theory_element))
+                                   ( Let_term (_2, _4) )
+# 1093 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name) in
     let _4 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 124 "parser.mly"
-                                  Predicate (_2, _4) ) : 'theory_element))
+                                ( Predicate (_2, _4) )
+# 1101 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 2 : 'name) in
     let _5 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 125 "parser.mly"
-                                         StPredicate (_3, _5) ) : 'theory_element))
+                                       ( StPredicate (_3, _5) )
+# 1109 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name) in
     let _4 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 126 "parser.mly"
-                                  Predicate (_2, _4) ) : 'theory_element))
+                                ( Predicate (_2, _4) )
+# 1117 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 2 : 'name) in
     let _5 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 127 "parser.mly"
-                                         StPredicate (_3, _5) ) : 'theory_element))
+                                       ( StPredicate (_3, _5) )
+# 1125 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 128 "parser.mly"
-                                     Let_predicate (_2, _3, _5) ) : 'theory_element))
+                                   ( Let_predicate (_2, _3, _5) )
+# 1134 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 2 : 'args) in
     let _6 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 129 "parser.mly"
-                                            Let_stpredicate (_3, _4, _6) ) : 'theory_element))
+                                          ( Let_stpredicate (_3, _4, _6) )
+# 1143 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 130 "parser.mly"
-                                    Let_predicate (_2, _3, _5) ) : 'theory_element))
+                                  ( Let_predicate (_2, _3, _5) )
+# 1152 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 2 : 'args) in
     let _6 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 131 "parser.mly"
-                                           Let_stpredicate (_3, _4, _6) ) : 'theory_element))
+                                         ( Let_stpredicate (_3, _4, _6) )
+# 1161 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 132 "parser.mly"
-                                   Sentence (Axiom, _2, _3, _5) ) : 'theory_element))
+                                 ( Sentence (Axiom, _2, _3, _5) )
+# 1170 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 133 "parser.mly"
-                                   Sentence (Theorem, _2, _3, _5) ) : 'theory_element))
+                                 ( Sentence (Theorem, _2, _3, _5) )
+# 1179 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 134 "parser.mly"
-                                       Sentence (Lemma, _2, _3, _5) ) : 'theory_element))
+                                     ( Sentence (Lemma, _2, _3, _5) )
+# 1188 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 135 "parser.mly"
-                                       Sentence (Proposition, _2, _3, _5) ) : 'theory_element))
+                                     ( Sentence (Proposition, _2, _3, _5) )
+# 1197 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _3 = (peek_val parser_env 2 : 'args) in
     let _5 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 136 "parser.mly"
-                                       Sentence (Corollary, _2, _3, _5) ) : 'theory_element))
+                                     ( Sentence (Corollary, _2, _3, _5) )
+# 1206 "parser.ml"
+               : 'theory_element))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 139 "parser.mly"
-                                  [] ) : 'args))
+                                ( [] )
+# 1212 "parser.ml"
+               : 'args))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'args_curried) in
-    Obj.repr((
+    Obj.repr(
 # 140 "parser.mly"
-                    _1 ) : 'args))
+                  ( _1 )
+# 1219 "parser.ml"
+               : 'args))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'arg_list) in
-    Obj.repr((
+    Obj.repr(
 # 141 "parser.mly"
-                             _2 ) : 'args))
+                           ( _2 )
+# 1226 "parser.ml"
+               : 'args))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'name_typed) in
-    Obj.repr((
+    Obj.repr(
 # 144 "parser.mly"
-                                  [_1] ) : 'args_curried))
+                                ( [_1] )
+# 1233 "parser.ml"
+               : 'args_curried))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'name_typed) in
     let _2 = (peek_val parser_env 0 : 'args_curried) in
-    Obj.repr((
+    Obj.repr(
 # 145 "parser.mly"
-                                  _1 :: _2 ) : 'args_curried))
+                                ( _1 :: _2 )
+# 1241 "parser.ml"
+               : 'args_curried))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'name_typed) in
     let _3 = (peek_val parser_env 0 : 'name_typed) in
-    Obj.repr((
+    Obj.repr(
 # 148 "parser.mly"
-                                  [_1; _3] ) : 'arg_list))
+                                ( [_1; _3] )
+# 1249 "parser.ml"
+               : 'arg_list))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'name_typed) in
     let _3 = (peek_val parser_env 0 : 'arg_list) in
-    Obj.repr((
+    Obj.repr(
 # 149 "parser.mly"
-                                _1 :: _3 ) : 'arg_list))
+                              ( _1 :: _3 )
+# 1257 "parser.ml"
+               : 'arg_list))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : string) in
-    Obj.repr((
+    Obj.repr(
 # 152 "parser.mly"
-                                    (_1, Word) ) : 'name))
+                                  ( (_1, Word) )
+# 1264 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
-    Obj.repr((
+    Obj.repr(
 # 153 "parser.mly"
-                                    (_2, Prefix) ) : 'name))
+                                  ( (_2, Prefix) )
+# 1271 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
-    Obj.repr((
+    Obj.repr(
 # 154 "parser.mly"
-                                    (_2, Infix0) ) : 'name))
+                                  ( (_2, Infix0) )
+# 1278 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
-    Obj.repr((
+    Obj.repr(
 # 155 "parser.mly"
-                                    (_2, Infix1) ) : 'name))
+                                  ( (_2, Infix1) )
+# 1285 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
-    Obj.repr((
+    Obj.repr(
 # 156 "parser.mly"
-                                    (_2, Infix2) ) : 'name))
+                                  ( (_2, Infix2) )
+# 1292 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 157 "parser.mly"
-                                    ("+", Infix2) ) : 'name))
+                                  ( ("+", Infix2) )
+# 1298 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : string) in
-    Obj.repr((
+    Obj.repr(
 # 158 "parser.mly"
-                                    (_2, Infix3) ) : 'name))
+                                  ( (_2, Infix3) )
+# 1305 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 159 "parser.mly"
-                                    ("*", Infix3) ) : 'name))
+                                  ( ("*", Infix3) )
+# 1311 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 160 "parser.mly"
-                                    ("/", Infix3) ) : 'name))
+                                  ( ("/", Infix3) )
+# 1317 "parser.ml"
+               : 'name))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'name) in
-    Obj.repr((
+    Obj.repr(
 # 163 "parser.mly"
-                                   (_1, None) ) : 'name_typed))
+                                 ( (_1, None) )
+# 1324 "parser.ml"
+               : 'name_typed))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 1 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 164 "parser.mly"
-                                   (_2, Some _4) ) : 'name_typed))
+                                 ( (_2, Some _4) )
+# 1332 "parser.ml"
+               : 'name_typed))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 167 "parser.mly"
-              Empty ) : 'simple_set))
+            ( Empty )
+# 1338 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 168 "parser.mly"
-                     Empty ) : 'simple_set))
+                   ( Empty )
+# 1344 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 169 "parser.mly"
-             Unit ) : 'simple_set))
+           ( Unit )
+# 1350 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 170 "parser.mly"
-                                  Bool ) : 'simple_set))
+                                ( Bool )
+# 1356 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 171 "parser.mly"
-                                  Bool ) : 'simple_set))
+                                ( Bool )
+# 1362 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : string) in
-    Obj.repr((
+    Obj.repr(
 # 172 "parser.mly"
-                                  Set_name _1 ) : 'simple_set))
+                                ( Set_name _1 )
+# 1369 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 173 "parser.mly"
-                                  _2 ) : 'simple_set))
+                                ( _2 )
+# 1376 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'name) in
     let _4 = (peek_val parser_env 1 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 174 "parser.mly"
-                                  Subset ((_2, None), _4) ) : 'simple_set))
+                                ( Subset ((_2, None), _4) )
+# 1384 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 5 : 'name) in
     let _4 = (peek_val parser_env 3 : 'set) in
     let _6 = (peek_val parser_env 1 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 175 "parser.mly"
-                                            Subset ((_2, Some _4), _6) ) : 'simple_set))
+                                          ( Subset ((_2, Some _4), _6) )
+# 1393 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'simple_set) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 176 "parser.mly"
-                                  Quotient (_1, _3) ) : 'simple_set))
+                                ( Quotient (_1, _3) )
+# 1401 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 0 : 'simple_set) in
-    Obj.repr((
+    Obj.repr(
 # 177 "parser.mly"
-                                  RZ _2 ) : 'simple_set))
+                                ( RZ _2 )
+# 1408 "parser.ml"
+               : 'simple_set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'simple_set) in
     let _3 = (peek_val parser_env 0 : 'simple_set) in
-    Obj.repr((
+    Obj.repr(
 # 180 "parser.mly"
-                                        [_1; _3] ) : 'product))
+                                      ( [_1; _3] )
+# 1416 "parser.ml"
+               : 'product))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'product) in
     let _3 = (peek_val parser_env 0 : 'simple_set) in
-    Obj.repr((
+    Obj.repr(
 # 181 "parser.mly"
-                                        _1 @ [_3] ) : 'product))
+                                      ( _1 @ [_3] )
+# 1424 "parser.ml"
+               : 'product))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : string) in
     let _3 = (peek_val parser_env 0 : 'simple_set) in
-    Obj.repr((
+    Obj.repr(
 # 184 "parser.mly"
-                                         [(_1, Some _3)] ) : 'sum))
+                                       ( [(_1, Some _3)] )
+# 1432 "parser.ml"
+               : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : string) in
-    Obj.repr((
+    Obj.repr(
 # 185 "parser.mly"
-                                         [(_1, None)] ) : 'sum))
+                                       ( [(_1, None)] )
+# 1439 "parser.ml"
+               : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'sum) in
     let _3 = (peek_val parser_env 0 : string) in
-    Obj.repr((
+    Obj.repr(
 # 186 "parser.mly"
-                                         _1 @ [(_3, None)] ) : 'sum))
+                                       ( _1 @ [(_3, None)] )
+# 1447 "parser.ml"
+               : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 4 : 'sum) in
     let _3 = (peek_val parser_env 2 : string) in
     let _5 = (peek_val parser_env 0 : 'simple_set) in
-    Obj.repr((
+    Obj.repr(
 # 187 "parser.mly"
-                                         _1 @ [(_3, Some _5)] ) : 'sum))
+                                       ( _1 @ [(_3, Some _5)] )
+# 1456 "parser.ml"
+               : 'sum))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'simple_set) in
-    Obj.repr((
+    Obj.repr(
 # 190 "parser.mly"
-                                  _1 ) : 'set))
+                                ( _1 )
+# 1463 "parser.ml"
+               : 'set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'product) in
-    Obj.repr((
+    Obj.repr(
 # 191 "parser.mly"
-                                  Product _1 ) : 'set))
+                                ( Product _1 )
+# 1470 "parser.ml"
+               : 'set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'sum) in
-    Obj.repr((
+    Obj.repr(
 # 192 "parser.mly"
-                                  Sum _1 ) : 'set))
+                                ( Sum _1 )
+# 1477 "parser.ml"
+               : 'set))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'set) in
     let _3 = (peek_val parser_env 0 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 193 "parser.mly"
-                                  Exp (_1, _3) ) : 'set))
+                                ( Exp (_1, _3) )
+# 1485 "parser.ml"
+               : 'set))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 196 "parser.mly"
-                                  True ) : 'simple_term))
+                                ( True )
+# 1491 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 197 "parser.mly"
-                                  False ) : 'simple_term))
+                                ( False )
+# 1497 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'name) in
-    Obj.repr((
+    Obj.repr(
 # 198 "parser.mly"
-                                  Var _1 ) : 'simple_term))
+                                ( Var _1 )
+# 1504 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'term) in
     let _4 = (peek_val parser_env 1 : 'set) in
-    Obj.repr((
+    Obj.repr(
 # 199 "parser.mly"
-                                   Constraint (_2, _4) ) : 'simple_term))
+                                 ( Constraint (_2, _4) )
+# 1512 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
-    Obj.repr((
+    Obj.repr(
 # 200 "parser.mly"
-                                  Star ) : 'simple_term))
+                                ( Star )
+# 1518 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'term_seq) in
-    Obj.repr((
+    Obj.repr(
 # 201 "parser.mly"
-                                  Tuple _2 ) : 'simple_term))
+                                ( Tuple _2 )
+# 1525 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 202 "parser.mly"
-                                  _2 ) : 'simple_term))
+                                ( _2 )
+# 1532 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 1 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 203 "parser.mly"
-                                  _2 ) : 'simple_term))
+                                ( _2 )
+# 1539 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'simple_term) in
     let _3 = (peek_val parser_env 0 : int) in
-    Obj.repr((
+    Obj.repr(
 # 204 "parser.mly"
-                                  Proj (_3, _1) ) : 'simple_term))
+                                ( Proj (_3, _1) )
+# 1547 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : string) in
     let _2 = (peek_val parser_env 0 : 'simple_term) in
-    Obj.repr((
+    Obj.repr(
 # 205 "parser.mly"
-                                  App (Var (_1, Prefix), _2) ) : 'simple_term))
+                                ( App (Var (_1, Prefix), _2) )
+# 1555 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 0 : 'simple_term) in
-    Obj.repr((
+    Obj.repr(
 # 206 "parser.mly"
-                                  Not _2 ) : 'simple_term))
+                                ( Not _2 )
+# 1562 "parser.ml"
+               : 'simple_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'simple_term) in
-    Obj.repr((
+    Obj.repr(
 # 209 "parser.mly"
-                                   _1 ) : 'apply_term))
+                                 ( _1 )
+# 1569 "parser.ml"
+               : 'apply_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : 'apply_term) in
     let _2 = (peek_val parser_env 0 : 'simple_term) in
-    Obj.repr((
+    Obj.repr(
 # 210 "parser.mly"
-                                   App (_1, _2) ) : 'apply_term))
+                                 ( App (_1, _2) )
+# 1577 "parser.ml"
+               : 'apply_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'and_term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 213 "parser.mly"
-                                  _1 @ [_3] ) : 'and_term))
+                                ( _1 @ [_3] )
+# 1585 "parser.ml"
+               : 'and_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 214 "parser.mly"
-                                  [_1; _3] ) : 'and_term))
+                                ( [_1; _3] )
+# 1593 "parser.ml"
+               : 'and_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'or_term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 217 "parser.mly"
-                                 _1 @ [_3] ) : 'or_term))
+                               ( _1 @ [_3] )
+# 1601 "parser.ml"
+               : 'or_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 218 "parser.mly"
-                                 [_1; _3] ) : 'or_term))
+                               ( [_1; _3] )
+# 1609 "parser.ml"
+               : 'or_term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'apply_term) in
-    Obj.repr((
+    Obj.repr(
 # 221 "parser.mly"
-                                  _1 ) : 'term))
+                                ( _1 )
+# 1616 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 222 "parser.mly"
-                                  Imply (_1, _3) ) : 'term))
+                                ( Imply (_1, _3) )
+# 1624 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 223 "parser.mly"
-                                  Iff (_1, _3) ) : 'term))
+                                ( Iff (_1, _3) )
+# 1632 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 1 : string) in
     let _2 = (peek_val parser_env 0 : 'simple_term) in
-    Obj.repr((
+    Obj.repr(
 # 224 "parser.mly"
-                                  Inj (_1, _2) ) : 'term))
+                                ( Inj (_1, _2) )
+# 1640 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 225 "parser.mly"
-                                  Equal (None, _1, _3) ) : 'term))
+                                ( Equal (None, _1, _3) )
+# 1648 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 4 : 'name_typed) in
     let _4 = (peek_val parser_env 2 : 'term) in
     let _6 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 226 "parser.mly"
-                                        Let (_2, _4, _6) ) : 'term))
+                                      ( Let (_2, _4, _6) )
+# 1657 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _3 = (peek_val parser_env 5 : 'name_typed) in
     let _6 = (peek_val parser_env 2 : 'term) in
     let _8 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 227 "parser.mly"
-                                                      Choose (_3, _6, _8) ) : 'term))
+                                                    ( Choose (_3, _6, _8) )
+# 1666 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'and_term) in
-    Obj.repr((
+    Obj.repr(
 # 228 "parser.mly"
-                                  And _1 ) : 'term))
+                                ( And _1 )
+# 1673 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 0 : 'or_term) in
-    Obj.repr((
+    Obj.repr(
 # 229 "parser.mly"
-                                  Or _1 ) : 'term))
+                                ( Or _1 )
+# 1680 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 230 "parser.mly"
-                                  App (App (Var (_2, Infix0), _1), _3) ) : 'term))
+                                ( App (App (Var (_2, Infix0), _1), _3) )
+# 1689 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 231 "parser.mly"
-                                  App (App (Var (_2, Infix1), _1), _3) ) : 'term))
+                                ( App (App (Var (_2, Infix1), _1), _3) )
+# 1698 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 232 "parser.mly"
-                                  App (App (Var (_2, Infix2), _1), _3) ) : 'term))
+                                ( App (App (Var (_2, Infix2), _1), _3) )
+# 1707 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 233 "parser.mly"
-                                  App (App (Var ("+", Infix2), _1), _3) ) : 'term))
+                                ( App (App (Var ("+", Infix2), _1), _3) )
+# 1715 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _2 = (peek_val parser_env 1 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 234 "parser.mly"
-                                  App (App (Var (_2, Infix3), _1), _3) ) : 'term))
+                                ( App (App (Var (_2, Infix3), _1), _3) )
+# 1724 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 235 "parser.mly"
-                                  App (App (Var ("*", Infix3), _1), _3) ) : 'term))
+                                ( App (App (Var ("*", Infix3), _1), _3) )
+# 1732 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 236 "parser.mly"
-                                  App (App (Var ("/", Infix3), _1), _3) ) : 'term))
+                                ( App (App (Var ("/", Infix3), _1), _3) )
+# 1740 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 237 "parser.mly"
-                                  Quot (_1, _3) ) : 'term))
+                                ( Quot (_1, _3) )
+# 1748 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 3 : 'term) in
     let _4 = (peek_val parser_env 1 : 'cases) in
-    Obj.repr((
+    Obj.repr(
 # 238 "parser.mly"
-                                  Case (_2, _4) ) : 'term))
+                                ( Case (_2, _4) )
+# 1756 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 239 "parser.mly"
-                                    Lambda (_2, _4) ) : 'term))
+                                  ( Lambda (_2, _4) )
+# 1764 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 240 "parser.mly"
-                                    Forall (_2, _4) ) : 'term))
+                                  ( Forall (_2, _4) )
+# 1772 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 241 "parser.mly"
-                                    Exists (_2, _4) ) : 'term))
+                                  ( Exists (_2, _4) )
+# 1780 "parser.ml"
+               : 'term))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 244 "parser.mly"
-                                  [_1; _3] ) : 'term_seq))
+                                ( [_1; _3] )
+# 1788 "parser.ml"
+               : 'term_seq))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : 'term) in
     let _3 = (peek_val parser_env 0 : 'term_seq) in
-    Obj.repr((
+    Obj.repr(
 # 245 "parser.mly"
-                                  _1 :: _3 ) : 'term_seq))
+                                ( _1 :: _3 )
+# 1796 "parser.ml"
+               : 'term_seq))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 3 : string) in
     let _2 = (peek_val parser_env 2 : 'name_typed) in
     let _4 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 248 "parser.mly"
-                                             [_1, Some _2, _4] ) : 'cases))
+                                           ( [_1, Some _2, _4] )
+# 1805 "parser.ml"
+               : 'cases))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 2 : string) in
     let _3 = (peek_val parser_env 0 : 'term) in
-    Obj.repr((
+    Obj.repr(
 # 249 "parser.mly"
-                                             [_1, None, _3] ) : 'cases))
+                                           ( [_1, None, _3] )
+# 1813 "parser.ml"
+               : 'cases))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 5 : string) in
     let _2 = (peek_val parser_env 4 : 'name_typed) in
     let _4 = (peek_val parser_env 2 : 'term) in
     let _6 = (peek_val parser_env 0 : 'cases) in
-    Obj.repr((
+    Obj.repr(
 # 250 "parser.mly"
-                                             (_1, Some _2, _4) :: _6 ) : 'cases))
+                                           ( (_1, Some _2, _4) :: _6 )
+# 1823 "parser.ml"
+               : 'cases))
 ; (fun parser_env ->
     let _1 = (peek_val parser_env 4 : string) in
     let _3 = (peek_val parser_env 2 : 'term) in
     let _5 = (peek_val parser_env 0 : 'cases) in
-    Obj.repr((
+    Obj.repr(
 # 251 "parser.mly"
-                                             (_1, None, _3) :: _5 ) : 'cases))
+                                           ( (_1, None, _3) :: _5 )
+# 1832 "parser.ml"
+               : 'cases))
 (* Entry theory *)
 ; (fun parser_env -> raise (YYexit (peek_val parser_env 0)))
 |]

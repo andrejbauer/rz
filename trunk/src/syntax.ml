@@ -1,38 +1,45 @@
+(* Abstract syntax *)
+
+(* Labels are used to denote variants in sum types. We follow ocaml's
+syntax for polymorphic variants. *)
+
 type label = string
+
+(* We follow ocaml's notions of infix and prefix operations *)
 
 type name_type = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4
 
-type set_name = string
-
 type name = string * name_type
+
+type set_name = string
 
 type binding = name * set option
 
 and set =
-    Empty
-  | Unit
-  | Bool
-  | Set_name of set_name * 
-  | Product of set list
-  | Sum of (label * set option) list
-  | Exp of set * set
-  | Subset of binding * term
-  | Quotient of set * term
-  | RZ of set
+    Empty (** empty set *)
+  | Unit (** unit set *)
+  | Bool (** booleans *)
+  | Set_name of set_name (** atomic set *)
+  | Product of set list (** finite product *)
+  | Sum of (label * set option) list (** finite coproduct *)
+  | Exp of set * set (** function space *)
+  | Subset of binding * term (** subset *)
+  | Quotient of set * term (** quotent set *)
+  | RZ of set (** the set of realizers *)
 
 and term =
     Var of name
   | Constraint of term * set
-  | Star
+  | Star (** the member of Unit *)
   | False
   | True
   | Tuple of term list
-  | Proj of int * term
+  | Proj of int * term (** projection from a tuple *)
   | App of term * term
-  | Inj of label * term
+  | Inj of label * term (** injection into a sum type *)
   | Case of term * (label * binding option * term) list
-  | Quot of term * term
-  | Choose of binding * term * term
+  | Quot of term * term (** quotient under equivalence relation *)
+  | Choose of binding * term * term (** elimination of equivalence class *)
   | And of term list
   | Imply of term * term
   | Iff of term * term
@@ -45,6 +52,9 @@ and term =
   | Exists of binding * term
 
 (********************************************************************)
+
+(** We do not actually distinguish between different types of sentences,
+  but we let the user name them as he likes. *)
 
 type sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 
