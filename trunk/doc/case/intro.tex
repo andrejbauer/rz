@@ -21,27 +21,28 @@ We emphasize that RZ does \emph{not} extract programs from proofs---in
 fact, there is no way to write a proof in our system. We just
 determine what the programs are supposed to do, i.e., we provide
 specifications for them. We leave it to the programmer, or to another
-tool, to construct the programs as he or she best knows. This leaves
-the programmer completely free to write the most efficient programs
-that do not necessarily correspond to any proofs.
+tool, to construct the programs as he or she sees fit. This leaves
+the programmer completely free to write efficient programs
+that need not correspond directly to a formal proof.
 
-The original aim of RZ was to help with development of data structures
+The original aim of RZ was to aid development of data structures
 for computable mathematics. If one sets out to actually compute
 realizability interpretations of theories of constructive mathematics,
 one quickly wishes for an automated way of doing it. With a tool like
 RZ it is much easier to experiment and try out variations of a theory
-until a suitable specification is obtained. We have also discovered
-that RZ can be used to explain and teach constructive mathematics to
-programmers, who are typically trained in classical mathematics,
-because it translates constructive statements to easily understood
+until a suitable specification is obtained.  It also appears that
+RZ can be used to explain and teach constructive mathematics to
+programmers, who are typically trained in classical mathematics; 
+it translates constructive statements into easily understood
 requirements about programs (expressed in classical logic).
 
-We assume throughout that we have chosen a fixed programming
-language~$\PL$. Any ML-like language will
-do~\cite{milner+:definition}. Our implementation of RZ uses Objective
-Caml~\cite{ocaml} but could easily be adopted to other variants of ML.
-The essential features we require of~$\PL$ are product, function, and
-sum types, as well as support for module interfaces.
+%We assume throughout that we have chosen a fixed programming
+%language~$\PL$. %Any ML-like language will do~\cite{milner+:definition}. 
+Our implementation of \emph{RZ} produces interfaces in Objective
+Caml~\cite{ocaml} but could easily be adopted to other similar typed
+languages.  The essential features we require of the target language
+are product, function, and sum types, as well as support for module
+interfaces.
 
 The paper is organized as follows. Section~\ref{sec:realizability}
 contains a brief overview of realizability. In

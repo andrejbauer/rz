@@ -22,8 +22,8 @@ we write
 %
 and read it as ``$(v,e)$ realizes~$G \in D$''. Observe that each graph
 is realized by at least one pair of lists, and that no pair of lists
-represents more than one graph. (It happens that in this case most graphs are
-represented by many pairs of lists.) This leads us to the definition given
+represents more than one graph. (As commonly occurs, most graphs are
+represented by many different pairs of lists.) This leads us to the definition given
 below. We shall abuse notation slightly and write $t \in \ut{S}$ to
 mean that $t$ is a closed expression of type $\ut{S}$.
 
@@ -127,9 +127,9 @@ precisely, to each formula~$\phi$ we assign an underlying type
 $\ut{\phi}$ of realizers. However, unlike in the propositions-as-types
 translation, not all terms of type $\ut{\phi}$ are necessarily valid
 realizers for~$\phi$. We write $t \rz \phi$ when $t \in \ut{\phi}$ is
-in fact a realizer for~$\phi$. The underlying types and the
+a realizer for~$\phi$. The underlying types and the
 realizability relation~$\rz$ are defined inductively on the structure
-of~$\phi$, see the outline in Figure~\ref{fig:rz-logic}. We say that a
+of~$\phi$; an outline is shown in Figure~\ref{fig:rz-logic}. We say that a
 formula~$\phi$ is \emph{valid} in~$\Mod{\PL}$ if it has at least one
 realizer.
 
@@ -152,7 +152,7 @@ a modest set and the original one is as follows:
 \begin{itemize}
 \item $\tot{S}$ is the set of those $t \in \ut{S}$ that
   realize something, i.e., there is $x \in S$ such that $t \rz_S x$.
-  These correspond to implementations type that satisfy
+  These correspond to implementations that satisfy
   the representation invariant, e.g., graphs where the list of edges
   mentions only integers in the list of nodes, a subset of
   all values of type $\mathtt{int} \; \mathtt{list} * (\mathtt{int} *
@@ -160,7 +160,7 @@ a modest set and the original one is as follows:
 \item $t \per{S} u$ if $t$ and $u$ realize the same element, i.e.,
   there is $x \in S$ such that $t \rz_S x$ and $u \rz_S x$.
   This relation equates alternate concrete representations of the same
-  abtract value, e.g., equating two graph representations differing
+  abtract value, e.g., equating two concrete graph representations differing
   only in the order of the nodes or the order of the edges.
 \end{itemize}
 %
