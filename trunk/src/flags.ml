@@ -8,3 +8,6 @@ let do_save = ref true  (* Should output be sent to a file? *)
 
 let do_sigapp = ref false (* Should signature applications be retained,
 			     instead of being beta-expanded? *)
+
+let do_dumpinfer = ref false (* Should result of infer be written to
+                                stdout? *)

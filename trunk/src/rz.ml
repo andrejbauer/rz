@@ -17,7 +17,8 @@ let command_line_options =
    ("--save", Arg.Set Flags.do_save, "Send output to .mli file (default)");
    ("--nosave", Arg.Clear Flags.do_save, "No output to file");
    ("--sigapp", Arg.Set Flags.do_sigapp, "Retain signature applications");
-   ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)")
+   ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)");
+   ("--dump_infer", Arg.Set Flags.do_dumpinfer, "Dump result of type inference")
   ]
 
 (** One-line usage message
@@ -84,10 +85,16 @@ let rec process = function
 
 
       let _ = 
-        let print_item tplvl = 
-	   (print_endline (Syntax.string_of_toplevel tplvl);
-	    print_endline "")
-	in List.iter print_item thy' in
+	(if (! Flags.do_dumpinfer) then
+          let print_item tplvl = 
+	    (print_endline (Syntax.string_of_toplevel tplvl);
+	     print_endline "")
+	  in (print_endline "----------------";
+	      print_endline "After Inference:";
+	      print_endline "----------------";
+	      List.iter print_item thy';
+	      print_endline "----------------")
+	else ()) in
 
 
       let lthy = 
