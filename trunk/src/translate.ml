@@ -85,7 +85,7 @@ let rec translateSet = function
 	    let (x,uneg) = u.tot in
 	    let (y,vneg) = v.tot in
 	    let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x; y] in
-	      (f, Forall (x, u.ty, Imply (uneg, subst_proposition [(y, (App (Id f, Id x)))] (vneg)))
+	      (f, Forall ((x, u.ty), Imply (uneg, subst_proposition [(y, (App (Id f, Id x)))] (vneg)))
 	      )
 	  );
 	  per = (
@@ -93,8 +93,8 @@ let rec translateSet = function
 	    let (y1, y2, vneg) = v.per in
 	    let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x1; x2] in
 	    let g = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x1; x2; f] in
-	      (f, g, (Forall (x1, u.ty,
-				Forall (x2, u.ty,
+	      (f, g, (Forall ((x1, u.ty),
+				Forall ((x2, u.ty),
 					Imply (uneg, subst_proposition [(y1, App (Id f, Id x1)); (y2, App (Id g, Id x2))] (vneg))
 				)))) 
 	  )
@@ -114,15 +114,15 @@ let rec translateTerm = function
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
   | L.Proj (k, t) -> Proj (k, translateTerm t)
   | L.App (u, v) -> App (translateTerm u, translateTerm v)
-  | L.Lambda ((n, s), t) -> Lambda (n, translateSet s, translateTerm t)
+  | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet s).ty), translateTerm t)
   | L.Inj (lb, t) -> Inj (lb, translateTerm t)
   | L.Case (t1, lst) -> Cases (translateTerm t1, 
                                List.map (function 
                                             (lb, Some (n, s), t) -> 
-                                               (lb, n, (translateSet s).ty, 
+                                               (lb, (n, (translateSet s).ty),
                                                 translateTerm t)
                                           | (lb, None, t) ->
-                                               (lb, any, UnitTy, 
+                                               (lb, (any, UnitTy), 
                                                 translateTerm t))
                                         lst)
   | L.Let ((n,s), u, v) -> Let (n, translateTerm u, translateTerm v)
@@ -130,25 +130,33 @@ let rec translateTerm = function
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
 let rec translateProposition ctx = function
     L.False -> (VoidTy, any, False)
+
   | L.True -> (UnitTy, any, True)
-  | L.Atomic (n, t) -> (NamedTy n, raise Unimplemented, raise Unimplemented)
+
+  | L.Atomic (n, t) ->
+      let r = find_name [mk_word "r"; mk_word "q"; mk_word "s"] (List.map fst ctx)
+      in
+	(NamedTy n, r, NamedProp (n, Id r, translateTerm t))
+
   | L.And lst ->
       let lst' = List.map (translateProposition ctx) lst in
       let t = find_name
 		[mk_word "t"; mk_word "p"; mk_word "u"; mk_word "q"; mk_word "r"]
 		(List.map fst ctx) in
-	(TupleTy (List.map (function(s,_,_) -> s) lst'), t,
+	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
 		List.map (fun (_, x, p) ->
 			    let q = subst_proposition [(x, Proj (!k, Id t))] p in
 			      incr k ; q)
 		  lst'))
+
   | L.Imply (p, q) ->
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
       let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"]
 		(x :: (List.map fst ctx)) in
-	(ArrowTy (t, u), f, Forall (x, t, Imply (p', subst_proposition [(y, App (Id f, Id x))] q')))
+	(ArrowTy (t, u), f, Forall ((x, t), Imply (p', subst_proposition [(y, App (Id f, Id x))] q')))
+
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
@@ -158,21 +166,69 @@ let rec translateProposition ctx = function
       in
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
 	 f, And [
-	   Forall (x, t, Imply (p', subst_proposition [(y, App (Proj (0, Id f), Id x))] q'));
-	   Forall (y, u, Imply (q', subst_proposition [(x, App (Proj (1, Id f), Id y))] p'))])
+	   Forall ((x, t), Imply (p', subst_proposition [(y, App (Proj (0, Id f), Id x))] q'));
+	   Forall ((y, u), Imply (q', subst_proposition [(x, App (Proj (1, Id f), Id y))] p'))])
 
-  | L.Or ps -> raise Unimplemented
+  | L.Or lst ->
+      let rec make_labels i j =
+	if i >= j then [] else ("or" ^ (string_of_int i)) :: (make_labels (i+1) j)
+      in
+      let lst' = List.map (translateProposition ctx) lst in
+      let lbs = make_labels 0 (List.length lst) in
+      let u = find_name
+		[mk_word "u"; mk_word "v"; mk_word "w"; mk_word "r"]
+		((List.map (fun (_,x,_) -> x) lst') @ (List.map fst ctx))
+      in
+	(SumTy (List.map2 (fun lb (s,_,_) -> (lb, s)) lbs lst'), u,
+	 And (
+	   List.map2
+		(fun lb (t,y,p) -> Forall ((y,t), Imply (Equal(Id u, Inj (lb, Id y)), p)))
+		lbs lst'
+	 ))
 
-  | L.Forall (((n,_), s), p) -> raise Unimplemented
-(*
-  need to translate p too
-      let s' = translateSet s in
-      let n' = find_name [n] (List.map fst ctx) in
-	Forall (n', s', p)
-*)
+  | L.Forall ((n, s), p) ->
+      let {ty=t; tot=(x,q)} = translateSet s in
+      let (u, y, p') = translateProposition ctx p in
+      let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "l"] (List.map fst ctx)
+      in
+	(ArrowTy (t, u), f,
+	 Forall ((x,t), Imply (q, subst_proposition [(y, App (Id f, Id x))] p'))
+	)
 
-  | L.Exists (((n,_), s), p) -> raise Unimplemented
+  | L.Exists ((n, s), p) -> 
+      let {ty=t; tot=(x,q)} = translateSet s in
+      let (u, y, p') = translateProposition ctx p in
+      let w = find_name [mk_word "w"; mk_word "u"; mk_word "p"; mk_word "t"] (List.map fst ctx)
+      in
+	(TupleTy [t; u], w,
+	 And [
+	   subst_proposition [(x, Proj (1, Id w))] q;
+	   subst_proposition [(n, Proj (1, Id w)); (y, Proj (2, Id w))] p'
+	 ])
 
-  | L.Not p -> raise Unimplemented
+  | L.Not p ->
+      let (t, n, p') = translateProposition ctx p in
+	(UnitTy, any, Forall ((n, t), Not p'))
 
-  | L.Equal (s, t, u) -> raise Unimplemented
+  | L.Equal (s, t, u) -> (UnitTy, any, Equal (translateTerm t, translateTerm u))
+
+let translateBinding (n, s) = (n, (translateSet s).ty)
+
+let translateTheoryElement = function
+    L.Set n -> TySpec (n, None)
+  | L.Let_set (n, s) -> TySpec (n, Some (translateSet s))
+  | L.Predicate (n, _, s) -> TySpec (string_of_name n, None)
+  | L.Let_predicate (n, bind, p) -> raise Unimplemented
+  | L.Let_term (n, s, t) -> raise Unimplemented
+  | L.Value (n, s) -> ValSpec (n, translateSet s, None)
+  | L.Define (n, s, t) -> ValSpec (n, translateSet s, Some (translateTerm t))
+  | L.Sentence (_, n, bind, p) ->
+      SentenceSpec (n, List.map translateBinding bind, translateProposition [] p)
+
+let translateTheory {L.t_name=name; L.t_arg=args; L.t_body=body} =
+  { s_name = name;
+    s_arg = (match args with
+		 None -> None
+	       | Some a -> Some (List.map translateTheoryElement a));
+    s_body = List.map translateTheoryElement body
+  }

@@ -1,0 +1,21 @@
+theory Trivial =
+thy
+ set s
+ set t = s * s -> bool -> s
+ const u : s
+ const ( * ) : s -> s -> s
+ const ff : s -> s
+
+ implicit x, y : s
+
+ axiom one = true
+
+ theorem foo x = x = x
+
+ theorem bar  = some y. not (u = y)
+
+ axiom total = all y. some x. ff x = y
+
+ axiom decidable = all x. all y. (x = y or not (x = y))
+
+end

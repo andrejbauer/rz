@@ -81,7 +81,7 @@ type theory_element =
   | Let_predicate of name * binding list * proposition
   | Let_term of name * set * term (** abbreviation *)
   | Value of name * set
-  | Define of name * term (** part of theory *)
+  | Define of name * set * term (** part of theory *)
   | Sentence of sentence_type * name * binding list * proposition
 
 type context = (string * theory_element) list

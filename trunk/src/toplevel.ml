@@ -1,7 +1,7 @@
 open Message
 
 let read fn =
-  print_string ("Parsing " ^ fn ^ "\n") ;
+  print_endline ("Parsing " ^ fn) ;
   let fin = open_in fn in
   let e = Parser.theoryspecs Lexer.token (Lexing.from_channel fin) in
     close_in fin ;
@@ -12,15 +12,15 @@ let parse str = Parser.theoryspecs Lexer.token (Lexing.from_string str);;
 exception BadArgs;;
 
 if Array.length(Sys.argv) <> 2 then 
-  (print_string ("Usage:  " ^ Sys.argv.(0) ^ " <filename to parse>\n");
+  (print_endline ("Usage:  " ^ Sys.argv.(0) ^ " <filename to parse>");
    raise BadArgs)
 else
   let thy = read Sys.argv.(1) in
-  let _ = print_string ("Parsed.\n") in
+  let _ = print_endline ("Parsed.") in
   let thy' = List.map (Infer.annotateTheorySpec Infer.emptyCtx) thy in
-  let _ = print_string ("Typechecked.\n") in
+  let _ = print_endline ("Typechecked.") in
   let lthy = List.map Logic.make_theoryspec thy' in
-  let _ = print_string "Translated to Logic form\n" in
-  lthy 
-
-
+  let _ = print_endline "Translated to Logic form" in
+  let spec = List.map Translate.translateTheory lthy in
+  let _ = print_endline "Translated to a specification:\n-----------\n" in
+    List.iter (fun s -> print_string (Outsyn.string_of_signat s)) spec
