@@ -5,7 +5,7 @@
 \usepackage{amsmath}
 \usepackage{amssymb}
 \usepackage{theorem}
-\usepackage{fancyvrb}
+\usepackage{fancyvrb,xspace}
 
 %% MACROS
 
@@ -36,6 +36,7 @@
   \newtheorem{corollary}[theorem]{Corollary}
   \newtheorem{conjecture}[theorem]{Conjecture}
 %  \newtheorem{exercise}[theorem]{Exercise}
+}
 
 {
   \theorembodyfont{\rmfamily}
@@ -46,6 +47,96 @@
   \newtheorem{problem}{Problem}
 }
 
+\newcommand{\keywd}[1]{\mbox{\texttt{#1}}\xspace}
+\newcommand{\ALL}{\keywd{all}}
+\newcommand{\AND}{\keywd{and}}
+\newcommand{\AXIOM}{\keywd{axiom}}
+\newcommand{\BOOL}{\keywd{bool}}
+\newcommand{\CONST}{\keywd{const}}
+\newcommand{\COROLLARY}{\keywd{corollary}}
+\newcommand{\EQUIV}{\keywd{equiv}}
+\newcommand{\EQUIVALENCE}{\keywd{equivalence}}
+\newcommand{\EQUIVPROP}{\keywd{Equiv}}
+\newcommand{\END}{\keywd{end}}
+\newcommand{\EXISTS}{\keywd{exists}}
+\newcommand{\EXISTSONE}{\keywd{exists1}}
+\newcommand{\FALSE}{\keywd{false}}
+\newcommand{\FORALL}{\keywd{forall}}
+\newcommand{\IMPLICIT}{\keywd{implicit}}
+\newcommand{\IFF}{\keywd{iff}}
+\newcommand{\IMPLY}{\keywd{implies}}
+\newcommand{\IN}{\keywd{in}}
+\newcommand{\LAMBDA}{\keywd{lam}}
+\newcommand{\LEMMA}{\keywd{lemma}}
+\newcommand{\LET}{\keywd{let}}
+\newcommand{\MATCH}{\keywd{match}}
+\newcommand{\MODEL}{\keywd{model}}
+\newcommand{\NOT}{\keywd{not}}
+\newcommand{\OR}{\keywd{or}}
+\newcommand{\PROP}{\keywd{Prop}}
+\newcommand{\PROPOSITION}{\keywd{proposition}}
+\newcommand{\PREDICATE}{\keywd{predicate}}
+\newcommand{\RELATION}{\keywd{relation}}
+\newcommand{\RZ}{\keywd{rz}}
+\newcommand{\SET}{\keywd{set}}
+\newcommand{\SOME}{\keywd{some}}
+\newcommand{\SOMEONE}{\keywd{some1}}
+\newcommand{\STABLE}{\keywd{stable}}
+\newcommand{\STABLEPROP}{\keywd{Stable}}
+\newcommand{\STRUCTURE}{\keywd{structure}}
+\newcommand{\THE}{\keywd{the}}
+\newcommand{\THEOREM}{\keywd{theorem}}
+\newcommand{\THEORY}{\keywd{theory}}
+\newcommand{\THY}{\keywd{thy}}
+\newcommand{\TRUE}{\keywd{true}}
+\newcommand{\UNIT}{\mbox{\Verb| unit |}}
+\newcommand{\WITH}{\keywd{with}}
+
+\newcommand{\metav}[1]{\mbox{\textit{#1}}\xspace}
+
+\newcommand{\Case}{\metav{case}}
+\newcommand{\Ident}{\metav{name}}
+\newcommand{\Identifier}{\Ident}
+\newcommand{\Label}{\metav{\Verb|`|label}}
+\newcommand{\MIdentifier}{\metav{Modelname}}
+\newcommand{\TIdentifier}{\metav{Theoryname}}
+\newcommand{\Setexp}{\metav{set}}
+\newcommand{\Set}{\metav{set}}
+\newcommand{\Specification}{\metav{specification}}
+\newcommand{\Proposition}{\metav{proposition}}
+\newcommand{\Prop}{\metav{prop}}
+\newcommand{\Param}{\metav{param}}
+\newcommand{\MParam}{\metav{modelparam}}
+\newcommand{\Term}{\metav{term}}
+\newcommand{\Theoryexp}{\metav{theory}}
+
+\newcommand{\AAND}{\mbox{\Verb| \&\& |}}
+\newcommand{\ARROW}{\mbox{\Verb| -> |}}
+\newcommand{\BAR}{\mbox{\Verb+ | +}}
+\newcommand{\COLON}{\mbox{\Verb| : |}}
+\newcommand{\COMMA}{\mbox{\Verb| , |}}
+\newcommand{\EQUALS}{\mbox{\Verb| = |}}
+\newcommand{\HASH}{\mbox{\Verb| \# |}}
+\newcommand{\IIFF}{\mbox{\Verb| <=> |}}
+\newcommand{\IIMPLY}{\mbox{\Verb| => |}}
+\newcommand{\LBRACE}{\mbox{\Verb|\{ |}}
+\newcommand{\LBRACK}{\mbox{\Verb|[ |}}
+\newcommand{\LCOMMENT}{\mbox{\Verb|(* |}}
+\newcommand{\LPAREN}{\mbox{\Verb|( |}}
+\newcommand{\OOR}{\mbox{\Verb+ || +}}
+\newcommand{\ONE}{\mbox{\Verb|1|}}
+\newcommand{\PERCENT}{\mbox{\Verb+ \% +}}
+\newcommand{\PLUS}{\mbox{\Verb| + |}}
+\newcommand{\RBRACE}{\mbox{\Verb| \}|}}
+\newcommand{\RBRACK}{\mbox{\Verb| ]|}}
+\newcommand{\RCOMMENT}{\mbox{\Verb| *)|}}
+\newcommand{\RPAREN}{\mbox{\Verb| )|}}
+\newcommand{\PERIOD}{\mbox{\Verb| . |}}
+\newcommand{\SUBIN}{\mbox{\Verb| :> |}}
+\newcommand{\SUBOUT}{\mbox{\Verb| :< |}}
+\newcommand{\TIMES}{\mbox{\Verb| * |}}
+\newcommand{\TO}{\mbox{\Verb| -> |}}
+\newcommand{\ZERO}{\mbox{\Verb|0|}}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -137,7 +228,8 @@ we write
 %
 and read it as ``$(v,e)$ realizes~$G \in D$''. Observe that each graph
 is realized by at least one pair of lists, and that no pair of lists
-represents more than one graph. This leads us to the definition given
+represents more than one graph. (It happens that in this case most graphs are
+represented by many pairs of lists.) This leads us to the definition given
 below. We shall abuse notation slightly and write $t \in \ut{S}$ to
 mean that $t$ is a closed expression of type $\ut{S}$.
 
@@ -206,6 +298,7 @@ realizer.
       \ut{\exists x \in A .\, \phi(x)} &= \ut{A} \times \ut{\phi}
     \end{align*}
   }
+  \vline
   \quad
   \parbox[t]{0.5\textwidth}{
     \begin{align*}
@@ -241,7 +334,7 @@ realizer.
         \text{$t_1 \rz_A x$ and $t_2 \rz \phi(x)$}
     \end{align*}
   }
-  \caption{Outline of realizability interpretation of logic}
+  \caption{Realizability interpretation of logic (outline)}
   \label{fig:rz-logic}
 \end{figure*}
 
@@ -303,21 +396,7 @@ neutral element.\footnote{An example of such a semigroup are the
   complex numbers with multiplication as the binary operation.} In our
 system it could be written as follows:
 %
-\begin{Verbatim}
-theory T =
-thy
-  set s
-  const e : s
-  const ( * ) : s -> s -> s
-  implicit x, y, z : s
-  axiom unit x =
-    x * e = x and e * x = x
-  axiom assoc x y z =
-    x * (y * z) = (x * y) * z
-  axiom sqrt x =
-    some y . y * y = x
-end
-\end{Verbatim}
+\VerbatimInput{semigroup.thy}
 %
 The theory is enclosed by \Verb|thy|\ldots\Verb|end|. This theory
 defines one basic set \Verb|s|, and two basic constants: an element
@@ -337,38 +416,89 @@ hold. Thus although axioms can be defined, one cannot actually refer
 to them within the theory.
 
 There are several features of theories that our system supports other
-than those shown in this example above:
-%
-\begin{itemize}
-\item
-  As already mentioned, a theory may list basic predicates and relations.
-  These can be declared \Verb|stable|, which means that their
-  computational interpretation is trivial, see
-  Section~\ref{sec:real-transl} for further discussion of this point.
-  %
-\item The language of sets includes cartesian product, function
-  spaces, disjoint unions, subsets, quotients by stable equivalence
-  relations, and sets of realizers. The corresponding introduction and
-  elimination forms appear in the language of terms.
+than those shown in this example above; the input language is
+summarized in Figure~\ref{fig:input}, where brackets imply optional
+elements.
 
-\item Convenient abbreviations may be defined for constants sets and
-  relations. For example, a theory might want to give a name to the
-  set of non-zero numbers.
 
-\item A theory can postulate the existence of a model of some
-  theory.  For example, a theory of real numbers could start by
-  postulating a model \Verb|N| of the theory \Verb|Nat| of natural
-  numbers.
-
-\item Axioms can universally quantify over all models of a theory.
+Theories may declare or define relations.  They may be \Verb|stable|,
+i.e., their computational interpretation is trivial (see
+Section~\ref{sec:real-transl} for further discussion of this point).
+Axioms can universally quantify over all models of a theory.
   This is useful for describing universaility properties, such as
   initiality of an algebra or finality of a coalgebra.
+  
+  The propositions should are familiar; $\SOMEONE$ is unique
+  existance.  In addition to the familiar empty ($\ZERO$) and unit
+  ($\ONE$) sets, one can form cartesian products, function spaces,
+  tagged disjoint unions, subsets, and quotients by stable equivalence
+  relations. The corresponding introduction and elimination forms
+  appear in the language of terms.  For example, $\Term\PERCENT\ 
+  \metav{relation}$ is the equivalence class under $\metav{relation}$
+  containing $\Term$, while $\LET\ x \PERCENT \metav{relation}
+  \mbox{\Verb| =|}$ $ \Term_1\ \IN\ \Term_2$ binds $x$ to a
+  representative of the equivalence class $\Term_1$ to be used in
+  $\Term_2$.  $\Term \SUBIN \Set$ injects $\Term$ into a given subset
+  (recording a proof obligation of the term actually being a member of the subset), while $\Term \SUBOUT \Set$ projects $\Term$ from a subset out
+ into its superset $\Set$.
 
-\item Comments may be included in the theory.
-
-\end{itemize}
-
-\comment{Really, I should create a figure containing the abstract syntax.}
+\begin{figure}
+\[
+\begin{array}{l}
+\mbox{\textbf{Theory Elements}}\\
+\SET\ s\ [\EQUALS\ \mathit{set}\ ]\\
+\CONST\ c\ [\COLON \mathit{set}\ ]\ [\EQUALS\ \mathit{term}\ ]\\
+{}[\STABLE{}]\ \RELATION\ r\ [\COLON \mathit{set}\ ]\ [\EQUALS \mathit{prop}\ ]\\
+\EQUIVALENCE \COLON \mathit{set}\\
+\MODEL\ M\COLON\mathit{theory}\\
+\AXIOM\ a\ [\ M\COLON\mathit{theory}\ ]^{*}\ [x\COLON\mathit{set}\ ]^*\EQUALS\mathit{prop}\\
+\\
+\mbox{\textbf{Propositions}}\\
+\TRUE\\
+\FALSE\\
+\NOT\ \Prop\\
+\Prop \AAND \Prop\\
+\Prop \OOR \Prop\\
+\Prop \IIMPLY \Prop\\
+\Prop \IIFF \Prop\\
+r [\ \Term\ ]^*\\
+\Term\EQUALS\Term\\ %[\IN\ \Set]\\
+\ALL\ [x\COLON \Set] \PERIOD \Prop\\
+\SOME\ [x\COLON \Set] \PERIOD \Prop\\
+\SOME1\ [x\COLON \Set] \PERIOD \Prop\\
+\\
+\mbox{\textbf{Sets}}\\
+\ZERO\\
+\ONE\\
+\BOOL\\
+s\\
+\mathit{Model}\PERIOD \mathit{name}\\
+\Set \TIMES \cdots \TIMES \Set\\
+\Setexp \ARROW \Setexp\\
+\Label\ [\COLON \Setexp\ ]\ \PLUS \cdots \PLUS \Label\ [\COLON \Setexp\ ]\\
+\LBRACE \Ident [\ \COLON \Setexp\ ]\ \BAR \Proposition \RBRACE\\
+\Setexp \PERCENT \metav{relation}\\
+%\RZ\ \Setexp\\
+\\
+\mbox{\textbf{Terms}}\\
+x\\
+\LPAREN \Term\COMMA \cdots \COMMA \Term \RPAREN\\
+\Term\PERIOD \metav{n}\\
+\Label\ [\ \Term\ ]\\
+\MATCH\ \Term\ \WITH\ \mbox{\textit{pattern-matches}}\\
+\LAMBDA\ x\COLON\Set\ \PERIOD\ \Term\\
+\Term\ \Term\\
+\LET\ x\EQUALS\Term\ \IN\ \Term\\
+\THE\ x\COLON\Set \PERIOD \Prop\\
+\Term \PERCENT \metav{relation}\\
+\LET\ x \PERCENT \metav{relation}\ \IN\ \Term\EQUALS\Term\\
+\Term \SUBIN \Set\\
+\Term \SUBOUT \Set\\
+\end{array}
+\]  
+\caption{Input Language Summary}
+\label{fig:input}  
+\end{figure}
 
 \subsection{Signatures}
 \label{sec:signatures}
@@ -387,63 +517,50 @@ implementation beyond their type.  It is the responsibility of the
 programmer to check that the implementation satisfies these
 assertions, as our tool does not attempt to do any theorem proving.
 
-Assertions are written in ordinary classical first-order logic. Since
+Assertions are written in ordinary classical first-order logic. (Since
 programmers typically are not trained in constructive logic, this
-may make it easier to verify the assertions.
+may make it easier to verify the assertions.)
 
-The output for the \Verb|Group| theory above is then:
-\begin{Verbatim}
-module type Group = 
-sig
-  type g
-  (**  Assertion per_g =  PER(=g=)
-  *)
-   
-  val e : g
-  (**  Assertion e_total =  e : ||g||
-  *)
-   
-  val ( * ) : g -> g -> g
-  (**  Assertion ( * )_total =
-         all (x:g, y:g).  x =g= y =>
-           all (x':g, y':g).  x' =g= y' => 
-             x * x' =g= y * y'
-  *)
-   
-  val i : g -> g
-  (**  Assertion i_total =  
-          all (x:g, y:g).  
-             x =g= y => i x =g= i y
-  *)
-   
-  (**  Assertion unit (x:g) =  
-          e * x =g= x and x * e =g= x
-  *)
-   
-  (**  Assertion associative (x:g,y:g,z:g) =  
-          (x * y) * z =g= x * (y * z)
-  *)
-   
-  (**  Assertion inverse (x:g) =  
-          x * i x =g= e and i x * x =g= e
-  *)
-end
-\end{Verbatim}
-\comment{Hmm...This really isn't interesting at all.  With the
-  exception of the totality predicates, it's just the same as the
-  input.  What would a better small example be?  Maybe something
-  that produces an obligation?
-  }
+The output for the theory \Verb|T| above is then:
+\VerbatimInput{semigroup.mli} 
 
-\subsection{Parameterized Theories and Functor Signatures}
+At the ML level we have required a type \Verb|s|, a value \Verb|e| of
+type \Verb|s| and a binary function on \Verb|s|; \comment{I thought
+  that names like \Verb|( * )| here were supposed to be translated
+  away in the ML code?} these were mentioned explicitly in the theory.
+For interestingly, the constructive content of the existential in the
+\Verb|sqrt| axiom requires that a witness function be provided as
+well; thus, the ML signature further requires a function \Verb|sqrt|
+mapping \Verb|s| to \Verb|s|.
+
+Comments contain other properties (not expressible in ML) that further
+constrain the allowed implementations.  \Verb|PER(=s=)| requires a
+partial equivalence \Verb|=s=| on \Verb|s|; its domain \Verb+||s||+ is the
+subset of terms of type $s$ that represent group elements; the
+relation equates different implementations corresponding to the same
+abstract group element.  \Verb|e| must represent a
+group element, and the \Verb|*| operation must not be affected by the
+choice of representatives.  These must of course still satisfy the
+\Verb|unit| and \Verb|assoc| axioms.  Finally, the new function
+\Verb|sqrt| derived from the logic must compute square roots.  Since
+the theory requires existence but not uniqueness of square roots, its
+computational content does not require that \Verb|sqrt| be invariant
+with respect to the partial equivalence relation on \Verb|s|;
+different implementations of the same group element are allowed to produce
+(implementations of) different square roots.
+
+
+\subsection{Parameterized Theories}
 \label{sec:param-theor-funct}
+
+The 
 
 
 Mention that we can handle parameterized theories and functor
 signatures, but avoid explaining everything about them.
 
 \section{Implementation}
-\label{sec:impliementation}
+\label{sec:implimentation}
 
 After parsing, our implementation does type checking.  The type
 checker does rather limited type reconstruction; the types of all

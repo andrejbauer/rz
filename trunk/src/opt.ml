@@ -255,17 +255,25 @@ let rec optTerm ctx = function
  | Dagger -> (print_string "Is this a Dagger which I see before me?\n";
 	      (UnitTy, Dagger, UnitTy))
  | App(e1,e2) -> 
-     let    (ArrowTy(ty2, oldty), e1', ty1') = optTerm ctx e1
-     in let (_, e2', ty2') = optTerm ctx e2
-     in let ty' = optTy ctx oldty
-     in (match (ty', hnfTy ctx ty2') with
-           (TopTy, _) -> (* Application can be eliminated entirely *)
-                            ((oldty, Dagger, TopTy))
-         | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
+     begin
+       match optTerm ctx e1 with
+         (ArrowTy(ty2, oldty), e1', ty1') ->
+	 let (_, e2', ty2') = optTerm ctx e2
+	 in let ty' = optTy ctx oldty
+	 in (match (ty', hnfTy ctx ty2') with
+		   (TopTy, _) -> (* Application can be eliminated entirely *)
+		   ((oldty, Dagger, TopTy))
+		   | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
                             ((oldty, e1', ty1'))
          | (ty', _)    -> (* Both parts matter.
                              Eliminate trivial beta-redices, though. *)
-                            ((oldty, betaReduce (App(e1', e2')), ty')))
+	 ((oldty, betaReduce (App(e1', e2')), ty')))
+      | (t1, _, _) -> (print_string "In application ";
+                       print_string (Outsyn.string_of_term (App(e1,e2)));
+                       print_string " the operator has type ";
+                       print_endline (Outsyn.string_of_ty t1);
+                       raise (Impossible "App"))
+    end
  | Lambda((name1, ty1), term2) ->
     (let    ty1' = optTy ctx ty1
      in let ctx' = insertType ctx name1 ty1
