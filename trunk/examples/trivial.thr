@@ -3,4 +3,7 @@ thy
  set s
  implicit x, y : s
  axiom f x = some y . not (x = y)
+
+ stable predicate p : s * s
+ axiom g x = p (x, x)
 end

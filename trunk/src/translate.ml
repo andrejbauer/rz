@@ -22,14 +22,14 @@ type ctxElement =
     CtxBind of L.set
   | CtxTerm of L.term
   | CtxSet of L.set
-  | CtxProp of L.binding list * L.proposition
+  | CtxProp of Syntax.stability * (L.binding list * L.proposition) option
 
 let empty = []
 
 let addBind n s ctx = (n, CtxBind s) :: ctx
 let addTerm n t ctx = (n, CtxTerm t) :: ctx
 let addSet  n s ctx = (n,  CtxSet s) :: ctx
-let addProp n (b,p) ctx = (n, CtxProp (b,p)) :: ctx
+let addProp n (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
 
 let addBinding bind ctx =
   List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
@@ -61,7 +61,7 @@ let getSet n ctx =
 let getProp n ctx =
   let rec find = function
       [] -> raise Not_found
-    | (m, CtxProp (b,p)) :: ctx' -> if n = m then (b,p) else find ctx'
+    | (m, CtxProp (stb, x)) :: ctx' -> if n = m then (stb,x) else find ctx'
     | _ :: ctx' -> find ctx'
   in
     find ctx
@@ -248,7 +248,11 @@ and translateProp ctx = function
 
   | L.Atomic (n, t) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
-	(NamedTy (fst n), r, NamedProp (n, Id r, translateTerm ctx t))
+      let ty = (match fst (getProp n ctx) with
+		    Syntax.Unstable -> NamedTy (fst n)
+		  | Syntax.Stable -> TopTy)
+      in
+	(ty, r, NamedProp (n, Id r, translateTerm ctx t))
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
@@ -354,9 +358,9 @@ let translateTheoryElement ctx = function
       ),
       addSet n s ctx
 
-  | L.Predicate (n, _, s) ->
-      [TySpec (n, None)],
-      addBind n (L.Exp (s, L.PROP)) ctx
+  | L.Predicate (n, stb, s) ->
+      (if stb = Syntax.Stable then [] else [TySpec (n, None)]),
+      addProp n (stb, None) ctx
 
   | L.Let_predicate (n, bind, p) ->
       failwith "predicate definitions not implemented"
@@ -403,7 +407,7 @@ let translateTheoryElement ctx = function
 	    AssertionSpec (b, r)
 	  ]
       end,
-      addProp n (bind, p) ctx
+      addProp n (Syntax.Unstable, Some (bind, p)) ctx
 
 let rec translateTheoryBody ctx = function
     [] -> ctx, []

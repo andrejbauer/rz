@@ -225,11 +225,17 @@ let rec string_of_ty' level t =
 
 let string_of_ty t = string_of_ty' 999 t
 
-let rec string_of_term' level t =
+let rec string_of_app = function
+    ((op, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)), Tuple [u;v]) ->
+      (string_of_term u) ^ " " ^ op ^ " " ^ (string_of_term v)
+  | (n, (Tuple _ as t)) -> (string_of_name n) ^ (string_of_term t)
+  | (n, t) -> (string_of_name n) ^ "(" ^ (string_of_term t) ^ ")"
+
+and string_of_term' level t =
   let (level', str) = match t with
       Id n -> (0, string_of_name n)
     | Star -> (0, "()")
-    | Dagger -> (0, "!")
+    | Dagger -> failwith "Is this a dagger which I see before me?"
     | App (App (Id (n, Syntax.Infix0), t), u) -> 
 	(9, (string_of_term' 9 t) ^ " " ^ n ^ " " ^ (string_of_term' 8 u))
     | App (App (Id (n, Syntax.Infix1), t), u) -> 
@@ -273,9 +279,10 @@ and string_of_prop level p =
       True -> (0, "true")
     | False -> (0, "false")
     | NamedTotal (n, t) -> (0, "Tot_" ^ (string_of_name n) ^ "(" ^ (string_of_term t) ^ ")")
-    | NamedPer (n, t, u) -> (9, (string_of_term' 9 u) ^ " =_" ^ (string_of_name n) ^ " " ^ (string_of_term' 9 t))
-    | NamedProp (n, t, u) -> (9, "Rz_" ^ (string_of_name n) ^ "(" ^ (string_of_term t) ^ ", " ^
-				(string_of_term u) ^ ")")
+    | NamedPer (n, t, u) -> (9, (string_of_term' 9 u) ^ " =_" ^
+			       (string_of_name n) ^ " " ^ (string_of_term' 9 t))
+    | NamedProp (n, Dagger, u) -> (0, string_of_app (n, u))
+    | NamedProp (n, t, u) -> (9, (string_of_term t) ^ " |= " ^ (string_of_app (n, u)))
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
     | And [] -> (0, "true")
     | And lst -> (10, String.concat " and " (List.map (string_of_prop 10) lst))
