@@ -32,7 +32,7 @@ and term =
   | Inj of label * term
   | Cases of term * (label * binding * term) list
   | Let of name * term * term
-  | Questionmark (** used for unknown proofs *)
+  | Obligation of name * ty * proposition
 
 (** specifications are expressed in classical logic
     (negative fragment to be exact)
