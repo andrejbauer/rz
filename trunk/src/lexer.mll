@@ -104,7 +104,13 @@ rule token = parse
                           with Not_found -> NAME w
                         end
                     }
-  | tident          { TNAME (Lexing.lexeme lexbuf) }
+  | tident           { let w = Lexing.lexeme lexbuf in
+                        begin
+                          try
+                            List.assoc w reserved 
+                          with Not_found -> TNAME w
+                        end
+                    }
   | "!" symbolchar *
             { PREFIXOP(Lexing.lexeme lexbuf) }
   | ['~' '?'] symbolchar *

@@ -235,7 +235,10 @@ let rec fmModel = function
  *)
 let addSetToSubst (substitution : subst) (nm : set_name) = function
     [] -> substitution
-  | mdls  -> Syntax.insertSetvar substitution nm (Set_mproj(toModel mdls, nm))
+  | mdls  -> ((* print_string "inserting set ";
+	      print_string nm;
+	      print_string "\n"; *)
+	      Syntax.insertSetvar substitution nm (Set_mproj(toModel mdls, nm)))
 
 let addModelToSubst (substitution : subst) mdlnm = function
     [] -> substitution
@@ -309,7 +312,7 @@ let rec expandTheory cntxt = function
    where there are no implicits around.
  *)
 let rec peekSet' items desired_stnm =
-      (* let _ = print_string ("looking for " ^ stnm ^ "\n")
+      (* let _ = print_string ("looking for " ^ desired_stnm ^ "\n")
       in *) 
   let rec loop = function
       [] -> false
@@ -321,10 +324,10 @@ let rec peekSet' items desired_stnm =
 let peekSet cntxt desired_stnm = peekSet' cntxt.items desired_stnm
 
 let addToSubst substitution pathtohere = function
-    TermSpec(nm,_) -> addTermToSubst substitution nm pathtohere
-  | SetSpec(stnm,_) -> addSetToSubst substitution stnm pathtohere
-  | ModelSpec(mdlnm,_) -> addModelToSubst substitution mdlnm pathtohere
-  | SentenceSpec      -> substitution (** Never referenced in a theory  *)
+    TermSpec(nm,_) -> (addTermToSubst substitution nm pathtohere)
+  | SetSpec(stnm,_) -> (addSetToSubst substitution stnm pathtohere)
+  | ModelSpec(mdlnm,_) -> (addModelToSubst substitution mdlnm pathtohere)
+  | SentenceSpec      -> (substitution) (** Never referenced in a theory  *)
 
 (** Given the guts of a context and a desired set name, determine
     whether a set of that name exists (with or without a definition).
@@ -377,13 +380,13 @@ let rec peekTypeof' subst0 items pathtohere desired_nm =
     | TermSpec(nm, set) :: rest ->
 	if nm = desired_nm then 
           (let answer = substSet substitution set
-	   in (* let _ = print_string (string_of_int (List.length substitution))
-                 in let _ = print_string ("answer= " ^ string_of_set answer ^ "\n")
-                 in *) Some answer)
+	   in (* let _ = display_subst substitution 
+              in let _ = print_string ("answer= " ^ string_of_set answer ^ "\n") 
+              in *) Some answer)
         else 
 	  (loop (addTermToSubst substitution nm pathtohere) rest)
-    | spc :: rest -> loop (addToSubst substitution pathtohere spc) rest
-  in loop subst0 items
+    | spc :: rest -> (loop (addToSubst substitution pathtohere spc) rest)
+  in (loop subst0 items)
 
 let peekTypeof cntxt desired_nm = 
   peekTypeof' emptysubst cntxt.items [] desired_nm
@@ -447,7 +450,7 @@ let rec annotateModel cntxt = function
     ModelName mdlnm ->
      (match (peekTheoryof cntxt mdlnm) with
 	None -> tyGenericError ("Unknown Model " ^ mdlnm)
-     | Some (thr,_) -> (ModelName mdlnm, thr, emptysubst, []))
+     | Some (thr,_) -> (ModelName mdlnm, thr, emptysubst, [mdlnm]))
   | ModelProj (mdl, lbl) as main_mdl ->
       let (mdl', thr', subst, pathtohere) = annotateModel cntxt mdl
       in (match (peekTheoryof' subst cntxt.items pathtohere lbl) with

@@ -1,7 +1,8 @@
 (* Abstract syntax *)
 
-(* Labels are used to denote variants in sum types. We follow ocaml's
-   syntax for polymorphic variants. *)
+(* Labels are used to denote things that don't vary.  This includes
+   names of components of models, and variants in sum types. 
+   For the latter, we follow ocaml's syntax for polymorphic variants. *)
 
 type label = string
 
@@ -240,6 +241,20 @@ let getSetvar sbst stnm =
 let getModelvar sbst mdlnm =
    try (StringMap.find mdlnm sbst.models) with Not_found -> ModelName mdlnm
 
+let display_subst sbst =
+  let do_term nm trm = print_string ("[" ^ string_of_name nm ^ "~>" ^ 
+					  string_of_term trm ^ "]")
+  in let do_set stnm st = print_string ("[" ^ stnm ^ "~>" ^ 
+					string_of_set st ^ "]")
+  in let do_model mdlnm mdl = print_string ("[" ^ mdlnm ^ "~>" ^ 
+					    string_of_model mdl ^ "]")
+  in  (print_string "Terms: ";
+       NameMap.iter do_term sbst.terms;
+       print_string "\nSets: ";
+       StringMap.iter do_set sbst.sets;
+       print_string "\nSets: ";
+       StringMap.iter do_model sbst.models)
+   
 
 let rec subst (substitution : subst) =
      let rec sub = function
