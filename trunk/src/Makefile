@@ -29,7 +29,7 @@ LIB_OBJS = unix.cma
 
 LIB_OPT_OBJS = $(subst .cma,.cmxa,$(subst .cmo,.cmx,$(LIB_OBJS)))
 
-TARGETS = toplevel
+TARGETS = rz
 
 OPT_TARGETS = $(addsuffix .opt,$(TARGETS))
 
@@ -47,7 +47,7 @@ lexer.cmi: lexer.mli parser.mli
 	$(OCAMLC) $(OCAMLFLAGS) -c lexer.mli
 
 $(TARGETS): %: $(BYTE_OBJS) %.cmo
-	$(OCAMLC) -o toplevel $(OCAMLFLAGS) $(LIB_OBJS) $+ 
+	$(OCAMLC) -o rz $(OCAMLFLAGS) $(LIB_OBJS) $+ 
 
 $(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx 
 	$(OCAMLOPT) -o toplevel.opt $(OCAMLOPTFLAGS) $(LIB_OPT_OBJS) $+

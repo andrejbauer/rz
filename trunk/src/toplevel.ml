@@ -24,6 +24,6 @@ else
   let spec = Translate.translateTheorydefs Translate.emptyCtx lthy in
   let _ = print_endline "Translated to a specification:\n-----------\n" in
   let _ = List.iter (fun s -> print_string (Outsyn.string_of_signatdef s)) spec in
-  let spec2 = List.map (Opt.optSignatdef Opt.emptyCtx) spec in
+  let spec2 = Opt.optSignatdefs Opt.emptyCtx spec in
   let _ = print_endline "\n-------\nOptimized specification:\n-----------\n" in
     List.iter (fun s -> print_string ((Outsyn.string_of_signatdef s) ^ "\n\n")) spec2

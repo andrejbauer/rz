@@ -2,6 +2,8 @@ module L = Logic
 module S = Syntax
 open Outsyn 
 
+let skipTrivial = ref true
+
 exception Unimplemented
 
 (** contexts (environments)
@@ -444,23 +446,25 @@ and translateBinding ctx bind =
 
 and translateTheoryElement ctx = function
     L.Set n -> 
-      [TySpec (n, None);
-       (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	  AssertionSpec ((Syntax.string_of_name n)  ^ "_strict",
-			 [(x, NamedTy (toLN n))],
-			 Imply (NamedPer (toLN n, toId x, toId x), NamedTotal (toLN n, toId x))));
-       (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
-	  AssertionSpec ((Syntax.string_of_name n) ^ "_symmetric", [(x, NamedTy (toLN n)); (x', NamedTy (toLN n))],
-			 Imply (NamedPer (toLN n, toId x, toId x'), NamedPer (toLN n, toId x', toId x))));
-       (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
-	let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
-	let x''= fresh [mk_word "x"; mk_word "y"; mk_word "z"; mk_word "v"] [x;x'] ctx in
-	  AssertionSpec ((Syntax.string_of_name n) ^ "_transitive",
-	    [(x, NamedTy (toLN n)); (x', NamedTy (toLN n)); (x'', NamedTy (toLN n))],
-	    Imply (And [NamedPer (toLN n, toId x, toId x'); NamedPer (toLN n, toId x', toId x'')],
-		   NamedPer (toLN n, toId x, toId x''))))
-      ],
+      [TySpec (n, None)] @ (
+	if !skipTrivial then [] else
+	  [
+	    (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
+	       AssertionSpec ((Syntax.string_of_name n)  ^ "_strict",
+			      [(x, NamedTy (toLN n))],
+			      Imply (NamedPer (toLN n, toId x, toId x), NamedTotal (toLN n, toId x))));
+	    (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
+	     let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
+	       AssertionSpec ((Syntax.string_of_name n) ^ "_symmetric", [(x, NamedTy (toLN n)); (x', NamedTy (toLN n))],
+			      Imply (NamedPer (toLN n, toId x, toId x'), NamedPer (toLN n, toId x', toId x))));
+	    (let x = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [] ctx in
+	     let x' = fresh [mk_word "x"; mk_word "y"; mk_word "u"; mk_word "v"] [x] ctx in
+	     let x''= fresh [mk_word "x"; mk_word "y"; mk_word "z"; mk_word "v"] [x;x'] ctx in
+	       AssertionSpec ((Syntax.string_of_name n) ^ "_transitive",
+			      [(x, NamedTy (toLN n)); (x', NamedTy (toLN n)); (x'', NamedTy (toLN n))],
+			      Imply (And [NamedPer (toLN n, toId x, toId x'); NamedPer (toLN n, toId x', toId x'')],
+				     NamedPer (toLN n, toId x, toId x''))))
+	  ]),
       addBind n L.SET ctx
 
   | L.Let_set (n, s) ->
@@ -486,6 +490,7 @@ and translateTheoryElement ctx = function
 	    []
 	  else
 	    [TySpec (n, None)])) @
+	(if !skipTrivial then [] else	  
 	[(
 	   let r = fresh [mk_word "r"; mk_word "s"; mk_word "t"; mk_word "p"] [n] ctx in
 	   let _, bind, app, tots =
@@ -516,7 +521,7 @@ and translateTheoryElement ctx = function
 			   (r, ty)::bind, Imply (
 		And ((NamedProp (toLN n, toId r, tuplify app1))::eqs),
 		NamedProp (toLN n, toId r, tuplify app2)
-	      )))] ,
+	      )))]),
 	addProp n (stab, None) ctx
     end
 
@@ -543,9 +548,11 @@ and translateTheoryElement ctx = function
 
   | L.Value (n, s) ->
       let {ty=t; tot=(x,p)} = translateSet ctx s in
-      [ValSpec (n, t);
-       AssertionSpec ((Syntax.string_of_name n) ^ "_total", [], substProp ctx [(x, toId n)] p)
-      ],
+      [ValSpec (n, t)] @
+	(if !skipTrivial then [] else [
+	   AssertionSpec ((Syntax.string_of_name n) ^ "_total", [],
+			  substProp ctx [(x, toId n)] p)
+	 ]),
       addBind n s ctx
 
   | L.Sentence (_, n, mbind, bind, p) ->

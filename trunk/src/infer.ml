@@ -82,12 +82,66 @@ let tyUnboundError lname =
 (** {2 Utility Functions} *)
 (**************************)
 
-
-let mkProp = function
+let mkKind = function
     Unstable -> Prop
   | Equivalence -> EquivProp
   | Stable -> StableProp
 
+
+let rec isSet = function
+    Empty | Unit | Bool | Set_name _ -> true
+  | Product lst -> List.for_all isSet lst
+  | Sum lst -> List.for_all (function (_, None) -> true | (_, Some s) -> isSet s) lst
+  | Subset ((_, Some s), _) -> isSet s
+  | Subset _ -> true
+  | Rz s -> isSet s
+  | Quotient (s,_) -> isSet s
+  | Exp (s, t) -> isSet s && isSet t
+  | Prop -> false
+  | StableProp -> false
+  | EquivProp -> false
+
+and isProp = function
+    Empty | Unit | Bool | Set_name _ | Product _
+  | Sum _ | Subset _ | Rz _ | Quotient _ -> false
+  | Prop -> true
+  | StableProp -> true
+  | EquivProp -> true
+  | Exp (s, t) -> isSet s && isProp t
+
+let rec propKind = function
+    Prop -> Unstable
+  | StableProp -> Stable
+  | EquivProp -> Equivalence
+  | Exp (s, t) -> propKind t
+  | t -> failwith ("propKind of a non-proposition: " ^ (string_of_set t))
+
+
+let isInfix = function
+    N(_, (Infix0|Infix1|Infix2|Infix3|Infix4)) -> true
+  | _ -> false
+
+let makeBinaryCurried = function
+    Exp (s1, Exp (s2, ((Prop|StableProp|EquivProp) as p)))
+  | Exp (Product [s1; s2], ((Prop|StableProp|EquivProp) as p)) ->
+      Exp (s1, Exp (s2, p))
+  | _ -> failwith "Invalid type of infix binary relation"
+
+let rec makeProp n prp s =
+  if isSet s then
+    Exp (s, prp)
+  else if isProp s then
+    s
+  else
+    tyGenericError ("Invalid type for predicate " ^ (string_of_name n))
+    
+let rec makeStable = function
+    Prop | StableProp -> StableProp
+  | EquivProp -> EquivProp
+  | Exp (s, t) -> Exp (s, makeStable t)
+  | _ -> failwith "Internal error: cannot make a non-predicate stable"
+
+(** ------------------- *)
 
 
 (*********************************)
@@ -97,8 +151,6 @@ let mkProp = function
 type ctx = theory_element list
 
 let emptyCtx = []
-
-
 
 let peekImplicit (ctx : ctx) (N(namestring, fixity) : name) = 
    let rec loop = function
@@ -186,13 +238,14 @@ let rec peekTypeof' subst0 ctx pathtohere = function
               loop (addToSubst substitution sname pathtohere) rest)
 	| Predicate(pname, pkind, domain) :: rest ->
             if lname = toLN pname then
-              Some (substSet substitution (Exp(domain, mkProp pkind)))
+	      let ty = makeProp pname (mkKind pkind) domain in
+		Some (substSet substitution ty)
             else 
               loop (addToSubst substitution pname pathtohere) rest
 	| Let_predicate(pname, pkind, bnds, _) :: rest ->
             if lname = toLN pname then
 	      let    tys = List.map (function (_, Some ty) -> ty) bnds
-              in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkProp pkind)
+              in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkKind pkind)
               in     Some (substSet substitution ty)
             else 
               loop (addToSubst substitution pname pathtohere) rest
@@ -464,58 +517,6 @@ let isEquivalence ctx s r =
 	  (eqSet ctx s u) && (eqSet ctx s v)
       | _ -> false
 
-let rec isSet = function
-    Empty | Unit | Bool | Set_name _ -> true
-  | Product lst -> List.for_all isSet lst
-  | Sum lst -> List.for_all (function (_, None) -> true | (_, Some s) -> isSet s) lst
-  | Subset ((_, Some s), _) -> isSet s
-  | Subset _ -> true
-  | Rz s -> isSet s
-  | Quotient (s,_) -> isSet s
-  | Exp (s, t) -> isSet s && isSet t
-  | Prop -> false
-  | StableProp -> false
-  | EquivProp -> false
-
-and isProp = function
-    Empty | Unit | Bool | Set_name _ | Product _
-  | Sum _ | Subset _ | Rz _ | Quotient _ -> false
-  | Prop -> true
-  | StableProp -> true
-  | EquivProp -> true
-  | Exp (s, t) -> isSet s && isProp t
-
-let rec propKind = function
-    Prop -> Unstable
-  | StableProp -> Stable
-  | EquivProp -> Equivalence
-  | Exp (s, t) -> propKind t
-  | t -> failwith ("propKind of a non-proposition: " ^ (string_of_set t))
-
-
-let isInfix = function
-    N(_, (Infix0|Infix1|Infix2|Infix3|Infix4)) -> true
-  | _ -> false
-
-let makeBinaryCurried = function
-    Exp (s1, Exp (s2, ((Prop|StableProp|EquivProp) as p)))
-  | Exp (Product [s1; s2], ((Prop|StableProp|EquivProp) as p)) ->
-      Exp (s1, Exp (s2, p))
-  | _ -> failwith "Invalid type of infix binary relation"
-
-let rec makeProp n prp s =
-  if isSet s then
-    Exp (s, prp)
-  else if isProp s then
-    s
-  else
-    tyGenericError ("Invalid type for predicate " ^ (string_of_name n))
-    
-let rec makeStable = function
-    Prop | StableProp -> StableProp
-  | EquivProp -> EquivProp
-  | Exp (s, t) -> Exp (s, makeStable t)
-  | _ -> failwith "Internal error: cannot make a non-predicate stable"
 
 let rec makeEquivalence n ctx = function
     Exp (Product [s1; s2], (Prop|StableProp|EquivProp)) ->
@@ -528,8 +529,6 @@ let rec makeEquivalence n ctx = function
 	Exp (s1, Exp (s2, EquivProp))
       else
 	tyGenericError ("Ill-typed equivalence " ^ (string_of_name n))
-
-(** ------------------- *)
 
 let rec annotateSet ctx = 
     (let rec ann = function
@@ -723,14 +722,15 @@ and annotateTerm ctx =
            else
               tyGenericError ("Projection " ^ string_of_int n ^ " out of bounds")
      | App (t1, t2) ->
-        let    (t1', ty1) = ann t1
-        in let (t2', ty2) = ann t2
-        in let (ty3,ty4) = (match (hnfSet ctx ty1) with
+        let    (t1', ty1) = ann t1 in
+        let (t2', ty2) = ann t2 in
+        let (ty3,ty4) = (match (hnfSet ctx ty1) with
 	                      Exp(ty3,ty4) -> (ty3,ty4)
 	                    | _ -> tyWrongSortError t1 " function" ty1)
-        in if (subSet ctx ty2 ty3) then
+        in
+	  if (subSet ctx ty2 ty3) then
               (App (t1', t2'), ty4)
-           else
+          else
               tyMismatchError t2 ty3 ty2
 
      | Inj (l, None) ->
@@ -878,19 +878,20 @@ and annotateTheoryElems ctx raccum ctx0 = function
                     (** XXX:  Cannot refer to previous axioms!? *)
 
        | Predicate (n, stab, s)::rest ->
-	   let s1 = makeProp n (mkProp stab) (annotateSet ctx s) in
+	   let s1 = makeProp n (mkKind stab) (annotateSet ctx s) in
 	   let s2 = (if isInfix n then makeBinaryCurried s1 else s1) in
 	   let s3 = (if stab = Equivalence then makeEquivalence n ctx s2 else s2) in
 	   let s4 = (if stab = Stable then makeStable s3 else s3) in
 	   let ctx' = insertType ctx n s4 in
            let ctx0' = insertType ctx0 n s4 in
-	     annotateTheoryElems ctx' (Predicate (n, (if propKind s4 = Stable then Stable else stab), s4)::raccum) ctx0' rest
+	     annotateTheoryElems ctx'
+	       (Predicate (n, (if propKind s4 = Stable then Stable else stab), s4)::raccum) ctx0' rest
 
        | Let_predicate (n, stab, bnds, p)::rest ->
 	   let    (bnds', ctx') = annotateBindings ctx bnds
 	   in let tys = List.map (function (_, Some ty) -> ty) bnds'
 	   in let (p', stab') = annotateProp ctx' p
-           in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkProp stab')
+           in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkKind stab')
            in let ctx' = insertType ctx n ty
            in let ctx0' = insertType ctx0 n ty
 	   in

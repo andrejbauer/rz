@@ -1,26 +1,14 @@
 theory Group =
 thy
   set g  
-
   const e : g
   const ( * ) : g -> g -> g
   const i : g -> g
-
   implicit x,y,z : g
-
   axiom unit x =
-  begin
     e * x = x and x * e = x
-  end
-
-  axiom assoc x y z =
-
+  axiom associative x y z =
     (x * y) * z = x * (y * z)
-
-
   axiom inverse x =
-  begin
-    (x * (i x)) =  e
-    and i(x) * x = e
-  end
+    x * (i x) =  e and (i x) * x = e 
 end

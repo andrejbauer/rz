@@ -51,6 +51,12 @@ type ctx = {types      : (name*ty) list;
             models     : (string*ctx) list
            }
 
+let rec string_of_ctx {types=types; tydefs=tydefs; models=models} =
+  "{ types = [" ^ (String.concat "," (List.map (fun (n,t) -> (string_of_name n) ^ ":" ^ (string_of_ty t)) types)) ^ "],\n" ^
+  "  tydefs = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ty t)) tydefs)) ^ "],\n" ^
+  "  models = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) models)) ^ "],\n" ^
+ "}"
+
 (** Determines whether a variable has an implicitly declared type.
      @param ctx  The type reconstruction context
      @param str  The (string) name of the variable.
@@ -75,8 +81,8 @@ let rec peekLong peeker ctx = function
     (Syntax.LN(str, [], namesort) as lname) -> 
        peeker ctx (Syntax.N(str,namesort))
   | (Syntax.LN(str, label::labels, namesort) as lname) ->
-       let ctx' = lookupModel ctx str
-       in peekLong peeker ctx' (Syntax.LN(label,labels,namesort))
+       let ctx' = lookupModel ctx str in
+	 peekLong peeker ctx' (Syntax.LN(label,labels,namesort))
 
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
@@ -144,6 +150,14 @@ let rec optTy ctx ty =
   | TupleTy tys -> topTyize
         (TupleTy (List.filter notTopTy
                     (List.map (optTy ctx) tys)))
+  | SumTy lst ->
+      SumTy (List.map (function
+			 (lb, None) -> (lb,None)
+		       | (lb, Some ty) ->
+			   (lb, 
+			    match optTy ctx ty with
+				TopTy -> None
+			      | ty' -> Some ty')) lst)
   | nonunit_ty -> nonunit_ty
   in
     hnfTy ctx ans
@@ -231,8 +245,11 @@ let rec optTerm ctx = function
         loop (tys, List.map (optTy ctx) tys, 0, 0) 
  | Inj (lbl, None) -> (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
  | Inj (lbl, Some e) ->
-     let (ty, e', ty') = optTerm ctx e
-     in  (SumTy [(lbl,Some ty)], Inj(lbl, Some e'), SumTy[(lbl, Some ty')])
+     let (ty, e', ty') = optTerm ctx e in
+       if ty' = TopTy then
+	 (SumTy [(lbl,Some ty)], Inj (lbl, None), SumTy[(lbl, None)])
+       else
+	 (SumTy [(lbl,Some ty)], Inj(lbl, Some e'), SumTy[(lbl, Some ty')])
  | Case (e, arms) ->
      let (ty, e', ty') = optTerm ctx e
      in let doArm = function
@@ -297,7 +314,7 @@ and optProp ctx = function
       in let e2' = optTerm' ctx e2
       in (match (hnfTy ctx ty1') with
             TopTy -> True
-          | UnitTy -> True
+(* AB:          | UnitTy -> True *)
 	  | VoidTy -> True
           | _ -> Equal(e1',e2'))
   | And ps ->
@@ -363,8 +380,10 @@ and optElems ctx = function
       let    ty'   = optTy ctx ty
       in let rest', ctx' = optElems (insertType ctx name ty) rest in
 	(match ty' with
-  	     TopTy -> rest', ctx'
-	   | ty' -> ValSpec (name, ty') :: rest', (insertType ctx' name ty'))
+  	     TopTy -> 
+	       rest', ctx'
+	   | ty' ->
+	       ValSpec (name, ty') :: rest', (insertType ctx' name ty'))
 	
   |  AssertionSpec(name, bnds, prop) :: rest ->
        let ctx' = insertTypeBnds ctx bnds in
@@ -374,7 +393,7 @@ and optElems ctx = function
 
   |  TySpec(Syntax.N(str,_) as n, None) :: rest -> 
        let rest', ctx' = optElems ctx rest in
-	 (TySpec (n, None) :: rest'), insertTydef ctx str TYPE
+	 (TySpec (n, None) :: rest'), insertTydef ctx' str TYPE
 
   |  TySpec(Syntax.N(str,_) as n, Some ty) :: rest ->
        let ty' = optTy ctx ty in
@@ -382,7 +401,8 @@ and optElems ctx = function
 	 TySpec(n, Some ty') :: rest', (insertTydef ctx' str ty')
 
 let optSignat ctx = function
-    SignatID s -> SignatID s, lookupModel ctx s
+    SignatID s ->
+      SignatID s, lookupModel ctx s
   | Signat body -> 
       let body', ctx' = optElems ctx body in
 	Signat body', ctx'
@@ -397,7 +417,11 @@ let rec optStructBinding ctx = function
 
 let optSignatdef ctx (Signatdef (s, args, signat)) =
   let args', ctx' = optStructBinding ctx args in
-    Signatdef (s, args', match signat with
-		   SignatID _ -> signat
-		 | Signat body -> Signat (fst (optElems ctx' body)))
+  let signat', ctx'' = optSignat ctx' signat in
+    Signatdef (s, args', signat'), ctx''
     
+let rec optSignatdefs ctx = function
+    [] -> []
+  | (Signatdef (s, args, signat) as sg) :: lst ->
+      let sg', ctx' = optSignatdef ctx sg in
+	sg' :: (optSignatdefs (insertModel ctx s ctx') lst)

@@ -385,7 +385,9 @@ let rec string_of_ty' level t =
 	  | TopTy          -> (0, "top")
 	  | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
-          | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2)))
+          | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2))
+	  | TYPE           -> (0, "TYPE"))
+
   in
     if (level' > level) then 
        "(" ^ str ^ ")"
@@ -394,9 +396,14 @@ let rec string_of_ty' level t =
 
 let string_of_ty t = string_of_ty' 999 t
 
+let string_of_infix t op u =
+  match op with
+      Syntax.LN(str,[],_) -> t ^ " " ^ str ^ " " ^ u
+    | ln -> (string_of_longname ln) ^ " " ^ t ^ " " ^ u
+
 let rec string_of_app = function
     (Syntax.LN(_,_, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)) as ln, Tuple [u;v]) ->
-      (string_of_term u) ^ " " ^ (string_of_longname ln) ^ " " ^ (string_of_term v)
+      string_of_infix (string_of_term u) ln (string_of_term v)
   | (ln, (Tuple _ as t)) -> (string_of_longname ln) ^ (string_of_term t)
   | (ln, t) -> (string_of_longname ln) ^ "(" ^ (string_of_term t) ^ ")"
 
@@ -406,15 +413,15 @@ and string_of_term' level t =
     | Star -> (0, "()")
     | Dagger -> (0, "DAGGER")
     | App (App (Id (Syntax.LN(_,_, Syntax.Infix0) as ln), t), u) -> 
-	(9, (string_of_term' 9 t) ^ " " ^ (string_of_longname ln) ^ " " ^ (string_of_term' 8 u))
+	(9, string_of_infix (string_of_term' 9 t) ln (string_of_term' 8 u))
     | App (App (Id (Syntax.LN(_,_, Syntax.Infix1) as ln), t), u) -> 
-	(8, (string_of_term' 8 t) ^ " " ^ (string_of_longname ln) ^ " " ^ (string_of_term' 7 u))
+	(8, string_of_infix (string_of_term' 8 t) ln (string_of_term' 7 u))
     | App (App (Id (Syntax.LN(_,_, Syntax.Infix2) as ln), t), u) -> 
-	(7, (string_of_term' 7 t) ^ " " ^ (string_of_longname ln) ^ " " ^ (string_of_term' 6 u))
+	(7, string_of_infix (string_of_term' 7 t) ln (string_of_term' 6 u))
     | App (App (Id (Syntax.LN(_,_, Syntax.Infix3) as ln), t), u) -> 
-	(6, (string_of_term' 6 t) ^ " " ^ (string_of_longname ln) ^ " " ^ (string_of_term' 5 u))
+	(6, string_of_infix (string_of_term' 6 t) ln (string_of_term' 5 u))
     | App (App (Id (Syntax.LN(_,_, Syntax.Infix4) as  ln), t), u) -> 
-	(5, (string_of_term' 5 t) ^ " " ^ (string_of_longname ln) ^ " " ^ (string_of_term' 4 u))
+	(5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
     | App (t, u) -> 
 	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
     | Lambda ((n, ty), t) ->
@@ -451,7 +458,7 @@ and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
-    | NamedTotal (n, t) -> (0, "Tot_" ^ (string_of_longname n) ^ "(" ^ (string_of_term t) ^ ")")
+    | NamedTotal (n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_longname n) ^ "||")
     | NamedPer (n, t, u) -> (9, (string_of_term' 9 t) ^ " =_" ^
 			       (string_of_longname n) ^ " " ^ (string_of_term' 9 u))
     | NamedProp (n, Dagger, u) -> (0, string_of_app (n, u))
@@ -488,13 +495,13 @@ let string_of_spec = function
 
 let string_of_signat = function
     SignatID s -> s
-  | Signat body -> "sig\n" ^ (String.concat "\n" (List.map string_of_spec body)) ^ "\nend"
+  | Signat body -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
 
 let string_of_signatdef (Signatdef (s, args, body)) =
   "module type " ^ s ^ " =\n" ^
   (if args = [] then "" else
      String.concat "\n"
      (List.map
-	(fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") -> ")
+	(fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n")
 	args)) ^
-  "\n" ^ (string_of_signat body)
+  (string_of_signat body) ^ "\n"

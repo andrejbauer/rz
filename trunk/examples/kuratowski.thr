@@ -5,17 +5,11 @@ thy
   set s
   const zero : s
   const join : s -> s -> s
-
   implicit x, y, z : s
-
   axiom commutative x y = (join x y = join y x)
-
   axiom associative x y z = (join (join x y) z = join x (join y z))
-
   axiom idempotent x = (join x x = x)
-
-  axiom bottom (x : s) =  (join x zero = x)
-
+  axiom bottom x =  (join x zero = x)
 end
 
 
@@ -39,14 +33,12 @@ thy
   # we really want unique existence, but we don't have the some1
   # quantifier yet
 
-  axiom initial [S : Semilattice] =
-      all (f : A.a -> S.s).
-        some (f' : fin -> S.s) . (
-          f' empty = S.zero and
-          all (x : A.a) . (f x = f' (singleton x)) and
-          all (u : fin) . all (v : fin) . (
-          f' (union u v) = S.join (f' u) (f' v)
-      )
+  axiom initial [S : Semilattice] (f : A.a -> S.s) =
+    some (g : fin -> S.s) . (
+      g empty = S.zero and
+        all (x : A.a) . (f x = g (singleton x)) and
+        all (u : fin) . all (v : fin) . (
+          g (union u v) = S.join (g u) (g v)
+        )
     )
-
 end
