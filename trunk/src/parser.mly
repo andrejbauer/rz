@@ -266,7 +266,8 @@ term:
     apply_term                  { $1 }
   | term IMPLY term             { Imply ($1, $3) }
   | term IFF term               { Iff ($1, $3) }
-  | LABEL simple_term           { Inj ($1, $2) }
+  | LABEL simple_term           { Inj ($1, Some $2) }
+  | LABEL                       { Inj ($1, None) }
   | term EQUAL term             { Equal (None, $1, $3) }
   | LPAREN term EQUAL term IN set RPAREN   { Equal (Some $6 , $2, $4) }
   | LET name_typed EQUAL term IN term { Let ($2, $4, $6) }

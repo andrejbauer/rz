@@ -14,7 +14,7 @@ type ty =
   | VoidTy                     (* 0 *)
   | TopTy                      (* 0 *)
   | ListTy of ty               (* 1 *)
-  | SumTy of (label * ty) list (* 1 *)
+  | SumTy of (label * ty option) list (* 1 *)
   | TupleTy of ty list         (* 2 *)
   | ArrowTy of ty * ty         (* 3 *)
 
@@ -34,7 +34,7 @@ and term =
   | Lambda of binding * term
   | Tuple of term list
   | Proj of int * term
-  | Inj of label * term
+  | Inj of label * term option
   | Cases of term * (label * binding * term) list
   | Let of name * term * term
   | Obligation of binding * proposition
@@ -131,7 +131,8 @@ and fvTerm' flt acc = function
   | Lambda ((n, s), t) -> fvTerm' (n::flt) acc t
   | Tuple lst -> List.fold_left (fun a t -> fvTerm' flt a t) acc lst
   | Proj (_, t) -> fvTerm' flt acc t
-  | Inj (_, t) -> fvTerm' flt acc t
+  | Inj (_, Some t) -> fvTerm' flt acc t
+  | Inj (_, None) -> acc
   | Cases (t, lst) -> List.fold_left (fun a (_, (n, _), t) -> fvTerm' (n::flt) a t) (fvTerm' flt acc t) lst
 
 and fvProp' flt acc = function
@@ -182,7 +183,8 @@ and substTerm ctx s = function
 	Lambda ((n', ty), substTerm ctx (substAdd (n,n') s') t)
   | Tuple lst -> Tuple (List.map (substTerm ctx s) lst)
   | Proj (k, t) -> Proj (k, substTerm ctx s t)
-  | Inj (k, t) -> Inj (k, substTerm ctx s t)
+  | Inj (k, None) -> Inj (k, None)
+  | Inj (k, Some t) -> Inj (k, Some (substTerm ctx s t))
   | Cases (t, lst) -> 
       Cases (substTerm ctx s t,
 	     List.map (fun (lb, (n, ty), t) ->
@@ -217,7 +219,12 @@ let rec string_of_ty' level t =
   in let rec makeSumTy = function
       [] -> "void"
     | ts -> 
-	"[" ^ (String.concat " | " (List.map (fun (lb,t) -> "`" ^ lb ^ " of " ^ (string_of_ty' 1 t)) ts)) ^ "]"
+	"[" ^ (String.concat " | "
+		 (List.map (function
+				(lb, None) -> "`" ^ lb
+			      | (lb, Some t) ->
+				  "`" ^ lb ^ " of " ^ (string_of_ty' 1 t))
+			   ts)) ^ "]"
 		
   in let (level', str ) = 
        (match t with
@@ -266,7 +273,8 @@ and string_of_term' level t =
     | Tuple [t] -> (0, string_of_term' 0 t)
     | Tuple lst -> (0, "{{" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ "}}")
     | Proj (k, t) -> (4, ("pi" ^ (string_of_int k) ^ " " ^ (string_of_term' 3 t)))
-    | Inj (lb, t) -> (4, (lb ^ " " ^ (string_of_term' 3 t)))
+    | Inj (lb, None) -> (4, ("`" ^ lb))
+    | Inj (lb, Some t) -> (4, ("`" ^ lb ^ " " ^ (string_of_term' 3 t)))
     | Cases (t, lst) ->
 	(13, "match " ^ (string_of_term' 13 t) ^ " with " ^
 	   (String.concat " | " (List.map (fun (lb,(n,ty),u) -> 

@@ -42,7 +42,7 @@ and term =
   | Tuple  of term list
   | Proj   of int   * term (** projection from a tuple *)
   | App    of term  * term
-  | Inj    of label * term (** injection into a sum type *)
+  | Inj    of label * term option (** injection into a sum type *)
   | Case   of term  * (label * binding option * term) list
   | Quot   of term  * term (** quotient under equivalence relation *)
   | Choose of binding * term * term (** elimination of equivalence class *)

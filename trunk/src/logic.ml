@@ -69,7 +69,7 @@ and term =
   | Proj   of int * term
   | App    of term * term
   | Lambda of binding  * term
-  | Inj    of label * term
+  | Inj    of label * term option
   | Case   of term * (label * binding option * term) list
   | Let    of binding * term * term
   | Subin  of term * set
@@ -268,7 +268,8 @@ and make_term = function
   | S.Tuple lst -> Tuple (List.map make_term lst)
   | S.Proj (k, t) -> Proj (k, make_term t)
   | S.App (t, u) -> App (make_term t, make_term u)
-  | S.Inj (lb, t) -> Inj (lb, make_term t)
+  | S.Inj (lb, Some t) -> Inj (lb, Some (make_term t))
+  | S.Inj (lb, None) -> Inj (lb, None)
   | S.Case (t, lst) -> Case (make_term t, List.map
 			       (function
 				    (lb, Some (n, Some s), u) -> (lb, Some (n, make_set s), make_term u)

@@ -198,7 +198,51 @@ let rec translateSet ctx = function
 	      (x', y', substProp ctx [(x, Id x'); (y, Id y')] (eq; raise Unimplemented)))
 	}
 
-  | L.Sum _ -> failwith "Translation of sums not implemented"
+  | L.Sum lst -> 
+      let lst' = List.map (function
+			       (lb, None) -> (lb, None)
+			     | (lb, Some s) -> (lb, Some (translateSet ctx s)))
+		   lst
+      in
+      let x = fresh [mk_word "w"; mk_word "t"; mk_word "u"; mk_word "p"] [] ctx in
+      let y = fresh [mk_word "v"; mk_word "u"; mk_word "s"; mk_word "p"] [] ctx in
+      let y' = fresh [mk_word "w"; mk_word "t"; mk_word "r"; mk_word "q"] [y] ctx in
+	{
+	  ty = SumTy (List.map (function
+				    (lb, None) -> (lb, None)
+				  | (lb, Some {ty=u}) -> (lb, Some u)
+			       ) lst');
+	  tot = (
+	    x,
+	    And (List.map (
+		   function
+		       (lb, None) -> Imply (Equal (Id x, Inj (lb, None)), True)
+		     | (lb, Some {ty=u; tot=(x',p)}) ->
+			 let x'' = fresh [x'] [x] ctx in
+			   Forall ((x'', u),
+				   Imply (Equal (Id x, Inj (lb, Some (Id x''))),
+					  substProp ctx [(x', Id x'')] p)))
+		   lst')
+	  );
+	  per = (
+	    y, y',
+	    And (List.map (
+		   function
+		       (lb, None) -> Imply (And [Equal (Id y, Inj (lb, None));
+						 Equal (Id y, Inj (lb, None))],
+					    True)
+		     | (lb, Some {ty=u; per=(z,z',q)}) ->
+			 let w =  fresh [z] [y;y'] ctx in
+			 let w' = fresh [z'] [w;y;y'] ctx in
+			   Forall ((w,u),
+		           Forall ((w',u),
+				   Imply (And [Equal (Id y, Inj (lb, Some (Id w)));
+					       Equal (Id y', Inj (lb, Some (Id w')))],
+					  substProp ctx [(z, Id w); (z', Id w')] q)
+				  )))
+		   lst')
+	  )
+	}
 
   | L.Rz _ -> failwith "Translation of RZ not implemented"
 
@@ -220,7 +264,9 @@ and translateTerm ctx = function
 
   | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet ctx s).ty), translateTerm ctx t)
 
-  | L.Inj (lb, t) -> Inj (lb, translateTerm ctx t)
+  | L.Inj (lb, None) -> Inj (lb, None)
+
+  | L.Inj (lb, Some t) -> Inj (lb, Some (translateTerm ctx t))
 
   | L.Case (t1, lst) ->
       Cases (translateTerm ctx t1, List.map
@@ -305,13 +351,14 @@ and translateProp ctx = function
       let lbs = make_labels 0 (List.length lst) in
       let u = fresh [mk_word "u"; mk_word "v"; mk_word "w"; mk_word "r"] [] ctx
       in
-	(SumTy (List.map2 (fun lb (t,_,_) -> (lb, t)) lbs lst'),
+	(SumTy (List.map2 (fun lb (t,_,_) -> (lb, Some t)) lbs lst'),
 	 u,
 	 And (
 	   List.map2
 		(fun lb (t,x,p) ->
 		   let x' = fresh [x] [u] ctx in
-		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Id x')), substProp ctx [(x, Id x')] p)))
+		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Some (Id x'))),
+					    substProp ctx [(x, Id x')] p)))
 		lbs lst'
 	 ))
 

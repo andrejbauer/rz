@@ -320,9 +320,12 @@ and annotateTerm ctx =
            else
               tyError "Application has invalid argument"
 
-     | Inj(l,e) -> 
+     | Inj (l, None) ->
+	 (Inj (l, None), Sum [(l, None)])
+
+     | Inj(l, Some e) -> 
         let (e', ty)= ann e
-        in (Inj(l,e'), Sum [(l, Some ty)])
+        in (Inj(l, Some e'), Sum [(l, Some ty)])
 
      | Case(e,arms) -> 
 	 let (e', ty) = ann e
