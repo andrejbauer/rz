@@ -11,6 +11,6 @@ thy
    (all x. some y. r (x, y)) => some (f : a -> b) . all x . r (x, f x)
 
   axiom intensionalChoice =
-   (all x. some y. r (x, y)) => some (f : (rz a) -> b) . all (x' : rz a) . r ([x'], f [x'])
+   (all x. some y. r (x, y)) => some (f : (rz a) -> b) . all (x' : rz a) . r ([x'], f x')
 
 end

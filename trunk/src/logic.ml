@@ -56,9 +56,10 @@ and set =
   | Sum     of (label * set option) list
   | Subset  of binding * proposition
   | Rz      of set (** the set of realizers *)
-  | Quotient of set * name * name * proposition
+  | Quotient of set * set_name
   | PROP (** we pretend propositions form a set *)
   | STABLE (** we pretend not-not stable propositions form a set *)
+  | EQUIV (** we even pretend not-not stable equivalences form a set *)
   | SET  (** we pretend sets form a set! *)
 
 and term =
@@ -73,6 +74,8 @@ and term =
   | Case   of term * (label * binding option * term) list
   | RzQuot of term
   | RzChoose of binding * term * term
+  | Quot   of term * set_name
+  | Choose of binding * set_name * term * term
   | Let    of binding * term * term
   | Subin  of term * set
   | Subout of term * set
@@ -83,8 +86,8 @@ type sentence_type = Syntax.sentence_type
 type theory_element =
     Set of set_name
   | Let_set of set_name * set
-  | Predicate of name * set
-  | Let_predicate of name * binding list * proposition
+  | Predicate of name * Syntax.propKind * set
+  | Let_predicate of name * Syntax.propKind * binding list * proposition
   | Let_term of name * set * term (** abbreviation *)
   | Value of name * set
   | Define of name * set * term (** part of theory *)
@@ -182,7 +185,7 @@ let rec isSet = function
   | Sum lst -> List.for_all (function (_, None) -> true | (_, Some s) -> isSet s) lst
   | Subset ((_, s), _) -> isSet s
   | Rz s -> isSet s
-  | Quotient (s,_,_,_) -> isSet s
+  | Quotient (s,_) -> isSet s
   | Exp (s, t) -> isSet s && isSet t
   | PROP -> false
   | STABLE -> false
@@ -196,11 +199,12 @@ and isProp = function
   | SET -> false
   | Exp (s, t) -> isSet s && isProp t
 
-let rec stability = function
+let rec propKind = function
     PROP -> S.Unstable
   | STABLE -> S.Stable
-  | Exp (s, t) -> stability t
-  | _ -> failwith "Stability of a non-proposition"
+  | EQUIV -> S.Equivalence
+  | Exp (s, t) -> propKind t
+  | _ -> failwith "propKind of a non-proposition"
 
 (************************************)
 (* Translation from Syntax to Logic *)
@@ -227,7 +231,7 @@ let rec make_set = function
                       lst)
   | S.Exp (s, t) -> Exp (make_set s, make_set t)
   | S.Subset ((n, Some s), phi) -> Subset ((n, make_set s), make_proposition phi)
-  | S.Quotient (s, x, y, eq) -> Quotient (make_set s, x, y, make_proposition eq)
+  | S.Quotient (s, r) -> Quotient (make_set s, r)
   | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
   | S.StableProp -> STABLE
@@ -281,10 +285,10 @@ and make_term = function
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
-  | S.Quot (t, r) -> failwith "Quotients not implemented"
+  | S.Quot (t, r) -> Quot (make_term t, r)
   | S.RzQuot t -> RzQuot (make_term t)
   | S.RzChoose ((n, Some s), t, u) -> RzChoose ((n, make_set s), make_term t, make_term u)
-  | S.Choose (n, t, u) -> failwith "Choose not implemented"
+  | S.Choose ((n, Some s), r, t, u) -> Choose ((n, make_set s), r, make_term t, make_term u)
   | S.Let (n, t, u) -> failwith "Let not impliemented"
   | _ -> (print_string "unrecognized term\n";
 	  raise HOL)
@@ -293,8 +297,9 @@ and make_theory_element = function
     S.Set (n, None)-> Set n
   | S.Set (n, Some t) -> Let_set (n, make_set t)
   | S.Predicate (n, stab, t) ->
-      Predicate (n, Exp (make_set t, (if stab = S.Stable then STABLE else PROP)))
-  | S.Let_predicate (n, b, p) -> Let_predicate (n, make_bindings b, make_proposition p)
+      Predicate (n, stab, Exp (make_set t, (if stab = S.Stable then STABLE else PROP)))
+  | S.Let_predicate (n, stab, b, p) ->
+      Let_predicate (n, stab, make_bindings b, make_proposition p)
   | S.Let_term ((n, Some s), t) -> Let_term (n, make_set s, make_term t)
   | S.Let_term ((_, None), t) -> (print_string "Let_term without ty ann.\n";
                                   raise Unimplemented)
@@ -302,7 +307,7 @@ and make_theory_element = function
   | S.Value (n, s) ->
       let s' = make_set s in
 	if isProp s' then
-	  Predicate (n, s')
+	  Predicate (n, (propKind s'), s')
 	else if isSet s' then
 	  Value (n, s')
 	else

@@ -28,9 +28,10 @@ and set =
   | Sum      of (label * set option) list (** finite coproduct *)
   | Exp      of set * set            (** function space *)
   | Subset   of binding * term       (** subset *)
-  | Quotient of set * name * name * term  (** quotent set *)
+  | Quotient of set * set_name       (** quotient set *)
   | Rz of set                        (** the set of realizers *)
   | Prop                             (** Only for typechecker internals! *)
+  | EquivProp                        (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
 
 and term =
@@ -44,10 +45,10 @@ and term =
   | App    of term  * term
   | Inj    of label * term option (** injection into a sum type *)
   | Case   of term  * (label * binding option * term) list
-  | Quot   of term  * term (** quotient under equivalence relation *)
-  | Choose of binding * term * term (** elimination of equivalence class *)
-  | RzChoose of binding * term * term (** elimination of rz class *)
+  | Quot   of term  * set_name (** quotient under equivalence relation *)
+  | Choose of binding * set_name * term * term (** elimination of equivalence class *)
   | RzQuot of term
+  | RzChoose of binding * term * term (** elimination of rz *)
   | Subin  of term * set
   | Subout of term * set
   | And    of term list
@@ -72,12 +73,12 @@ type sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
    is stable, not that it is definitely not stable.  Perhaps
    "Nonstable" would be less pejorative?
 *)
-type stability = Stable | Unstable
+type propKind = Stable | Unstable | Equivalence
 
 type theory_element =
     Set           of set_name * set option
-  | Predicate     of name * stability * set
-  | Let_predicate of name * binding list * term
+  | Predicate     of name * propKind * set
+  | Let_predicate of name * propKind * binding list * term
   | Let_term      of binding * term
   | Value         of name * set
   | Variable      of name * set
@@ -127,10 +128,16 @@ let rec string_of_set set =
     | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
     | Prop -> "Prop"
     | StableProp -> "StableProp"
+    | EquivProp -> "EquivProp"
     | Rz set -> "rz (" ^ toStr set ^ ")"
     | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " | " ^ 
 	                     string_of_term term ^ " }"
-    | Quotient (_,_,_,_) -> "unimplemented toStr"
+    | Quotient (s, r) ->
+	(match s with
+	     Product _ | Sum _ | Exp _ | Rz _ ->
+	       "(" ^ (toStr s) ^ ") % " ^ (string_of_name r)
+	   | _ -> (toStr s) ^ " % " ^ (string_of_name r))
+
 
    and sumarmToStr = function
         (lbl, None) -> lbl
@@ -155,6 +162,7 @@ and string_of_term trm =
     | Quot (_,_) -> "..."
     | RzQuot t -> "[" ^ (toStr t) ^ "]"
     | RzChoose _ -> "..."
+    | Choose _ -> "..."
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | And trms -> "(" ^ intersperse " && " (List.map toStr trms) ^ ")"

@@ -19,7 +19,7 @@ type ctxElement =
     CtxBind of L.set
   | CtxTerm of L.term
   | CtxSet of L.set
-  | CtxProp of Syntax.stability * (L.binding list * L.proposition) option
+  | CtxProp of Syntax.propKind * (L.binding list * L.proposition) option
 
 let empty = []
 
@@ -186,14 +186,15 @@ let rec translateSet ctx = function
 	      (w, w', substProp ctx [(y, Proj (0, Id w)); (y', Proj (0, Id w'))] q)
 	  )
 	}
-  | L.Quotient (s, x, y, eq) ->
+  | L.Quotient (s, r) ->
       let {ty=u; tot=(w,p); per=(z,z',q)} = translateSet ctx s in
 	{ ty = u;
-	  tot = (w,p);
+	  tot = (w, p);
 	  per = (
-	    let x' = fresh [x] [] ctx in
-	    let y' = fresh [y] [x] ctx in
-	      (x', y', substProp ctx [(x, Id x'); (y, Id y')] (eq; raise Unimplemented)))
+	    let u = fresh [z] [] ctx in
+	    let u' = fresh [z'] [u] ctx in
+	      u, u', NamedProp (r, Dagger, Tuple [Id u; Id u'])
+	  )
 	}
 
   | L.Sum lst -> 
@@ -212,32 +213,30 @@ let rec translateSet ctx = function
 			       ) lst');
 	  tot = (
 	    x,
-	    And (List.map (
+	    Cor (List.map (
 		   function
-		       (lb, None) -> Imply (Equal (Id x, Inj (lb, None)), True)
+		       (lb, None) -> Equal (Id x, Inj (lb, None))
 		     | (lb, Some {ty=u; tot=(x',p)}) ->
 			 let x'' = fresh [x'] [x] ctx in
-			   Forall ((x'', u),
-				   Imply (Equal (Id x, Inj (lb, Some (Id x''))),
-					  substProp ctx [(x', Id x'')] p)))
+			   Cexists ((x'', u),
+				   And [Equal (Id x, Inj (lb, Some (Id x'')));
+					substProp ctx [(x', Id x'')] p]))
 		   lst')
 	  );
 	  per = (
 	    y, y',
-	    And (List.map (
+	    Cor (List.map (
 		   function
-		       (lb, None) -> Imply (And [Equal (Id y, Inj (lb, None));
-						 Equal (Id y, Inj (lb, None))],
-					    True)
+		       (lb, None) -> And [Equal (Id y, Inj (lb, None));
+					  Equal (Id y, Inj (lb, None))]
 		     | (lb, Some {ty=u; per=(z,z',q)}) ->
 			 let w =  fresh [z] [y;y'] ctx in
 			 let w' = fresh [z'] [w;y;y'] ctx in
-			   Forall ((w,u),
-		           Forall ((w',u),
-				   Imply (And [Equal (Id y, Inj (lb, Some (Id w)));
-					       Equal (Id y', Inj (lb, Some (Id w')))],
-					  substProp ctx [(z, Id w); (z', Id w')] q)
-				  )))
+			   Cexists ((w,u),
+		           Cexists ((w',u),
+				    And [Equal (Id y, Inj (lb, Some (Id w)));
+					 Equal (Id y', Inj (lb, Some (Id w')));
+					 substProp ctx [(z, Id w); (z', Id w')] q])))
 		   lst')
 	  )
 	}
@@ -286,7 +285,12 @@ and translateTerm ctx = function
   | L.RzQuot t -> translateTerm ctx t
 
   | L.RzChoose ((n, s), t, u) ->
-      Let (n, translateTerm ctx t, translateTerm (addTerm n u ctx) u)
+      Let (n, translateTerm ctx t, translateTerm (addTerm n t ctx) u)
+
+  | L.Quot (t, _) -> translateTerm ctx t
+
+  | L.Choose ((n, s), r, t, u) ->
+      Let (n, translateTerm ctx t, translateTerm (addTerm n t ctx) u)
 
   | L.Let ((n, s), u, v) ->
       Let (n, translateTerm ctx u, translateTerm (addTerm n u ctx) v)
@@ -310,7 +314,7 @@ and translateProp ctx = function
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let ty = (match fst (getProp n ctx) with
 		    Syntax.Unstable -> NamedTy n
-		  | Syntax.Stable -> TopTy)
+		  | Syntax.Stable | Syntax.Equivalence -> TopTy)
       in
 	(ty, r, NamedProp (n, Id r, translateTerm ctx t))
 
@@ -361,12 +365,12 @@ and translateProp ctx = function
       in
 	(SumTy (List.map2 (fun lb (t,_,_) -> (lb, Some t)) lbs lst'),
 	 u,
-	 And (
+	 Cor (
 	   List.map2
 		(fun lb (t,x,p) ->
 		   let x' = fresh [x] [u] ctx in
-		     Forall ((x',t), Imply (Equal(Id u, Inj (lb, Some (Id x'))),
-					    substProp ctx [(x, Id x')] p)))
+		     Cexists ((x',t), And [Equal(Id u, Inj (lb, Some (Id x')));
+					   substProp ctx [(x, Id x')] p]))
 		lbs lst'
 	 ))
 
@@ -403,7 +407,8 @@ and translateProp ctx = function
       let u' = translateTerm ctx u in
 	(TopTy, any, substProp ctx [(x,t'); (y,u')] p)
 
-let translateBinding ctx bind = List.map (fun (n, s) -> (n, (translateSet ctx s).ty)) bind
+let translateBinding ctx bind =
+  List.map (fun (n, s) -> n, (translateSet ctx s).ty) bind
 
 let translateTheoryElement ctx = function
     L.Set n -> 
@@ -419,26 +424,25 @@ let translateTheoryElement ctx = function
       ),
       addSet n s ctx
 
-  | L.Predicate (n, s) ->
-(*
-      let nty = (match stb with Syntax.Stable -> TopTy | Syntax.Unstable -> NamedTy n) in
-      let {ty=t; tot=(x,p); per=(y,z,q)} = translateSet ctx s in
-      let r = fresh ["r"; "s"; "t"] [n] in
-      let x' = fresh [x] [r;n] ctx in
-      let y' = fresh [y] [r;n] ctx in
-      let z' = fresh [z] [y;r;n] ctx in
-	[AssertionSpec ([(r, nty); (x',t)],
-			Imply (NamedProp(n, Id r, x'), substProp ctx [(x, Id x')] p));
-	 AssertionSpec ([(r, nty); (y',t); (z',t)],
-			Imply (And (), NamedProp(n, Id (**UNFINISHED**) ))
-	]
-*)
-      let stb = L.stability s in
-	(if stb = Syntax.Stable  then [] else [TySpec (n, None)]),
-	addProp n (stb, None) ctx
+  | L.Predicate (n, stab, s) ->
+      (if stab = Syntax.Stable or stab = Syntax.Equivalence then
+	 []
+       else
+	 [TySpec (n, None)]),
+      addProp n (stab, None) ctx
 
-  | L.Let_predicate (n, bind, p) ->
-      failwith "predicate definitions not implemented"
+  | L.Let_predicate (n, stab, bind, p) ->
+      let bind' = translateBinding ctx bind in
+      let ctx' = addBinding bind ctx in
+      let (ty, r, p') = translateProp ctx' p in
+      let r' = fresh [r] (List.map fst bind) ctx in
+	[TySpec (n, Some ty);
+	 AssertionSpec (
+	   (r',ty) :: bind',
+	   Iff (NamedProp (n, Id r', Tuple (List.map (fun (y,_) -> Id y) bind)),
+		substProp ctx ([(r, Id r')]) p'))
+	],
+	addProp n (stab, Some (bind, p)) ctx
 
   | L.Let_term (n, s, t) ->
       let {ty=u; per=(y,y',q)} = translateSet ctx s in

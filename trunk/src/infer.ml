@@ -182,19 +182,14 @@ let eqSet' do_subtyping ctx s1 s2 =
 		                   ("WARNING: cannot confirm " ^ 
                                     "proposition equality\n");
 				 true)
-        | (Quotient(s3,x3,y3,t3), Quotient(s4,x4,y4,t4)) ->
-            cmp(s3,s4) && if x3=y3 && y3=y4 && t3=t4 then
-                                true 
-		             else
-                                (print_string 
-		                   ("WARNING: cannot confirm " ^ 
-                                    "equivalence-relation equality\n");
-				 true)
+        | (Quotient(s3,r3), Quotient(s4,r4)) -> r3 = r4 && cmp(s3,s4)
         | (Rz s3, Rz s4) -> cmp(s3, s4)
 
         | (Prop,Prop) -> raise Impossible (** Shouldn't occur without HOL *)
 
         | (StableProp,StableProp) -> raise Impossible (** Shouldn't occur without HOL *)
+
+        | (EquivProp,EquivProp) -> raise Impossible (** Shouldn't occur without HOL *)
 
         | (_,_) -> false
 
@@ -278,6 +273,18 @@ let joinSets ctx =
 (** {2 Typechecking/Type Reconstruction} *)
 (*****************************************)
 
+let mkProp = function
+    Unstable -> Prop
+  | Equivalence -> EquivProp
+  | Stable -> StableProp
+
+let isEquivalence ctx s r =
+    match peekType ctx r with
+	Some (Exp (u, Exp (v, EquivProp)))
+      | Some (Exp (Product [u; v], EquivProp)) ->
+	  (eqSet ctx s u) && (eqSet ctx s v)
+      | _ -> false
+
 let rec annotateSet ctx = 
     (let rec ann = function
           Product ss -> Product (List.map ann ss)
@@ -285,17 +292,18 @@ let rec annotateSet ctx =
                                          (l,annotateSetOpt ctx sopt))
                                       lsos)
 
-        | Exp(s1,s2) -> Exp(ann s1, ann s2)
+        | Exp(s1,s2) -> Exp (ann s1, ann s2)
 
         | Subset(bnd, p) -> 
              let (bnd',ctx') = annotateBinding ctx bnd
-             in let p' = annotateProp ctx' p
+             in let p',_ = annotateProp ctx' p
              in Subset(bnd', p')
-        | Quotient(s, x, y, eq) -> 
-	    let (_, ctx') = annotateBinding ctx (x, Some s) in
-	    let (_, ctx'') = annotateBinding ctx' (y, Some s) in
-	    let eq' = annotateProp ctx'' eq in
-	      Quotient (ann s, x, y, eq')
+        | Quotient(s, r) ->
+	    let s' = ann s in
+	      if isEquivalence ctx s' r then
+		Quotient (s', r)
+	      else
+		failwith "only quotients by stable binary relations exist"
         | Rz s -> Rz (ann s)
         | Set_name name ->
              (if peekSet ctx name then
@@ -313,59 +321,84 @@ and annotateSetOpt ctx = function
 
 and annotateProp ctx =
     (let rec ann = function
-          False  -> False
-        | True   -> True
-        | And ps -> And (List.map ann ps)
-        | Or  ps -> Or  (List.map ann ps)
-        | Imply (p1, p2) -> Imply (ann p1, ann p2)
-        | Iff (p1, p2)   -> Iff (ann p1, ann p2)
-        | Not p  -> Not (ann p)
+          False  -> False, Stable
+        | True   -> True, Stable
+        | And ps ->
+	    let lst = List.map ann ps in
+	      And (List.map fst lst),
+	      (if List.for_all (fun (_, s) -> s = Stable) lst then Stable else Unstable)
+        | Or ps ->
+	    let lst = List.map ann ps in
+	      Or (List.map fst lst),
+	      (match lst with [] -> Stable | [_,s] -> s | _ -> Unstable)
+
+        | Imply (p1, p2) ->
+	    let p1', _ = ann p1 in
+	    let p2', stb2 = ann p2 in	      
+	      Imply (p1', p2'), stb2
+
+        | Iff (p1, p2) ->
+	    let p1', stb1 = ann p1 in
+	    let p2', stb2 = ann p2 in	      
+	      Iff (p1', p2'),
+	      (if stb1 = Stable && stb2 = Stable then Stable else Unstable)
+
+        | Not p  -> Not (fst (ann p)), Stable
+
         | Equal (None, t1, t2) ->
             let    (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
             in let ty3 = joinSet ctx ty1 ty2
-            in Equal(Some ty3, t1', t2')
+            in
+	      Equal(Some ty3, t1', t2'), Stable
+
         | Equal (Some s, t1, t2) ->
             let    ty = annotateSet ctx s
             in let (t1', ty1) = annotateTerm ctx t1
             in let (t2', ty2) = annotateTerm ctx t2
             in if (subSet ctx ty1 ty) && (subSet ctx ty2 ty) then
-                Equal(Some ty, t1', t2')
+                Equal (Some ty, t1', t2'), Stable
               else
                 tyGenericError "Operands of equality don't match constraint"
         | Forall(bnd, p) ->
-            let (bnd',ctx') = annotateBinding ctx bnd
-            in Forall(bnd', annotateProp ctx' p)
+            let (bnd',ctx') = annotateBinding ctx bnd in
+            let (p', stb) = annotateProp ctx' p
+	    in
+	      Forall(bnd', p'), stb
+
         | Exists(bnd, p) ->
             let (bnd',ctx') = annotateBinding ctx bnd
-            in Exists(bnd', annotateProp ctx' p)
-	| Case(e,arms) -> 
+            in
+	      Exists (bnd', fst (annotateProp ctx' p)), Unstable
+
+	| Case(e, arms) -> 
 	    let (e', ty) = annotateTerm ctx e
 
 	    in let annArm = function
 		(l, None, prop) -> 
-                  let prop' = ann prop
-		  in ((l, None, prop'), (l, None))
+                  let prop', stab = ann prop
+		  in ((l, None, prop'), stab, (l, None))
               | (l, Some bnd, prop) ->
                   let    ((_,Some ty1) as bnd', ctx') = annotateBinding ctx bnd
-		  in let prop' = annotateProp ctx' prop
-		  in ((l, Some bnd', prop'), (l, Some ty1))
+		  in let prop', stab = annotateProp ctx' prop
+		  in ((l, Some bnd', prop'), stab, (l, Some ty1))
 	    in let l = List.map annArm arms
-	    in let newcase = Case(e', List.map fst l)
-            in let sum_set = Sum (List.map snd l)
+	    in let newcase = Case (e', List.map (fun (a,_,_) -> a) l)
+            in let sum_set = Sum (List.map (fun (_,_,s) -> s) l)
 	    in
 	    if (eqSet ctx sum_set ty) then
-	      newcase
+	      newcase,
+	      (match l with [] -> Stable | [_,s,_] -> s | _ -> Unstable)
 	    else
 	      tyCaseError ctx e ty sum_set
 
         | t -> (match annotateTerm ctx t with
-                    (t', Prop) -> t'
-                  | (t', StableProp) -> t'
-                  | _ -> tyGenericError ("Term " ^ 
-					 string_of_term t ^ 
-					 " found where a proposition" ^ 
-					 " was expected"))
+                    (t', Prop) -> (t', Unstable)
+                  | (t', StableProp) -> (t', Stable)
+                  | (t', EquivProp) -> (t', Equivalence)
+                  | _ -> tyGenericError (
+		      "Term " ^ string_of_term t ^ 
+		      " found where a proposition was expected"))
     in ann)
            
 and annotateBinding ctx = function
@@ -469,9 +502,12 @@ and annotateTerm ctx =
 	      tyCaseError ctx e ty sum_set
 
      | Quot(t, r) -> 
-         (print_string "What is the type of an equivalence relation?";
-          raise Unimplemented)
-
+	 let t', ty = ann t in
+	   if isEquivalence ctx ty r then
+	     Quot (t', r), Quotient (ty, r)
+	   else
+	     failwith (fst r ^ " is not an equivalence")
+	 
      | RzQuot t ->
 	 let (t', ty) = ann t in
 	   (match hnfSet ctx ty with
@@ -491,9 +527,15 @@ and annotateTerm ctx =
 	      | _ -> failwith "type mismatch in let [...] = "),
 	   ty2
 
-     | Choose(_,_,_) ->
-         (print_string "No point in implementing Choose until we have Quot";
-          raise Unimplemented)
+     | Choose (bnd, r, t1, t2) ->
+	 let (t1', ty1) = ann t1 in
+	 let ((_, Some ty) as bnd', ctx') = annotateBinding ctx bnd in
+	 let (t2', ty2) = annotateTerm ctx' t2 in
+	   (if eqSet ctx (hnfSet ctx ty1) (Quotient (ty, r)) then
+	     Choose (bnd', r, t1', t2')
+	   else
+	     failwith "type mismatch in let % = "),
+	   ty2	 
         
      | Let(bnd,t1,t2) ->
          let    (t1', ty1) = ann t1
@@ -553,7 +595,7 @@ and annotateTheoryElem ctx =
                 tyGenericError "Term definition doesn't match constraint"
        | Sentence(sort, n, bnds, p) ->
            let    (bnds',ctx') = annotateBindings ctx bnds
-           in let p' = annotateProp ctx' p
+           in let p',_ = annotateProp ctx' p
            in (Sentence(sort, n, bnds', p'),
                ctx)   (* XXX:  Cannot refer to previous axioms!? *)
        | Predicate ((_, (Infix0|Infix1|Infix3|Infix4)) as n, stab, s) ->
@@ -561,22 +603,26 @@ and annotateTheoryElem ctx =
 	     match hnfSet ctx s with
 		 Product [s1; s2] ->
 		   (Predicate (n, stab, s),
-		    insertType ctx n (Exp (s1, Exp (s2, Prop))))
+		    insertType ctx n (Exp (s1, Exp (s2, mkProp stab))))
 	       | _ -> tyGenericError "Infix names can only be used for binary relations"
 	   end
        | Predicate (n, stab, s) ->
            let s' = annotateSet ctx s
            in
 	     (Predicate (n, stab, s'),
-              insertType ctx n (Exp (s', Prop)))
-       |  Let_predicate(n, bnds, p) ->
+              insertType ctx n (Exp (s', mkProp stab)))
+       | Let_predicate (n, stab, bnds, p) ->
 	   let    (bnds', ctx') = annotateBindings ctx bnds
-	   in let tys = List.map (function (_,Some ty) -> ty) bnds'
-	   in let p' = annotateProp ctx' p
+	   in let tys = List.map (function (_, Some ty) -> ty) bnds'
+	   in let (p', stab') = annotateProp ctx' p
 	   in
-	     (Let_predicate(n, bnds', p'),
-	      insertType ctx n (List.fold_right 
-				  (fun x y -> Exp(x,y)) tys Prop))
+	     if stab = Unstable or stab' = Stable then
+	       (Let_predicate (n, stab, bnds', p'),
+		insertType ctx n (List.fold_right 
+				    (fun x y -> Exp(x,y)) tys (mkProp stab')))
+	     else
+	       failwith ("Could not determine that " ^ (fst n) ^ " is stable")
+
        | Implicit(_,_) -> raise Impossible (* see below *)
     in
       ann

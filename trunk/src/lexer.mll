@@ -14,6 +14,8 @@
       "constant", CONSTANT;
       "corollary", COROLLARY;
       "end", END;
+      "equiv", EQUIVALENCE;
+      "equivalence", EQUIVALENCE;
       "exists", EXISTS;
       "some", EXISTS;
       "false", FALSE;
@@ -87,7 +89,6 @@ rule token = parse
   | '}'             { RBRACE }
   | '+'             { PLUS }
   | '*'             { STAR }
-  | '/'             { SLASH }
   | '%'             { PERCENT }
   | "=>"            { IMPLY }
   | "<=>"           { IFF }

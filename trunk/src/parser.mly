@@ -23,6 +23,7 @@
 %token END
 %token EOF
 %token EQUAL
+%token EQUIVALENCE
 %token EXISTS
 %token FALSE
 %token FORALL
@@ -64,7 +65,6 @@
 %token RPAREN
 %token RZ
 %token SET
-%token SLASH
 %token SUBIN
 %token SUBOUT
 %token STABLE
@@ -103,7 +103,7 @@
 %left     INFIXOP0
 %right    INFIXOP1
 %left     INFIXOP2 PLUS
-%left     INFIXOP3 STAR SLASH
+%left     INFIXOP3 STAR
 %right    INFIXOP4
 %left     PERCENT
 %nonassoc RZ
@@ -151,8 +151,12 @@ theory_element:
   | STABLE PREDICATE name COLON set    { Predicate ($3, Stable, $5) }
   | RELATION name COLON set     { Predicate ($2, Unstable, $4) }
   | STABLE RELATION name COLON set     { Predicate ($3, Stable, $5) }
-  | PREDICATE name args EQUAL term { Let_predicate ($2, $3, $5) }
-  | RELATION name args EQUAL term { Let_predicate ($2, $3, $5) }
+  | PREDICATE name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
+  | RELATION name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
+  | STABLE PREDICATE name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
+  | STABLE RELATION name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
+  | EQUIVALENCE name COLON set   { Predicate ($2, Equivalence, $4) }
+  | EQUIVALENCE name args EQUAL term  { Let_predicate ($2, Equivalence, $3, $5) }
   | AXIOM name args EQUAL term   { Sentence (Axiom, $2, $3, $5) }
   | THEOREM name args EQUAL term { Sentence (Theorem, $2, $3, $5) }
   | LEMMA name args EQUAL term       { Sentence (Lemma, $2, $3, $5) }
@@ -188,7 +192,6 @@ name:
   | LPAREN PLUS RPAREN            { ("+", Infix2) }
   | LPAREN INFIXOP3 RPAREN        { ($2, Infix3) }
   | LPAREN STAR RPAREN            { ("*", Infix3) }
-  | LPAREN SLASH RPAREN           { ("/", Infix3) }
 
 name_typed:
     name                         { ($1, None) }
@@ -205,7 +208,7 @@ simple_set:
   | NAME                        { Set_name ($1, Syntax.Word) }
   | LPAREN set RPAREN           { $2 }
   | subset                      { $1 }
-  | simple_set SLASH LPAREN name COMMA name COLON term RPAREN { Quotient ($1, $4, $6, $8) }
+  | simple_set PERCENT name     { Quotient ($1, $3) }
   | RZ simple_set               { Rz $2 }
 
 subset:
@@ -242,8 +245,8 @@ simple_term:
   | LPAREN RPAREN               { Star }
   | LPAREN term_seq RPAREN      { Tuple $2 }
   | LPAREN term RPAREN          { $2 }
-  | LBRACK term RBRACK          { RzQuot $2 }
   | BEGIN term END              { $2 }
+  | LBRACK term RBRACK          { RzQuot $2 }
   | simple_term PERIOD INTEGER    { Proj ($3, $1) }
   | simple_term PERIOD ZERO       { Proj (0, $1) }
   | simple_term PERIOD ONE        { Proj (1, $1) }
@@ -273,6 +276,7 @@ term:
   | LPAREN term EQUAL term IN set RPAREN   { Equal (Some $6 , $2, $4) }
   | LET name_typed EQUAL term IN term { Let ($2, $4, $6) }
   | LET LBRACK name_typed RBRACK EQUAL term IN term { RzChoose ($3, $6, $8) }
+  | LET name_typed PERCENT name EQUAL term IN term { Choose ($2, $4, $6, $8) }
   | and_term                    { And $1 }
   | or_term                     { Or $1 }
   | term INFIXOP0 term          { App (App (Var ($2, Infix0), $1), $3) }
@@ -281,9 +285,8 @@ term:
   | term PLUS term              { App (App (Var ("+", Infix2), $1), $3) }
   | term INFIXOP3 term          { App (App (Var ($2, Infix3), $1), $3) }
   | term STAR term              { App (App (Var ("*", Infix3), $1), $3) }
-  | term SLASH term             { App (App (Var ("/", Infix3), $1), $3) }
   | term INFIXOP4 term          { App (App (Var ($2, Infix4), $1), $3) }
-  | term PERCENT term           { Quot ($1, $3) }
+  | term PERCENT name           { Quot ($1, $3) }
   | term SUBIN subset_or_name   { Subin ($1, $3) }
   | term SUBOUT subset_or_name  { Subout ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }

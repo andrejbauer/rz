@@ -47,7 +47,7 @@ and proposition =
   | False
   | NamedTotal of set_name * term
   | NamedPer of set_name * term * term
-  | NamedProp of set_name * term * term
+  | NamedProp of name * term * term
   | Equal of term * term
   | And of proposition list
   | Cor of proposition list (** classical or *)
@@ -55,6 +55,7 @@ and proposition =
   | Iff of proposition * proposition
   | Not of proposition
   | Forall of binding * proposition
+  | Cexists of binding * proposition (** classical existential *)
 
 type signat_element =
     ValSpec of name * ty
@@ -179,6 +180,7 @@ and substTerm ctx s = function
     Id n ->
       (try List.assoc n s with Not_found -> Id n)
   | Star -> Star
+  | Dagger -> Dagger
   | App (t, u) -> App (substTerm ctx s t, substTerm ctx s u)
   | Lambda ((n, ty), t) ->
       let s' = substRemove n s in
@@ -203,6 +205,7 @@ and substTerm ctx s = function
 		      ) lst)
   | Obligation ((x, ty), p) ->
 	Obligation ((x, ty), substProp ctx (substRemove x s) p)
+
 
 and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
   { ty = t;
@@ -280,7 +283,7 @@ and string_of_term' level t =
 	   (string_of_term' 12 t))
     | Tuple [] -> (0, "()")
     | Tuple [t] -> (0, string_of_term' 0 t)
-    | Tuple lst -> (0, "{{" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ "}}")
+    | Tuple lst -> (0, "(" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ ")")
     | Proj (k, t) -> (4, ("pi" ^ (string_of_int k) ^ " " ^ (string_of_term' 3 t)))
     | Inj (lb, None) -> (4, ("`" ^ lb))
     | Inj (lb, Some t) -> (4, ("`" ^ lb ^ " " ^ (string_of_term' 3 t)))
@@ -323,6 +326,8 @@ and string_of_prop level p =
     | Iff (p, q) -> (13, (string_of_prop 12 p) ^ " <=> " ^ (string_of_prop 12 q))
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
     | Forall ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : " ^
+			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
+    | Cexists ((n, ty), p) -> (14, "some (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
   in
     if level' > level then "(" ^ str ^ ")" else str
