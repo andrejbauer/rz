@@ -591,7 +591,7 @@ and translateTheoryElement ctx = function
 		extract (bad', bind', varsubst', setsubst', precond') rest
 	in
 	let (_, bind', varsubst, setsubst, precond) =
-	  extract ([], [], [], [], []) (fst (processModelBinding ctx mbind)) in
+	  extract ([], translateBinding ctx bind, [], [], []) (fst (processModelBinding ctx mbind)) in
 	let ctx' = List.fold_left (fun cx (x,s) -> addBind x s cx) ctx bind in
 	let (ty, x, p') = translateProp ctx' p in
 	let p'' =

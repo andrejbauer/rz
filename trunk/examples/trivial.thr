@@ -2,12 +2,8 @@ theory Trivial =
 thy
  set s
 
- predicate phi : s
+ predicate phi : s * s
 
- const a : s
-
- const b : { x : s | phi(x)}
-
- axiom foo = (a :> { x : s | phi(x)}) = b
+ axiom foo (x : s) (y : s) = some (y : s) . phi (x, y)
 
 end
