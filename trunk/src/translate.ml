@@ -31,7 +31,7 @@ let addBind  (n : L.name) s ctx = (n, CtxBind s) :: ctx
 let addTerm  (n : L.name) t ctx = (n, CtxTerm t) :: ctx
 let addSet   (n : L.name) s ctx = (n,  CtxSet s) :: ctx
 let addProp  (n : L.name) (stb,x) ctx = (n, CtxProp (stb,x)) :: ctx
-let addModel n th ctx = (Syntax.N(n,Syntax.Word), CtxModel th) :: ctx
+let addModel n thry ctx = (Syntax.N(n,Syntax.Word), CtxModel thry) :: ctx
 let addTheory n args th ctx =
   (Syntax.N(n,Syntax.Word), CtxTheory (args, th)) :: ctx
 
@@ -504,8 +504,11 @@ and translateTheoryElement ctx = function
       addBind n s ctx
 
   | L.Sentence (_, nm, mbind, bind, p) ->
-      let args, ctx' = processModelBinding ctx mbind in
-	StructureSpec (String.upercase
+      let mbind', ctx' = translateModelBinding ctx mbind in
+	[StructureSpec (Syntax.N (String.uppercase (string_of_name nm), S.Word),
+			mbind',
+			Signat [(* XXX missing stuff, use ctx' here *)])],
+      ctx
 
 (*
       begin

@@ -351,7 +351,7 @@ and substTYProp ctx s = function
       Cexists ((n, substTYType ctx s ty), substTYProp ctx s q)
 
 and substTYType ctx s = function
-    NamedTy ln -> NamedTy (try List.assoc ln s with Not_found -> ln)
+    NamedTy ln -> NamedTy ln (* XXX probably wrong *)
   | UnitTy -> UnitTy
   | VoidTy -> VoidTy
   | TopTy -> TopTy
