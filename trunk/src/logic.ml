@@ -28,17 +28,22 @@ type label = S.label
 (** names of identifiers *)
 type name = S.name
 
+(** names of models; must be capitalized *)
+type model_name = S.model_name
+
+type model = 
+    Model of model_name
+  | ModelProj of model * label
+  | ModelApp of model * model
+
 (** names of components inside models *)
-type longname = LN of string * string list * S.name_type
+type longname = LN of model option * name
 
 (** names of sets *)
 type set_name = S.set_name
 
 (** names of sets *)
-type set_longname = longname
-
-(** names of models; must be capitalized *)
-type model_name = S.model_name
+type set_longname = SLN of model option * set_name
 
 (** names of theories *)
 type theory_name = S.theory_name
@@ -86,21 +91,21 @@ and set =
 and term =
     Star
 (** missing terms for type Bool *)
-  | Var    of longname
-  | Tuple  of term list
-  | Proj   of int * term
-  | App    of term * term
-  | Lambda of binding  * term
-  | The    of binding  * proposition
-  | Inj    of label * term option
-  | Case   of term * (label * binding option * term) list
-  | RzQuot of term
+  | Var      of longname
+  | Tuple    of term list
+  | Proj     of int * term
+  | App      of term * term
+  | Lambda   of binding  * term
+  | The      of binding  * proposition
+  | Inj      of label * term option
+  | Case     of term * (label * binding option * term) list
+  | RzQuot   of term
   | RzChoose of binding * term * term * set
-  | Quot   of term * longname
-  | Choose of binding * longname * term * term * set
-  | Let    of binding * term * term * set  (** set is type of the whole let *)
-  | Subin  of term * set
-  | Subout of term * set
+  | Quot     of term * longname
+  | Choose   of binding * longname * term * term * set
+  | Let      of binding * term * term * set  (** set is type of the whole let *)
+  | Subin    of term * set
+  | Subout   of term * set
 
 and theory_element =
     Set of set_name
@@ -116,7 +121,8 @@ and theory_element =
 and theory = 
     Theory of theory_element list
   | TheoryName of string
-
+  | TheoryApp of theory * model
+    
 and toplevel =
     Theorydef of string * model_binding list * theory
   | TopComment of string

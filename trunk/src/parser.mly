@@ -7,12 +7,12 @@
 
   exception Impossible
 
-  let makeTermVar strng fxty = Var(N(strng, fxty))
-  let makeTermPath mdl strng fxty = MProj(mdl, strng, fxty)
+  let makeTermVar strng fxty = Var(None, N(strng, fxty))
+  let makeTermPath mdl strng fxty = Var(Some mdl, N(strng, fxty))
 
   (** XXX Could we ever have infix sets ? *)
-  let makeSetVar stnm  = Set_name stnm
-  let makeSetPath mdl strng = Set_mproj (mdl, strng)
+  let makeSetVar stnm  = Set_name (None, stnm)
+  let makeSetPath mdl strng = Set_name (Some mdl, strng)
 
 %}
 

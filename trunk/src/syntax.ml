@@ -28,8 +28,7 @@ and set =
     Empty                            (** empty set, a.k.a, void *)
   | Unit                             (** unit set *)
   | Bool                             (** booleans *)
-  | Set_name of set_name             (** atomic set *)
-  | Set_mproj of model * label
+  | Set_name of model option * set_name  (** atomic set *)
   | Product  of set list             (** finite product *)
   | Sum      of (label * set option) list (** finite coproduct *)
   | Exp      of set * set            (** function space *)
@@ -42,7 +41,7 @@ and set =
   | StableProp                       (** Only for typechecker internals! *)
 
 and term =
-    Var        of name
+    Var        of model option * name
   | Constraint of term * set
   | Star (** the member of Unit *)
   | False
@@ -56,7 +55,6 @@ and term =
   | Choose of binding * term * term * term * set option (** elimination of equivalence class *)
   | RzQuot of term
   | RzChoose of binding * term * term * set option (** elimination of rz *)
-  | MProj  of model * label * name_type
   | Subin  of term * set
   | Subout of term * set
   | And    of term list
@@ -140,7 +138,8 @@ let rec string_of_set set =
       Empty -> "0"
     | Unit  -> "1"
     | Bool  -> "2"
-    | Set_name stnm -> stnm
+    | Set_name (None, stnm) -> stnm
+    | Set_name (Some mdl, stnm) -> string_of_model mdl ^ "." ^ stnm
     | Product sets -> "(" ^ String.concat " * " (List.map toStr sets) ^ ")"
     | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"
     | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
@@ -148,7 +147,6 @@ let rec string_of_set set =
     | StableProp -> "StableProp"
     | EquivProp -> "EquivProp"
     | Rz set -> "rz (" ^ toStr set ^ ")"
-    | Set_mproj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
     | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " with " ^ 
 	                     string_of_term term ^ " }"
     | Quotient (st, trm) ->
@@ -167,7 +165,9 @@ let rec string_of_set set =
     
 and string_of_term trm =
   (let rec toStr = function
-      Var nm  -> string_of_name nm
+      Var(None, nm)  -> string_of_name nm
+    | Var(Some mdl, N(lbl, Word)) -> string_of_model mdl ^ "." ^ lbl
+    | Var(Some mdl, N(lbl, _)) -> "(" ^ string_of_model mdl ^ "." ^ lbl ^ ")"
     | Constraint(trm, set) -> "(" ^ toStr trm ^ " : " ^ string_of_set set ^ ")"
     | Star -> "()"
     | False -> "false"
@@ -184,8 +184,6 @@ and string_of_term trm =
     | Choose _ -> "..."
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
-    | MProj(mdl, lbl, Word) -> string_of_model mdl ^ "." ^ lbl
-    | MProj(mdl, lbl, _) -> "(" ^ string_of_model mdl ^ "." ^ lbl ^ ")"
     | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
     | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
@@ -250,9 +248,9 @@ let insertModelvar sbst strng mdl =
   {sbst with models = StringMap.add strng mdl sbst.models}
 
 let getTermvar sbst nm =
-   try (NameMap.find nm sbst.terms) with Not_found -> Var nm
+   try (NameMap.find nm sbst.terms) with Not_found -> Var (None, nm)
 let getSetvar sbst stnm =
-   try (StringMap.find stnm sbst.sets) with Not_found -> Set_name stnm
+   try (StringMap.find stnm sbst.sets) with Not_found -> Set_name (None, stnm)
 let getModelvar sbst mdlnm =
    try (StringMap.find mdlnm sbst.models) with Not_found -> ModelName mdlnm
 
@@ -273,7 +271,8 @@ let display_subst sbst =
 
 let rec subst (substitution : subst) =
      let rec sub = function
-          Var nm -> getTermvar substitution nm
+          Var (None, nm) -> getTermvar substitution nm
+        | Var (Some mdl, nm) -> Var(Some (substModel substitution mdl), nm)
         | Constraint(u,s) -> Constraint(sub u, substSet substitution s)
         | Tuple ts      -> Tuple(List.map sub ts)
         | Proj(n,t1)    -> Proj(n, sub t1)
@@ -284,16 +283,15 @@ let rec subst (substitution : subst) =
 	| RzChoose ((y,sopt),t1,t2,stopt2) ->
 	    RzChoose ((y, substSetOption substitution sopt),
 		      sub t1,
-		      subst (insertTermvar substitution y (Var y)) t2,
+		      subst (insertTermvar substitution y (Var (None, y))) t2,
 		      substSetOption substitution stopt2)
         | Quot(trm1,trm2)   -> Quot(sub trm1, sub trm2)
         | Choose((y,sopt),trm_equiv,t1,t2,stopt2) ->
             Choose((y,substSetOption substitution sopt),
                    sub trm_equiv,
                    sub t1, 
-                   subst (insertTermvar substitution y (Var y)) t2,
+                   subst (insertTermvar substitution y (Var (None, y))) t2,
 		   substSetOption substitution stopt2)
-        | MProj(mdl, lbl, fix) -> MProj(substModel substitution mdl, lbl, fix)
         | And ts        -> And(List.map sub ts)
         | Imply(t1,t2)  -> Imply(sub t1, sub t2)
         | Iff(t1,t2)    -> Iff(sub t1, sub t2)
@@ -304,35 +302,35 @@ let rec subst (substitution : subst) =
         | Let((y,stopt),t1,t2,stopt2) ->
             Let((y,substSetOption substitution stopt),
                   sub t1, 
-		  subst (insertTermvar substitution y (Var y)) t2,
+		  subst (insertTermvar substitution y (Var (None,y))) t2,
 	        substSetOption substitution stopt2)
         | Forall((y,sopt),t1) -> 
             Forall((y,substSetOption substitution sopt),
-		  subst (insertTermvar substitution y (Var y)) t1)
+		  subst (insertTermvar substitution y (Var(None,y))) t1)
         | Exists((y,sopt),t1) -> 
             Exists((y,substSetOption substitution sopt),
-		  subst (insertTermvar substitution y (Var y)) t1)
+		  subst (insertTermvar substitution y (Var(None,y))) t1)
         | Unique((y,sopt),t1) -> 
             Unique((y,substSetOption substitution sopt),
-		   subst (insertTermvar substitution y (Var y)) t1)
+		   subst (insertTermvar substitution y (Var(None,y))) t1)
      and subarms = function
           [] -> []
         | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
         | (l,Some(y,sopt),u)::rest ->
               (l,Some(y,substSetOption substitution sopt),
-  	         subst (insertTermvar substitution y (Var y)) u) ::
+  	         subst (insertTermvar substitution y (Var(None,y))) u) ::
 	      (subarms rest)
      in sub
 
 and substSet substitution =
      let rec sub = function
-           Set_name stnm -> getSetvar substitution stnm
-         | Set_mproj (mdl, lbl) -> Set_mproj(substModel substitution mdl, lbl) 
+           Set_name (None, stnm) -> getSetvar substitution stnm
+         | Set_name (Some mdl, stnm) -> Set_name(Some(substModel substitution mdl), stnm)
          | Product ss         -> Product(List.map sub ss)
          | Exp(s1,s2)         -> Exp(sub s1, sub s2)
          | Subset((y,sopt),u) ->
               Subset((y,substSetOption substitution sopt),
-  	         subst (insertTermvar substitution y (Var y)) u)
+  	         subst (insertTermvar substitution y (Var(None,y))) u)
          | Quotient(st,trm)   -> 
               Quotient(sub st, subst substitution trm)
          | s                    -> s
