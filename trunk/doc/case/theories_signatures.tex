@@ -158,33 +158,32 @@ programmers typically are not trained in constructive logic, this may
 make it easier to verify the assertions.
 
 The output for the theory \Verb|SQGROUP| above is then:
-\VerbatimInput{semigroup.mli} 
+{\small \VerbatimInput{semigroup.mli}}
 
-At the ML level we have required a type \Verb|s|, a value \Verb|e| of
-type \Verb|s| and a binary function on \Verb|s|; \comment{I thought
-  that names like \Verb|( * )| here were supposed to be translated
-  away in the ML code?} these were mentioned explicitly in the theory.
-For interestingly, the constructive content of the existential in the
-\Verb|sqrt| axiom requires that a witness function be provided as
-well; thus, the ML signature further requires a function \Verb|sqrt|
-mapping \Verb|s| to \Verb|s|.
+At the ML level we have required a type \Verb|s|, and three values
+\Verb|e|, \Verb|*|, and \Verb|sqrt|, of types \Verb|s|,
+\Verb|s->s->s|, and \Verb|s->s|, respectively. The third value was
+generated from the square root axiom, which has a non-trivial
+computational content.
 
-Comments contain other properties (not expressible in ML) that further
-constrain the allowed implementations.  The proposition \Verb|PER(=s=)| 
-abbreviates a requirement that \Verb|=s=| be a partial equivalence 
-on \Verb|s|; its domain \Verb+||s||+ is the
-subset of terms of type $s$ that represent group elements, and the
-relation equates different implementations corresponding to the same
-abstract group element.  Then, \Verb|e| must represent a
-group element, and the \Verb|*| operation must not be affected by the
-choice of representatives.  These must of course still satisfy the
-\Verb|unit| and \Verb|assoc| axioms.  Finally, the new function
-\Verb|sqrt| derived from the logic must compute square roots.  Since
-the theory requires existence but not uniqueness of square roots, its
-computational content does not require that \Verb|sqrt| be invariant
-with respect to the partial equivalence relation on \Verb|s|;
-different implementations of the same group element are allowed to produce
-(implementations of) different square roots.  
+Comments contain other requirements, not expressible in ML, that
+further contstrain the allowed implementations. The assertion
+\Verb|PER(=s=)| abbreviates the requirement that \Verb|=s=| be a
+partial equivalence relation on~\Verb|s|; its domain \Verb+||s||+ is
+the subset of terms of type \Verb|s| that realize semigroup
+elements, and the relation \Verb|=s=| identifies (possibly different)
+terms realizing the same abstract semigroup element. These data
+together determine a modest set. The assertion following the
+declarations of \Verb|e| asserts that \Verb|e| realizes a valid
+semigroup element, and the one following \Verb|*| asserts that
+\Verb|*| must not be affected by the choice of realizers. Both
+\Verb|e| and \Verb|*| must of course still satisfy the \Verb|unit| and
+\Verb|assoc| axioms. Finally, the new function \Verb|sqrt| derived
+from the logic must compute square roots. Since the theory requires
+existence but not uniqueness of square roots, there is no requirement
+that \Verb|sqrt| be invariant with respect to the partial equivalence
+relation on \Verb|s|; different realizers of the same semigroup
+element are allowed to produce (realizers of) different square roots.
 
 
 \subsection{Parameterized Theories}
