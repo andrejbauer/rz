@@ -504,15 +504,19 @@ and translateTheoryElement ctx = function
 		      substProp ctx [(x, toId n)] p)],
       addBind n s ctx
 
-  | L.Sentence (_, nm, mbind, bind, p) ->
-      [], ctx
-(*      let mbind', ctx' = translateModelBinding ctx mbind in
-	[StructureSpec (Syntax.N (String.uppercase (Syntax.string_of_name nm), S.Word),
-			mbind',
-			Signat [(* XXX missing stuff, use ctx' here *)])],
-      ctx
-*)
-(*
+  | L.Sentence (_, nm, mdlbind, valbnd, prp) ->
+      begin
+	let (typ, x, prp') = translateProp ctx prp in
+	let bnd = translateBinding ctx valbnd in
+	  if mdlbind = [] then
+	    [
+	      ValSpec (nm, typ);
+	      AssertionSpec (Syntax.string_of_name nm, bnd, substProp ctx [(x, toId nm)] prp')
+	    ]
+	  else
+	    failwith "translation of parametrized axioms not implemented"
+      end, ctx
+(***
       begin
 	let prep m (Syntax.N(s,t)) = Syntax.LN(m,[s],t) in
 	let rec extract (bad, bind, varsubst, setsubst, precond) = function
@@ -577,7 +581,7 @@ and translateTheoryElement ctx = function
 	  ]
       end,
       addProp n (Syntax.Unstable, Some (bind, p)) ctx
-*)
+**)
 
 and translateModelBinding ctx = function
     [] -> [], ctx
