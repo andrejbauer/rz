@@ -85,10 +85,10 @@ type signat_element =
 and signat =
     SignatName of signat_name
   | Signat of signat_element list
-  | SignatFunctor of struct_binding list * signat
-  | SignatAnnotated of string * signat
+  | SignatFunctor of modul_binding * signat
+  | SignatApp of signat * modul * signat (** SignatApp(f,m,n): n is the result of f(m) *)
 
-and struct_binding = modul_name * signat
+and modul_binding = modul_name * signat
 
 and toplevel = 
     Signatdef  of signat_name * signat
@@ -301,6 +301,12 @@ and substModest ctx s {ty=t; tot=(x,p); per=(y,z,q)} =
 
 (**** SOMEWHAT OLD CODE OLD CODE OLD CODE OLD CODE IS STILL USED IS STILL USED *)
 
+let rec collectSignatApps = function
+    SignatApp (s, m, n) ->
+      let hd, args, _ = collectSignatApps s in
+	hd, args @ [m], n
+  | s -> s, [], s
+
 let string_of_name = L.string_of_name
 
 let rec string_of_modul = function
@@ -466,15 +472,16 @@ let rec string_of_spec = function
 
 and string_of_signat = function
     SignatName s -> s
-  | Signat body -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
-  | SignatFunctor (args, body) -> 
-      (if args = [] then "" else
-	 String.concat "\n"
-	   (List.map
-	      (fun (n, t) -> "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n")
-	      args)) ^
+  | Signat body  -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
+  | SignatFunctor ((n,t), body) -> 
+      "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n" ^
       (string_of_signat body) ^ "\n"
-  | SignatAnnotated (cmmnt, sgntr) -> "(**" ^ cmmnt ^ "*) " ^ (string_of_signat sgntr)
+  | (SignatApp _) as s ->
+      let hd, args, res = collectSignatApps s in
+	"(** " ^ (string_of_signat hd) ^
+	(String.concat " " (List.map (fun m -> "(" ^ (string_of_modul m) ^ ")") args)) ^
+	" *) " ^
+	(string_of_signat res)
 
 let string_of_toplevel = function
     (Signatdef (s, signat)) ->
