@@ -230,12 +230,12 @@ let freshModulName good bad ?occurs sbst =
     a substitution will satisfy the occ check. *)
 
 let rec substLN ?occ sbst = function
-    LN (None, nm) -> getTermvar sbst
-  | LN (Some mdl, nm) -> LN (Some (subst ?occ sbst mdl), nm)
+    (LN (None, _)) as ln -> ln
+  | LN (Some mdl, nm) -> LN (Some (substModel ?occ sbst mdl), nm)
 
 let rec substTLN ?occ sbst = function
     (TLN (None, _)) as tln -> tln
-  | TLN (Some mdl, nm) -> LN (Some (subst ?occ sbst mdl), nm)
+  | TLN (Some mdl, nm) -> TLN (Some (substModel ?occ sbst mdl), nm)
 
 and substModel ?occ sbst = function
     ModelName nm -> ModelName (getModulvar sbst nm)
