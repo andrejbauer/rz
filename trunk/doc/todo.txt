@@ -1,19 +1,19 @@
-- BUG (2004-06-17):
+- BUG (2004-06-17) [Andrej]:
   a realizer for an axiom is not applied to the correct
   arguments in the corresponding assertion (some are missing)
 
-- BUG (2004-06-17):
+- BUG (2004-06-17) [Andrej]:
   when a parametrized axiom is translated, some assertions are
   missing in the hypotheses (the "trivial" ones)
 
-- BUG (2004-06-17):
+- BUG (2004-06-17) [Andrej]:
   missing obligations in output code for "let [x] = p in e"
   and "let x % r = p in e ".
 
-- VERIFY (2004-06-17):
+- VERIFY (2004-06-17) [Chris]:
   do we allow sum type subtyping? What form precisely? Should we do this?
 
-- IMPROVEMENT (2004-06-17):
+- IMPROVEMENT (2004-06-17) [Andrej & Chris]:
   Make variable names more consistent. The rule is: delete all the
   vowels, except in the following cases:
 
@@ -22,32 +22,32 @@
 
   Make sure that all the exceptional names contain vowels.
 
-- IMPROVEMENT (2004-06-17):
+- IMPROVEMENT (2004-06-17) [Andrej]:
   Rename "thy" to "thr" OR rename ".thr" to ".thy"
 
-- IMPROVEMENT (2004-06-17):
+- IMPROVEMENT (2004-06-17) [Chris]:
   Use fewer implementations of contexts.
 
-- NEW (2004-06-17):
+- NEW (2004-06-17) [Andrej]:
   Add abbreviations for common groups of assertions (such as "is a per").
   Allow the use to use or not use them via run-time option.
 
 - IMPROVEMENT (2004-06-17):
   Comment source code.
     
-- IMPROVEMENT (2004-06-17):
+- IMPROVEMENT (2004-06-17) [Andrej]:
   Improve pretty-printing of output.
     
-- NEW (2004-06-17):
+- NEW (2004-06-17) [Chris]:
   Add implicit superset conversions, if this is a reasonable thing to do.
 
-- VERIFY (2004-06-17):
+- VERIFY (2004-06-17) [Chris]:
   Make sure only first-order functors are allowed.
 
-- IMPROVEMENT (2004-06-17):
+- IMPROVEMENT (2004-06-17) [Andrej & Chris]:
   Allow top level model declarations.
 
-- BUG (2004-06-17):
+- BUG (2004-06-17) [Chris]:
   Disallow shadowing of sets, values and arguments of
   axioms.
 
@@ -55,13 +55,16 @@
   Allow constant definitions of functions with arguments. Right now
   a function must be defined as an explicit lambda abstraction.
 
-- NEW (2004-06-17):
+- NEW (2004-06-17) [Andrej]:
   Add "there exists exactly one"
 
-- NEW (2004-06-17):
+- NEW (2004-06-17) [Andrej]:
   Add the description operator "the x : s . phi"
 
 - NEW (2004-06-17):
+  Add inductively defined sets which translate to (nice) recursive types.
+
+- NEW (2004-06-17) [Andrej & Chris]:
   Copy comments from the theory files to the output.
 
 - IMPROVEMENT (2004-06-17):
