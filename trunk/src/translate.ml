@@ -27,48 +27,50 @@ around typing contexts.
 
 exception Unimplemented
 
+let any = mk_word "_"
+
 let rec translateSet = function
     L.Empty -> 
       { ty = VoidTy;
-	tot = ("_", False);
-	per = ("_", "_", False)
+	tot = (any, False);
+	per = (any, any, False)
       }
   | L.Unit ->
       { ty = UnitTy;
-	tot = ("x", Equal (Ident "x", Star));
-	per = ("x", "y", True)
+	tot = (any, Equal (mk_id "x", Star));
+	per = (any, any, True)
       }
   | L.Bool ->
       { ty = NamedTy "bool";
-	tot = ("x", (Cor [Equal (Ident "x", Constant "true");
-                          Equal (Ident "x", Constant "false")]));
-	per = ("x", "y", Equal (Ident "x", Ident "y"))
+	tot = (mk_word "x", (Cor [Equal (mk_id "x", mk_id "true");
+                          Equal (mk_id "x", mk_id "false")]));
+	per = (mk_word "x", mk_word "y", Equal (mk_id "x", mk_id "y"))
       }
   | L.Basic s ->
       { ty = NamedTy s;
-	tot = ("x", NamedTotal (s, Ident "x"));
-	per = ("x", "y", NamedPer (s, Ident "x", Ident "y"))
+	tot = (mk_word "x", NamedTotal (s, mk_id "x"));
+	per = (mk_word "x", mk_word "y", NamedPer (s, mk_id "x", mk_id "y"))
       }
   | L.Product lst ->
       let us = List.map translateSet lst in
 	{
 	  ty = TupleTy (List.map (fun u -> u.ty) us);
 	  tot = (
-	    let t = "t" in
+	    let t = mk_word "t" in
 	      (t, And (
 		 let k = ref 0 in
 		   List.map (fun {tot=(x,p)} ->
-			       let q = subst_negative [(x, Proj (!k, Ident t))] p in incr k ; q) us
+			       let q = subst_proposition [(x, Proj (!k, Id t))] p in incr k ; q) us
 	       )
 	      )
 	  );
 	  per = (
-	    let t = "t" in
-	    let u = "u" in
+	    let t = mk_word "t" in
+	    let u = mk_word "u" in
 	      (t, u, And (
 		 let k = ref 0 in
 		   List.map (fun {per=(x,y,p)} ->
-			       let q = subst_negative [(x, Proj (!k, Ident t)); (y, Proj (!k, Ident u))] p in
+			       let q = subst_proposition [(x, Proj (!k, Id t)); (y, Proj (!k, Id u))] p in
 				 incr k; q
 			    ) us
 	       )
@@ -82,18 +84,18 @@ let rec translateSet = function
 	  tot = (
 	    let (x,uneg) = u.tot in
 	    let (y,vneg) = v.tot in
-	    let f = find_name ["f"; "g"; "h"] [x; y] in
-	      (f, Forall (x, u.ty, Imply (uneg, subst_negative [(y, (App (Ident f, Ident x)))] (vneg)))
+	    let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x; y] in
+	      (f, Forall (x, u.ty, Imply (uneg, subst_proposition [(y, (App (Id f, Id x)))] (vneg)))
 	      )
 	  );
 	  per = (
 	    let (x1, x2, uneg) = u.per in
 	    let (y1, y2, vneg) = v.per in
-	    let f = find_name ["f"; "g"; "h"] [x1; x2] in
-	    let g = find_name ["f"; "g"; "h"] [x1; x2; f] in
+	    let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x1; x2] in
+	    let g = find_name [mk_word "f"; mk_word "g"; mk_word "h"] [x1; x2; f] in
 	      (f, g, (Forall (x1, u.ty,
 				Forall (x2, u.ty,
-					Imply (uneg, subst_negative [(y1, App (Ident f, Ident x1)); (y2, App (Ident g, Ident x2))] (vneg))
+					Imply (uneg, subst_proposition [(y1, App (Id f, Id x1)); (y2, App (Id g, Id x2))] (vneg))
 				)))) 
 	  )
 
@@ -107,48 +109,57 @@ let rec translateSet = function
 *)
 
 let rec translateTerm = function
-    L.Var (n,_) -> Ident n
+    L.Var n -> Id n
   | L.Star -> Star
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
   | L.Proj (k, t) -> Proj (k, translateTerm t)
   | L.App (u, v) -> App (translateTerm u, translateTerm v)
-  | L.Lambda (((n,_), s), t) -> Lambda (n, translateSet s, translateTerm t)
+  | L.Lambda ((n, s), t) -> Lambda (n, translateSet s, translateTerm t)
   | L.Inj (lb, t) -> Inj (lb, translateTerm t)
   | L.Case (t1, lst) -> Cases (translateTerm t1, 
                                List.map (function 
-                                            (lb, Some ((n,_), s), t) -> 
+                                            (lb, Some (n, s), t) -> 
                                                (lb, n, (translateSet s).ty, 
                                                 translateTerm t)
                                           | (lb, None, t) ->
-                                               (lb, "_", UnitTy, 
+                                               (lb, any, UnitTy, 
                                                 translateTerm t))
                                         lst)
-  | L.Let (((n,_),s), u, v) -> Let (n, translateTerm u, translateTerm v)
+  | L.Let ((n,s), u, v) -> Let (n, translateTerm u, translateTerm v)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
 let rec translateProposition ctx = function
-    L.False -> (VoidTy, "_", False)
-  | L.True -> (UnitTy, "_", True)
-  | L.Atomic ((n,_), t) -> (NamedTy n, raise Unimplemented, raise Unimplemented)
+    L.False -> (VoidTy, any, False)
+  | L.True -> (UnitTy, any, True)
+  | L.Atomic (n, t) -> (NamedTy n, raise Unimplemented, raise Unimplemented)
   | L.And lst ->
       let lst' = List.map (translateProposition ctx) lst in
-      let t = find_name ["t"; "p"; "u"; "q"; "r"] (List.map fst ctx) in
+      let t = find_name
+		[mk_word "t"; mk_word "p"; mk_word "u"; mk_word "q"; mk_word "r"]
+		(List.map fst ctx) in
 	(TupleTy (List.map (function(s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
-		List.map (fun (_, x, p) -> let q = subst_negative [(x, Proj (!k, Ident t))] p in incr k ; q) lst'))
+		List.map (fun (_, x, p) ->
+			    let q = subst_proposition [(x, Proj (!k, Id t))] p in
+			      incr k ; q)
+		  lst'))
   | L.Imply (p, q) ->
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
-      let f = find_name ["f"; "g"; "h"; "p"; "q"] (x :: (List.map fst ctx)) in
-	(ArrowTy (t, u), f, Forall (x, t, Imply (p', subst_negative [(y, App (Ident f, Ident x))] q')))
+      let f = find_name [mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"]
+		(x :: (List.map fst ctx)) in
+	(ArrowTy (t, u), f, Forall (x, t, Imply (p', subst_proposition [(y, App (Id f, Id x))] q')))
   | L.Iff (p, q) -> 
       let (t, x, p') = translateProposition ctx p in
       let (u, y, q') = translateProposition ctx q in
-      let f = find_name ["f"; "g"; "h"; "p"; "q"; "r"] (x :: y :: (List.map fst ctx)) in
+      let f = find_name
+		[mk_word "f"; mk_word "g"; mk_word "h"; mk_word "p"; mk_word "q"; mk_word "r"]
+		(x :: y :: (List.map fst ctx))
+      in
 	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
 	 f, And [
-	   Forall (x, t, Imply (p', subst_negative [(y, App (Proj (0, Ident f), Ident x))] q'));
-	   Forall (y, u, Imply (q', subst_negative [(x, App (Proj (1, Ident f), Ident y))] p'))])
+	   Forall (x, t, Imply (p', subst_proposition [(y, App (Proj (0, Id f), Id x))] q'));
+	   Forall (y, u, Imply (q', subst_proposition [(x, App (Proj (1, Id f), Id y))] p'))])
 
   | L.Or ps -> raise Unimplemented
 

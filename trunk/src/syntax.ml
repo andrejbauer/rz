@@ -15,6 +15,8 @@ let underscore = ("_", Word)
 
 type set_name = string
 
+(** names of sets must be valid type names *)
+
 type binding = name * set option
 
 and set =

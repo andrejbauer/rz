@@ -20,20 +20,23 @@ exception HOL             (* If the input is trying to do HOL *)
 (* Abstract Syntax *)
 (*******************)
 
+(** labels in sums *)
 type label = string
 
+(** names of identifiers *)
 type name = Syntax.name
 
+(** names of sets *)
 type set_name = Syntax.set_name
 
+(** a binding in a quantifier or lambda *)
 type binding = name * set
 
-and atomic = name * set list
-
+(** first-order proposition, without accompanying context  *)
 and proposition =
     False
   | True
-  | Atomic of name * term
+  | Atomic of string * term (** atomic proposition *)
   | And    of proposition list
   | Imply  of proposition * proposition
   | Iff    of proposition * proposition
@@ -46,16 +49,18 @@ and proposition =
 and set =
     Empty
   | Unit
-  | Bool
+  | Bool (** Bool is isomorphic to Unit+Unit *)
   | Basic   of string
   | Product of set list
   | Exp     of set * set
   | Sum     of (label * set option) list
   | Subset  of binding * proposition
-  | RZ      of set
+  | RZ      of set (** the set of realizers *)
+(** missing quotient types *)
 
 and term =
     Star
+(** missing terms for type Bool *)
   | Var    of name
   | Tuple  of term list
   | Proj   of int * term
@@ -64,7 +69,8 @@ and term =
   | Inj    of label * term
   | Case   of term * (label * binding option * term) list
   | Let    of binding * term * term
-
+(** missing terms for subsets *)
+(** missing terms for realizers *)
 
 type sentence_type = Syntax.sentence_type
 
@@ -73,12 +79,13 @@ type theory_element =
   | Let_set of set_name * set
   | Predicate of name * Syntax.stability * set
   | Let_predicate of name * binding list * proposition
-  | Let_term of name * set * term
+  | Let_term of name * set * term (** abbreviation *)
   | Value of name * set
-  | Variable of name * set
-  | Define of name * term
+  | Define of name * term (** part of theory *)
   | Sentence of sentence_type * name * binding list * proposition
-      
+
+type context = (string * theory_element) list
+
 type theory = {
   t_name : string;
   t_arg : theory_element list option;
@@ -198,7 +205,7 @@ and make_bindings b = List.map (fun (n, Some s) -> (n, make_set s)) b
 and make_proposition = function
     S.False -> False
   | S.True -> True
-  | S.App (S.Var n, t) -> Atomic (n, make_term t)
+  | S.App (S.Var (n, S.Word), t) -> Atomic (n, make_term t)
   | S.App (_, _) -> (print_string "Application of non-variable\n";
                      raise Unimplemented)
   | S.And lst -> And (List.map make_proposition lst)

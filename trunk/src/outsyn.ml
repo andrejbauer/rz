@@ -12,18 +12,16 @@ type ty =
   | TupleTy of ty list         (* 2 *)
   | ArrowTy of ty * ty         (* 3 *)
 
-(** specifications are expressed in the negative fragment *)
-type name = string
+type name = Syntax.name
 
 type modest = {
   ty : ty;
-  tot : name * negative;
-  per : name * name * negative
+  tot : name *  proposition;
+  per : name * name * proposition
 }
 
 and term =
-    Ident of name
-  | Constant of name
+    Id of name
   | Star
   | App of term * term
   | Lambda of name * modest * term
@@ -33,25 +31,30 @@ and term =
   | Cases of term * (label * name * ty * term) list
   | Let of name * term * term
 
-and negative =
+(** specifications are expressed in classical logic
+    (negative fragment to be exact)
+*)
+and proposition =
   | True
   | False
-  | NamedTotal of  name * term
-  | NamedPer of name * term * term
+  | NamedTotal of string * term
+  | NamedPer of string * term * term
   | Equal of term * term
-  | And of negative list
-  | Cor of negative list (** classical or *)
-  | Imply of negative * negative
-  | Iff of negative * negative
-  | Forall of name * ty * negative
+  | And of proposition list
+  | Cor of proposition list (** classical or *)
+  | Imply of proposition * proposition
+  | Iff of proposition * proposition
+  | Forall of name * ty * proposition
 
 type spec =
     ValSpec of name * modest * term option
-  | TySpec of name * modest option  (* monomorphic for now *)
-  | AxSpec of name * ty * name * negative
+  | TySpec of string * modest option  (* monomorphic for now *)
+  | AxSpec of name * ty * name * proposition
 
 type signat = spec list
 
+let mk_word n = (n, Syntax.Word)
+let mk_id n = Id (mk_word n)
 
 let name_subscript s =
   try
@@ -70,7 +73,7 @@ let split_name n =
   let r, s = name_subscript m in
     r, s, p
 
-let next_name n =
+let next_name (n,nt) =
   let r, s, p = split_name n in
     r ^ (match s, p with
 		None, None -> "'"
@@ -83,19 +86,20 @@ let next_name n =
 		    with
 			Failure "int_of_string" -> "1"
 		  )
-	   )
+	   ),
+    nt
 
 
 let rec find_name good bad =
   try
-    List.find (fun x -> not (List.mem x bad)) bad
+    List.find (fun x -> not (List.mem x bad)) good
   with Not_found -> find_name (List.map next_name good) bad
 
 let rec fv_modest flt acc {tot=(x,p); per=(u,v,q)} =
   fv_neg (u::v::flt) (fv_neg (x::flt) acc p) q
 
 and fv_term flt acc = function
-    Ident n -> if List.mem n flt then acc else n :: acc
+    Id n -> if List.mem n flt then acc else n :: acc
   | Star -> acc
   | App (u, v) -> fv_term flt (fv_term flt acc u) v
   | Lambda (n, s, t) -> fv_modest flt (fv_term (n::flt) acc t) s
@@ -123,25 +127,25 @@ let find_name_subst good bad subst =
 
 let subst_remove n subst = List.filter (fun (m,_) -> n <> m) subst
 
-let subst_add (n,n') s = (if n = n' then s else (n, Ident n')::s)
+let subst_add (n,n') s = (if n = n' then s else (n, Id n')::s)
 
-let rec subst_negative s = function
+let rec subst_proposition s = function
     True -> True
   | False -> False
   | NamedTotal (r, t) -> NamedTotal (r, subst_term s t)
   | NamedPer (r, u, v) -> NamedPer (r, subst_term s u, subst_term s v)
   | Equal (u, v) -> Equal (subst_term s u, subst_term s v)
-  | And lst -> And (List.map (subst_negative s) lst)
-  | Cor lst -> Cor (List.map (subst_negative s) lst)
-  | Imply (p, q) -> Imply (subst_negative s p, subst_negative s q)
+  | And lst -> And (List.map (subst_proposition s) lst)
+  | Cor lst -> Cor (List.map (subst_proposition s) lst)
+  | Imply (p, q) -> Imply (subst_proposition s p, subst_proposition s q)
   | Forall (n, ty, q) as p ->
       let s = subst_remove n s in
       let n' = find_name_subst [n] [] s in
-	Forall (n', ty, subst_negative (subst_add (n,n') s) q)
+	Forall (n', ty, subst_proposition (subst_add (n,n') s) q)
 
 and subst_term s = function
-    Ident n ->
-      (try List.assoc n s with Not_found -> Ident n)
+    Id n ->
+      (try List.assoc n s with Not_found -> Id n)
   | Star -> Star
   | App (t, u) -> App (subst_term s t, subst_term s u)
   | Lambda (n, md, t) ->
@@ -162,10 +166,10 @@ and subst_term s = function
 and subst_modest s {ty=t; tot=(x,p); per=(y,z,q)} =
   { ty = t;
     tot = (let x' = find_name_subst [x] [] s in
-	     (x', subst_negative (subst_add (x,x') s) p));
+	     (x', subst_proposition (subst_add (x,x') s) p));
     per = (let y' = find_name_subst [y] [] s in
 	   let z' = find_name_subst [z] [y'] s in
-	     (y',z', subst_negative (subst_add (y,y') (subst_add (z,z') s)) q));
+	     (y',z', subst_proposition (subst_add (y,y') (subst_add (z,z') s)) q));
   }
 
 
@@ -199,13 +203,17 @@ let rec string_of_ty' level (t : ty) =
 
 let string_of_ty t = string_of_ty' 999 t
 
+let string_of_name = function
+    (n, Syntax.Word) -> n
+  | (n, _) -> "(" ^ n ^ ")"
+
 let string_of_spec = function
       ValSpec (name, {ty=t; tot=(x,p); per=(y,z,q)}, v) ->
-	"val " ^ name ^ " : " ^ (string_of_ty t) ^ "\n" ^
-	"(** " ^ (string_of_neg (subst_negative [(x, Ident name)] p)) ^ " *)\n" ^
+	"val " ^ (string_of_name name) ^ " : " ^ (string_of_ty t) ^ "\n" ^
+	"(** " ^ (string_of_neg (subst_proposition [(x, Id name)] p)) ^ " *)\n" ^
 	(match v with
 	     None -> ""
-	   | Some v -> "(** " ^ (string_of_neg (subst_negative [(y, Ident name); (z, v)] q)) ^ " *)\n"
+	   | Some v -> "(** " ^ (string_of_neg (subst_proposition [(y, Id name); (z, v)] q)) ^ " *)\n"
 	)
 
     | TySpec  (name, None) ->
