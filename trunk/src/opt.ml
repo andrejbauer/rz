@@ -26,6 +26,11 @@ let rec lookup = function
       (y,[]) -> (raise NotFound)
     | (y,(k,v)::rest) -> if (y=k) then v else lookup(y,rest)
 
+
+let rec peek = function
+      (y,[]) -> None
+    | (y,(k,v)::rest) -> if (y=k) then Some v else peek(y,rest)
+
 let rec lookupName = function
       (y,[]) -> (print_string ("Unbound name: " ^ (fst y) ^ "\n");
                  raise NotFound)
@@ -49,9 +54,7 @@ type ctx = {types      : (name*ty) list;
   *)
 let lookupType     ctx   n = lookupName (n, ctx.types)
 let lookupTydef    ctx str = lookup (str, ctx.tydefs)
-
-let peekTydef ctx s = try Some(lookupTydef ctx s) with
-                        NotFound -> None
+let peekTydef ctx s = peek(s, ctx.tydefs)
 
 let insertType ({types=types} as ctx) n ty = 
        {ctx with types = insert(n,ty,types)}
@@ -98,7 +101,7 @@ let rec optTy ctx ty =
                     (List.map (optTy ctx) tys)))
   | nonunit_ty -> nonunit_ty
   in
-    hnfTy ctx ty
+    hnfTy ctx ans
 
 (* optTerm ctx e = (t, e', t')
       where e' is the optimized version of e
@@ -128,7 +131,12 @@ let rec optTerm ctx = function
      in (topTyize (TupleTy ts), Tuple es', topTyize (TupleTy ts'))
  | Proj (n,e) ->
      let (ty, e', _) = optTerm ctx e
-     in let TupleTy tys = hnfTy ctx ty
+     in let tys = 
+               match  hnfTy ctx ty with
+		 TupleTy tys -> tys
+	       |  ty_bad -> (print_string (Outsyn.string_of_ty ty ^ "\n");
+			     print_string (Outsyn.string_of_ty ty_bad ^ "\n");
+			     raise Impossible)
      in let rec loop = function
          (ty::tys, TopTy::tys', nonunits, index) ->
          if index == n then
