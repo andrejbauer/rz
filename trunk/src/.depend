@@ -1,4 +1,8 @@
 parser.cmi: syntax.cmo 
+context.cmo: syntax.cmo 
+context.cmx: syntax.cmx 
+logic.cmo: syntax.cmo 
+logic.cmx: syntax.cmx 
 parser.cmo: message.cmo syntax.cmo parser.cmi 
 parser.cmx: message.cmx syntax.cmx parser.cmi 
 tex.cmo: logic.cmo 

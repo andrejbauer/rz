@@ -1,7 +1,7 @@
 (** manipulation of contexts *)
 
-(** There are two namespaces, one is for sets the other one is
-    shared by terms and axioms (because axioms and terms both get
+(** There are two namespaces, one is for sets the other one is shared
+    by terms, labels and axioms (because axioms and terms both get
     translated to values)
 *)
 
@@ -18,10 +18,9 @@ let add ctx ns a v = ((ns, a), v) :: ctx
 let occurs ctx ns a =
   try
     ignore (get ctx ns a); true
-    )
   with Not_found -> false
 
 exception Occurs
 
-let add_fresh ctx a v =
-  if occurs ctx a then raise Occurs else (a, v) :: ctx
+let add_fresh ctx ns a v =
+  if occurs ctx ns a then raise Occurs else ((ns, a), v) :: ctx

@@ -145,10 +145,8 @@ theory_element:
   | STABLE PREDICATE name COLON set    { Predicate ($3, Stable, $5) }
   | RELATION name COLON set     { Predicate ($2, Unstable, $4) }
   | STABLE RELATION name COLON set     { Predicate ($3, Stable, $5) }
-  | PREDICATE name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
-  | STABLE PREDICATE name args EQUAL term { Let_predicate ($3,Stable, $4, $6) }
-  | RELATION name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
-  | STABLE RELATION name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
+  | PREDICATE name args EQUAL term { Let_predicate ($2, $3, $5) }
+  | RELATION name args EQUAL term { Let_predicate ($2, $3, $5) }
   | AXIOM name args EQUAL term   { Sentence (Axiom, $2, $3, $5) }
   | THEOREM name args EQUAL term { Sentence (Theorem, $2, $3, $5) }
   | LEMMA name args EQUAL term       { Sentence (Lemma, $2, $3, $5) }

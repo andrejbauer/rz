@@ -8,16 +8,17 @@ OCAMLYFLAGS = -v
 
 INCLUDES =
 
-OCAMLFLAGS = $(INCLUDES)
+OCAMLFLAGS = -w p $(INCLUDES)
 OCAMLCPFLAGS =
-OCAMLOPTFLAGS = $(INCLUDES) -unsafe -inline 5 
+OCAMLOPTFLAGS = -w p $(INCLUDES) -unsafe -inline 5 
 
 BYTE_OBJS = syntax.cmo \
 	message.cmo \
 	parser.cmo \
 	lexer.cmo \
 	context.cmo \
-        outsyn.cmo
+        outsyn.cmo \
+	logic.cmo
 
 
 OPT_OBJS = $(subst .cmo,.cmx,$(BYTE_OBJS))

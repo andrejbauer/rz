@@ -11,6 +11,8 @@ type name_type = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4
 
 type name = string * name_type
 
+let underscore = ("_", Word)
+
 type set_name = string
 
 type binding = name * set option
@@ -67,7 +69,7 @@ type stability = Stable | Unstable
 type theory_element =
     Set of set_name * set option
   | Predicate of name * stability * set
-  | Let_predicate of name * stability * binding list * term
+  | Let_predicate of name * binding list * term
   | Let_term of binding * term
   | Value of name * set
   | Variable of name * set
