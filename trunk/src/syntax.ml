@@ -555,4 +555,36 @@ let freshNameString =
      function () -> (incr counter;
 	             "]" ^ string_of_int (!counter) ^ "[")
 
+(** etaequivTheories : threory -> theory -> bool
 
+    Eta-equivalence (extensionality) test for theories
+ *)
+let rec etaEquivTheories thry1 thry2 = 
+    let _ = print_endline "First theory" in 
+    let _ = print_endline (string_of_theory thry1) in
+    let _ = print_endline "Second theory" in
+    let _ = print_endline (string_of_theory thry2) in
+  (match (thry1, thry2) with
+  | (TheoryFunctor ((mdlnm1, thry11), thry12), 
+     TheoryFunctor ((mdlnm2, thry21), thry22)) ->
+      let _ = print_string "WWW" in
+       (etaEquivTheories thry11 thry21) 
+	 && let mdlnm3 = freshNameString() 
+	 in let sub1 = insertModelvar emptysubst mdlnm1 (ModelName mdlnm3)
+	 in let sub2 = insertModelvar emptysubst mdlnm2 (ModelName mdlnm3)
+	 in let thry12' = substTheory sub1 thry12 
+	 in let thry22' = substTheory sub2 thry22 
+	 in etaEquivTheories thry12' thry22'
+  | ( TheoryFunctor ( ( _, thry11 ), _ ), _ ) ->
+      let mdlnm3 = freshNameString ()
+      in let thry2' = TheoryFunctor( ( mdlnm3, thry11 ), 
+				     TheoryApp ( thry2, ModelName mdlnm3 ) )
+      in etaEquivTheories thry1 thry2'
+
+  | ( _, TheoryFunctor ( ( _, thry21 ), _ ) ) ->
+      let mdlnm3 = freshNameString ()
+      in let thry1' = TheoryFunctor( ( mdlnm3, thry21 ), 
+				     TheoryApp ( thry1, ModelName mdlnm3 ) )
+      in etaEquivTheories thry1' thry2 
+  | _ -> thry1 = thry2
+)

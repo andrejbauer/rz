@@ -375,8 +375,12 @@ and output_signat ppf = function
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
          m   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl,sgnt2) ->
-      fprintf ppf "@[<v>(** %a(%a) *)@,%a@]"
-         output_signat sgnt1  output_modul mdl  output_signat sgnt2
+      if ( ! Flags.do_sigapp ) then
+	fprintf ppf "@[%a(%a) @]"
+          output_signat sgnt1  output_modul mdl
+      else
+	fprintf ppf "@[<v>(** %a(%a) *)@,%a@]"
+          output_signat sgnt1  output_modul mdl  output_signat sgnt2
 
 and output_modul ppf = function
     ModulName s -> fprintf ppf "%s" s

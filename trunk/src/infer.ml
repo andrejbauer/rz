@@ -617,7 +617,8 @@ let rec annotateModel cntxt = function
      in let (mdl2', summary2, sub2) = annotateModel cntxt mdl2
      in match ( substSummary sub1 summary1 ) with
           Summary_Functor ( ( mdlnm, thry11 ), summary12 ) ->  
-            if ( thry11 = substTheory sub2 ( summaryToTheory summary2 ) ) then
+            if ( etaEquivTheories thry11 
+		    (substTheory sub2 ( summaryToTheory summary2 ) ) ) then
 	       let    newapp     = ModelApp (mdl1', mdl2')
                in let sub        = insertModelvar emptysubst mdlnm mdl2'
                in ( ModelApp (mdl1', mdl2'), summary12, sub )
@@ -1509,8 +1510,8 @@ and annotateTheory cntxt = function
            | Summary_Functor ( ( arg, argthry ), summary_result ) -> 
                   (* XXX  substTheory isn't capture avoiding!!! 
                    *)
-               if ( argthry = 
-		      substTheory sub (summaryToTheory summary_mdl) ) then
+               if ( etaEquivTheories argthry 
+		      ( substTheory sub (summaryToTheory summary_mdl) ) )then
                   let sub = insertModelvar emptysubst arg mdl'
                   in ( TheoryApp ( thry', mdl' ),
 		       substSummary sub summary_result )

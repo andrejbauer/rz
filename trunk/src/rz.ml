@@ -15,7 +15,9 @@ let command_line_options =
    ("--show", Arg.Set Flags.do_print, "Show output on stdout (default)");
    ("--noshow", Arg.Clear Flags.do_print, "No output to stdout");
    ("--save", Arg.Set Flags.do_save, "Send output to .mli file (default)");
-   ("--nosave", Arg.Clear Flags.do_save, "No output to file")
+   ("--nosave", Arg.Clear Flags.do_save, "No output to file");
+   ("--sigapp", Arg.Set Flags.do_sigapp, "Retain signature applications");
+   ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)")
   ]
 
 (** One-line usage message
