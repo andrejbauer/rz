@@ -144,22 +144,21 @@ let rec translateSet ctx = function
   | L.Exp (s, t) ->
       let {ty=u; per=(x,x',p)} = translateSet ctx s in
       let {ty=v; per=(y,y',q)} = translateSet ctx t in
+      let z = fresh [x; mk_word "x"; mk_word "y"] [] ctx in
+      let z' = fresh [x'; mk_word "x'"; mk_word "y'"] [z] ctx in
+      let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"] [z;z'] ctx in
+      let g = fresh [mk_word "g"; mk_word "h"; mk_word "k"] [f;z;z'] ctx in
 	{ ty = ArrowTy (u, v);
 	  tot = (
-	    let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"] [x;x'] ctx in
 	      (f,
-	       Forall ((x, u),
-	       Forall ((x', u),
-	         Imply (p,
+	       Forall ((z, u),
+	       Forall ((z', u),
+	         Imply (substProp [(x, Id z); (x', Id z')] p,
 			substProp [(y, App (Id f, Id x)); (y', App (Id f, Id x'))] q)
 		      ))
 	      )
 	  );
 	  per = (
-	    let z = fresh [x; mk_word "x"; mk_word "y"] [] ctx in
-	    let z' = fresh [x'; mk_word "x'"; mk_word "y'"] [x] ctx in
-	    let f = fresh [mk_word "f"; mk_word "g"; mk_word "h"] [z;z'] ctx in
-	    let g = fresh [mk_word "g"; mk_word "h"; mk_word "k"] [f;z;z'] ctx in
 	      (f, g,
 	       Forall ((z,u),
                Forall ((z',u),

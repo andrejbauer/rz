@@ -8,8 +8,6 @@ thy
 
   implicit x,y,z : g
 
-  axiom useless (x : g) = x = x
-
   axiom unit x =
   begin
     e * x = x and x * e = x

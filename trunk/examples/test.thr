@@ -1,9 +1,15 @@
-theory foo =
+theory Foo =
 thy
-  stable relation (~) f g =
-    (all (n : nat) . f n = false) <=> (all (n : nat). g n = false)
+  set s
+  const f : s * s -> s
 
-  set t = (nat -> 2)/(~)
+  implicit x, y, x', y' : s
 
-  const p = match x x with `foo a -> g a | `bar b -> f b end
+  axiom bar = all x . all y . f(x, y) = f(y, x)
+
+
+  axiom foo = all x . all y . (
+    x = y => 
+    all x' . all y' . (x' = y' => f (x', y') = f (x, y))
+  )
 end
