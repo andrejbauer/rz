@@ -37,20 +37,22 @@ let read fn =
              then print_string ("[Processing " ^ fn ^ "]\n") 
           else () in
   let fin = open_in fn in
-  let lexbuf = Lexing.from_channel fin
+  let lexbuf = Lexing.from_channel fin in
   try
-    let e = Parser.toplevels Lexer.token lexbuf
-      close_in fin ;
-    e
+    let e = Parser.toplevels Lexer.token lexbuf in
+      (close_in fin ;
+       e)
   with
     Parsing.Parse_error ->
-      let ( pos : Lexer.position ) = lexbuf.Lexing.lex_curr_p in
+      let pos = lexbuf.Lexing.lex_curr_p in
       begin
-        print "Syntax error detected at line ";
-        print ( string_of_int pos.Lexing.pos_lnum );
-        print " column ";
-        print ( string_of_int ( pos.Lexing.pos_cnum - pos.Lexing.pos_bol ) );
-        raise Parsing.Parse_Error 
+        print_string "Syntax error detected at line ";
+        print_string ( string_of_int pos.Lexing.pos_lnum );
+        print_string " column ";
+        print_string ( string_of_int ( pos.Lexing.pos_cnum - 
+					 pos.Lexing.pos_bol ) );
+        print_string "\n";
+        raise Parsing.Parse_error 
       end
 
 (* Helper function:  parses a string [currently unused]. *)
@@ -84,7 +86,7 @@ let rec process = function
 	List.map Logic.make_toplevel thy' in
 
       let (spec,translate_state') = 
-	Translate.translateToplevels translate_state lthy in
+	Translate.translateToplevel translate_state lthy in
 
       let (spec2,opt_state') = 
 	Opt.optToplevels opt_state spec in

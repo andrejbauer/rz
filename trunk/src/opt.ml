@@ -485,7 +485,7 @@ and optElems ctx = function
        let (rest', ctx') = optElems ctx rest in
 	 (AssertionSpec assertion' :: rest'), ctx'
 
-  | ModulSpec (name,signat) :: rest -> 
+  |  ModulSpec (name,signat) :: rest -> 
       let (signat',summary) = optSignat ctx signat
       in let ctx'' = insertModul ctx name summary
       in let (rest', ctx''') = optElems ctx'' rest 
