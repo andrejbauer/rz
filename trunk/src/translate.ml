@@ -505,7 +505,7 @@ and translateTheoryElement ctx = function
 
   | L.Sentence (_, nm, mbind, bind, p) ->
       let args, ctx' = processModelBinding ctx mbind in
-	StructureSpec 
+	StructureSpec (String.upercase
 
 (*
       begin
