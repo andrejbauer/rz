@@ -368,19 +368,39 @@ and output_specs ppf = function
   | spec::specs -> 
       fprintf ppf "%a@, @,%a" output_spec spec output_specs specs
 
-and output_signat ppf = function
+and output_signat_no_sigapp ppf = function
     SignatName s -> fprintf ppf "%s" s
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
          m   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl,sgnt2) ->
+      fprintf ppf "@[<v>(** %a(%a) *)@, %a@]"
+         output_signat_sigapp sgnt1
+         output_modul mdl
+         output_signat_no_sigapp sgnt2
+
+and output_signat_sigapp ppf = function
+    SignatName s -> fprintf ppf "%s" s
+  | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
+  | SignatFunctor ((m,sgnt1),sgnt2) ->
+      fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
+         m   output_signat sgnt1   output_signat sgnt2
+  | SignatApp (sgnt1,mdl,sgnt2) ->
+      fprintf ppf "@[%a(%a)@]"
+         output_signat_sigapp sgnt1    output_modul mdl
+
+and output_signat ppf = function
+    SignatName s -> fprintf ppf "%s" s
+  | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
+  | SignatFunctor ((m,sgnt1),sgnt2) ->
+      fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
+         m   output_signat sgnt1   output_signat sgnt2
+  | (SignatApp _) as sgnt ->
       if ( ! Flags.do_sigapp ) then
-	fprintf ppf "@[%a(%a) @]"
-          output_signat sgnt1  output_modul mdl
+        output_signat_no_sigapp ppf sgnt
       else
-	fprintf ppf "@[<v>(** %a(%a) *)@,%a@]"
-          output_signat sgnt1  output_modul mdl  output_signat sgnt2
+        output_signat_sigapp ppf sgnt
 
 and output_modul ppf = function
     ModulName s -> fprintf ppf "%s" s

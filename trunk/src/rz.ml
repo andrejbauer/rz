@@ -130,28 +130,30 @@ let rec process = function
       in 
 	process (fns, infer_state', translate_state', opt_state');;
 
-(** Check that we have specified at least one file.
-    (Of course, we could just as well omit this check and simply 
-     do nothing if no filenames are specified)
-  *)
-if Array.length(Sys.argv) >= 2 then
-  (** If so, parse all the command-line options and store the names
-      of all the files to be processed *)
-  try
-     Arg.parse_argv Sys.argv command_line_options addFile usage_msg 
-  with 
-     Arg.Bad s -> (print_string s;
-                   raise (Arg.Bad ""))
-else
-  Arg.usage command_line_options usage_msg;;
+(** MAIN PROGRAM *)
 
-(** Finally, translate the theories in the order specified on the
+try
+  (** Check that we have specified at least one file.
+    (Of course, we could just as well omit this check and simply 
+    do nothing if no filenames are specified)
+  *)
+  begin
+    if Array.length(Sys.argv) >= 2 then
+    (** If so, parse all the command-line options and store the names
+      of all the files to be processed *)
+      Arg.parse_argv Sys.argv command_line_options addFile usage_msg 
+    else
+      Arg.usage command_line_options usage_msg
+  end ;
+
+  (** Finally, translate the theories in the order specified on the
     command-line (which is the reverse of the order that they were
     stored).
-*)
-   process (List.rev !filenames, 
-	 Infer.emptyCtx, 
-	 Translate.emptyCtx, 
-	 Opt.emptyCtx);;
-
-
+  *)
+  process (List.rev !filenames, 
+	   Infer.emptyCtx, 
+	   Translate.emptyCtx, 
+	   Opt.emptyCtx)
+with
+    Arg.Bad s
+  | Arg.Help s -> prerr_endline s

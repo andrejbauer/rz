@@ -560,14 +560,15 @@ let freshNameString =
     Eta-equivalence (extensionality) test for theories
  *)
 let rec etaEquivTheories thry1 thry2 = 
+(*
     let _ = print_endline "First theory" in 
     let _ = print_endline (string_of_theory thry1) in
     let _ = print_endline "Second theory" in
     let _ = print_endline (string_of_theory thry2) in
+*)
   (match (thry1, thry2) with
   | (TheoryFunctor ((mdlnm1, thry11), thry12), 
      TheoryFunctor ((mdlnm2, thry21), thry22)) ->
-      let _ = print_string "WWW" in
        (etaEquivTheories thry11 thry21) 
 	 && let mdlnm3 = freshNameString() 
 	 in let sub1 = insertModelvar emptysubst mdlnm1 (ModelName mdlnm3)

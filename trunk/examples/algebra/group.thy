@@ -24,7 +24,7 @@ end
 
 
 # Sometimes a group is axiomatized with existence
-# axioms for inverse and neutral
+# axioms for inverse and neutral element
 theory GroupViaExistence =
 thy
   set g
