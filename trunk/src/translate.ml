@@ -608,7 +608,7 @@ and translateTheoryElement ctx = function
 	in
 	let (b, r) = fold ctx [] bind in 
 	let b' = bind' @ b in
-	  [ ValSpec (n, ArrowTy (TupleTy (List.map snd b'), ty));
+	  [ ValSpec (n, substTYType ctx setsubst (ArrowTy (TupleTy (List.map snd b'), ty)));
 	    AssertionSpec ((Syntax.string_of_name n) ^ "_rz", b', r)
 	  ]
       end,
