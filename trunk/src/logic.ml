@@ -200,14 +200,19 @@ and subst x t =
 let ln_of_name (S.N(str,sort)) = LN(str,[],sort)
 let ln_of_string str = LN (str, [], S.Word)
 
-let rec string_of_ln (LN (nm, nms, _)) = String.concat "." (nm :: nms)
-
-let ln_of_modelproj mdl nm =
+let ln_of_modelproj mdl nm nmtyp =
   let rec lom acc = function
-      S.ModelName m -> LN (m, acc, S.Word)
+      S.ModelName m -> LN (m, acc, nmtyp)
     | S.ModelProj (mdl, lbl) -> lom (lbl :: acc) mdl
   in
     lom [nm] mdl
+
+let ln_of_term = function
+    S.Var nm -> ln_of_name nm
+  | S.MProj (mdl, nm, nmtyp) -> ln_of_modelproj mdl nm nmtyp
+  | _ -> failwith "Name or long name expected"
+
+let rec string_of_ln (LN (nm, nms, _)) = String.concat "." (nm :: nms)
 
 let rec string_of_set = function
     Empty -> "empty"
@@ -255,7 +260,7 @@ let rec make_set = function
   | S.Unit -> Unit
   | S.Bool -> Bool
   | S.Set_name nm -> Basic (ln_of_string nm)
-  | S.Set_mproj (mdl, lbl) -> Basic (ln_of_modelproj mdl lbl)
+  | S.Set_mproj (mdl, lbl) -> Basic (ln_of_modelproj mdl lbl S.Word)
   | S.Product lst -> Product (List.map make_set lst)
   | S.Sum lst -> Sum (List.map
 			(function (lb, None) -> (lb, None) 
@@ -263,7 +268,7 @@ let rec make_set = function
                       lst)
   | S.Exp (s, t) -> Exp (make_set s, make_set t)
   | S.Subset ((n, Some s), phi) -> Subset ((n, make_set s), make_proposition phi)
-  | S.Quotient (s, r) -> Quotient (make_set s, r)
+  | S.Quotient (s, r) -> Quotient (make_set s, ln_of_term r)
   | S.Rz s -> Rz (make_set s)
   | S.Prop -> PROP
   | S.EquivProp -> EQUIV
@@ -277,10 +282,13 @@ and make_bindings b = List.map (fun (n, Some s) -> (n, make_set s)) b
 and make_proposition = function
     S.False -> False
   | S.True -> True
-  | S.App (S.Var n, t) -> Atomic (n, make_term t)
-  | S.App (S.App (S.Var n, u), v) -> Atomic (n, Tuple [make_term u; make_term v])
-  | S.App (_, _) -> (print_string "Application of non-variable\n";
-                     raise Unimplemented)
+  | (S.App _) as prop ->
+      let rec collect acc = function
+	  S.App (u1, u2) -> collect ((make_term u2)::acc) u1
+	| u -> u, List.rev acc
+      in
+      let hd, apps = collect [] prop in
+	Atomic (ln_of_term hd, List.rev apps)
   | S.And lst -> And (List.map make_proposition lst)
   | S.Imply (phi, psi) -> Imply (make_proposition phi, make_proposition psi)
   | S.Iff (phi, psi) -> Iff (make_proposition phi, make_proposition psi)
@@ -302,7 +310,7 @@ and make_proposition = function
 	  raise HOL)
 
 and make_term = function
-    S.Var n -> Var n
+    S.Var n -> Var (ln_of_name n)
   | S.Constraint (t, _) -> make_term t
   | S.Star -> Star
   | S.Tuple lst -> Tuple (List.map make_term lst)
@@ -318,10 +326,10 @@ and make_term = function
   | S.Lambda ((n, Some s), t) -> Lambda ((n, make_set s), make_term t)
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
-  | S.Quot (t, r) -> Quot (make_term t, r)
+  | S.Quot (t, r) -> Quot (make_term t, ln_of_term r)
   | S.RzQuot t -> RzQuot (make_term t)
   | S.RzChoose ((n, Some s), t, u) -> RzChoose ((n, make_set s), make_term t, make_term u)
-  | S.Choose ((n, Some s), r, t, u) -> Choose ((n, make_set s), r, make_term t, make_term u)
+  | S.Choose ((n, Some s), r, t, u) -> Choose ((n, make_set s), ln_of_term r, make_term t, make_term u)
   | S.Let (n, t, u) -> failwith "Let not impliemented"
   | _ -> (print_string "unrecognized term\n";
 	  raise HOL)

@@ -1,3 +1,7 @@
+- BUG (2004-06-29) [Andrej]:
+  the underlying type of a predicate such as < cannot be
+  called < as well. Should be something like lt.
+
 - BUG (2004-06-17) [Andrej]:
   when a parametrized axiom is translated, some assertions are
   missing in the hypotheses (the "trivial" ones)

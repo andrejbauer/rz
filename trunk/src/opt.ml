@@ -34,7 +34,7 @@ let rec peek = function
     | (y,(k,v)::rest) -> if (y=k) then Some v else peek(y,rest)
 
 let rec lookupName = function
-      (y,[]) -> (print_string ("Unbound name: " ^ string_of_name y ^ "\n");
+      (y,[]) -> (print_string ("Unbound name: " ^ Syntax.string_of_name y ^ "\n");
                  raise NotFound)
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
 
@@ -52,7 +52,8 @@ type ctx = {types      : (name*ty) list;
            }
 
 let rec string_of_ctx {types=types; tydefs=tydefs; models=models} =
-  "{ types = [" ^ (String.concat "," (List.map (fun (n,t) -> (string_of_name n) ^ ":" ^ (string_of_ty t)) types)) ^ "],\n" ^
+  "{ types = [" ^ (String.concat "," (List.map (fun (n,t) ->
+				       (Syntax.string_of_name n) ^ ":" ^ (string_of_ty t)) types)) ^ "],\n" ^
   "  tydefs = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ty t)) tydefs)) ^ "],\n" ^
   "  models = [" ^ (String.concat "," (List.map (fun (n,t) -> n ^ ":" ^ (string_of_ctx t)) models)) ^ "],\n" ^
  "}"
@@ -78,16 +79,16 @@ let insertModel ({models=models} as ctx) str ctx' =
 let emptyCtx = {types = []; tydefs = []; models = []}
 
 let rec peekLong peeker ctx = function
-    (Syntax.LN(str, [], namesort) as lname) -> 
+    (Logic.LN(str, [], namesort) as lname) -> 
        peeker ctx (Syntax.N(str,namesort))
-  | (Syntax.LN(str, label::labels, namesort) as lname) ->
+  | (Logic.LN(str, label::labels, namesort) as lname) ->
        let ctx' = lookupModel ctx str in
-	 peekLong peeker ctx' (Syntax.LN(label,labels,namesort))
+	 peekLong peeker ctx' (Logic.LN(label,labels,namesort))
 
 (** Expand out any top-level definitions for a set *)
 let rec hnfTy ctx = function
     NamedTy n ->
-      (match (peekTydef ctx (string_of_longname n)) with
+      (match (peekTydef ctx (Logic.string_of_ln n)) with
         Some s' -> hnfTy ctx s'
       | None -> NamedTy n)
   | s -> s
@@ -310,7 +311,7 @@ and optProp ctx = function
   | IsPredicate nm -> IsPredicate nm
   | NamedTotal(str, e) -> NamedTotal(str, optTerm' ctx e)
   | NamedPer(str, e1, e2) -> NamedPer(str, optTerm' ctx e1, optTerm' ctx e2)
-  | NamedProp(str, e1, e2) -> NamedProp(str, optTerm' ctx e1, optTerm' ctx e2)
+  | NamedProp(str, e1, es2) -> NamedProp(str, optTerm' ctx e1, List.map (optTerm' ctx) es2)
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2
@@ -393,14 +394,16 @@ and optElems ctx = function
        let rest', ctx'' = optElems ctx rest in
 	 (AssertionSpec (name, bnds', optProp ctx' prop) :: rest'), ctx''
 
-  |  TySpec(Syntax.N(str,_) as n, None) :: rest -> 
-       let rest', ctx' = optElems ctx rest in
-	 (TySpec (n, None) :: rest'), insertTydef ctx' str TYPE
+  | StructureSpec _ :: rest -> failwith "Optimization of StructureSpec not implemented"
 
-  |  TySpec(Syntax.N(str,_) as n, Some ty) :: rest ->
+  |  TySpec(nm, None) :: rest -> 
+       let rest', ctx' = optElems ctx rest in
+	 (TySpec (nm, None) :: rest'), insertTydef ctx' nm TYPE
+
+  |  TySpec(nm, Some ty) :: rest ->
        let ty' = optTy ctx ty in
-       let rest', ctx' = optElems (insertTydef ctx str ty') rest in
-	 TySpec(n, Some ty') :: rest', (insertTydef ctx' str ty')
+       let rest', ctx' = optElems (insertTydef ctx nm ty') rest in
+	 TySpec(nm, Some ty') :: rest', (insertTydef ctx' nm ty')
 
 let optSignat ctx = function
     SignatID s ->

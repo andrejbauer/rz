@@ -89,10 +89,10 @@ let getTheory n ctx =
     find ctx
 
 let rec getLong getter ctx = function
-    (S.LN(str, [], namesort) as lname) -> getter (Syntax.N(str,namesort)) ctx
-  | (S.LN(str, lab::labs, namesort) as lname) ->
+    (L.LN(str, [], namesort) as lname) -> getter (Syntax.N(str,namesort)) ctx
+  | (L.LN(str, lab::labs, namesort) as lname) ->
       let ctx' = getModel str ctx
-      in getLong getter ctx' (Syntax.LN(lab, labs, namesort))
+      in getLong getter ctx' (L.LN(lab, labs, namesort))
 
 
 (** *** *)
@@ -118,8 +118,9 @@ let make_type_name _ = function
 
 (** translation functions *)
 
-let toLN (Syntax.N(str,sort)) = Syntax.LN(str,[],sort)
-let toId (Syntax.N(str,sort)) = Id(Syntax.LN(str,[],sort))
+let toLN = Logic.ln_of_name
+let toId nm = Id (toLN nm)
+let ln_of_string = Logic.ln_of_string
 
 let rec translateSet (ctx : context) = function
     L.Empty -> 
@@ -228,7 +229,7 @@ let rec translateSet (ctx : context) = function
 	  per = (
 	    let u = fresh [z] [] ctx in
 	    let u' = fresh [z'] [u] ctx in
-	      u, u', NamedProp (r, Dagger, Tuple [toId u; toId u'])
+	      u, u', NamedProp (r, Dagger, [Tuple [toId u; toId u']])
 	  )
 	}
 
@@ -342,13 +343,13 @@ and translateProp ctx = function
 
   | L.True -> (TopTy, any, True)
 
-  | L.Atomic (n, t) ->
+  | L.Atomic (n, trms) ->
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let ty = (match fst (getLong getProp ctx n) with
 		    Syntax.Unstable -> NamedTy n
 		  | Syntax.Stable | Syntax.Equivalence -> TopTy)
       in
-	(ty, r, NamedProp (n, toId r, translateTerm ctx t))
+	(ty, r, NamedProp (n, toId r, List.map (translateTerm ctx) trms))
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
@@ -445,17 +446,17 @@ and translateBinding ctx bind =
 and translateTheoryElement ctx = function
     L.Set n -> 
       [TySpec (n, None); 
-       AssertionSpec ("per_" ^ (Syntax.string_of_name n), [], IsPer n)],
-      addBind n L.SET ctx
+       AssertionSpec ("per_" ^ n, [], IsPer n)],
+      addBind (Syntax.N(n, Syntax.Word)) L.SET ctx
 
   | L.Let_set (n, s) ->
       (let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
 	[TySpec (n, Some t);
-	 AssertionSpec ((Syntax.string_of_name n) ^ "_def_total", [(x,t)], Iff (NamedTotal (toLN n, toId x), p));
-	 AssertionSpec ((Syntax.string_of_name n) ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (toLN n, toId y, toId y'), q))
+	 AssertionSpec (n ^ "_def_total", [(x,t)], Iff (NamedTotal (ln_of_string n, toId x), p));
+	 AssertionSpec (n ^ "_def_per", [(y,t); (y',t)], Iff (NamedPer (ln_of_string n, toId y, toId y'), q))
 	]
       ),
-      addSet n s ctx
+      addSet (Syntax.N(n, Syntax.Word)) s ctx
 
   | L.Predicate (n, stab, s) -> begin
       let rec domain = function
@@ -470,7 +471,7 @@ and translateTheoryElement ctx = function
 	((if stab = Syntax.Stable or stab = Syntax.Equivalence then
 	    []
 	  else
-	    [TySpec (n, None)])) @
+	    [TySpec (Syntax.string_of_name n, None)])) @
 	[AssertionSpec ("predicate_" ^ (Syntax.string_of_name n), [], IsPredicate n)],
 	addProp n (stab, None) ctx
     end
@@ -480,10 +481,10 @@ and translateTheoryElement ctx = function
       let ctx' = addBinding bind ctx in
       let (ty, r, p') = translateProp ctx' p in
       let r' = fresh [r] (List.map fst bind) ctx in
-	[TySpec (n, Some ty);
+	[TySpec (Syntax.string_of_name n, Some ty);
 	 AssertionSpec ((Syntax.string_of_name n) ^ "_def",
 	   (r',ty) :: bind',
-	   Iff (NamedProp (toLN n, toId r', Tuple (List.map (fun (y,_) -> toId y) bind)),
+	   Iff (NamedProp (toLN n, toId r', List.map (fun (y,_) -> toId y) bind),
 		substProp ctx ([(r, toId r')]) p'))
 	],
 	addProp n (stab, Some (bind, p)) ctx
@@ -505,7 +506,7 @@ and translateTheoryElement ctx = function
 
   | L.Sentence (_, nm, mbind, bind, p) ->
       let mbind', ctx' = translateModelBinding ctx mbind in
-	[StructureSpec (Syntax.N (String.uppercase (string_of_name nm), S.Word),
+	[StructureSpec (Syntax.N (String.uppercase (Syntax.string_of_name nm), S.Word),
 			mbind',
 			Signat [(* XXX missing stuff, use ctx' here *)])],
       ctx

@@ -22,4 +22,3 @@ else
   let spec = Translate.translateTheorydefs Translate.emptyCtx lthy in
   let spec2 = if opt then Opt.optSignatdefs Opt.emptyCtx spec else spec in
     List.iter (fun s -> print_string ((Outsyn.string_of_signatdef s) ^ "\n")) spec2
-  print_string "\nSUCCESS.\n"
