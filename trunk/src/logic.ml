@@ -250,11 +250,11 @@ let rec string_of_set = function
 (** *** *)
 
 let rename = function
-  | "<" -> "_lt"
-  | ">" -> "_gt"
+  | "<" -> "_less"
+  | ">" -> "_greater"
   | "<=" -> "_leq"
   | ">=" -> "_geq"
-  | "=" -> "_eq"
+  | "=" -> "_equal"
   | "<>" -> "_neq"
   | str -> begin
       let names =
@@ -277,6 +277,7 @@ let typename_of_name = function
 
 let typename_of_longname = function
     LN (_, _, S.Word) as n -> n
+  | LN (p, [], _) -> LN (rename p, [], S.Word)
   | LN (p, ps, _) ->
       let rec map_last f = function
 	  [] -> []

@@ -390,6 +390,8 @@ and substTYType ctx s = function
   | TYPE -> TYPE
 *)
 
+(**** OLD CODE OLD CODE OLD CODE OLD CODE *)
+
 let string_of_ln = Logic.string_of_ln
 
 let rec string_of_ty' level t =

@@ -1,3 +1,47 @@
+- IMPROVEMENT (2004-12-30):
+  Add the --nosave/--save command line option to avoid saving .mli files.
+
+- IMPROVEMENT (2004-12-30):
+  Print
+
+    assure _ : top . phi in t
+
+  as
+
+    assure phi in t
+
+- IMPROVEMENT (2004-12-30):
+  Fold nested assures of the form
+
+    assure x : s . true in
+      assure y : t . true in
+        assure z : u . phi in e
+
+  to
+
+    assure x:s, y:t, z:u . phi in e
+
+  or similar syntax.
+
+- IMPROVEMENT (2004-12-30):
+  Consider adding Hilbert's epsilon ("any" operator):
+
+   any x . phi(x) in t
+
+  If you are going to do this, come up with at least one
+  reasonable example first.
+
+- IMPROVEMENT (2004-12-30):
+  Introduce _stable_ subsets with a syntax different from ordinary
+  subsets, e.g.,
+
+    { x : s | phi(x) }      stable
+    { x : s with phi(x) }   not stable
+
+  For stable subsets we could avoid coersions :> and <: (but would
+  still generate obligations in the output).
+  
+
 - BUG (2004-12-30) [Andrej]:
   Fix Outsyn.IsPredicate so that it refers not only to the
   predicate name but also its underlying type.

@@ -64,7 +64,7 @@ let getSet n ctx =
     
 let getProp n ctx =
   let rec find = function
-      [] -> raise Not_found
+      [] -> failwith ("No such proposition " ^ (match n with S.N(str,_) -> str))
     | (m, CtxProp (stb, x)) :: ctx' -> if n = m then (stb,x) else find ctx'
     | _ :: ctx' -> find ctx'
   in
@@ -365,6 +365,7 @@ and translateProp ctx = function
   | L.True -> (TopTy, any, True)
 
   | L.Atomic (n, trms) ->
+print_endline ("ATOMIC " ^ (L.string_of_ln n));
       let r = fresh [mk_word "r"; mk_word "q"; mk_word "s"] [] ctx in
       let ty = (match fst (getLong getProp ctx n) with
 		    S.Unstable -> NamedTy (L.typename_of_longname n)

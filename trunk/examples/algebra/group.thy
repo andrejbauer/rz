@@ -40,7 +40,7 @@ thy
   axiom neutral = some (e : g) . is_neutral(e)
 
 
-  # Now we want to show there exists exactly one neutral and
+  # We want to show there exists exactly one neutral and
   # define it. But we do not have the unique existential quantifier
   # and the description operators, so this is a big pain.
 
@@ -48,7 +48,7 @@ thy
  
   const e = the (e : g) . (is_neutral e)
 
-  # now we do a similar thing with inverses
+  # We do a similar thing with inverses
 
   predicate inverses x y =
     x * y = e and y * x = e
