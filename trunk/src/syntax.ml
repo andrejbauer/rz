@@ -71,6 +71,7 @@ and term =
   | Equal  of set option * term * term
   | Let    of binding * term * term * set option
   | Lambda of binding * term
+  | The    of binding * term
   | Forall of binding * term
   | Exists of binding * term
 
@@ -199,6 +200,8 @@ and string_of_term trm =
 	" in " ^ toStr trm2 ^ " : " ^ string_of_set st ^ ")"
     | Lambda(bnd,trm) ->
 	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | The(bnd,trm) ->
+	"(the " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Forall(bnd,trm) ->
 	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Exists(bnd,trm) ->

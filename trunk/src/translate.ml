@@ -300,6 +300,8 @@ and translateTerm ctx = function
 
   | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet ctx s).ty), translateTerm ctx t)
 
+  | L.The ((n, s), phi) -> Obligation ((n, s), phi, )
+
   | L.Inj (lb, None) -> Inj (lb, None)
 
   | L.Inj (lb, Some t) -> Inj (lb, Some (translateTerm ctx t))

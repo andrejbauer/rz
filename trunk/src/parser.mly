@@ -83,6 +83,7 @@
 %token STABLEPROP
 %token STAR
 %token STRUCTURE
+%token THE
 %token THEOREM
 %token THEORY
 %token THY
@@ -337,6 +338,7 @@ term:
   | term SUBOUT subset_or_longsetname  { Subout ($1, $3) }
   | MATCH term WITH cases END   { Case ($2, $4) }
   | LAMBDA name_typed PERIOD term { Lambda ($2, $4) }
+  | THE name_typed PERIOD term { The ($2, $4) }
   | FORALL name_typed PERIOD term { Forall ($2, $4) }
   | EXISTS name_typed PERIOD term { Exists ($2, $4) }
 

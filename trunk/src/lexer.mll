@@ -41,6 +41,7 @@
       "stable", STABLE;
       "Stable", STABLEPROP;
       "structure", MODEL;
+      "the", THE;
       "theorem", THEOREM;
       "theory", THEORY;
       "thy", THY ;

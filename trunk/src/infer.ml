@@ -1057,6 +1057,11 @@ and annotateTerm cntxt =
          in let (t', ty2) = annotateTerm cntxt' t
          in (Lambda(bnd',t'), Exp(ty1, ty2))
 
+     | The (bnd,t) ->
+         let    ((_,Some ty1) as bnd', cntxt') = annotateBinding cntxt bnd
+         in let (t', ty2) = annotateTerm cntxt' t
+         in (The(bnd',t'), ty1)
+
      | Subin (t, s) ->
 	 let s' = annotateSet cntxt s in
 	 let (t', ty) = annotateTerm cntxt t in

@@ -1,3 +1,7 @@
+- NEW (2004-12-22) [Andrej]:
+  allow parametrized axioms to be turned into polymorphic functions
+  (when possible) instead of functors.
+
 - BUG (2004-06-29) [Andrej]:
   the underlying type of a predicate such as < cannot be
   called < as well. Should be something like lt.
@@ -16,14 +20,14 @@
   Make sure that all the exceptional names contain vowels.
 
 - IMPROVEMENT (2004-06-17) [Andrej]:
-  Rename "thy" to "thr" OR rename ".thr" to ".thy"
+  Rename "thy" to "thr" XOR rename ".thr" to ".thy"
 
 - IMPROVEMENT (2004-06-17) [Chris]:
   Use fewer implementations of contexts, maybe.
 
 - NEW (2004-06-17) [Andrej]:
   Add abbreviations for common groups of assertions (such as "is a per").
-  Allow the use to use or not use them via run-time option.
+  Allow the user to use or not via run-time option.
 
 - IMPROVEMENT (2004-06-17):
   Comment source code.
