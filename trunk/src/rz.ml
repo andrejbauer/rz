@@ -82,13 +82,13 @@ let rec process = function
       let (thy', infer_state') = 
 	Infer.annotateToplevels infer_state thy in
 
-(*
+
       let _ = 
         let print_item tplvl = 
 	   (print_endline (Syntax.string_of_toplevel tplvl);
 	    print_endline "")
 	in List.iter print_item thy' in
-*)
+
 
       let lthy = 
 	(* The translation to Logic form is syntax-directed and 
@@ -99,7 +99,8 @@ let rec process = function
 	Translate.translateToplevel translate_state lthy in
 
       let (spec2,opt_state') = 
-	Opt.optToplevels opt_state spec in
+	(try ( Opt.optToplevels opt_state spec ) with
+	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
 	
       (** The output file replaces the .thr extension by .mli *)
       let outfile = (Filename.chop_extension fn) ^ ".mli" in

@@ -47,9 +47,11 @@ let rec lookupName = function
 (** Context carried around by the type reconstruction algorithm.
  *)
 type ctx = {types      : ty NameMap.t;
-               (** Typing context; types for names in scope *)
+               (** Typing context; types for names in scope.
+		   Records the UNoptimized type. *)
             tydefs     : ty TyNameMap.t;
-               (** Definitions of type/set variables in scope *)
+               (** Definitions of type variables in scope.
+                   Records the UNoptimized type definition *)
             moduli     : (modul_name * sig_summary ) list
            }
 
@@ -276,13 +278,14 @@ let rec optTerm ctx = function
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
      in (TupleTy ts, Tuple es', topTyize (TupleTy ts'))
- | Proj (n,e) ->
+ | Proj (n,e) as proj_code ->
      let (ty, e', _) = optTerm ctx e
      in let tys = 
                match  hnfTy ctx ty with
 		 TupleTy tys -> tys
 	       | ty_bad -> (print_string (Outsyn.string_of_ty ty ^ "\n");
 			    print_string (Outsyn.string_of_ty ty_bad ^ "\n");
+			    print_endline (Outsyn.string_of_term proj_code);
 			    raise (Impossible "Proj"))
      in let rec loop = function
          (ty::tys, TopTy::tys', nonunits, index) ->
@@ -503,7 +506,7 @@ and optElems ctx = function
   |  TySpec(nm, Some ty, assertions) :: rest ->
        let ty' = optTy ctx ty in
 	 (** We might care about expanding a definition for nm, though *)
-       let ctx' = insertTydef ctx nm ty'  in
+       let ctx' = insertTydef ctx nm ty  in
        let assertions' = List.map (optAssertion ctx') assertions in
        let rest', ctx'' = optElems ctx'  rest in
 	 TySpec(nm, Some ty',assertions') :: rest', (insertTydef ctx'' nm ty')
