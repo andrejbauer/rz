@@ -1,0 +1,139 @@
+\documentclass[11pt,letter]{book}
+
+\usepackage{makeidx}
+\usepackage{fancyheadings}
+\usepackage{amsmath}
+\usepackage{theorem}
+\usepackage{moreverb}
+
+%----------------------------------------------------------------------
+% PAGE STYLE
+
+% Instead of the fullpage package we set custom margins
+
+\topmargin 0.2in
+\advance \topmargin by -\headheight
+\advance \topmargin by -\headsep
+     
+\textheight 8.5in
+
+\oddsidemargin 0.1in
+\evensidemargin -0.1in
+\marginparwidth 0.5in
+     
+\textwidth 6.5in
+
+\pagestyle{fancyplain}
+
+\setlength{\headrulewidth}{0.2pt}
+\addtolength{\headheight}{2pt}
+
+\renewcommand{\chaptermark}[1]{\markboth{#1}{}}
+\renewcommand{\sectionmark}[1]{\markright{\thesection\ #1}}
+
+\lhead[\fancyplain{}{{\thepage}}]%
+      {\fancyplain{}{{\rightmark}}}
+\rhead[\fancyplain{}{{\leftmark}}]%
+      {\fancyplain{}{\thepage}}
+\cfoot{}
+\lfoot[]{}
+\rfoot[]{}
+
+\newcommand{\clearemptydoublepage}{\newpage{\pagestyle{empty}\cleardoublepage}}
+
+
+%----------------------------------------------------------------------
+% MACROS & ENVIRONMENTS
+
+
+% For displaying source code
+\newcommand{\sourcefile}[1]{
+  \begin{quote}
+    \small
+    \listinginput{1}{#1}
+  \end{quote}
+}
+
+\newenvironment{shell}%
+{\quote\small
+\verbatim}%
+{\endverbatim\endquote\medskip}
+
+\newenvironment{source}%
+{\quote\small
+\listing{1}}%
+{\endlisting\endquote\medskip}
+
+
+% theory names
+\newcommand{\thy}[1]{\mathtt{#1}}
+
+
+%----------------------------------------------------------------------
+% FRONT MATTER
+
+\title{RZ User Manual}
+\author{%
+  Andrej Bauer
+  \and
+  Christopher Stone
+}
+
+%----------------------------------------------------------------------
+% INDEX
+\makeindex
+
+%----------------------------------------------------------------------
+\begin{document}
+
+\pagestyle{empty}
+
+\maketitle
+
+{
+\renewcommand{\markboth}[2]{}
+\tableofcontents
+}
+
+%----------------------------------------------------------------------
+\pagestyle{fancyplain}
+
+\include{chapter1}
+\include{chapter2}
+\include{chapter3}
+\include{chapter4}
+\include{chapter5}
+\include{appendix}
+
+
+%--------------------------------------------------------------------
+% BIBLIOGRAPHY
+
+\bibliographystyle{alpha}
+\addcontentsline{toc}{chapter}{\numberline{}{Bibliography}}
+\markboth{}{Bibliography}
+
+{
+\raggedright
+\renewcommand{\markboth}[2]{}
+\bibliography{rz}
+}
+
+%----------------------------------------------------------------------
+% INDEX
+
+\clearemptydoublepage
+
+\addcontentsline{toc}{chapter}{\numberline{}Index}
+
+\markboth{}{Index}
+
+{
+\renewcommand{\markboth}[2]{}
+\printindex
+}
+
+%----------------------------------------------------------------------
+% THE END
+
+\end{document}
