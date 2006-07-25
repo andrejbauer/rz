@@ -160,7 +160,7 @@ theory_elements:
 
 theory_element:
     SET NAME args	        { Set ($2, $3, None) }
-  | SET NAME args EQUAL set	{ Set ($2, $3, Some $4) }
+  | SET NAME args EQUAL set	{ Set ($2, $3, Some $5) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
   | CONSTANT name_typed EQUAL term { Let_term ($2, None, $4) }
   | CONSTANT name_typed args EQUAL term { Let_term ($2, Some $3, $5) }
@@ -256,6 +256,10 @@ simple_set:
   | simple_set PERCENT longtermname    { Quotient ($1, $3) }
   | RZ simple_set               { Rz $2 }
 
+apply_set:
+    simple_set                  { $1 }
+  | apply_set simple_term       { SetApp ($1, $2) }
+
 subset:
     LBRACE name BAR term RBRACE { Subset (($2, None), $4) }
   | LBRACE name COLON set BAR term RBRACE { Subset (($2, Some $4), $6) }
@@ -266,21 +270,27 @@ subset_or_longsetname:
     subset  { $1 }
   | longsetname { $1 }
 
-product:
-    simple_set STAR simple_set        { [$1; $3] }
-  | product STAR simple_set           { $1 @ [$3] }
+product_list:
+    apply_set STAR apply_set        { [(None, $1); (None, $3)] }
+  | LPAREN name COLON set RPAREN STAR apply_set  { [(Some $2, $4); (None, $7)] }
+  | LPAREN name COLON set RPAREN STAR product_list  { (Some $2, $4) :: $7 }
+  | product_list STAR apply_set           { $1 @ [$3] }
 
-sum:
-    LABEL COLON simple_set             { [($1, Some $3)] }
-  | LABEL                              { [($1, None)] }
-  | sum PLUS LABEL                     { $1 @ [($3, None)] }
-  | sum PLUS LABEL COLON simple_set    { $1 @ [($3, Some $5)] }
+product:
+    product_list                { Product $1 }
+  | apply_set                   { $1 }
+
+sum_list:
+    LABEL COLON product               { [($1, Some $3)] }
+  | LABEL                             { [($1, None)] }
+  | sum_list PLUS LABEL               { $1 @ [($3, None)] }
+  | sum_list PLUS LABEL COLON product { $1 @ [($3, Some $5)] }
 
 set:
-    simple_set                  { $1 }
-  | product                     { Product $1 }
-  | sum                         { Sum $1 }
-  | set ARROW set               { Exp ($1, $3) }
+    product                                  { $1 }
+  | sum_list                                 { Sum $1 }
+  | LPAREN name COLON set RPAREN ARROW set   { Exp (Some $2, $4, $7) }
+  | set ARROW set                            { Exp (None, $1, $3) }
 
 simple_term:
     TRUE                        { True }

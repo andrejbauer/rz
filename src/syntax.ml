@@ -28,14 +28,16 @@ and set =
     Empty                            (** empty set, a.k.a, void *)
   | Unit                             (** unit set *)
   | Bool                             (** booleans *)
-  | Set_name of model option * set_name * term list (** atomic set *)
-  | Product  of (name option * set) list (** finite (dependent) product *)
+  | Set_name of model option * set_name   (** atomic set *)
+  | Product  of (name option * set) list  (** finite (dependent) product *)
   | Sum      of (label * set option) list (** finite coproduct *)
-  | Exp      of (name option * set) * set (** function space *)
+  | Exp      of name option * set * set (** function space *)
   | Subset   of binding * term       (** subset *)
   | Quotient of set * term           (** quotient set *)
   | Rz of set                        (** the set of realizers *)
+  | SetApp of set * term             (** application of a dependent set *)
 
+  | Set                              (** Only for typechecker internals! *)
   | Prop                             (** Only for typechecker internals! *)
   | EquivProp                        (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
@@ -193,11 +195,11 @@ let rec string_of_set set =
       Empty -> "0"
     | Unit  -> "1"
     | Bool  -> "2"
-    | Set_name (None, stnm, args) -> stnm ^
+    | Set_name (None, stnm) -> stnm
     | Set_name (Some mdl, stnm) -> string_of_model mdl ^ "." ^ stnm
     | Product sets -> "(" ^ String.concat " * " (List.map toStr sets) ^ ")"
     | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"
-    | Exp (set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
+    | Exp (None, set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
     | Prop -> "Prop"
     | StableProp -> "StableProp"
     | EquivProp -> "EquivProp"
@@ -217,7 +219,7 @@ let rec string_of_set set =
 
   in
     toStr set)
-    
+
 and string_of_term trm =
   (let rec toStr = function
       Var(None, nm)  -> string_of_name nm
