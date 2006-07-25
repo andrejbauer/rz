@@ -4,6 +4,6 @@ Module Type AC.
   Parameter r : s -> t -> Set.
 
   Definition ac :=
-    (forall x : s, exists y : t, r x y) ->
-    (exists f : s -> t, forall x : s, r x (f x)).
+    (forall x : s, exists y : t, (r x y)) ->
+    (exists f : s -> t, forall x : s, (r x (f x))).
 End AC.
