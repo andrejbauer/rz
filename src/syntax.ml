@@ -28,10 +28,10 @@ and set =
     Empty                            (** empty set, a.k.a, void *)
   | Unit                             (** unit set *)
   | Bool                             (** booleans *)
-  | Set_name of model option * set_name  (** atomic set *)
-  | Product  of set list             (** finite product *)
+  | Set_name of model option * set_name * term list (** atomic set *)
+  | Product  of (name option * set) list (** finite (dependent) product *)
   | Sum      of (label * set option) list (** finite coproduct *)
-  | Exp      of set * set            (** function space *)
+  | Exp      of (name option * set) * set (** function space *)
   | Subset   of binding * term       (** subset *)
   | Quotient of set * term           (** quotient set *)
   | Rz of set                        (** the set of realizers *)
@@ -84,8 +84,8 @@ and sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 and propKind = Stable | Unstable | Equivalence
 
 and theory_element =
-    Set           of set_name * set option
-  | Predicate     of name * propKind * set
+    Set           of set_name * (name * set) list * set option
+  | Predicate     of name * propKind * set (* Eventually we want parametrized predicates. *)
   | Let_predicate of name * propKind * binding list * term
   | Let_term      of binding * binding list option * term
   | Value         of name * set
@@ -193,7 +193,7 @@ let rec string_of_set set =
       Empty -> "0"
     | Unit  -> "1"
     | Bool  -> "2"
-    | Set_name (None, stnm) -> stnm
+    | Set_name (None, stnm, args) -> stnm ^
     | Set_name (Some mdl, stnm) -> string_of_model mdl ^ "." ^ stnm
     | Product sets -> "(" ^ String.concat " * " (List.map toStr sets) ^ ")"
     | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"

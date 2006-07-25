@@ -159,8 +159,8 @@ theory_elements:
   | theory_element theory_elements	{ $1 :: $2 }
 
 theory_element:
-    SET NAME  			{ Set ($2, None) }
-  | SET NAME EQUAL set		{ Set ($2, Some $4) }
+    SET NAME args	        { Set ($2, $3, None) }
+  | SET NAME args EQUAL set	{ Set ($2, $3, Some $4) }
   | CONSTANT name COLON set	{ Value ($2, $4) }
   | CONSTANT name_typed EQUAL term { Let_term ($2, None, $4) }
   | CONSTANT name_typed args EQUAL term { Let_term ($2, Some $3, $5) }

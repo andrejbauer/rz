@@ -2,7 +2,7 @@ module L = Logic
 module S = Syntax
 open Outsyn 
 
-exception Unimplemented
+(* exception Unimplemented *)
 
 (** contexts (environments)
     We're anticipating dependent contexts here so we have a single
