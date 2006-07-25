@@ -13,3 +13,5 @@ End SILLINESS.
 
 Module AcSilly (Thing : AC) : SILLINESS.
 End AcSilly.
+
+Extraction "acSilly.ml" AcSilly.
