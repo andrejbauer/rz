@@ -66,6 +66,14 @@ let tyUnboundError trm =
      print_string "\n\n";
      raise TypeError)
 
+let notProperSetError ty inty  =
+	    (print_string "\nTYPE ERROR: ";
+	     print_string (string_of_set ty);
+	     print_string " is not a proper set in";
+	     print_string (string_of_set inty);
+	     print_string "\n\n";
+	     raise TypeError)
+
 (**************************)
 (** {2 Utility Functions} *)
 (**************************)
@@ -86,18 +94,21 @@ let mkKind = function
 let rec isSet = function
     Empty | Unit | Bool | Set_name _ -> true
 
-  | Product lst -> List.for_all isSet lst
+  | Product lst -> List.for_all2 (function (_, s) -> isSet s) lst
   | Sum     lst -> List.for_all (function (_, None) -> true | 
                                           (_, Some s) -> isSet s) lst
   | Subset   ((_, Some st), _) -> isSet st
   | Subset   _          -> false
   | Rz       st         -> isSet st
   | Quotient (st,_)     -> isSet st
-  | Exp      (st1, st2) -> isSet st1 && isSet st2
+  | Exp      (_, st1, st2) -> isSet st1 && isSet st2
+  | SetApp _ -> raise Unimplemented
 
   | Prop       -> false
   | StableProp -> false
   | EquivProp  -> false
+  | Set        -> false
+  | SetLambda (_, _) -> false
 
 
 (** isProp : set -> bool
@@ -111,13 +122,13 @@ let rec isSet = function
 *)
 and isProp = function
     Empty | Unit | Bool | Set_name _ | Product _
-  | Sum _ | Subset _ | Rz _ | Quotient _ -> false
+  | Sum _ | Subset _ | Rz _ | Quotient _ | Set | SetLambda _ -> false
 
   | Prop       -> true
   | StableProp -> true
   | EquivProp  -> true
 
-  | Exp (s, t) -> isSet s && isProp t
+  | Exp (_, s, t) -> isSet s && isProp t
 
 (** propKind: set -> propKind
 
@@ -128,7 +139,7 @@ let rec propKind = function
     Prop -> Unstable
   | StableProp -> Stable
   | EquivProp -> Equivalence
-  | Exp (s, t) -> propKind t
+  | Exp (_, s, t) -> propKind t
   | t -> failwith ("propKind of a non-proposition: " ^ (string_of_set t))
 
 (** isInfix : name -> bool
@@ -899,26 +910,79 @@ let rec makeEquivalence cntxt nm = function
       else
 	tyGenericError ("Ill-typed equivalence " ^ (string_of_name nm))
 
+(** Given a list of kinds, check that they're proper-Set *)
+let allSets ks =
+	List.for_all (function k -> k = Set) ks
+
+let rec annotateProduct cntxt nss ->
+	(let rec ann cntxt = function
+		   [] -> []
+		 | (nopt, s) :: rest ->     
+				let s' = annotateProperSet cntxt s (Product nss)
+				in let cntxt' = match nopt with
+						 None -> cntxt
+					   | Some n -> insertVar cntxt n s'
+		  	       in s' :: ann cntxt' rest
+	 in	(Product (ann cntxt nss), Set) )
+
+let rec annotateSum cntxt lsos ->
+	(let rec ann lbls_used = function
+		   [] -> []
+
+		 | (l, sopt) :: rest ->
+			 if (not (List.mem l lbls_used)) then
+			   (match sopt with
+				   None -> (l, sopt) 
+				 | Some s -> let s' = annotateProperSet cntxt s (Sum lsos)
+				             in (l, Some s')
+			    ) :: 
+			   ann (l :: lbls_used rest) rest
+			 else
+				tyGenericError
+					("Duplicate label" ^
+					 (string_of_label l) ^
+					 "in the sum" ^
+					 (string_of_sum (Sum lsos)))
+			
+	 in ( Sum (ann [] lsos), Set ) )
+
+let annotateExp cntxt = function
+	(Exp(nopt,s1,s2)) as s ->
+  	  let  s1' = annotateProperSet cntxt s1 s
+      in let cntxt' = match nopt with
+			                None -> None
+			              | Some n -> insertVar cntxt n s1'
+	  in let s2' = annotateProperSet cntxt' s2 s
+	  in ( Exp(nopt,s1',s2'), Set )
+	| _ -> raise Impossible
+	
+let annotateProperSet cntxt s in_s =
+	let (s', k) = annotateSet cntxt s
+	in if (k = Set) then 
+	      s'
+	   else 
+	      notProperSetError s in_s	
+	
 (** Given a contxt and a set, return the annotated version of the set.
 
     Raises an error if the set is not well-formed.
 *)
 let rec annotateSet cntxt = 
-    (let rec ann = function
-          Product ss -> Product (List.map ann ss)
-        | Sum lsos   -> Sum (List.map (function (l,sopt) -> 
-                                         (l,annotateSetOpt cntxt sopt))
-                                      lsos)
+    (let rec ann orig_set = 
+	    match orig_set with
+          Product nss -> annotateProduct nss
 
-        | Exp(s1,s2) -> Exp (ann s1, ann s2)
+        | Sum lsos   -> annotateSum lsos
+
+        | (Exp _) -> annotateExp orig_set
 
         | Subset(bnd, p) -> 
              let (bnd',cntxt') = annotateBinding cntxt bnd
-             in let p',_ = annotateProp cntxt' p
-             in Subset(bnd', p')
+             in let (p',_) = annotateProp cntxt' p
+             in ( Subset(bnd', p'), Set )
 
         | Quotient(st, trm) ->
-	    let    st' = ann st
+	    let    st' = annotateProperSet cntxt st orig_set
 	    in
 	     (match equivalenceAt cntxt trm with
 		  None -> tyGenericError 
@@ -931,12 +995,12 @@ let rec annotateSet cntxt =
 		      tyGenericError
 			("Wrong domain for equivalence relation in " ^
 			 string_of_set (Quotient(st,trm))))
-        | Rz st -> Rz (ann st)
-        | Set_name (None, stnm) as orig_set ->
+        | (Rz st) -> ( Rz(annotateProperSet cntxt st orig_set), Set )
+        | Set_name (None, stnm) ->
              (if (peekSet cntxt stnm) then
-		 orig_set
-	      else tyGenericError ("Set not found: " ^ stnm))
-	| Set_name (Some mdl, stnm) as orig_set -> 
+		        orig_set
+	          else tyGenericError ("Set not found: " ^ stnm))
+	| Set_name (Some mdl, stnm) -> 
 	    let (mdl', summary, _) = annotateModel cntxt mdl
 	    in (match summary with
 	          Summary_Struct(_, items) -> 
@@ -1463,6 +1527,7 @@ and annotateTheoryElem cntxt = function
         (cntxt, Comment cmmnt, OtherSpec)
 
   | Predicate (nm, stblty, st) ->
+	  (* XXX Predicates must be on proper sets *)
       let st' = annotateSet cntxt st in
       let st1 = makeProp nm st' (mkKind stblty) in
       let st2 = (if isInfix nm then makeBinaryCurried st1 else st1) in
