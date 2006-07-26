@@ -37,10 +37,19 @@ and set =
   | Rz of set                        (** the set of realizers *)
   | SetApp of set * term             (** application of a dependent set *)
 
-  | Set                              (** Only for typechecker internals! *)
   | Prop                             (** Only for typechecker internals! *)
   | EquivProp                        (** Only for typechecker internals! *)
   | StableProp                       (** Only for typechecker internals! *)
+  | SetLambda of (name * set) list * set  (** Only for typechecker internals!...Currently *)
+
+and kind =
+	KindSet                          (** Classifier of proper sets. *)
+		                             (**   i.e., something which could classify a term *)
+  | KindArrow set * kind             (** Classifier for parameterized type names.  *)
+	                                 (**   e.g., if we want to allow intlist[n]  then *)
+	                                 (**   intlist   ::  int => Set   *)
+  (* | KindForall of name * kind * kind *)  
+
 
 and term =
     Var        of model option * name
@@ -189,6 +198,8 @@ let rec string_of_name = function
     N(str,Word) -> str
   | N("*",_) -> "( * )"
   | N(str,_) -> "(" ^ str ^ ")"
+
+let string_of_label l = l
 
 let rec string_of_set set = 
   (let rec toStr = function 
