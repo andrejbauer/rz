@@ -8,9 +8,9 @@ OCAMLYFLAGS = -v
 
 INCLUDES =
 
-OCAMLFLAGS = -w p $(INCLUDES) -g
+OCAMLFLAGS = $(INCLUDES) -g
 OCAMLCPFLAGS = 
-OCAMLOPTFLAGS = -w p $(INCLUDES) -unsafe -inline 5 
+OCAMLOPTFLAGS =  $(INCLUDES) -unsafe -inline 5 
 
 BYTE_OBJS = syntax.cmo \
 	message.cmo \
