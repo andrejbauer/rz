@@ -965,7 +965,7 @@ let annotateProperSet cntxt s in_s =
 	
 (** Given a contxt and a set, return the annotated version of the set.
 
-    Raises an error if the set is not well-formed.
+    Raises an informitive error if the set is not well-formed.
 *)
 let rec annotateSet cntxt = 
     (let rec ann orig_set = 
@@ -981,6 +981,25 @@ let rec annotateSet cntxt =
              in let (p',_) = annotateProp cntxt' p
              in ( Subset(bnd', p'), Set )
 
+        | SetApp(st, trm) ->
+		 	 let (st', k_st') = ann st'
+		     in let (trm', st_trm') -> 
+		     in match k_st' with
+			      KindArrow(st_k_st', k_k_st') ->
+				    if (eqSet cntxt st_trm' st_k_st') then
+				       (* Need to do some substitutions, but Syntax's substitution
+					      functions aren't capture-avoiding! *)
+				       raise Unimplemented
+				    else
+					   tyGenericError
+					   (Term ^ (string_of_term trm) ^ 
+					    "is not a valid argument to " ^
+					    (string_of_set st))
+				| _ -> tyGenericError
+				       ((string_of_set st) ^ 
+				        "does not take arguments; not even" ^
+				        (string_of_term trm)) 
+
         | Quotient(st, trm) ->
 	    let    st' = annotateProperSet cntxt st orig_set
 	    in
@@ -990,7 +1009,7 @@ let rec annotateSet cntxt =
 		     string_of_term trm)
 		| Some (domain_st, trm') -> 
 		    if (eqSet cntxt st' domain_st) then
-		      Quotient(st', trm')
+		      (Quotient(st', trm'), Set)
 		    else
 		      tyGenericError
 			("Wrong domain for equivalence relation in " ^

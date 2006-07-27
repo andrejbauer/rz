@@ -274,8 +274,7 @@ product_list:
     apply_set STAR apply_set        { [(None, $1); (None, $3)] }
   | LPAREN name COLON set RPAREN STAR apply_set  { [(Some $2, $4); (None, $7)] }
   | LPAREN name COLON set RPAREN STAR product_list  { (Some $2, $4) :: $7 }
-  | product_list STAR apply_set           { $1 @ [$3] }
-
+ 
 product:
     product_list                { Product $1 }
   | apply_set                   { $1 }
