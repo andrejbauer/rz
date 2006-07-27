@@ -914,62 +914,62 @@ let rec makeEquivalence cntxt nm = function
 let allSets ks =
 	List.for_all (function k -> k = Set) ks
 
-let rec annotateProduct cntxt nss ->
-	(let rec ann cntxt = function
-		   [] -> []
-		 | (nopt, s) :: rest ->     
-				let s' = annotateProperSet cntxt s (Product nss)
-				in let cntxt' = match nopt with
-						 None -> cntxt
-					   | Some n -> insertVar cntxt n s'
-		  	       in s' :: ann cntxt' rest
-	 in	(Product (ann cntxt nss), Set) )
+let rec annotateProduct cntxt nss = 
+    (let rec ann cntxt = function
+           [] -> []
+         | (nopt, s) :: rest ->     
+                let s' = annotateProperSet cntxt s (Product nss)
+                in let cntxt' = match nopt with
+                         None -> cntxt
+                       | Some n -> insertVar cntxt n s'
+                     in s' :: ann cntxt' rest
+     in    (Product (ann cntxt nss), Set) )
 
 let rec annotateSum cntxt lsos ->
-	(let rec ann lbls_used = function
-		   [] -> []
+    (let rec ann lbls_used = function
+           [] -> []
 
-		 | (l, sopt) :: rest ->
-			 if (not (List.mem l lbls_used)) then
-			   (match sopt with
-				   None -> (l, sopt) 
-				 | Some s -> let s' = annotateProperSet cntxt s (Sum lsos)
-				             in (l, Some s')
-			    ) :: 
-			   ann (l :: lbls_used rest) rest
-			 else
-				tyGenericError
-					("Duplicate label" ^
-					 (string_of_label l) ^
-					 "in the sum" ^
-					 (string_of_sum (Sum lsos)))
-			
-	 in ( Sum (ann [] lsos), Set ) )
+         | (l, sopt) :: rest ->
+             if (not (List.mem l lbls_used)) then
+               (match sopt with
+                   None -> (l, sopt) 
+                 | Some s -> let s' = annotateProperSet cntxt s (Sum lsos)
+                             in (l, Some s')
+                ) :: 
+               ann (l :: lbls_used rest) rest
+             else
+                tyGenericError
+                    ("Duplicate label" ^
+                     (string_of_label l) ^
+                     "in the sum" ^
+                     (string_of_sum (Sum lsos)))
+            
+     in ( Sum (ann [] lsos), Set ) )
 
 let annotateExp cntxt = function
-	(Exp(nopt,s1,s2)) as s ->
-  	  let  s1' = annotateProperSet cntxt s1 s
+    (Exp(nopt,s1,s2)) as s ->
+        let  s1' = annotateProperSet cntxt s1 s
       in let cntxt' = match nopt with
-			                None -> None
-			              | Some n -> insertVar cntxt n s1'
-	  in let s2' = annotateProperSet cntxt' s2 s
-	  in ( Exp(nopt,s1',s2'), Set )
-	| _ -> raise Impossible
-	
+                            None -> None
+                          | Some n -> insertVar cntxt n s1'
+      in let s2' = annotateProperSet cntxt' s2 s
+      in ( Exp(nopt,s1',s2'), Set )
+    | _ -> raise Impossible
+    
 let annotateProperSet cntxt s in_s =
-	let (s', k) = annotateSet cntxt s
-	in if (k = Set) then 
-	      s'
-	   else 
-	      notProperSetError s in_s	
-	
+    let (s', k) = annotateSet cntxt s
+    in if (k = Set) then 
+          s'
+       else 
+          notProperSetError s in_s    
+    
 (** Given a contxt and a set, return the annotated version of the set.
 
     Raises an informitive error if the set is not well-formed.
 *)
 let rec annotateSet cntxt = 
     (let rec ann orig_set = 
-	    match orig_set with
+        match orig_set with
           Product nss -> annotateProduct nss
 
         | Sum lsos   -> annotateSum lsos
@@ -982,54 +982,54 @@ let rec annotateSet cntxt =
              in ( Subset(bnd', p'), Set )
 
         | SetApp(st, trm) ->
-		 	 let (st', k_st') = ann st'
-		     in let (trm', st_trm') -> 
-		     in match k_st' with
-			      KindArrow(st_k_st', k_k_st') ->
-				    if (eqSet cntxt st_trm' st_k_st') then
-				       (* Need to do some substitutions, but Syntax's substitution
-					      functions aren't capture-avoiding! *)
-				       raise Unimplemented
-				    else
-					   tyGenericError
-					   (Term ^ (string_of_term trm) ^ 
-					    "is not a valid argument to " ^
-					    (string_of_set st))
-				| _ -> tyGenericError
-				       ((string_of_set st) ^ 
-				        "does not take arguments; not even" ^
-				        (string_of_term trm)) 
+              let (st', k_st') = ann st'
+             in let (trm', st_trm') -> 
+             in match k_st' with
+                  KindArrow(st_k_st', k_k_st') ->
+                    if (eqSet cntxt st_trm' st_k_st') then
+                       (* Need to do some substitutions, but Syntax's substitution
+                          functions aren't capture-avoiding! *)
+                       raise Unimplemented
+                    else
+                       tyGenericError
+                       (Term ^ (string_of_term trm) ^ 
+                        "is not a valid argument to " ^
+                        (string_of_set st))
+                | _ -> tyGenericError
+                       ((string_of_set st) ^ 
+                        "does not take arguments; not even" ^
+                        (string_of_term trm)) 
 
         | Quotient(st, trm) ->
-	    let    st' = annotateProperSet cntxt st orig_set
-	    in
-	     (match equivalenceAt cntxt trm with
-		  None -> tyGenericError 
-		    ("Not an stable equivalence relation: " ^ 
-		     string_of_term trm)
-		| Some (domain_st, trm') -> 
-		    if (eqSet cntxt st' domain_st) then
-		      (Quotient(st', trm'), Set)
-		    else
-		      tyGenericError
-			("Wrong domain for equivalence relation in " ^
-			 string_of_set (Quotient(st,trm))))
+        let    st' = annotateProperSet cntxt st orig_set
+        in
+         (match equivalenceAt cntxt trm with
+          None -> tyGenericError 
+            ("Not an stable equivalence relation: " ^ 
+             string_of_term trm)
+        | Some (domain_st, trm') -> 
+            if (eqSet cntxt st' domain_st) then
+              (Quotient(st', trm'), Set)
+            else
+              tyGenericError
+            ("Wrong domain for equivalence relation in " ^
+             string_of_set (Quotient(st,trm))))
         | (Rz st) -> ( Rz(annotateProperSet cntxt st orig_set), Set )
         | Set_name (None, stnm) ->
              (if (peekSet cntxt stnm) then
-		        orig_set
-	          else tyGenericError ("Set not found: " ^ stnm))
-	| Set_name (Some mdl, stnm) -> 
-	    let (mdl', summary, _) = annotateModel cntxt mdl
-	    in (match summary with
-	          Summary_Struct(_, items) -> 
-		    if (peekSet' items stnm) then
-		      Set_name(Some mdl', stnm)
-		    else
-		      tyGenericError ( "Unknown component " ^ 
-				       string_of_set orig_set )
-  	        | _ -> tyGenericError 
-		           "Set projection from parameterized model")
+                orig_set
+              else tyGenericError ("Set not found: " ^ stnm))
+    | Set_name (Some mdl, stnm) -> 
+        let (mdl', summary, _) = annotateModel cntxt mdl
+        in (match summary with
+              Summary_Struct(_, items) -> 
+            if (peekSet' items stnm) then
+              Set_name(Some mdl', stnm)
+            else
+              tyGenericError ( "Unknown component " ^ 
+                       string_of_set orig_set )
+              | _ -> tyGenericError 
+                   "Set projection from parameterized model")
         | s -> s
      in
         ann)
@@ -1050,24 +1050,24 @@ and annotateProp cntxt =
           False  -> (False, Stable)
         | True   -> (True, Stable)
         | And ps ->
-	    let lst = List.map ann ps in
-	      And (List.map fst lst),
-	      (if List.for_all (fun (_, s) -> s = Stable) lst then Stable else Unstable)
+        let lst = List.map ann ps in
+          And (List.map fst lst),
+          (if List.for_all (fun (_, s) -> s = Stable) lst then Stable else Unstable)
         | Or ps ->
-	    let lst = List.map ann ps in
-	      Or (List.map fst lst),
-	      (match lst with [] -> Stable | [_,s] -> s | _ -> Unstable)
+        let lst = List.map ann ps in
+          Or (List.map fst lst),
+          (match lst with [] -> Stable | [_,s] -> s | _ -> Unstable)
 
         | Imply (p1, p2) ->
-	    let p1', _ = ann p1 in
-	    let p2', stb2 = ann p2 in	      
-	      Imply (p1', p2'), stb2
+        let p1', _ = ann p1 in
+        let p2', stb2 = ann p2 in          
+          Imply (p1', p2'), stb2
 
         | Iff (p1, p2) ->
-	    let p1', stb1 = ann p1 in
-	    let p2', stb2 = ann p2 in	      
-	      Iff (p1', p2'),
-	      (if stb1 = Stable && stb2 = Stable then Stable else Unstable)
+        let p1', stb1 = ann p1 in
+        let p2', stb2 = ann p2 in          
+          Iff (p1', p2'),
+          (if stb1 = Stable && stb2 = Stable then Stable else Unstable)
 
         | Not p  -> Not (fst (ann p)), Stable
 
@@ -1075,12 +1075,12 @@ and annotateProp cntxt =
             let    (t1', ty1) = annotateTerm cntxt t1
             in let (t2', ty2) = annotateTerm cntxt t2
             in let ty3 = try (joinSet cntxt ty1 ty2) with
-		             TypeError -> tyGenericError 
-			       ("Cannot compare " ^ string_of_term t1 ^ " and "
-				  ^ string_of_term t2 ^ " for equality")
+                     TypeError -> tyGenericError 
+                   ("Cannot compare " ^ string_of_term t1 ^ " and "
+                  ^ string_of_term t2 ^ " for equality")
                           
             in
-	      Equal(Some ty3, t1', t2'), Stable
+          Equal(Some ty3, t1', t2'), Stable
 
         | Equal (Some s, t1, t2) ->
             let    ty = annotateSet cntxt s
@@ -1089,63 +1089,63 @@ and annotateProp cntxt =
             in if (subSet cntxt ty1 ty) && (subSet cntxt ty2 ty) then
                 Equal (Some ty, t1', t2'), Stable
               else
-	        tyGenericError 
-		  ("Cannot compare " ^ string_of_term t1 ^ " and "
-		   ^ string_of_term t2 ^ " for equality in set " ^
-		  string_of_set s)
+            tyGenericError 
+          ("Cannot compare " ^ string_of_term t1 ^ " and "
+           ^ string_of_term t2 ^ " for equality in set " ^
+          string_of_set s)
 
         | Forall(bnd, p) ->
             let (bnd',cntxt') = annotateBinding cntxt bnd in
             let (p', stb) = annotateProp cntxt' p
-	    in
-	      Forall(bnd', p'), stb
+        in
+          Forall(bnd', p'), stb
 
         | Exists(bnd, p) ->
             let (bnd',cntxt') = annotateBinding cntxt bnd
             in
-	      Exists (bnd', fst (annotateProp cntxt' p)), Unstable
+          Exists (bnd', fst (annotateProp cntxt' p)), Unstable
 
         | Unique(bnd, p) ->
             let (bnd',cntxt') = annotateBinding cntxt bnd
             in
-	      Unique (bnd', fst (annotateProp cntxt' p)), Unstable
+          Unique (bnd', fst (annotateProp cntxt' p)), Unstable
 
 (*
         | ForallModels (str, thr, p) ->
-	    let thr' = annotateTheory cntxt thr
-	    in let cntxt' = insertModel cntxt str thr'
-	    in let (p',stb) = annotateProp cntxt' p
+        let thr' = annotateTheory cntxt thr
+        in let cntxt' = insertModel cntxt str thr'
+        in let (p',stb) = annotateProp cntxt' p
             in (ForallModels(str,thr',p'), stb)
 *)
 
-	| Case(e, arms) -> 
-	    let (e', ty) = annotateTerm cntxt e
+    | Case(e, arms) -> 
+        let (e', ty) = annotateTerm cntxt e
 
-	    in let annArm = function
-		(l, None, prop) -> 
+        in let annArm = function
+        (l, None, prop) -> 
                   let prop', stab = ann prop
-		  in ((l, None, prop'), stab, (l, None))
+          in ((l, None, prop'), stab, (l, None))
               | (l, Some bnd, prop) ->
                   let    ((_,Some ty1) as bnd', cntxt') = annotateBinding cntxt bnd
-		  in let prop', stab = annotateProp cntxt' prop
-		  in ((l, Some bnd', prop'), stab, (l, Some ty1))
-	    in let l = List.map annArm arms
-	    in let newcase = Case (e', List.map (fun (a,_,_) -> a) l)
+          in let prop', stab = annotateProp cntxt' prop
+          in ((l, Some bnd', prop'), stab, (l, Some ty1))
+        in let l = List.map annArm arms
+        in let newcase = Case (e', List.map (fun (a,_,_) -> a) l)
             in let sum_set = Sum (List.map (fun (_,_,s) -> s) l)
-	    in
-	    if (eqSet cntxt sum_set ty) then
-	      newcase,
-	      (match l with [] -> Stable | [_,s,_] -> s | _ -> Unstable)
-	    else
-	      tyCaseError cntxt e ty sum_set
+        in
+        if (eqSet cntxt sum_set ty) then
+          newcase,
+          (match l with [] -> Stable | [_,s,_] -> s | _ -> Unstable)
+        else
+          tyCaseError cntxt e ty sum_set
 
         | t -> (match annotateTerm cntxt t with
                     (t', Prop) -> (t', Unstable)
                   | (t', StableProp) -> (t', Stable)
                   | (t', EquivProp) -> (t', Equivalence)
                   | _ -> tyGenericError (
-		      "Term " ^ string_of_term t ^ 
-		      " found where a proposition was expected"))
+              "Term " ^ string_of_term t ^ 
+              " found where a proposition was expected"))
     in ann)
 
 (** Given a context and a binding, returns the annotated binding
@@ -1163,8 +1163,8 @@ and annotateBinding cntxt = function
                                   Some s -> s
                                 | None -> 
                                    (tyGenericError ("Bound variable " ^ 
-						    string_of_name x ^ 
-						    " not annotated " ^
+                            string_of_name x ^ 
+                            " not annotated " ^
                                              "explicitly or implicitly."))))
          in let cntxt' = insertVar cntxt x s'
          in ((x, Some s'), cntxt')
@@ -1189,15 +1189,15 @@ and annotateBindingWithCheckedDefault cntxt default_st = function
     (x, None) -> annotateBindingWithDefault cntxt default_st (x, None)
   | (x, Some s2) -> let s2' = annotateSet cntxt s2 in
                     if (subSet cntxt default_st s2') then
-		      let cntxt' = insertVar cntxt x s2' in
-		      ((x, Some s2'), cntxt')
-		    else
-		      tyGenericError ( "Annotated Binding " ^ 
-				       string_of_bnd (x, Some s2) ^
-				       " doesn't match inferred set " ^ 
-				       string_of_set default_st )
-		 
-		 
+              let cntxt' = insertVar cntxt x s2' in
+              ((x, Some s2'), cntxt')
+            else
+              tyGenericError ( "Annotated Binding " ^ 
+                       string_of_bnd (x, Some s2) ^
+                       " doesn't match inferred set " ^ 
+                       string_of_set default_st )
+         
+         
 (**  Given a context and some bindings, annotate all the bindings.
      Returns the annotated bindings and a context with all the bindings 
      inserted.
@@ -1212,9 +1212,9 @@ and annotateBindings cntxt bnds =
   let rec loop = function 
       [] -> []
     | (bnd::bnds) -> 
-	let bnds' = loop bnds
-	in let (bnd',_) = annotateBinding cntxt bnd
-	in bnd' :: bnds'
+    let bnds' = loop bnds
+    in let (bnd',_) = annotateBinding cntxt bnd
+    in bnd' :: bnds'
   in let bnds' = loop bnds
   in (bnds', addBindings cntxt bnds')
 
@@ -1249,30 +1249,30 @@ and addMbindings cntxt = function
 and annotateTerm cntxt = 
   (let rec ann = function 
        Var (None, nm) as orig_trm -> 
-	 (match (peekTypeof cntxt nm) with
-	      Some ty -> (orig_trm, ty)
-	    | None -> tyUnboundError orig_trm)
+     (match (peekTypeof cntxt nm) with
+          Some ty -> (orig_trm, ty)
+        | None -> tyUnboundError orig_trm)
 
      | Var (Some mdl, nm) as orig_trm -> 
-	 let (mdl' as whereami, summary, subst) = annotateModel cntxt mdl
-	 in ( match summary with
-	        Summary_Struct ( _ , items) ->
-		  (match (peekTypeof' subst items (Some whereami) nm)with
-		    None -> tyGenericError ("Unknown component " ^
-					    string_of_term orig_trm)
-	          | Some st -> ( Var ( Some mdl', nm ), st ) )
+     let (mdl' as whereami, summary, subst) = annotateModel cntxt mdl
+     in ( match summary with
+            Summary_Struct ( _ , items) ->
+          (match (peekTypeof' subst items (Some whereami) nm)with
+            None -> tyGenericError ("Unknown component " ^
+                        string_of_term orig_trm)
+              | Some st -> ( Var ( Some mdl', nm ), st ) )
               | _ -> tyGenericError 
-		    ( "Term projection from parameterized model in:\n  " ^ 
-		      string_of_term orig_trm ) )
+            ( "Term projection from parameterized model in:\n  " ^ 
+              string_of_term orig_trm ) )
 
      | Constraint(t,s) ->
          let (t',ty) = ann t  in
          let s'      = annotateSet cntxt s  in
          begin
-	   match (coerce cntxt t' ty s') with
+       match (coerce cntxt t' ty s') with
              Some trm'' -> (Constraint(trm'',s'), s')
            | None       -> tyMismatchError t s' ty 
-	 end
+     end
     
      | Star -> (Star, Unit)
 
@@ -1284,143 +1284,143 @@ and annotateTerm cntxt =
          let    (trm', tuplety) = ann t
          in let (trm'', hnfty) = coerceFromSubset cntxt trm' tuplety
          in let tys = (match hnfty with
-	                  Product tys -> tys
-	               | _ -> tyWrongSortError t " tuple" tuplety)
+                      Product tys -> tys
+                   | _ -> tyWrongSortError t " tuple" tuplety)
          in if (n >= 0 && n < List.length tys) then
               ((Proj(n,trm''), List.nth tys n))
            else
               tyGenericError ("Projection " ^ string_of_int n ^ 
-			      " out of bounds")
+                  " out of bounds")
      | App (t1, t2) ->
         let (t1', ty1) = ann t1 in
         let (t2', ty2) = ann t2 in
         let (t1'',ty3,ty4) = (match (coerceFromSubset cntxt t1' ty1) with
-	                      (t1'', Exp(ty3,ty4)) -> (t1'',ty3,ty4)
-	                    | _ -> tyWrongSortError t1 " function" ty1)
+                          (t1'', Exp(ty3,ty4)) -> (t1'',ty3,ty4)
+                        | _ -> tyWrongSortError t1 " function" ty1)
         in
           ( match (coerce cntxt t2' ty2 ty3) with
               Some trm2'' ->  (App (t1'', trm2''), ty4)
             | None        ->  tyMismatchError t2 ty3 ty2 )
-	      
+          
      | Inj (l, None) ->
-	 (Inj (l, None), Sum [(l, None)])
+     (Inj (l, None), Sum [(l, None)])
 
      | Inj(l, Some e) -> 
          let (e', ty)= ann e
          in (Inj(l, Some e'), Sum [(l, Some ty)])
 
      | Case(e,arms) -> 
-	 let (e', ty) = ann e
+     let (e', ty) = ann e
          in let (e'', hnfty) = coerceFromSubset cntxt e' ty
-			  
-	 in let annArm = function
+              
+     in let annArm = function
                (l, None, e) -> 
                  let (e', ty2) = ann e
-		 in ((l, None, e'), (l, None), ty2)
+         in ((l, None, e'), (l, None), ty2)
            | (l, Some bnd, e) ->
                let ((_,Some ty1) as bnd', cntxt') = annotateBinding cntxt bnd
-	       in let (e', ty2) = annotateTerm cntxt' e
-	       in ((l, Some bnd', e'), (l, Some ty1), ty2)
+           in let (e', ty2) = annotateTerm cntxt' e
+           in ((l, Some bnd', e'), (l, Some ty1), ty2)
          in let getArm     = fun (arm,_,_) -> arm
          in let getSumPart = fun (_,sp,_) -> sp
          in let getReturn  = fun (_,_,ret) -> ret
-	 in let l       = List.map annArm arms
-	 in let newcase = Case(e'', List.map getArm l)
+     in let l       = List.map annArm arms
+     in let newcase = Case(e'', List.map getArm l)
          in let sum_set = Sum (List.map getSumPart l)
          in let return_set = joinSets cntxt (List.map getReturn l)
-	 in
-	   if (eqSet cntxt sum_set hnfty) then
-	     (newcase, return_set)
-	   else
-	     tyCaseError cntxt e ty sum_set
-	       
+     in
+       if (eqSet cntxt sum_set hnfty) then
+         (newcase, return_set)
+       else
+         tyCaseError cntxt e ty sum_set
+           
      | Quot(t, r) -> 
-	 let (t', ty) = ann t in
-	 begin
-	   match equivalenceAt cntxt r with
-		None -> 
-		  failwith (string_of_term r ^ " is not a stable equivalence")
-	      | Some(domain_st, r') ->
-		  if eqSet cntxt domain_st ty then
-		    (Quot(t',r'), Quotient(ty,r'))
-		  else
-		    tyGenericError
-		      ("Term " ^ string_of_term t ^ " is in " ^
-		       string_of_set ty ^ "\nbut " ^ string_of_term r ^
-		       " is a relation on " ^ string_of_set domain_st)
-	 end
-	     
+     let (t', ty) = ann t in
+     begin
+       match equivalenceAt cntxt r with
+        None -> 
+          failwith (string_of_term r ^ " is not a stable equivalence")
+          | Some(domain_st, r') ->
+          if eqSet cntxt domain_st ty then
+            (Quot(t',r'), Quotient(ty,r'))
+          else
+            tyGenericError
+              ("Term " ^ string_of_term t ^ " is in " ^
+               string_of_set ty ^ "\nbut " ^ string_of_term r ^
+               " is a relation on " ^ string_of_set domain_st)
+     end
+         
      | RzQuot t ->
-	 let (t', ty) = ann t in
-	   (match hnfSet cntxt ty with
-		Rz ty' -> RzQuot t', ty'
-	      | _ -> tyWrongSortError t "n RZ" ty)
+     let (t', ty) = ann t in
+       (match hnfSet cntxt ty with
+        Rz ty' -> RzQuot t', ty'
+          | _ -> tyWrongSortError t "n RZ" ty)
 
      | RzChoose (bnd, t1, t2, body_ty_opt) ->
-	 let (t1', ty1) = ann t1 in
-	 let ((nm, Some ty), cntxt') = annotateBindingWithCheckedDefault cntxt (Rz ty1) bnd in
-	 let (t2', ty2) = annotateTerm cntxt' t2 in
-	 (begin
-	   match hnfSet cntxt ty with
-	     Rz ty' ->
-	       if eqSet cntxt ty1 ty' then 
-		 begin
-		   (try (ignore(annotateSet cntxt ty2)) with
-		     _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
-					  "defns; maybe add a constraint?") ) ;
-		   ( match body_ty_opt with
-		       None -> ()
-		     | Some body_ty -> if (eqSet cntxt' (annotateSet cntxt body_ty) ty2 ) then
-		                         ()
-		                       else
-		                         tyGenericError ("Annotation of body in let[] is " ^ 
-							 string_of_set body_ty ^ 
-							 " but the body is really " ^
-							 string_of_set ty2 ) ) ;
-		   RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
-		 end
-	       else
-		 failwith "type mismatch in let [...] = "
-	   | _ -> failwith "type mismatch in let [...] = "
-	 end,
-	 ty2 )
+     let (t1', ty1) = ann t1 in
+     let ((nm, Some ty), cntxt') = annotateBindingWithCheckedDefault cntxt (Rz ty1) bnd in
+     let (t2', ty2) = annotateTerm cntxt' t2 in
+     (begin
+       match hnfSet cntxt ty with
+         Rz ty' ->
+           if eqSet cntxt ty1 ty' then 
+         begin
+           (try (ignore(annotateSet cntxt ty2)) with
+             _ -> tyGenericError ("Inferred let[]-body type depends on local " ^ 
+                      "defns; maybe add a constraint?") ) ;
+           ( match body_ty_opt with
+               None -> ()
+             | Some body_ty -> if (eqSet cntxt' (annotateSet cntxt body_ty) ty2 ) then
+                                 ()
+                               else
+                                 tyGenericError ("Annotation of body in let[] is " ^ 
+                             string_of_set body_ty ^ 
+                             " but the body is really " ^
+                             string_of_set ty2 ) ) ;
+           RzChoose ((nm, Some (Rz ty')), t1', t2', Some ty2)
+         end
+           else
+         failwith "type mismatch in let [...] = "
+       | _ -> failwith "type mismatch in let [...] = "
+     end,
+     ty2 )
 
      | Choose (bnd, r, t1, t2, body_ty_opt) ->
          (* let  nm      % r = t1 in t2
             let (nm : s) % r = t1 in t2 
           *)
-	 let ( t1', typ_of_eqclass ) = ann t1 in
-	 begin
+     let ( t1', typ_of_eqclass ) = ann t1 in
+     begin
            match ( hnfSet cntxt typ_of_eqclass ) with
-	     Quotient( ty_member, r' ) ->
-	       if ( r = r' ) then
-		 let ((nm, _) as bnd', cntxt') = 
-		   annotateBindingWithCheckedDefault cntxt ty_member bnd in 
-		 let ( t2', typ_of_body ) = annotateTerm cntxt' t2  in
-		 begin
+         Quotient( ty_member, r' ) ->
+           if ( r = r' ) then
+         let ((nm, _) as bnd', cntxt') = 
+           annotateBindingWithCheckedDefault cntxt ty_member bnd in 
+         let ( t2', typ_of_body ) = annotateTerm cntxt' t2  in
+         begin
                    ( try  ( ignore ( annotateSet cntxt typ_of_body ) ) with
-		     _ -> tyGenericError ("Inferred let%-body type " ^ 
-					  string_of_set typ_of_body ^ 
+             _ -> tyGenericError ("Inferred let%-body type " ^ 
+                      string_of_set typ_of_body ^ 
                                           "\ndepends on local defns; " ^
-					  "maybe add a constraint?") ) ;
-		   ( match body_ty_opt with
-		       None -> ()
-		     | Some body_ty -> if (eqSet cntxt' (annotateSet cntxt body_ty) 
-					     typ_of_body ) then
-		                         ()
-		                       else
-		                         tyGenericError ("Annotation of body in let% is " ^ 
-							 string_of_set body_ty ^ 
-							 " but the body is really " ^
-							 string_of_set typ_of_body ) ) ;
-		     (Choose (bnd', r, t1', t2', Some typ_of_body), typ_of_body )
-		 end
-	       else
-		 tyGenericError "Mismatch in let% equivalence relations"
-	   | _ -> tyGenericError ("Bound value " ^ (string_of_term t1) ^ 
-				  "\nin let% inferred as " ^
-				  (string_of_set typ_of_eqclass) )
-	 end
+                      "maybe add a constraint?") ) ;
+           ( match body_ty_opt with
+               None -> ()
+             | Some body_ty -> if (eqSet cntxt' (annotateSet cntxt body_ty) 
+                         typ_of_body ) then
+                                 ()
+                               else
+                                 tyGenericError ("Annotation of body in let% is " ^ 
+                             string_of_set body_ty ^ 
+                             " but the body is really " ^
+                             string_of_set typ_of_body ) ) ;
+             (Choose (bnd', r, t1', t2', Some typ_of_body), typ_of_body )
+         end
+           else
+         tyGenericError "Mismatch in let% equivalence relations"
+       | _ -> tyGenericError ("Bound value " ^ (string_of_term t1) ^ 
+                  "\nin let% inferred as " ^
+                  (string_of_set typ_of_eqclass) )
+     end
   
         
      | Let (bnd, t1, t2, None) ->
@@ -1436,10 +1436,10 @@ and annotateTerm cntxt =
          let    (t1', ty1) = ann t1
          in let (bnd',cntxt') = annotateBindingWithCheckedDefault cntxt ty1 bnd
          in let (t2', ty2) = annotateTerm cntxt' t2
-	 in let st' = annotateSet cntxt st
+     in let st' = annotateSet cntxt st
          in if (subSet cntxt' ty2 st') then
              (Let(bnd',t1',t2',Some st'), st')
-	   else
+       else
              tyGenericError ("Inferred let-body type does not match annotation")
 
      | Lambda (bnd,t) ->
@@ -1453,30 +1453,30 @@ and annotateTerm cntxt =
          in (The(bnd',t'), ty1)
 
      | Subin (t, s) ->
-	 let s' = annotateSet cntxt s in
-	 let (t', ty) = annotateTerm cntxt t in
-	   (match hnfSet cntxt s' with
-	     Subset ((_,Some ty'), _) -> 
-	       if (subSet cntxt ty ty') then
-		 (Subin (t', s'), s')
-	       else
-		 tyMismatchError t ty' ty
-	   | _ -> tyGenericError "<: with a non-subset-type")
+     let s' = annotateSet cntxt s in
+     let (t', ty) = annotateTerm cntxt t in
+       (match hnfSet cntxt s' with
+         Subset ((_,Some ty'), _) -> 
+           if (subSet cntxt ty ty') then
+         (Subin (t', s'), s')
+           else
+         tyMismatchError t ty' ty
+       | _ -> tyGenericError "<: with a non-subset-type")
 
      | Subout (t, s) ->
-	 let s' = annotateSet cntxt s in
-	 let (t', ty) = annotateTerm cntxt t in
-	   (match hnfSet cntxt ty with
-	     Subset ((_ ,Some ty'), _) -> 
-	       if (subSet cntxt ty' s') then
-		 (Subout (t', s'), s')
-	       else
-		 tyGenericError("Subset mismatch :<")
-	   | _ -> tyGenericError("Subset mismatch :<"))
+     let s' = annotateSet cntxt s in
+     let (t', ty) = annotateTerm cntxt t in
+       (match hnfSet cntxt ty with
+         Subset ((_ ,Some ty'), _) -> 
+           if (subSet cntxt ty' s') then
+         (Subout (t', s'), s')
+           else
+         tyGenericError("Subset mismatch :<")
+       | _ -> tyGenericError("Subset mismatch :<"))
 
      | prp -> tyGenericError ("Proposition " ^ 
-			      string_of_term prp ^ 
-			      " found where a term was expected")
+                  string_of_term prp ^ 
+                  " found where a term was expected")
    in ann)
 
 (** Given a context and a term, determines whether the term is a
@@ -1486,12 +1486,12 @@ and annotateTerm cntxt =
 *)
 and equivalenceAt cntxt trm =
    (match annotateTerm cntxt trm with  
-	(trm', Exp (u, Exp (v, EquivProp))) |
+    (trm', Exp (u, Exp (v, EquivProp))) |
         (trm', Exp (Product [u; v], EquivProp)) ->
-	  if (eqSet cntxt u v) then
-	    Some (u, trm')
-	  else
-	    None)
+      if (eqSet cntxt u v) then
+        Some (u, trm')
+      else
+        None)
 
 
 
@@ -1503,8 +1503,8 @@ and annotateTheoryElem cntxt = function
   | Set(stnm, Some st) -> 
       let st' = annotateSet cntxt st
       in (insertTydef cntxt stnm st', 
-	  Set(stnm, Some st'), 
-	  SetSpec(stnm, Some st'))
+      Set(stnm, Some st'), 
+      SetSpec(stnm, Some st'))
 
   | Value(nm,st) ->
       let ((_,Some st') as bnd', cntxt') = annotateBinding cntxt (nm, Some st)
@@ -1513,13 +1513,13 @@ and annotateTheoryElem cntxt = function
   | Let_term(bnd, None, trm) ->
       let   (trm', ty1) = annotateTerm cntxt trm
       in let ((nm,Some ty2) as bnd', cntxt') = 
-	  annotateBindingWithCheckedDefault cntxt ty1 bnd
+      annotateBindingWithCheckedDefault cntxt ty1 bnd
       in if (subSet cntxt ty1 ty2) then
           (cntxt', Let_term(bnd',None,trm'), TermSpec(nm,ty2))
       else
         tyGenericError ("Definition doesn't match constraint for " ^ 
-			string_of_bnd bnd)
-	  
+            string_of_bnd bnd)
+      
   | Let_term(bnd, Some args, trm) ->
        let    (args', cntxt') = annotateBindings cntxt args
        in let (trm', ty1) = annotateTerm cntxt' trm
@@ -1530,34 +1530,34 @@ and annotateTheoryElem cntxt = function
          (cntxt'', Let_term(bnd', Some args', trm'), TermSpec(nm, ty2))
        else
          tyGenericError ("Definition doesn't match constraint for " ^ 
-			 string_of_bnd bnd)
+             string_of_bnd bnd)
 
   | Sentence(sort, sentence_nm, mbnds, bnds, p) ->
       let (mbnds', cntxt') = annotateModelBindings cntxt mbnds in
       let (bnds',cntxt'') = annotateBindings cntxt' bnds in
       let (p',_) = annotateProp cntxt'' p in
         (** Specs cannot refer to previous axioms, though 
-	  the code matching this spec will. *)
+      the code matching this spec will. *)
         (cntxt, 
-	 Sentence(sort, sentence_nm, mbnds', bnds', p'),
-	 OtherSpec)
+     Sentence(sort, sentence_nm, mbnds', bnds', p'),
+     OtherSpec)
 
   | Comment cmmnt->
         (cntxt, Comment cmmnt, OtherSpec)
 
   | Predicate (nm, stblty, st) ->
-	  (* XXX Predicates must be on proper sets *)
+      (* XXX Predicates must be on proper sets *)
       let st' = annotateSet cntxt st in
       let st1 = makeProp nm st' (mkKind stblty) in
       let st2 = (if isInfix nm then makeBinaryCurried st1 else st1) in
       let st3 = (if stblty = Equivalence then makeEquivalence cntxt nm st2
-		 else st2) in
+         else st2) in
       let st4 = (if stblty = Stable then makeStable st3 else st3) in
       let stblty' = (if propKind st4 = Stable then Stable else stblty) in
       let cntxt' = insertVar cntxt nm st4 in
-	(cntxt',
-	 Predicate (nm, stblty', st'), 
-	 TermSpec(nm, st4))
+    (cntxt',
+     Predicate (nm, stblty', st'), 
+     TermSpec(nm, st4))
 
   | Let_predicate (n, stab, bnds, p) ->
       let    (bnds', cntxt') = annotateBindings cntxt bnds
@@ -1566,24 +1566,24 @@ and annotateTheoryElem cntxt = function
       in let ty = List.fold_right (fun x y -> Exp(x,y)) tys (mkKind stab')
       in let cntxt' = insertVar cntxt n ty
       in
-	if stab = Unstable or stab' = Stable then
-	  (cntxt', 
-	   (* XXX We could return stab' instead of stab if we wanted
+    if stab = Unstable or stab' = Stable then
+      (cntxt', 
+       (* XXX We could return stab' instead of stab if we wanted
               to be more permissive (e.g., treating a stable predicate
-	      as stable regardless of the user's annotation) *)
-	   Let_predicate (n, stab, bnds', p'),
-	   TermSpec(n, ty))
-	else
-	  failwith ("Could not determine that " ^ 
-		    (string_of_name n) ^ " is stable")
+          as stable regardless of the user's annotation) *)
+       Let_predicate (n, stab, bnds', p'),
+       TermSpec(n, ty))
+    else
+      failwith ("Could not determine that " ^ 
+            (string_of_name n) ^ " is stable")
 
   | Model (mdlnm, thry) ->
       let ( thry', summary ) = annotateTheory cntxt thry
       in let cntxt' = insertModel cntxt mdlnm summary
       in 
         ( cntxt', 
-	  Model ( mdlnm, thry' ), 
-	  ModelSpec ( mdlnm, summary ) )
+      Model ( mdlnm, thry' ), 
+      ModelSpec ( mdlnm, summary ) )
 
   | _ -> raise Impossible
 
@@ -1606,63 +1606,63 @@ and annotateModelBindings cntxt = function
   | (m, th) :: bnd ->
       let (th', summary) = annotateTheory cntxt th in
       let (bnd', cntxt') = annotateModelBindings cntxt bnd in
-	((m, th') :: bnd', (insertModel cntxt' m summary))
+    ((m, th') :: bnd', (insertModel cntxt' m summary))
 
 and annotateTheory cntxt = function
     Theory elems ->
-	let ( elems', items ) = annotateTheoryElems cntxt elems
+    let ( elems', items ) = annotateTheoryElems cntxt elems
         in  ( Theory elems', Summary_Struct (Theory elems', items ) )
 
   | TheoryName str -> (match peekTheory cntxt str with
-			 Some summary -> (TheoryName str, summary)
-		       | None -> tyGenericError ("Unknown theory: " ^ str))
+             Some summary -> (TheoryName str, summary)
+               | None -> tyGenericError ("Unknown theory: " ^ str))
 
   | TheoryFunctor ( arg, thry ) ->
-	let ( [(mdlnm, _) as arg'], cntxt' ) = 
+    let ( [(mdlnm, _) as arg'], cntxt' ) = 
           annotateModelBindings cntxt [arg] in
-	let (thry', summary) = annotateTheory cntxt' thry in 
+    let (thry', summary) = annotateTheory cntxt' thry in 
           ( TheoryFunctor ( arg', thry'), 
-	    Summary_Functor ( arg', summary) )
+        Summary_Functor ( arg', summary) )
 
   | TheoryApp (thry, mdl) as main_thry -> 
       let (thry', summary_thry) = annotateTheory cntxt thry in
       let (mdl', summary_mdl, sub) = annotateModel cntxt mdl in
-	begin
+    begin
           match summary_thry with
              Summary_Struct ( _ , _ ) -> 
                tyGenericError 
-		 ( "Application of non-parameterized theory in:\n  " ^
-		   string_of_theory main_thry )
+         ( "Application of non-parameterized theory in:\n  " ^
+           string_of_theory main_thry )
            | Summary_Functor ( ( arg, argthry ), summary_result ) -> 
                   (* XXX  substTheory isn't capture avoiding!!! 
                    *)
                if ( etaEquivTheories argthry 
-		      ( substTheory sub (summaryToTheory summary_mdl) ) )then
+              ( substTheory sub (summaryToTheory summary_mdl) ) )then
                   let sub = insertModelvar emptysubst arg mdl'
                   in ( TheoryApp ( thry', mdl' ),
-		       substSummary sub summary_result )
-	       else
-		 tyGenericError 
-		   ( "Incompatible model argument in:\n  " ^ 
-		     string_of_theory main_thry ^ "\nExpected: " ^
-		  string_of_theory argthry ^ "\nFound   : " ^ 
-		  string_of_theory ( substTheory sub (summaryToTheory summary_mdl) ) )
-	end
+               substSummary sub summary_result )
+           else
+         tyGenericError 
+           ( "Incompatible model argument in:\n  " ^ 
+             string_of_theory main_thry ^ "\nExpected: " ^
+          string_of_theory argthry ^ "\nFound   : " ^ 
+          string_of_theory ( substTheory sub (summaryToTheory summary_mdl) ) )
+    end
 
 and annotateToplevel cntxt = function
       Theorydef (str, thry) ->
         let (thry', summary') =  annotateTheory cntxt thry
         in let summary'' = selfify ( TheoryName str ) summary'
-	in (Theorydef (str, thry'), 
-	    insertTheory cntxt str summary'')
+    in (Theorydef (str, thry'), 
+        insertTheory cntxt str summary'')
 
   |  TopComment cmmnt ->
        (TopComment cmmnt, cntxt)
 
   |  TopModel (mdlnm, thry) ->
       let (thry', summary) = annotateTheory cntxt thry in
-	(TopModel(mdlnm, thry'),
-	 insertModel cntxt mdlnm summary)
+    (TopModel(mdlnm, thry'),
+     insertModel cntxt mdlnm summary)
 
 and annotateToplevels cntxt = function
     [] -> ([], cntxt)
