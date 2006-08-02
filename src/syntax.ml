@@ -39,24 +39,23 @@ and set =
   | Quotient of set * term           (** quotient set *)
   | Rz of set                        (** the set of realizers *)
   | SetApp of set * term             (** application of a dependent set *)
-
-  | Prop                             (** Only for typechecker internals! *)
-  | EquivProp                        (** Only for typechecker internals! *)
-  | StableProp                       (** Only for typechecker internals! *)
+  | Set
+  | Prop
+  | EquivProp
+  | StableProp
   | SetLambda of binding * set  (** Only for typechecker internals!...Currently *)
-
-
 
 
 and kind =
     KindSet                          
       (** Classifier of proper sets. *)
       (**   i.e., something which could classify a term *)
-    | KindArrow of set * kind          
-	(** Classifier for parameterized type names.  *)
-	(**   e.g., if we want to allow intlist[n]  then *)
-	(**   intlist   ::  int => Set   *)
-  (* | KindForall of name * kind * kind *)  
+  | KindProp of propKind
+  | KindArrow of name option * set * kind
+      (** Classifier for parameterized type names.  *)
+      (**   e.g., if we want to allow intlist[n]  then *)
+      (**   intlist   ::  int => Set   *)
+(*| KindForall of name * kind * kind *)
 
 
 
@@ -90,15 +89,10 @@ and term =
   | Exists of binding * term
   | Unique of binding * term
 
-	
-	
-		     
-	
-
 (********************************************************************)
 
 (** We do not actually distinguish between different types of sentences,
-  but we let the user name them as he likes. *)
+    but we let the user name them as he likes. *)
 
 and sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 
@@ -109,10 +103,11 @@ and sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 and propKind = Stable | Unstable | Equivalence
 
 and theory_element =
-    Set           of set_name * binding list * set option
-  | Predicate     of name * propKind * set (* Eventually we want parametrized predicates. *)
-  | Let_predicate of name * propKind * binding list * term
-  | Let_term      of binding * binding list option * term
+  | Abstract_set  of set_name * set
+  | Let_set       of set_name * set
+  | Predicate     of name * propKind * set
+  | Let_predicate of binding * propKind * term
+  | Let_term      of binding * term
   | Value         of name * set
   | Variable      of name * set
   | Sentence      of sentence_type * name * mbinding list * binding list * term
@@ -229,6 +224,7 @@ let rec string_of_set set =
     | Exp (None, set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
     | Exp (Some nm, set1, set2) -> 
         "((" ^ string_of_name nm ^ ":" ^ toStr set1 ^ ") -> " ^ toStr set2 ^ ")"
+    | Set -> "Set"
     | Prop -> "Prop"
     | StableProp -> "StableProp"
     | EquivProp -> "EquivProp"
@@ -340,19 +336,18 @@ and string_of_theory = function
       "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_theory_element = function
-    Set (stnm, bnds, None) -> "set " ^ stnm ^ (string_of_bnds bnds)
-  | Set (stnm, bnds, Some st) -> 
-	  "set " ^ stnm ^ (string_of_bnds bnds) ^ " = " ^ string_of_set st
+    Abstract_set (stnm, st) -> "set " ^ stnm ^ " : " ^ (string_of_set st)
+  | Let_set (stnm, st) -> 
+	  "set " ^ stnm ^ " = " ^ string_of_set st
   | Predicate (nm, pk, st) -> 
-      string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^
-      string_of_set st
-  | Let_predicate (nm, pk, bnds, trm) ->
-      string_of_pk pk ^ " " ^ string_of_name nm ^ string_of_bnds bnds ^ 
-      " = " ^ string_of_term trm
-  | Let_term (bnd, None, trm) -> 
+      string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^ string_of_set st
+  | Let_predicate ((nm, None), pk, trm) ->
+      string_of_pk pk ^ " " ^ string_of_name nm ^ " = " ^ string_of_term trm
+  | Let_predicate ((nm, Some st), pk, trm) ->
+      string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^ string_of_set st ^ " = " ^
+	string_of_term trm
+  | Let_term (bnd, trm) -> 
       "let " ^ string_of_bnd bnd ^ " = " ^ string_of_term trm
-  | Let_term (bnd, Some args, trm) -> 
-      "let " ^ string_of_bnd bnd ^ string_of_bnds args ^ " = " ^ string_of_term trm
   | Value (nm, st) ->
       "const " ^ string_of_name nm ^ " : " ^ string_of_set st
   | Sentence (ssort, nm, mbnds, bnds, trm) ->
@@ -401,21 +396,22 @@ and string_of_toplevel = function
 (* Does not include free set  names model names or theory names; just values of type "name" *)
 
 let rec fnSet = function
-	  Empty | Unit | Bool | Prop | EquivProp | StableProp | Set_name (None, _) -> NameSet.empty
-	| Set_name (Some mdl, _) -> fnModel mdl
-	| Product noss -> fnProduct noss
-	| Sum lsos -> fnSum lsos
-	| Exp (None, st1, st2) -> NameSet.union (fnSet st1) (fnSet st2)
-	| Exp (Some nm, st1, st2) ->
-	    NameSet.union (fnSet st1) (NameSet.remove nm (fnSet st2))
-	| SetLambda ((nm, stopt), st) -> 
-	    NameSet.union (fnSetOpt stopt) (NameSet.remove nm (fnSet st))
-	| Subset((nm, stopt), trm) -> 
-	    NameSet.union (fnSetOpt stopt) (NameSet.remove nm (fnTerm trm))
-	| Quotient(st, trm) 
-	  | SetApp(st, trm) -> NameSet.union (fnSet st) (fnTerm trm)
-	| Rz st -> fnSet st	
-	
+    Empty | Unit | Bool | Set | Prop
+  | EquivProp | StableProp | Set_name (None, _) -> NameSet.empty
+  | Set_name (Some mdl, _) -> fnModel mdl
+  | Product noss -> fnProduct noss
+  | Sum lsos -> fnSum lsos
+  | Exp (None, st1, st2) -> NameSet.union (fnSet st1) (fnSet st2)
+  | Exp (Some nm, st1, st2) ->
+      NameSet.union (fnSet st1) (NameSet.remove nm (fnSet st2))
+  | SetLambda ((nm, stopt), st) -> 
+      NameSet.union (fnSetOpt stopt) (NameSet.remove nm (fnSet st))
+  | Subset((nm, stopt), trm) -> 
+      NameSet.union (fnSetOpt stopt) (NameSet.remove nm (fnTerm trm))
+  | Quotient(st, trm) 
+  | SetApp(st, trm) -> NameSet.union (fnSet st) (fnTerm trm)
+  | Rz st -> fnSet st	
+      
 and fnSetOpt = function
 	  None -> NameSet.empty
 	| Some st -> fnSet st
@@ -430,8 +426,9 @@ and fnSum = function
   | (_, stopt)::rest -> NameSet.union (fnSetOpt stopt) (fnSum rest)
 
 and fnKind = function
-    KindSet -> NameSet.empty
-  | KindArrow(st, knd) -> NameSet.union (fnSet st) (fnKind knd)
+    KindSet | KindProp _ -> NameSet.empty
+  | KindArrow(None, st, knd) -> NameSet.union (fnSet st) (fnKind knd)
+  | KindArrow(Some nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnKind knd))
       
 and fnTerm = function
     Star | False | True | Inj(_, None)-> NameSet.empty
@@ -478,12 +475,7 @@ and fnCaseArm = function
 and fnModel _ = NameSet.empty
 
 
-(* Substitution functions.
-
-     WARNING:  Not capture-avoiding, so either use this
-     only for closed terms or terms with free variables that
-     are "fresh", or rare other cases where this is sufficient.
-*)
+(* Substitution functions. *)
 
 type subst = {terms: term NameMap.t;
               sets: set StringMap.t;
@@ -660,6 +652,15 @@ and substModel substitution = function
   | ModelApp (mdl1, mdl2) -> ModelApp(substModel substitution mdl1,
 				      substModel substitution mdl2)
 
+and substKind substitution = function
+  | KindArrow(None, st, k) ->
+      KindArrow(None, substSet substitution st, substKind substitution k)
+  | KindArrow(Some y, st, k) -> 
+      let (sbst', y') = updateBoundName substitution y in
+	KindArrow(Some y', substSet substitution st, substKind sbst' k)
+  | (KindProp _ | KindSet) as knd -> knd
+
+
 let rec substTheory sub = 
   let rec dosub = function
       Theory elts       -> Theory (substTheoryElts sub elts)
@@ -677,31 +678,21 @@ let rec substTheory sub =
 
 and substTheoryElts sub = function
     [] -> []
-  | Set (stnm, bnds, stopt) :: rest -> 
-       let (bnds', sub_b) = substBnds sub bnds
-       in let this' = Set (stnm, bnds', substSetOption sub_b stopt)
-       in let sub' = insertSetvar sub stnm (Set_name (None, stnm))
-       in let rest' = substTheoryElts sub' rest
-       in this' :: rest'
+  | Abstract_set (stnm, st) :: rest ->
+      (Abstract_set (stnm, substSet sub st)) :: (substTheoryElts sub rest)
+  | Let_set (setnm, st) :: rest ->
+      (Let_set (setnm, substSet sub st)) :: (substTheoryElts sub rest)
   | Predicate (nm, pk, st) :: rest -> 
        let this' = Predicate (nm, pk, substSet sub st)
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Let_predicate (nm, pk, bnds, trm) :: rest -> 
-       let (bnds', sub_b) = substBnds sub bnds
-       in let this' = Let_predicate (nm, pk, bnds', subst sub_b trm)
+  | Let_predicate (nm, pk, trm) :: rest -> 
+       let this' = Let_predicate (nm, pk, subst sub trm)
        in let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Let_term (bnd, None, trm) :: rest ->
+  | Let_term (bnd, trm) :: rest ->
        let ((nm, _) as bnd', sub_b) = substBnd sub bnd
-       in let this' = Let_term (bnd', None, subst sub_b trm)
-       in let sub'  = insertTermvar sub nm (Var (None, nm))
-       in let rest' = substTheoryElts sub' rest
-       in this' :: rest'
-  | Let_term (bnd, Some args, trm) :: rest ->
-       let ((nm, _) as bnd', sub_b) = substBnd sub bnd
-       in let (args', sub_a) = substBnds sub args
-       in let this' = Let_term (bnd', Some args', subst sub_b trm)
+       in let this' = Let_term (bnd', subst sub_b trm)
        in let sub'  = insertTermvar sub nm (Var (None, nm))
        in let rest' = substTheoryElts sub' rest
        in this' :: rest'
@@ -756,7 +747,7 @@ let freshNameString =
      function () -> (incr counter;
 	             "]" ^ string_of_int (!counter) ^ "[")
 
-(** etaequivTheories : threory -> theory -> bool
+(** etaequivTheories : theory -> theory -> bool
 
     Eta-equivalence (extensionality) test for theories
  *)

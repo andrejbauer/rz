@@ -17,6 +17,15 @@
   let makeSetVar stnm  = Set_name (None, stnm)
   let makeSetPath mdl strng = Set_name (Some mdl, strng)
 
+  let rec makeLambda lst st =
+    match lst with
+	[] -> st
+      | bnd :: lst' -> Lambda (bnd, makeLambda lst' st)
+
+  let rec makeSetLambda lst st =
+    match lst with
+	[] -> st
+      | bnd :: lst' -> SetLambda (bnd, makeSetLambda lst' st)
 %}
 
 /* Tokens */
@@ -63,7 +72,6 @@
 %token <string> NAME
 %token <string> TNAME
 %token NOT
-%token ONE
 %token ON
 %token OR
 %token PATHSEP
@@ -91,10 +99,9 @@
 %token THEORY
 %token THY
 %token TRUE
-%token TWO
 %token UNIQUE
+%token UNIT
 %token WITH
-%token ZERO
 
 /* Precedence and associativity */
 
@@ -158,26 +165,27 @@ theory_elements:
   |                             	{ [] }
   | theory_element theory_elements	{ $1 :: $2 }
 
+predicate_def:
+  | PREDICATE                   { Unstable }
+  | STABLE PREDICATE            { Stable }
+  | RELATION                    { Unstable }
+  | STABLE RELATION             { Stable }
+  | EQUIVALENCE                 { Equivalence }
+
 theory_element:
-    SET NAME args	        { Set ($2, $3, None) }
-  | SET NAME args EQUAL set	{ Set ($2, $3, Some $5) }
-  | CONSTANT name COLON set	{ Value ($2, $4) }
-  | CONSTANT name_typed EQUAL term { Let_term ($2, None, $4) }
-  | CONSTANT name_typed args EQUAL term { Let_term ($2, Some $3, $5) }
-  | PREDICATE name COLON set    { Predicate ($2, Unstable, $4) }
-  | STABLE PREDICATE name COLON set	{ Predicate ($3, Stable, $5) }
-  | RELATION name COLON set     { Predicate ($2, Unstable, $4) }
-  | STABLE RELATION name COLON set     { Predicate ($3, Stable, $5) }
-  | PREDICATE name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
-  | RELATION name args EQUAL term { Let_predicate ($2, Unstable, $3, $5) }
-  | STABLE PREDICATE name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
-  | STABLE RELATION name args EQUAL term { Let_predicate ($3, Stable, $4, $6) }
-  | EQUIVALENCE name COLON set   { Predicate ($2, Equivalence, $4) }
-  | EQUIVALENCE name args EQUAL term  { Let_predicate ($2, Equivalence, $3, $5) }
-  | thm name margs args EQUAL term    { Sentence ($1, $2, $3, $4, $6) }
-  | MODEL TNAME COLON theory          { Model($2, $4) }
-  | IMPLICIT name_list COLON set  { Implicit($2, $4) }
-  | COMMENT                       { Comment($1) }
+  | SET NAME	                        { Abstract_set ($2, Set) }
+  | SET NAME COLON set                  { Abstract_set ($2, $4) }
+  | SET NAME args EQUAL set	        { Let_set ($2, makeSetLambda $3 $5) }
+  | CONSTANT name COLON set	        { Value ($2, $4) }
+  | CONSTANT name_typed EQUAL term      { Let_term ($2, $4) }
+  | CONSTANT name_typed args EQUAL term { Let_term ($2, makeLambda $3 $5) }
+  | predicate_def name COLON set        { Predicate ($2, $1, $4) }
+  | predicate_def name ON set           { Predicate ($2, $1, Exp (None, $4, Prop)) }
+  | predicate_def name args EQUAL term  { Let_predicate (($2, None), $1, makeLambda $3 $5) }
+  | thm name margs args EQUAL term      { Sentence ($1, $2, $3, $4, $6) }
+  | MODEL TNAME COLON theory            { Model ($2, $4) }
+  | IMPLICIT name_list COLON set        { Implicit ($2, $4) }
+  | COMMENT                             { Comment ($1) }
 
 thm:
   | AXIOM          { Axiom }
@@ -243,10 +251,8 @@ name_typed:
   | LPAREN name COLON set RPAREN { ($2, Some $4) }
 
 simple_set:
-    ZERO 			{ Empty }
   | LBRACE RBRACE		{ Empty }
-  | ONE				{ Unit }
-  | TWO                         { Bool }
+  | UNIT			{ Unit }
   | BOOL                        { Bool }
   | PROP                        { Prop }
   | STABLEPROP                  { StableProp }
@@ -292,24 +298,19 @@ set:
   | set ARROW set                            { Exp (None, $1, $3) }
 
 simple_term:
-    TRUE                        { True }
-  | FALSE                       { False }
-  | longtermname                { $1 }
-  | ZERO                        { makeTermVar "0" Word }
-  | ONE                         { makeTermVar "1" Word }
+    TRUE                         { True }
+  | FALSE                        { False }
+  | longtermname                 { $1 }
   | LPAREN term COLON set RPAREN { Constraint ($2, $4) }
-  | LPAREN RPAREN               { Star }
-  | LPAREN term_seq RPAREN      { Tuple $2 }
-  | LPAREN term RPAREN          { $2 }
-  | BEGIN term END              { $2 }
-  | LBRACK term RBRACK          { RzQuot $2 }
-  | simple_term PERIOD INTEGER    { Proj ($3, $1) }
-  | simple_term PERIOD ZERO       { Proj (0, $1) }
-  | simple_term PERIOD ONE        { Proj (1, $1) }
-  | simple_term PERIOD TWO        { Proj (2, $1) }
-  | PREFIXOP simple_term        { App (makeTermVar $1 Prefix, $2) }
-  | path PREFIXOP simple_term   { App (makeTermPath $1 $2 Prefix, $3) }
-  | NOT simple_term             { Not $2 }
+  | LPAREN RPAREN                { Star }
+  | LPAREN term_seq RPAREN       { Tuple $2 }
+  | LPAREN term RPAREN           { $2 }
+  | BEGIN term END               { $2 }
+  | LBRACK term RBRACK           { RzQuot $2 }
+  | simple_term PERIOD INTEGER   { Proj ($3, $1) }
+  | PREFIXOP simple_term         { App (makeTermVar $1 Prefix, $2) }
+  | path PREFIXOP simple_term    { App (makeTermPath $1 $2 Prefix, $3) }
+  | NOT simple_term              { Not $2 }
 
 apply_term:
     simple_term                  { $1 }

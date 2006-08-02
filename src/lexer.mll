@@ -49,7 +49,8 @@
       "thy", THY ;
       "true", TRUE;
       "unique", UNIQUE;
-      "with", WITH
+      "unit", UNIT;
+      "with", WITH;
     ]
 
   let commentdepth = ref 0
@@ -81,12 +82,7 @@ rule token = parse
     '#' [^'\n']* '\n' { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
   | '\n'            { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
   | [' ' '\t' '\r']      { token lexbuf }
-  | ['0'-'9']+      { match (int_of_string(Lexing.lexeme lexbuf)) with
-			  0 -> ZERO
-			| 1 -> ONE
-			| 2 -> TWO
-			| k -> INTEGER k
-		    }
+  | ['0'-'9']+      { INTEGER (int_of_string(Lexing.lexeme lexbuf)) }
   | '='             { EQUAL }
   | '|'             { BAR }
   | "->"            { ARROW }

@@ -129,6 +129,7 @@ let rec fvModest flt acc {tot=(x,p); per=(u,v,q)} =
 and fvTerm' flt acc = function
   | Id (LN(None,nm)) -> 
       if List.mem nm flt then acc else nm :: acc
+  | Id (LN(Some _, _)) -> acc
   | Star -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -141,6 +142,7 @@ and fvTerm' flt acc = function
       List.fold_left
       (fun a (_, bnd, t) -> fvTerm' (match bnd with None -> flt | Some (n, _) -> n::flt) a t)
       (fvTerm' flt acc t) lst
+  | Let (n, t1, t2) -> fvTerm' flt (fvTerm' (n::flt) acc t2) t1
   | Obligation ((n, s), p, t) -> fvTerm' (n::flt) (fvProp' (n::flt) acc p) t
 
 and fvProp' flt acc = function
@@ -439,6 +441,7 @@ let rec string_of_ty' level t =
             NamedTy lname  -> (0, string_of_tln lname)
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
+	  | VoidTy         -> (0, "void")
 	  | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
           | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2))
