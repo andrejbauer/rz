@@ -103,8 +103,8 @@ and sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
 and propKind = Stable | Unstable | Equivalence
 
 and theory_element =
-  | Abstract_set  of set_name * set
-  | Let_set       of set_name * set
+  | Abstract_set  of set_name * kind
+  | Let_set       of set_name * kind option * set
   | Predicate     of name * propKind * set
   | Let_predicate of binding * propKind * term
   | Let_term      of binding * term
@@ -326,6 +326,15 @@ and string_of_mbnds = function
   | [mbnd] -> string_of_mbnd mbnd
   | mbnd :: mbnds -> string_of_mbnd mbnd ^ " " ^ string_of_mbnds mbnds
 
+and string_of_kind = function
+    KindSet -> "KindSet"
+  | KindProp pk -> "KindProp(" ^ string_of_pk pk ^ ")"
+  | KindArrow (None, st, knd) -> 
+      "(" ^ (string_of_set st) ^ ") => " ^ string_of_kind knd
+  | KindArrow (Some nm, st, knd) -> 
+      "(" ^ (string_of_name nm) ^ " : " ^ (string_of_set st) ^ ") => " ^
+	string_of_kind knd
+
 
 and string_of_theory = function
     Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
@@ -336,9 +345,11 @@ and string_of_theory = function
       "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_theory_element = function
-    Abstract_set (stnm, st) -> "set " ^ stnm ^ " : " ^ (string_of_set st)
-  | Let_set (stnm, st) -> 
+    Abstract_set (stnm, knd) -> "set " ^ stnm ^ " : " ^ (string_of_kind knd)
+  | Let_set (stnm, None, st) -> 
 	  "set " ^ stnm ^ " = " ^ string_of_set st
+  | Let_set (stnm, Some knd, st) -> 
+	  "set " ^ stnm ^ " : " ^ string_of_kind knd ^ " = " ^ string_of_set st
   | Predicate (nm, pk, st) -> 
       string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^ string_of_set st
   | Let_predicate ((nm, None), pk, trm) ->
@@ -678,10 +689,13 @@ let rec substTheory sub =
 
 and substTheoryElts sub = function
     [] -> []
-  | Abstract_set (stnm, st) :: rest ->
-      (Abstract_set (stnm, substSet sub st)) :: (substTheoryElts sub rest)
-  | Let_set (setnm, st) :: rest ->
-      (Let_set (setnm, substSet sub st)) :: (substTheoryElts sub rest)
+  | Abstract_set (stnm, knd) :: rest ->
+      (Abstract_set (stnm, substKind sub knd)) :: (substTheoryElts sub rest)
+  | Let_set (setnm, None, st) :: rest ->
+      (Let_set (setnm, None, substSet sub st)) :: (substTheoryElts sub rest)
+  | Let_set (setnm, Some knd, st) :: rest ->
+      (Let_set (setnm, Some (substKind sub knd), substSet sub st)) :: 
+	(substTheoryElts sub rest)
   | Predicate (nm, pk, st) :: rest -> 
        let this' = Predicate (nm, pk, substSet sub st)
        in let rest' = substTheoryElts sub rest

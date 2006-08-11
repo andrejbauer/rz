@@ -173,11 +173,12 @@ predicate_def:
   | EQUIVALENCE                 { Equivalence }
 
 theory_element:
-  | SET NAME	                        { Abstract_set ($2, Set) }
-  | SET NAME COLON set                  { Abstract_set ($2, $4) }
-  | SET NAME args EQUAL set	        { Let_set ($2, makeSetLambda $3 $5) }
+  | SET NAME	                        { Abstract_set ($2, KindSet) }
+  | SET NAME COLON kind                  { Abstract_set ($2, $4) }
+  | SET NAME args EQUAL set	        { Let_set ($2, None, makeSetLambda $3 $5) }
   | CONSTANT name COLON set	        { Value ($2, $4) }
   | CONSTANT name_typed EQUAL term      { Let_term ($2, $4) }
+    /* Wacky syntax! */
   | CONSTANT name_typed args EQUAL term { Let_term ($2, makeLambda $3 $5) }
   | predicate_def name COLON set        { Predicate ($2, $1, $4) }
   | predicate_def name ON set           { Predicate ($2, $1, Exp (None, $4, Prop)) }
@@ -186,6 +187,14 @@ theory_element:
   | MODEL TNAME COLON theory            { Model ($2, $4) }
   | IMPLICIT name_list COLON set        { Implicit ($2, $4) }
   | COMMENT                             { Comment ($1) }
+
+kind:
+  | SET            { KindSet }
+  | PROP           { KindProp Unstable }
+  | STABLEPROP     { KindProp Stable }
+  | STABLE         { KindProp Stable }
+  | EQUIVALENCE    { KindProp Equivalence }
+  | set IMPLY kind { KindArrow(None, $1, $3) }
 
 thm:
   | AXIOM          { Axiom }
