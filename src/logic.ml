@@ -78,19 +78,23 @@ and proposition =
 and set =
     Empty
   | Unit  (* Unit is the singleton containing Star *)
-  | Bool  (* Bool is isomorphic to Unit+Unit *)
+  | Bool  (* Bool is isomorphic/equivalent to to Unit+Unit *)
   | Basic    of set_longname
   | Product  of (name option * set) list
   | Exp      of name option * set * set
   | Sum      of (label * set option) list
   | Subset   of binding * proposition
   | Rz       of set (** the set of realizers *)
-  | Quotient of set * longname
+  | Quotient of set * term
   | SApp     of set * term
   | SLambda  of binding * set
 
+and proptype =
+    Prop of S.propKind
+  | PExp of name option * set * proptype
+
 and kind =
-  | KindSet
+    KindSet
   | KindProp of S.propKind
   | KindArrow of name * set * kind
 
