@@ -47,7 +47,6 @@ and expr =
   | Product  of (name * expr) list * expr  (* finite (dependent) product *)
   | Sum      of (label * set option) list  (* finite coproduct *)
   | Subset   of binding1 * prop            (* subset *)
-  | StableSubset of binding1 * prop        (* stable subset *)
   | Quotient of set * prop                 (* quotient of a set or a term *)
   | Rz       of expr                       (* the set of realizers, or realized term *)
 

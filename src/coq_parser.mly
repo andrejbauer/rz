@@ -207,10 +207,10 @@ nonapp_expr:
   | LPAREN ident COLON expr RPAREN            { Constraint ($2, $4) } 
   | LBRACE RBRACE                             { Empty }
   | UNIT                                      { Unit }
-  | product_list                              { Product $1 }
+  | product_list                              { Product ($1, $2) }
   | sum_list                                  { Sum $1 }
   | LBRACE binding1 WITH expr RBRACE          { Subset ($2, $4) }
-  | LBRACE binding1 BAR expr RBRACE           { StableSubset ($2, $4) }
+  | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
   | expr PERCENT expr                         { Quotient ($1, $3) }
   | RZ expr                                   { Rz $2 }
   | SET                                       { Set }
@@ -249,8 +249,12 @@ expr_list:
   | expr COMMA expr_list        { $1 :: $3 }
 
 product_list:
-  | expr STAR expr              { [$1; $3] }
-  | expr STAR product_list      { $1 :: $3 }
+  | product_expr STAR expr            { [$1], $3 }
+  | product_expr STAR product_list    { let ps,q = $3 in ($1 :: p, q) }
+
+product_expr:
+  | LPAREN ident COLON expr RPAREN    { $2, $4 }
+  | expr                              { 
 
 sum_list:
   | LABEL COLON expr                  { [($1, Some $3)] }
