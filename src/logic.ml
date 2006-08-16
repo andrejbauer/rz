@@ -384,7 +384,7 @@ let model_name_of_name = function
   | nm -> (print_string "Cannot treat the name ";
 	   print_string (S.string_of_name nm);
 	   print_string " as a model name.";
-	   raise 
+	   raise Impossible)
 
 (************************************)
 (* Translation from Syntax to Logic *)
