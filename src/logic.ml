@@ -111,7 +111,7 @@ and term =
   | Case     of term * (label * binding option * term) list
   | RzQuot   of term
   | RzChoose of binding * term * term * set
-  | Quot     of term * longname
+  | Quot     of term * term
   | Choose   of binding * longname * term * term * set
   | Let      of binding * term * term * set  (* set is type of the whole let *)
   | Subin    of term * set
