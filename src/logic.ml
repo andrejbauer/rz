@@ -79,8 +79,8 @@ and set =
     Empty
   | Unit  (* Unit is the singleton containing Star *)
   | Basic    of set_longname
-  | Product  of (name option * set) list
-  | Exp      of name option * set * set
+  | Product  of (name * set) list
+  | Exp      of name * set * set
   | Sum      of (label * set option) list
   | Subset   of binding * proposition
   | Rz       of set (** the set of realizers *)
@@ -99,7 +99,7 @@ and setkind =
   | KindArrow of name option * set * setkind
 
 and term =
-    Star
+    EmptyTuple
   | Var      of longname
   | Tuple    of term list
   | Proj     of int * term
