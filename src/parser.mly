@@ -262,7 +262,6 @@ name_typed:
 simple_set:
   | LBRACE RBRACE		{ Empty }
   | UNIT			{ Unit }
-  | BOOL                        { Bool }
   | PROP                        { Prop }
   | STABLEPROP                  { StableProp }
   | longsetname	                { $1 }

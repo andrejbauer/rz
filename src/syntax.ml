@@ -30,7 +30,6 @@ and mbinding = model_name * theory
 and set =
     Empty                            (** empty set, a.k.a, void *)
   | Unit                             (** unit set *)
-  | Bool                             (** booleans *)
   | Set_name of model option * set_name   (** atomic set *)
   | Product  of (name option * set) list  (** finite (dependent) product *)
   | Sum      of (label * set option) list (** finite coproduct *)
@@ -216,7 +215,6 @@ let rec string_of_set set =
   (let rec toStr = function 
       Empty -> "0"
     | Unit  -> "1"
-    | Bool  -> "2"
     | Set_name (None, stnm) -> stnm
     | Set_name (Some mdl, stnm) -> string_of_model mdl ^ "." ^ stnm
     | Product noss -> "(" ^ String.concat " * " (List.map string_of_product_part noss) ^ ")"
@@ -407,7 +405,7 @@ and string_of_toplevel = function
 (* Does not include free set  names model names or theory names; just values of type "name" *)
 
 let rec fnSet = function
-    Empty | Unit | Bool | Set | Prop
+    Empty | Unit | Set | Prop
   | EquivProp | StableProp | Set_name (None, _) -> NameSet.empty
   | Set_name (Some mdl, _) -> fnModel mdl
   | Product noss -> fnProduct noss

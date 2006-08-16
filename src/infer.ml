@@ -655,8 +655,6 @@ let rec eqSet' do_subset cntxt =
 
                | ( Unit, Unit )   -> true       (** Redundant *) 
 
-	       | ( Bool, Bool )   -> true       (** Bool <> Sum() for now *)
-
                | ( Set_name (mdlopt1, nm1), Set_name (mdlopt2, nm2) )  -> 
                     (** Neither has a definition *)
                     eqModelOpt cntxt mdlopt1 mdlopt2 

@@ -61,46 +61,42 @@ and model_binding = model_name * theory
 and proposition =
     False
   | True
-  | Atomic of longname
+  | Atomic  of longname
+  | And     of proposition list
+  | Imply   of proposition * proposition
+  | Iff     of proposition * proposition
+  | Or      of proposition list
+  | Forall  of binding * proposition
+  | Exists  of binding * proposition
+  | Unique  of binding * proposition
+  | Not     of proposition
+  | Equal   of set * term * term
   | PApp    of proposition * term
   | PLambda of binding * proposition
-  | And    of proposition list
-  | Imply  of proposition * proposition
-  | Iff    of proposition * proposition
-  | Or     of proposition list
-  | Forall of binding * proposition
-  | Exists of binding * proposition
-  | Unique of binding * proposition
-  | Not    of proposition
-  | Equal  of set * term * term
-
 
 and set =
     Empty
   | Unit  (* Unit is the singleton containing Star *)
-  | Bool  (* Bool is isomorphic/equivalent to to Unit+Unit *)
   | Basic    of set_longname
   | Product  of (name option * set) list
   | Exp      of name option * set * set
   | Sum      of (label * set option) list
   | Subset   of binding * proposition
   | Rz       of set (** the set of realizers *)
-  | Quotient of set * term
+  | Quotient of set * proposition
   | SApp     of set * term
   | SLambda  of binding * set
 
 and proptype =
     Prop of S.propKind
-  | PExp of name option * set * proptype
+  | PropArrow of name option * set * proptype
 
-and kind =
+and setkind =
     KindSet
-  | KindProp of S.propKind
-  | KindArrow of name * set * kind
+  | KindArrow of name option * set * setkind
 
 and term =
     Star
-(** missing terms for type Bool *)
   | Var      of longname
   | Tuple    of term list
   | Proj     of int * term
@@ -111,17 +107,17 @@ and term =
   | Case     of term * (label * binding option * term) list
   | RzQuot   of term
   | RzChoose of binding * term * term * set
-  | Quot     of term * term
+  | Quot     of term * proposition
   | Choose   of binding * longname * term * term * set
   | Let      of binding * term * term * set  (* set is type of the whole let *)
   | Subin    of term * set
   | Subout   of term * set
 
 and theory_element =
-    Set of set_name * kind
-  | Let_set of set_name * set
-  | Predicate of name * kind
-  | Let_predicate of name * kind * proposition
+    Set of set_name * setkind
+  | Let_set of set_name * setkind * set
+  | Predicate of name * proptype
+  | Let_predicate of name * proptype * proposition
   | Let_term of name * set * term
   | Value of name * set
   | Sentence of sentence_type * name * model_binding list * binding list * proposition
@@ -198,7 +194,7 @@ and substMTerm m mdl t =
     | RzQuot t -> RzQuot (subst t)
     | RzChoose ((n,s), t, u, s') ->
 	RzChoose ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
-    | Quot (t, ln) -> Quot (subst t, substMLN m mdl ln)
+    | Quot (t, p) -> Quot (subst t, substMProp m mdl p)
     | Choose ((n,s),ln,t,u,s') ->
 	Choose ((n, substMSet m mdl s), substMLN m mdl ln, subst t, subst u, substMSet m mdl s')
     | Let ((n,s), t, u, s') -> Let ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
@@ -211,7 +207,6 @@ and substMSet m mdl s =
   let rec subst = function
       Empty -> Empty
     | Unit -> Unit
-    | Bool -> Bool
     | Basic ln -> Basic (substMSLN m mdl ln)
     | Product lst -> Product (List.map (fun (n,s) -> (n, subst s)) lst)
     | Exp (n, s, t) -> Exp (n, subst s, subst t)
@@ -220,7 +215,7 @@ and substMSet m mdl s =
 			lst)
     | Subset ((n,s),p) -> Subset((n, subst s), substMProp m mdl p)
     | Rz s -> Rz (subst s)
-    | Quotient (s, ln) -> Quotient (subst s, substMLN m mdl ln)
+    | Quotient (s, p) -> Quotient (subst s, substMProp m mdl p)
     | SApp (s, t) -> SApp (subst s, substMTerm m mdl t)
     | SLambda ((n,s), t) -> SLambda ((n, subst s), subst t)
   in
@@ -318,7 +313,6 @@ let rec string_of_sln = function
 let rec string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
-  | Bool -> "bool"
   | Basic lname -> string_of_sln lname
   | Product lst ->
       "(" ^ (String.concat " * "
@@ -340,7 +334,7 @@ let rec string_of_set = function
 
   | Subset _ -> "{... with ...}"
   | Rz s -> "rz " ^ (string_of_set s)
-  | Quotient (s, n) -> (string_of_set s) ^ " % " ^ (string_of_ln n)
+  | Quotient (s, p) -> (string_of_set s) ^ " % (...)"
   | SApp (s, t) -> (string_of_set s) ^ " " ^ (string_of_term t)
   | SLambda ((n,s), t) -> "lam " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^ string_of_set t
 
@@ -397,7 +391,6 @@ let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
 let rec make_set = function
     S.Empty -> Empty
   | S.Unit -> Unit
-  | S.Bool -> Bool
   | S.Set_name (mdl, nm) -> Basic (SLN (make_model_opt mdl, nm))
   | S.Product lst -> Product (List.map (fun (n,s) -> (n, make_set s)) lst)
   | S.Sum lst -> Sum (List.map
@@ -409,8 +402,7 @@ let rec make_set = function
   | S.Subset ((_, None), _) ->
       print_string "(ERROR: subset without type annotation\n";
       failwith "Logic.make_set"
-  | S.Quotient (s, S.Var(mdl,nm)) ->
-      Quotient (make_set s, LN(make_model_opt mdl,nm))
+  | S.Quotient (s, p) -> Quotient (make_set s, make_proposition p)
   | S.Quotient _ ->
       print_string ("ERROR: Quotient type by anonymous relation\n") ;
       failwith "Logic.make_set"
@@ -494,10 +486,7 @@ and make_term = function
   | S.The ((n, Some s), t) -> The ((n, make_set s), make_proposition t)
   | S.Subin (t, s) -> Subin (make_term t, make_set s)
   | S.Subout (t, s) -> Subout (make_term t, make_set s)
-  | S.Quot (t, S.Var(mdl,r)) -> Quot (make_term t, LN(make_model_opt mdl,r))
-  | S.Quot _ ->
-      print_string "cannot form quotients by anonymous relations\n";
-      failwith "Logic.make_term"
+  | S.Quot (t, p) -> Quot (make_term t, make_proposition p)
   | S.RzQuot t -> RzQuot (make_term t)
   | S.RzChoose ((n, Some s), t, u, Some st) ->
       RzChoose ((n, make_set s), make_term t, make_term u, make_set st)
@@ -511,21 +500,34 @@ and make_term = function
 	    print_string (S.string_of_term trm);
 	  raise HOL)
 
-and make_kind = function
+and make_kind_from_set _ = failwith "obsolete 1"
+
+and make_kind _ = failwith "obsolete 2"
+(*
+and make_kind_from_set = function
   | S.Prop -> KindProp S.Unstable
   | S.StableProp -> KindProp S.Stable
   | S.EquivProp -> KindProp S.Equivalence
   | S.Set -> KindSet
-  | S.SetLambda ((n, Some s), knd) -> KindArrow (n, make_set s, make_kind knd)
+  | S.SetLambda ((n, Some s), st) -> KindArrow (Some n, make_set s, make_kind_from_set st)
   | S.SetLambda ((_, None), _) -> (print_string "SetLambda without type annotation.\n";
 				   failwith "Logic.make_kind")
   | _ -> (print_string "Not a kind.\n"; failwith "Logic.make_kind")
 
+and make_kind = function
+  | S.KindSet -> KindSet
+  | S.KindProp kp -> KindProp kp
+  | S.KindArrow (nm, s, k) -> KindArrow (nm, make_set s, make_kind k)
+*)
 and make_theory_element = function
-    S.Abstract_set (n, s)-> Set (n, make_kind s)
-  | S.Let_set (n, t) -> Let_set (n, make_set t)
-  | S.Predicate (n, stab, knd) -> Predicate (n, make_kind knd)
-  | S.Let_predicate ((n, Some knd), _, p) -> Let_predicate (n, make_kind knd, make_proposition p)
+    S.Abstract_set (n, k)-> Set (n, make_kind k)
+  | S.Let_set (n, Some k, t) -> Let_set (n, make_kind k, make_set t)
+  | S.Let_set (_, None, _) ->
+      print_string "Let_set without kind annotation.\n";
+      failwith "Logic.make_theory_element"      
+  | S.Predicate (n, stab, knd) -> Predicate (n, make_kind_from_set knd)
+  | S.Let_predicate ((n, Some knd), _, p) ->
+      Let_predicate (n, make_kind_from_set knd, make_proposition p)
   | S.Let_predicate ((_, None), _, _) ->
       print_string "Let_predicate without type annotation.\n";
       failwith "Logic.make_theory_element"

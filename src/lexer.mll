@@ -9,7 +9,6 @@
       "and", AND;
       "axiom", AXIOM;
       "begin", BEGIN;
-      "bool", BOOL;
       "const", CONSTANT;
       "constant", CONSTANT;
       "corollary", COROLLARY;
