@@ -21,11 +21,6 @@
     match lst with
 	[] -> st
       | bnd :: lst' -> Lambda (bnd, makeLambda lst' st)
-
-  let rec makeSetLambda lst st =
-    match lst with
-	[] -> st
-      | bnd :: lst' -> SetLambda (bnd, makeSetLambda lst' st)
 %}
 
 /* Tokens */
@@ -36,13 +31,11 @@
 %token AXIOM
 %token BAR
 %token BACKQUOTE
-%token BEGIN
-%token BOOL
 %token COLON
+%token COLONEQUAL
 %token COMMA
 %token <string> COMMENT 
-%token CONSTANT
-%token COROLLARY
+%token DEFINITION
 %token DOUBLEARROW
 %token END
 %token EOF
@@ -52,7 +45,7 @@
 %token FALSE
 %token FORALL
 %token FUN
-%token HASH
+%token HYPOTHESIS
 %token IFF
 %token IFFSYMBOL
 %token IMPLICIT
@@ -66,47 +59,41 @@
 %token <string> LABEL
 %token LBRACE
 %token LBRACK
-%token LEMMA
 %token LET
 %token LPAREN
 %token MATCH
 %token MODEL
 %token <string> NAME
-%token <string> TNAME
 %token NOT
 %token OR
 %token ORSYMBOL
+%token PARAMETER
 %token PERCENT
 %token PERIOD
 %token PLUS
-%token PREDICATE
 %token <string> PREFIXOP
 %token PROP
-%token PROPOSITION
 %token RBRACE
 %token RBRACK
-%token RELATION
 %token RPAREN
 %token RZ
 %token SET
 %token SUBIN
 %token SUBOUT
 %token STABLE
-%token STABLEPROP
 %token STAR
-%token STRUCTURE
 %token THE
-%token THEOREM
 %token THEORY
 %token THY
 %token TRUE
+%token TYPE
 %token UNIQUE
 %token UNIT
 %token WITH
 
 /* Precedence and associativity */
 
-%nonassoc AXIOM CONSTANT CORROLARY LEMMA PREDICATE PROPOSITION RELATION SET STABLE THEOREM
+%nonassoc AXIOM DEFINITION EQIUIV HYPOTHESIS SET STABLE WITH
 
 /* set forming symbols */
 
@@ -134,8 +121,6 @@
 %nonassoc RZ
 
 %nonassoc PREFIXOP NOT 
-%right TNAME
-%nonassoc HASH
 
 /* Entry points */
 
@@ -149,74 +134,57 @@ toplevels:
   | toplevel toplevels      { $1 :: $2 }
 
 toplevel:
-  | THEORY TNAME thargs EQUAL theory                  { Theorydef ($2, foldTheoryFunctor $3 $5) }
+  | THEORY NAME thargs EQUAL theory                   { Theorydef ($2, foldTheoryFunctor $3 $5) }
   | COMMENT                                           { TopComment($1) }
-  | MODEL TNAME COLON theory                          { TopModel($2, $4) }
+  | MODEL NAME COLON theory                           { TopModel($2, $4) }
 
 thargs:
   |                                         { [] }
-  | LPAREN TNAME COLON theory RPAREN thargs { ($2, $4) :: $6 }
+  | LPAREN NAME COLON theory RPAREN thargs  { ($2, $4) :: $6 }
 
 theory:
-  | TNAME                               { TheoryName $1 }
-  | theory LPAREN model RPAREN          { TheoryApp ($1, $3) }
+  | NAME                                { TheoryName $1 }
+  | theory LPAREN expr RPAREN           { TheoryApp ($1, $3) }
   | THY theory_elements END             { Theory $2 }
 
 theory_elements:
-  |                             	{ [] }
-  | theory_element theory_elements	{ $1 :: $2 }
+  |                            	   { [] }
+  | theory_element theory_elements { $1 :: $2 }
 
-predicate_def:
-  | PREDICATE                   { Unstable }
-  | STABLE PREDICATE            { Stable }
-  | RELATION                    { Unstable }
-  | STABLE RELATION             { Stable }
-  | EQUIVALENCE                 { Equivalence }
+parameter_decl:
+  | PARAMETER                   { Parameter }
+  | AXIOM                       { Axiom }
+  | HYPOTHESIS                  { Hypothesis }
+
+definition_decl:
+  | DEFINITION      { () }
+  | LET             { () }
 
 theory_element:
-  | SET NAME	                        { Abstract_set ($2, KindSet) }
-  | SET NAME COLON kind                  { Abstract_set ($2, $4) }
-  | SET NAME args EQUAL set	        { Let_set ($2, None, makeSetLambda $3 $5) }
-  | CONSTANT name COLON set	        { Value ($2, $4) }
-  | CONSTANT name_typed EQUAL term      { Let_term ($2, $4) }
-    /* Wacky syntax! */
-  | CONSTANT name_typed args EQUAL term { Let_term ($2, makeLambda $3 $5) }
-  | predicate_def name COLON set        { Predicate ($2, $1, $4) }
-  | predicate_def name ON set           { Predicate ($2, $1, Exp (None, $4, Prop)) }
-  | predicate_def name args EQUAL term  { Let_predicate (($2, None), $1, makeLambda $3 $5) }
-  | thm name margs args EQUAL term      { Sentence ($1, $2, $3, $4, $6) }
-  | MODEL TNAME COLON theory            { Model ($2, $4) }
-  | IMPLICIT name_list COLON set        { Implicit ($2, $4) }
-  | COMMENT                             { Comment ($1) }
+  | definition_decl ident_with_params COLONEQUAL expr PERIOD
+                                                    { let n, a, e = $2 in
+							Definition (n, e, makeLambda a $4) }
+  | parameter_decl ident_list COLON expr PERIOD     { Parameter ($1, [($2, $4)]) }
+  | parameter_decl binder_list PERIOD               { Parameter ($1, $2) }
+  | IMPLICIT TYPE ident_list COLON expr PERIOD      { Implicit ($3, $5) }
+  | COMMENT                                         { Comment ($1) }
 
-kind:
-  | SET            { KindSet }
-  | PROP           { KindProp Unstable }
-  | STABLEPROP     { KindProp Stable }
-  | STABLE         { KindProp Stable }
-  | EQUIVALENCE    { KindProp Equivalence }
-  | set IMPLY kind { KindArrow(None, $1, $3) }
+ident_list:
+  | ident                        { [$1] }
+  | ident ident_list             { $1 :: $2 }
 
-thm:
-  | AXIOM          { Axiom }
-  | THEOREM        { Theorem }
-  | LEMMA          { Lemma }
-  | PROPOSITION    { Proposition }
-  | COROLLARY      { Corollary }
+ident_with_params:
+  | ident args                   { $1, $2, None }
+  | ident args COLON expr        { $1, $2, Some $4 }
 
-name_list:
-  | NAME                        { [$1] }
-  | NAME COMMA name_list        { $1 :: $3 }
+binder_list:
+  | binder                       { [$1] }
+  | binder binder_list           { $1 :: $2 }
 
-margs:
-  |                                        { [] }
-  | LBRACK TNAME COLON theory RBRACK margs { ($2, $4) :: $6 }
+binder:
+  | LPAREN ident_list COLON expr RPAREN  { ($2, $4) }
 
-args:
-  |                                           { [] }
-  | name_typed args                           { $1 :: $2 }
-
-name:
+ident:
     NAME                          { N($1, Word) }
   | LPAREN PREFIXOP RPAREN        { N($2, Prefix) }
   | LPAREN INFIXOP0 RPAREN        { N($2, Infix0) }
@@ -226,39 +194,102 @@ name:
   | LPAREN INFIXOP3 RPAREN        { N($2, Infix3) }
   | LPAREN STAR RPAREN            { N("*", Infix3) }
 
-model:
-    TNAME                        { ModelName $1 }
-  | model PERIOD TNAME           { ModelProj ($1, $3) }
-  | model LPAREN model RPAREN    { ModelApp ($1, $3) }
-	
-path:
-    model PERIOD                 { $1 }
+nonapp_expr:
+  | ident                        	      { Ident $1 }
+  | expr PERIOD ident            	      { MProj ($1, $3) }
+  | FUN binding DOUBLEARROW expr              { Lambda ($2, $4) }
+  | LPAREN ident COLON expr RPAREN ARROW expr { Arrow ($2, $4, $7) }  
+  | expr ARROW expr                           { Arrow ( wildName (), $1, $3) }
+  | LPAREN ident COLON expr RPAREN            { Constraint ($2, $4) } 
+  | LBRACE RBRACE                             { Empty }
+  | UNIT                                      { Unit }
+  | product_list                              { Product $1 }
+  | sum_list                                  { Sum $1 }
+  | LBRACE binding1 WITH expr RBRACE          { Subset ($2, $4) }
+  | LBRACE binding1 BAR expr RBRACE           { StableSubset ($2, $4) }
+  | expr PERCENT expr                         { Quotient ($1, $3) }
+  | RZ expr                                   { Rz $2 }
+  | SET                                       { Set }
+  | PROP                                      { Prop }
+  | EQUIV                                     { Equiv }
+  | STABLE                                    { Stable }
+  | LPAREN RPAREN                             { EmptyTuple }
+  | LPAREN expr_list RPAREN                   { Tuple $2 }
+  | expr PROJECT                              { Proj ($2, $1) }
+  | LABEL                                     { Inj ($1, None) }
+  | LABEL expr                                { Inj ($1, Some $2) }
+  | MATCH expr WITH case_list END             { Case ($2, $4) }
+  | LET LBRACK arg_noparen RBRACK EQUAL expr IN expr
+                                              { RzChoose ($3, $6, $8) }
+  | LET arg PERCENT expr EQUAL expr IN expr   { Choose ($2, $4, $6, $8) }
+  | expr SUBIN expr                           { Subin ($1, $3) }
+  | expr SUBOUT expr                          { Subout ($1, $3) }
+  | LET arg_noparen EQUAL expr IN expr        { Let ($2, $4, $6) }
+  | THE arg_noparen COMMA term                { The ($2, $4) }
+  | FALSE                                     { False }
+  | TRUE                                      { True }
+  | and_list                                  { And $1 }
+  | expr IFFSYMBOL expr                       { Iff ($1, $3) }
+  | or_list                                   { Or $1 }
+  | NOT expr                                  { Not $2 }
+  | expr EQUAL expr                           { Equal ($1, $3) }
+  | FORALL binding COMMA expr                 { Forall ($2, $4) }
+  | EXISTS binding COMMA expr                 { Exists ($2, $4) }
+  | UNIQUE binding COMMA expr                 { Unique ($2, $4) }
  
-longtermname:
-    path NAME                     { makeTermPath $1 $2 Word }
-  | LPAREN path PREFIXOP RPAREN   { makeTermPath $2 $3 Prefix }
-  | LPAREN path INFIXOP0 RPAREN   { makeTermPath $2 $3 Infix0 }
-  | LPAREN path INFIXOP1 RPAREN   { makeTermPath $2 $3 Infix1 }
-  | LPAREN path INFIXOP2 RPAREN   { makeTermPath $2 $3 Infix2 }
-  | LPAREN path PLUS RPAREN       { makeTermPath $2 "+" Infix2 }
-  | LPAREN path INFIXOP3 RPAREN   { makeTermPath $2 $3 Infix3 }
-  | LPAREN path STAR RPAREN       { makeTermPath $2 "*" Infix3 }
-  | NAME                          { makeTermVar $1 Word }
-  | LPAREN PREFIXOP RPAREN        { makeTermVar $2 Prefix }
-  | LPAREN INFIXOP0 RPAREN        { makeTermVar $2 Infix0 }
-  | LPAREN INFIXOP1 RPAREN        { makeTermVar $2 Infix1 }
-  | LPAREN INFIXOP2 RPAREN        { makeTermVar $2 Infix2 }
-  | LPAREN PLUS RPAREN            { makeTermVar "+" Infix2 }
-  | LPAREN INFIXOP3 RPAREN        { makeTermVar $2 Infix3 }
-  | LPAREN STAR RPAREN            { makeTermVar "*" Infix3 } 
+expr:
+  | expr nonapp_expr            { App ($1, $2) }
 
-longsetname:
-    path NAME                     { makeSetPath $1 $2 }
-  | NAME                          { makeSetVar $1 }
+product_list:
+  | expr STAR expr              { [$1; $3] }
+  | expr STAR product           { $1 :: $3 }
 
-name_typed:
-    name                         { ($1, None) }
-  | LPAREN name COLON set RPAREN { ($2, Some $4) }
+sum_list:
+  | LABEL COLON product               { [($1, Some $3)] }
+  | LABEL                             { [($1, None)] }
+  | sum_list PLUS LABEL               { $1 @ [($3, None)] }
+  | sum_list PLUS LABEL COLON product { $1 @ [($3, Some $5)] }
+
+binding1:
+  | ident              { $1, None }
+  | ident COLON expr   { $1, Some $3 }
+
+binding:
+  | 
+
+tuple_list:
+  | expr COMMA expr       { [$1; $3] }
+  | expr COMMA tuple_list { $1 :: $3 }
+
+case1:
+  | LABEL arg DOUBLEARROW term                   { $1, Some $2, $4 }
+  | LABEL DOUBLEARROW term                       { $1, None, $3 }
+
+case_list:
+  | case1                                        { [$1] }
+  | case1 BAR case_list                          { $1 :: $3 }
+
+arg:
+  | ident                              { $1, None }
+  | LPAREN ident COLON expr RPAREN     { $2, Some $4 }
+
+args:
+  |                                    { [] }
+  | arg args                           { $1 :: $2 }
+
+arg_noparen:
+  | ident                              { $1, None }
+  | ident COLON expr                   { $1, Some $3 }
+
+and_list:
+  | expr ANDSYMBOL expr                { [$1; $3] }
+  | expr ANDSYMBOL and_list            { $1 :: $3 }
+
+or_list:
+  | expr ORSYMBOL expr                 { [$1; $3] }
+  | expr ORSYMBOL and_list             { $1 :: $3 }
+
+/* *** OLD STUFF BELOW HERE ***
 
 simple_set:
   | LBRACE RBRACE		{ Empty }
@@ -320,6 +351,8 @@ simple_term:
   | PREFIXOP simple_term         { App (makeTermVar $1 Prefix, $2) }
   | path PREFIXOP simple_term    { App (makeTermPath $1 $2 Prefix, $3) }
   | NOT simple_term              { Not $2 }
+  | MATCH expr WITH cases END    { Case ($2, $4) }
+
 
 apply_term:
     simple_term                  { $1 }
@@ -379,3 +412,4 @@ cases:
   | LABEL ARROW term                       { [$1, None, $3] }
   | LABEL name_typed ARROW term BAR cases  { ($1, Some $2, $4) :: $6 } 
   | LABEL ARROW term BAR cases             { ($1, None, $3) :: $5 } 
+*/

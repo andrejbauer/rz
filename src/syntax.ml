@@ -44,26 +44,27 @@ and expr =
   (*** sets ***)
   | Empty                                  (* empty set, a.k.a, void *)
   | Unit                                   (* unit set *)
-  | Product  of (name * set) list          (* finite (dependent) product *)
+  | Product  of expr list                  (* finite (dependent) product *)
   | Sum      of (label * set option) list  (* finite coproduct *)
-  | Subset   of binding * set              (* subset *)
+  | Subset   of binding1 * prop            (* subset *)
+  | StableSubset of binding1 * prop        (* stable subset *)
   | Quotient of set * prop                 (* quotient of a set or a term *)
   | Rz       of expr                       (* the set of realizers, or realized term *)
 
   (*** set kind and proposition types ***)
   | Set
   | Prop
-  | EquivProp
-  | StableProp
+  | Equiv
+  | Stable
 
   (*** terms ***)
-  | Star                                   (* the member of Unit *)
+  | EmptyTuple                             (* the member of Unit *)
   | Tuple  of term list
   | Proj   of int   * term                 (* projection from a tuple *)
   | Inj    of label * term option          (* injection into a sum type *)
   | Case   of term  * (label * binding1 option * term) list
-  | Choose of binding * term * term * term * set option (* elimination of equivalence class *)
-  | RzChoose of binding1 * term * term * set option (* elimination of rz *)
+  | Choose of binding * term * term * term (* elimination of equivalence class *)
+  | RzChoose of binding1 * term * term     (* elimination of rz *)
   | Subin  of term * set
   | Subout of term * set
   | Let    of binding1 * term * term
@@ -87,12 +88,11 @@ and sentence_type =
   | Hypothesis
   | Lemma
   | Theorem
-  | Proposition
   | Corollary
 
 and theory_element =
   | Definition of name * expr option * expr
-  | Parameter  of sentence_type * model_binding list * (name list * expr) list
+  | Parameter  of sentence_type * (name list * expr) list
   | Implicit   of name list * expr
   | Comment    of string
 

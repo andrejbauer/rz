@@ -8,11 +8,13 @@
       "forall", FORALL;
       "and", AND;
       "Axiom", AXIOM;
+      "Definition", DEFINITION;
       "Equiv", EQUIV;
       "exists", EXISTS;
       "exists1", UNIQUE;
       "false", FALSE;
       "fun", FUN;
+      "Hypothesis", HYPOTHESIS;
       "iff", IFF;
       "Implicit", IMPLICIT;
       "implies", IMPLY;
@@ -22,14 +24,16 @@
       "model", MODEL;
       "not", NOT;
       "or", OR;
+      "Parameter", PARAMETER;
       "Prop", PROP;
       "rz", RZ;
       "Set", SET;
-      "Stable", STABLEPROP;
+      "Stable", STABLE;
       "the", THE;
       "theory", THEORY;
       "thy", THY ;
       "true", TRUE;
+      "Type", TYPE;
       "unit", UNIT;
       "with", WITH;
     ]
@@ -52,9 +56,7 @@
 }
 
 
-let ident = ['a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
-
-let tident = ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
+let ident = ['A'-'Z' 'a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
 
 let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
@@ -64,6 +66,7 @@ rule token = parse
   | '\n'            { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
   | [' ' '\t' '\r']      { token lexbuf }
   | '='             { EQUAL }
+  | ":="            { COLONEQUAL }
   | '|'             { BAR }
   | "->"            { ARROW }
   | '`' ident       { let w = Lexing.lexeme lexbuf in
@@ -94,13 +97,6 @@ rule token = parse
                           try
                             List.assoc w reserved 
                           with Not_found -> NAME w
-                        end
-                    }
-  | tident           { let w = Lexing.lexeme lexbuf in
-                        begin
-                          try
-                            List.assoc w reserved 
-                          with Not_found -> TNAME w
                         end
                     }
   | "!" symbolchar *

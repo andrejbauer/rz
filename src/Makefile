@@ -14,8 +14,8 @@ OCAMLOPTFLAGS =  $(INCLUDES) -unsafe -inline 5
 
 BYTE_OBJS = syntax.cmo \
 	message.cmo \
-	parser.cmo \
-	lexer.cmo \
+	coq_parser.cmo \
+	coq_lexer.cmo \
 	flags.cmo \
         infer.cmo \
 	logic.cmo \
