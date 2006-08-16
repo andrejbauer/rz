@@ -49,6 +49,7 @@
 %token IFF
 %token IFFSYMBOL
 %token IMPLICIT
+%token INCLUDE
 %token IN
 %token <string> INFIXOP0
 %token <string> INFIXOP1
@@ -167,6 +168,7 @@ theory_element:
   | parameter_decl ident_list COLON expr PERIOD     { Parameter ($1, [($2, $4)]) }
   | parameter_decl binder_list PERIOD               { Parameter ($1, $2) }
   | IMPLICIT TYPE ident_list COLON expr PERIOD      { Implicit ($3, $5) }
+  | INCLUDE theory PERIOD                           { Include $2 }
   | COMMENT                                         { Comment ($1) }
 
 ident_list:

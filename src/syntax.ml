@@ -94,6 +94,7 @@ and theory_element =
   | Definition of name * expr option * expr
   | Parameter  of sentence_type * (name list * expr) list
   | Implicit   of name list * expr
+  | Include    of theory
   | Comment    of string
 
 and model_binding = model_name * theory

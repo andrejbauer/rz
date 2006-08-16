@@ -19,6 +19,7 @@
       "Implicit", IMPLICIT;
       "implies", IMPLY;
       "in", IN;
+      "include", INCLUDE;
       "let", LET;
       "match", MATCH;
       "model", MODEL;
