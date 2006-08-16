@@ -6,7 +6,6 @@
   let reserved =
     [
       "forall", FORALL;
-      "and", AND;
       "Axiom", AXIOM;
       "Definition", DEFINITION;
       "Equiv", EQUIV;
@@ -15,16 +14,13 @@
       "false", FALSE;
       "fun", FUN;
       "Hypothesis", HYPOTHESIS;
-      "iff", IFF;
       "Implicit", IMPLICIT;
-      "implies", IMPLY;
       "in", IN;
       "include", INCLUDE;
       "let", LET;
       "match", MATCH;
       "model", MODEL;
       "not", NOT;
-      "or", OR;
       "Parameter", PARAMETER;
       "Prop", PROP;
       "rz", RZ;

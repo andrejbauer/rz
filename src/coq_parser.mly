@@ -25,12 +25,10 @@
 
 /* Tokens */
 
-%token AND
 %token ANDSYMBOL
 %token ARROW
 %token AXIOM
 %token BAR
-%token BACKQUOTE
 %token COLON
 %token COLONEQUAL
 %token COMMA
@@ -46,7 +44,6 @@
 %token FORALL
 %token FUN
 %token HYPOTHESIS
-%token IFF
 %token IFFSYMBOL
 %token IMPLICIT
 %token INCLUDE
@@ -66,7 +63,6 @@
 %token MODEL
 %token <string> NAME
 %token NOT
-%token OR
 %token ORSYMBOL
 %token PARAMETER
 %token PERCENT
@@ -260,7 +256,7 @@ sum_list:
   | LABEL COLON expr                  { [($1, Some $3)] }
   | LABEL                             { [($1, None)] }
   | sum_list PLUS LABEL               { $1 @ [($3, None)] }
-  | sum_list PLUS LABEL COLON product { $1 @ [($3, Some $5)] }
+  | sum_list PLUS LABEL COLON expr    { $1 @ [($3, Some $5)] }
 
 binding1:
   | ident              { $1, None }

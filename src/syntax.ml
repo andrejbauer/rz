@@ -44,7 +44,7 @@ and expr =
   (*** sets ***)
   | Empty                                  (* empty set, a.k.a, void *)
   | Unit                                   (* unit set *)
-  | Product  of expr list                  (* finite (dependent) product *)
+  | Product  of (name * expr) list * expr  (* finite (dependent) product *)
   | Sum      of (label * set option) list  (* finite coproduct *)
   | Subset   of binding1 * prop            (* subset *)
   | StableSubset of binding1 * prop        (* stable subset *)
