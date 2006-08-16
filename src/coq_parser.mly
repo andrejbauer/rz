@@ -90,25 +90,24 @@
 
 /* Precedence and associativity */
 
-%nonassoc AXIOM DEFINITION EQIUIV HYPOTHESIS SET STABLE WITH
+%nonassoc MODEL THEORY THY
 
-/* set forming symbols */
+%nonassoc AXIOM COMMENT DEFINITION EQIUIV HYPOTHESIS IMPLICIT INCLUDE PARAMETER TYPE
 
-%right BAR
-%right ARROW
-
-/* term forming symbols (and also a few set forming) */
+%nonassoc COLONEQUAL
 
 %nonassoc LET IN
 %nonassoc PERIOD
-%nonassoc IFF
-%right IMPLY
-%left OR
-%left AND
+%nonassoc IFFSYMBOL
+%nonassoc FORALL EXISTS UNIQUE THE
+%right ARROW
+%left ORSYMBOL
+%left ANDSYMBOL
 
 %nonassoc EQUAL 
-%nonassoc SUBIN SUBOUT
 %right    COMMA
+%nonassoc FUN MATCH WITH BAR
+%nonassoc SUBIN SUBOUT
 %left     INFIXOP0
 %right    INFIXOP1
 %left     INFIXOP2 PLUS
@@ -207,7 +206,7 @@ nonapp_expr:
   | LPAREN ident COLON expr RPAREN            { Constraint ($2, $4) } 
   | LBRACE RBRACE                             { Empty }
   | UNIT                                      { Unit }
-  | product_list                              { Product ($1, $2) }
+  | product_list                              { Product $1 }
   | sum_list                                  { Sum $1 }
   | LBRACE binding1 WITH expr RBRACE          { Subset ($2, $4) }
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
@@ -254,7 +253,7 @@ product_list:
 
 product_expr:
   | LPAREN ident COLON expr RPAREN    { $2, $4 }
-  | expr                              { 
+  | expr                              { wildName(), $1 }
 
 sum_list:
   | LABEL COLON expr                  { [($1, Some $3)] }
