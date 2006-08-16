@@ -1,8 +1,5 @@
 (* Abstract syntax *)
 
-exception Unimplemented
-
-
 (* Labels are used to denote things that don't vary.  This includes
    names of components of models, and variants in sum types. 
    For the latter, we follow ocaml's syntax for polymorphic variants. *)
@@ -11,108 +8,93 @@ type label = string
 
 (* We follow ocaml's notions of infix and prefix operations *)
 
-type name_type = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4
+type fixity = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4 | Wild
 
-type name = N of string * name_type
+type name = N of string * fixity
 
-type set_name = string
+type model_name = name (* capitalized *)
 
-type model_name = string
+type theory_name = name (* capitalized *)
 
-type theory_name = string
+type binding1 = name * expr option
 
-(** names of sets must be valid type names *)
+and binding = (name list * expr option) list
 
-type binding = name * set option
+and set = expr
 
-and mbinding = model_name * theory
+and term = expr
 
-and set =
-    Empty                            (** empty set, a.k.a, void *)
-  | Unit                             (** unit set *)
-  | Set_name of model option * set_name   (** atomic set *)
-  | Product  of (name option * set) list  (** finite (dependent) product *)
-  | Sum      of (label * set option) list (** finite coproduct *)
-  | Exp      of name option * set * set (** function space *)
-  | Subset   of binding * term       (** subset *)
-  | Quotient of set * term           (** quotient set *)
-  | Rz of set                        (** the set of realizers *)
-  | SetApp of set * term             (** application of a dependent set *)
+and prop = expr
+
+and setkind = expr
+
+and proptype = expr
+
+and model = expr
+
+and expr =
+  (*** general expressions ***)
+  | Ident  of name                    	 (* variable *)
+  | MProj  of model * name             	 (* projection from a model *)
+  | App    of expr * expr             	 (* application *)
+  | Lambda of binding * expr          	 (* abstraction *)
+  | Arrow  of name * expr * expr         (* various arrows and pies *)
+  | Constraint of expr * expr            (* typing constraint *)
+
+  (*** sets ***)
+  | Empty                                  (* empty set, a.k.a, void *)
+  | Unit                                   (* unit set *)
+  | Product  of (name * set) list          (* finite (dependent) product *)
+  | Sum      of (label * set option) list  (* finite coproduct *)
+  | Subset   of binding * set              (* subset *)
+  | Quotient of set * prop                 (* quotient of a set or a term *)
+  | Rz       of expr                       (* the set of realizers, or realized term *)
+
+  (*** set kind and proposition types ***)
   | Set
   | Prop
   | EquivProp
   | StableProp
-  | SetLambda of binding * set  (** Only for typechecker internals!...Currently *)
 
-
-and kind =
-    KindSet                          
-      (** Classifier of proper sets. *)
-      (**   i.e., something which could classify a term *)
-  | KindProp of propKind
-  | KindArrow of name option * set * kind
-      (** Classifier for parameterized type names.  *)
-      (**   e.g., if we want to allow intlist[n]  then *)
-      (**   intlist   ::  int => Set   *)
-(*| KindForall of name * kind * kind *)
-
-
-
-and term =
-    Var        of model option * name
-  | Constraint of term * set
-  | Star (** the member of Unit *)
-  | False
-  | True
+  (*** terms ***)
+  | Star                                   (* the member of Unit *)
   | Tuple  of term list
-  | Proj   of int   * term (** projection from a tuple *)
-  | App    of term  * term
-  | Inj    of label * term option (** injection into a sum type *)
-  | Case   of term  * (label * binding option * term) list
-  | Quot   of term  * term (** quotient under equivalence relation *)
-  | Choose of binding * term * term * term * set option (** elimination of equivalence class *)
-  | RzQuot of term
-  | RzChoose of binding * term * term * set option (** elimination of rz *)
+  | Proj   of int   * term                 (* projection from a tuple *)
+  | Inj    of label * term option          (* injection into a sum type *)
+  | Case   of term  * (label * binding1 option * term) list
+  | Choose of binding * term * term * term * set option (* elimination of equivalence class *)
+  | RzChoose of binding1 * term * term * set option (* elimination of rz *)
   | Subin  of term * set
   | Subout of term * set
-  | And    of term list
-  | Imply  of term  * term
-  | Iff    of term  * term
-  | Or     of term list
-  | Not    of term
+  | Let    of binding1 * term * term
+  | The    of binding1 * term
+
+  (*** propositions ***)
+  | False
+  | True
+  | And    of prop list
+  | Iff    of prop  * prop
+  | Or     of prop list
+  | Not    of prop
   | Equal  of set option * term * term
-  | Let    of binding * term * term * set option
-  | Lambda of binding * term
-  | The    of binding * term
-  | Forall of binding * term
-  | Exists of binding * term
-  | Unique of binding * term
+  | Forall of binding * prop
+  | Exists of binding * prop
+  | Unique of binding * prop
 
-(********************************************************************)
-
-(** We do not actually distinguish between different types of sentences,
-    but we let the user name them as he likes. *)
-
-and sentence_type = Axiom | Lemma | Theorem | Proposition | Corollary
-
-(* Unstable here really means that we're not guaranteed the relation
-   is stable, not that it is definitely not stable.  Perhaps
-   "Nonstable" would be less pejorative?
-*)
-and propKind = Stable | Unstable | Equivalence
+and sentence_type =
+    Axiom
+  | Parameter
+  | Hypothesis
+  | Lemma
+  | Theorem
+  | Proposition
+  | Corollary
 
 and theory_element =
-  | Abstract_set  of set_name * kind
-  | Let_set       of set_name * kind option * set
-  | Predicate     of name * propKind * set
-  | Let_predicate of binding * propKind * term
-  | Let_term      of binding * term
-  | Value         of name * set
-  | Variable      of name * set
-  | Sentence      of sentence_type * name * mbinding list * binding list * term
-  | Model         of string * theory
-  | Implicit      of string list * set
-  | Comment       of string
+  | Definition of name * expr option * expr
+  | Parameter  of sentence_type * model_binding list * (name list * expr) list
+  | Implicit   of name list * expr
+  | Comment    of string
 
 and model_binding = model_name * theory
 
@@ -121,11 +103,6 @@ and theory =
   | TheoryName of theory_name
   | TheoryFunctor of model_binding * theory
   | TheoryApp of theory * model
-
-and model = 
-  | ModelName of model_name
-  | ModelProj of model * label
-  | ModelApp of model * model
 
 and toplevel = 
     Theorydef of theory_name * theory

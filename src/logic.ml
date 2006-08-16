@@ -29,7 +29,7 @@ type label = S.label
 type name = S.name
 
 (** names of models; must be capitalized *)
-type model_name = S.model_name
+type model_name = string
 
 type model = 
     ModelName of model_name
@@ -57,7 +57,7 @@ type binding = name * set
 (** a binding in a parameterized theory *)
 and model_binding = model_name * theory
 
-(** first-order proposition, without accompanying context  *)
+(** first-order proposition *)
 and proposition =
     False
   | True
@@ -88,7 +88,9 @@ and set =
   | SLambda  of binding * set
 
 and proptype =
-    Prop of S.propKind
+    Prop
+  | StableProp
+  | EquivProp
   | PropArrow of name option * set * proptype
 
 and setkind =
