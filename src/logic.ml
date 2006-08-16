@@ -92,11 +92,11 @@ and proptype =
     Prop
   | StableProp
   | EquivProp of set
-  | PropArrow of name option * set * proptype
+  | PropArrow of name * set * proptype
 
 and setkind =
     KindSet
-  | KindArrow of name option * set * setkind
+  | KindArrow of name * set * setkind
 
 and term =
     EmptyTuple
