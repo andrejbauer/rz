@@ -13,6 +13,7 @@
 (**************)
 
 exception Unimplemented
+exception Impossible
 
 exception HOL             (* If the input is trying to do HOL *)
 
@@ -90,7 +91,7 @@ and set =
 and proptype =
     Prop
   | StableProp
-  | EquivProp
+  | EquivProp of set
   | PropArrow of name option * set * proptype
 
 and setkind =
@@ -376,6 +377,14 @@ let typename_of_ln = function
 
 let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
 
+let longname_of_name nm = LN(None, nm)
+let set_longname_of_name nm = SLN(None, nm)
+let model_name_of_name = function
+    S.N(strng, S.Word) -> strng
+  | nm -> (print_string "Cannot treat the name ";
+	   print_string (S.string_of_name nm);
+	   print_string " as a model name.";
+	   raise 
 
 (************************************)
 (* Translation from Syntax to Logic *)
