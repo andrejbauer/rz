@@ -54,7 +54,7 @@ and expr =
   (*** set kind and proposition types ***)
   | Set
   | Prop
-  | Equiv
+  | Equiv of expr
   | Stable
 
   (*** terms ***)

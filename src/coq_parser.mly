@@ -159,25 +159,31 @@ parameter_decl:
 
 definition_decl:
   | DEFINITION      { () }
-  | LET             { () }
 
 theory_element:
-  | definition_decl ident_with_params COLONEQUAL expr PERIOD
-                                                    { let n, a, e = $2 in
-							Definition (n, e, makeLambda a $4) }
-  | parameter_decl ident_list COLON expr PERIOD     { Parameter ($1, [($2, $4)]) }
-  | parameter_decl binder_list PERIOD               { Parameter ($1, $2) }
-  | IMPLICIT TYPE ident_list COLON expr PERIOD      { Implicit ($3, $5) }
-  | INCLUDE theory PERIOD                           { Include $2 }
-  | COMMENT                                         { Comment ($1) }
+  | definition_decl ident binder_list decl COLONEQUAL expr PERIOD
+                                                      { Definition ($2, $4, makeLambda $3 $6) }
+  | parameter_decl ident_list COLON expr PERIOD       { Parameter ($1, [($2, $4)]) }
+  | parameter_decl binder_list PERIOD                 { Parameter ($1, $2) }
+  | IMPLICIT TYPE ident_list COLON expr PERIOD        { Implicit ($3, $5) }
+  | INCLUDE theory PERIOD                             { Include $2 }
+  | COMMENT                                           { Comment ($1) }
+
+decl:
+  |                              { None }
+  | COLON expr                   { Some $2 }
 
 ident_list:
   | ident                        { [$1] }
   | ident ident_list             { $1 :: $2 }
 
-ident_with_params:
-  | ident args                   { $1, $2, None }
-  | ident args COLON expr        { $1, $2, Some $4 }
+arg:
+  | ident                              { $1, None }
+  | LPAREN ident COLON expr RPAREN     { $2, Some $4 }
+
+arg_noparen:
+  | ident                              { $1, None }
+  | ident COLON expr                   { $1, Some $3 }
 
 binder_list:
   | binder                       { [$1] }
@@ -199,7 +205,7 @@ ident:
 nonapp_expr:
   | ident                        	      { Ident $1 }
   | expr PERIOD ident            	      { MProj ($1, $3) }
-  | FUN binding DOUBLEARROW expr              { Lambda ($2, $4) }
+  | FUN binder_list DOUBLEARROW expr          { Lambda ($2, $4) }
   | LPAREN ident COLON expr RPAREN ARROW expr { Arrow ($2, $4, $7) }  
   | expr ARROW expr                           { Arrow ( wildName (), $1, $3) }
   | LPAREN ident COLON expr RPAREN            { Constraint ($2, $4) } 
@@ -213,7 +219,7 @@ nonapp_expr:
   | RZ expr                                   { Rz $2 }
   | SET                                       { Set }
   | PROP                                      { Prop }
-  | EQUIV                                     { Equiv }
+  | EQUIV expr                                { Equiv $2 }
   | STABLE                                    { Stable }
   | LPAREN RPAREN                             { EmptyTuple }
   | LPAREN expr_list RPAREN                   { Tuple $2 }
@@ -227,7 +233,7 @@ nonapp_expr:
   | expr SUBIN expr                           { Subin ($1, $3) }
   | expr SUBOUT expr                          { Subout ($1, $3) }
   | LET arg_noparen EQUAL expr IN expr        { Let ($2, $4, $6) }
-  | THE arg_noparen COMMA term                { The ($2, $4) }
+  | THE arg_noparen COMMA expr                { The ($2, $4) }
   | FALSE                                     { False }
   | TRUE                                      { True }
   | and_list                                  { And $1 }
@@ -235,19 +241,23 @@ nonapp_expr:
   | or_list                                   { Or $1 }
   | NOT expr                                  { Not $2 }
   | expr EQUAL expr                           { Equal ($1, $3) }
-  | FORALL binding COMMA expr                 { Forall ($2, $4) }
-  | EXISTS binding COMMA expr                 { Exists ($2, $4) }
-  | UNIQUE binding COMMA expr                 { Unique ($2, $4) }
+  | FORALL binder_list COMMA expr             { Forall ($2, $4) }
+  | EXISTS binder_list COMMA expr             { Exists ($2, $4) }
+  | UNIQUE binder_list COMMA expr             { Unique ($2, $4) }
  
 expr:
   | expr nonapp_expr            { App ($1, $2) }
 
+expr_list:
+  | expr COMMA expr             { [$1; $3] }
+  | expr COMMA expr_list        { $1 :: $3 }
+
 product_list:
   | expr STAR expr              { [$1; $3] }
-  | expr STAR product           { $1 :: $3 }
+  | expr STAR product_list      { $1 :: $3 }
 
 sum_list:
-  | LABEL COLON product               { [($1, Some $3)] }
+  | LABEL COLON expr                  { [($1, Some $3)] }
   | LABEL                             { [($1, None)] }
   | sum_list PLUS LABEL               { $1 @ [($3, None)] }
   | sum_list PLUS LABEL COLON product { $1 @ [($3, Some $5)] }
@@ -256,32 +266,17 @@ binding1:
   | ident              { $1, None }
   | ident COLON expr   { $1, Some $3 }
 
-binding:
-  | 
-
 tuple_list:
   | expr COMMA expr       { [$1; $3] }
   | expr COMMA tuple_list { $1 :: $3 }
 
 case1:
-  | LABEL arg DOUBLEARROW term                   { $1, Some $2, $4 }
-  | LABEL DOUBLEARROW term                       { $1, None, $3 }
+  | LABEL arg DOUBLEARROW expr                   { $1, Some $2, $4 }
+  | LABEL DOUBLEARROW expr                       { $1, None, $3 }
 
 case_list:
   | case1                                        { [$1] }
   | case1 BAR case_list                          { $1 :: $3 }
-
-arg:
-  | ident                              { $1, None }
-  | LPAREN ident COLON expr RPAREN     { $2, Some $4 }
-
-args:
-  |                                    { [] }
-  | arg args                           { $1 :: $2 }
-
-arg_noparen:
-  | ident                              { $1, None }
-  | ident COLON expr                   { $1, Some $3 }
 
 and_list:
   | expr ANDSYMBOL expr                { [$1; $3] }
