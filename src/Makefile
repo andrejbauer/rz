@@ -12,7 +12,8 @@ OCAMLFLAGS = $(INCLUDES) -g
 OCAMLCPFLAGS = 
 OCAMLOPTFLAGS =  $(INCLUDES) -unsafe -inline 5 
 
-BYTE_OBJS = syntax.cmo \
+BYTE_OBJS = name.cmo \
+	syntax.cmo \
 	message.cmo \
 	coq_parser.cmo \
 	coq_lexer.cmo \

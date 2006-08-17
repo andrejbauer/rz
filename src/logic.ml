@@ -21,13 +21,9 @@ exception HOL             (* If the input is trying to do HOL *)
 (* Abstract Syntax *)
 (*******************)
 
+open Name
+
 module S = Syntax
-
-(** labels in sums and model components *)
-type label = S.label
-
-(** names of identifiers *)
-type name = S.name
 
 (** names of models; must be capitalized *)
 type model_name = string
@@ -41,7 +37,7 @@ type model =
 type longname = LN of model option * name
 
 (** short names of sets *)
-type set_name = S.set_name
+type set_name = name
 
 (** long names of sets *)
 type set_longname = SLN of model option * set_name
@@ -199,7 +195,7 @@ and substMProp m mdl p =
 
 and substMTerm m mdl t =
   let rec subst = function
-      Star -> Star
+      EmptyTuple -> EmptyTuple
     | Var ln -> Var (substMLN m mdl ln)
     | Tuple lst -> Tuple (List.map subst lst)
     | Proj (i,t) -> Proj (i, subst t)
@@ -316,8 +312,6 @@ and subst x t =
      in sub)
 *)
 
-let string_of_name = S.string_of_name
-
 let rec string_of_model = function
     ModelName strng -> strng
   | ModelApp (mdl1, mdl2) ->
@@ -329,8 +323,8 @@ let rec string_of_ln = function
   | LN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ (string_of_name nm)
 
 let rec string_of_sln = function
-    SLN (None, nm) -> nm
-  | SLN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ nm
+    SLN (None, nm) -> string_of_name nm
+  | SLN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ string_of_name nm
 
 let rec string_of_set = function
     Empty -> "empty"
@@ -340,10 +334,9 @@ let rec string_of_set = function
       "(" ^ (String.concat " * "
 	       (List.map (
 		  function
-		      (None, s) -> string_of_set s
-		    | (Some nm, s) -> string_of_name nm ^ " : " ^ string_of_set s) lst)) ^ ")"
-  | Exp (None, s, t) -> "(" ^ (string_of_set s) ^ " -> " ^ (string_of_set t) ^ ")"
-  | Exp (Some nm, s, t) ->
+		      (N(_, Wild), s) -> string_of_set s
+		    | (nm, s) -> string_of_name nm ^ " : " ^ string_of_set s) lst)) ^ ")"
+  | Exp (nm, s, t) ->
       "((" ^ string_of_name nm ^ " : " ^ (string_of_set s) ^ ") -> " ^ (string_of_set t) ^ ")"
   | Sum lst ->
       "[" ^ (
@@ -387,21 +380,21 @@ let rename = function
     end
 
 let typename_of_name = function
-    Syntax.N(n, Syntax.Word) -> n
-  | Syntax.N(str, _) -> rename str
+    N(_, Word) as nm -> nm
+  | N(str, _) -> N(rename str, Word)
 
 let typename_of_ln = function
-    LN (_, S.N(_, S.Word)) as n -> n
-  | LN (mdl, S.N(p, _)) -> LN (mdl, S.N(rename p, S.Word))
+    LN (_, N(_, Word)) as n -> n
+  | LN (mdl, N(p, _)) -> LN (mdl, N(rename p, Word))
 
 let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
 
 let longname_of_name nm = LN(None, nm)
 let set_longname_of_name nm = SLN(None, nm)
 let model_name_of_name = function
-    S.N(strng, S.Word) -> strng
+    N(strng, Word) -> strng
   | nm -> (print_string "Cannot treat the name ";
-	   print_string (S.string_of_name nm);
+	   print_string (string_of_name nm);
 	   print_string " as a model name.";
 	   raise Impossible)
 
@@ -417,6 +410,9 @@ let model_name_of_name = function
    make_theoryspec    : S.theoryspec -> Logic.theory
    make_theory        : S.theory -> Logic.theory_element list
 *)
+
+(*********************************
+ ***** COMMENTED OUT FROM HERE ***
 
 let rec make_set = function
     S.Empty -> Empty
@@ -468,7 +464,7 @@ and make_proposition = function
   | S.Imply (phi, psi) -> Imply (make_proposition phi, make_proposition psi)
   | S.Iff (phi, psi) -> Iff (make_proposition phi, make_proposition psi)
   | S.Or lst -> Or (List.map make_proposition lst)
-  | S.Not phi -> Not (make_proposition phi)
+  | Not phi -> Not (make_proposition phi)
   | S.Equal (Some s, u, v) -> Equal (make_set s, make_term u, make_term v)
   | S.Equal (None, _, v) -> (print_string "Equality missing type annotation\n";
                              raise Unimplemented)
@@ -612,34 +608,34 @@ let joinPropTypes lst = List.fold_left joinPropType Stable lst
 
 (* Substitution functions. *)
 
-type subst = {terms: term S.NameMap.t;
-              sets: set S.NameMap.t;
+type subst = {terms: term NameMap.t;
+              sets: set NameMap.t;
               models: model S.StringMap.t;
-              capturablenames: S.NameSet.t}
+              capturablenames: NameSet.t}
 
-let emptysubst = {terms = S.NameMap.empty;
-		  sets = S.NameMap.empty;
+let emptysubst = {terms = NameMap.empty;
+		  sets = NameMap.empty;
 		  models = S.StringMap.empty;
-		  capturablenames = S.NameSet.empty}
+		  capturablenames = NameSet.empty}
 
 let insertTermvar sbst nm trm =
-  {sbst with terms = S.NameMap.add nm trm sbst.terms;
-     capturablenames = S.NameSet.union sbst.capturablenames (fnTerm trm)}
+  {sbst with terms = NameMap.add nm trm sbst.terms;
+     capturablenames = NameSet.union sbst.capturablenames (fnTerm trm)}
 
 let insertSetvar sbst nm st =
-  {sbst with sets = S.NameMap.add nm st sbst.sets;
-	 capturablenames = S.NameSet.union sbst.capturablenames (fnSet st)}
+  {sbst with sets = NameMap.add nm st sbst.sets;
+	 capturablenames = NameSet.union sbst.capturablenames (fnSet st)}
 	
 let insertModelvar sbst strng mdl =
   {sbst with models = S.StringMap.add strng mdl sbst.models;
-	 capturablenames = S.NameSet.union sbst.capturablenames (fnModel mdl)}
+	 capturablenames = NameSet.union sbst.capturablenames (fnModel mdl)}
 
 let getTermvar sbst nm =
-   try (S.NameMap.find nm sbst.terms) with
+   try (NameMap.find nm sbst.terms) with
        Not_found -> Var (LN (None, nm))
 
 let getSetvar sbst stnm =
-   try (S.NameMap.find stnm sbst.sets) with 
+   try (NameMap.find stnm sbst.sets) with 
        Not_found -> Set_name (SLN(None, stnm))
 
 let getModelvar sbst mdlnm =
@@ -654,9 +650,9 @@ let display_subst sbst =
   in let do_model mdlnm mdl = print_string ("[" ^ mdlnm ^ "~>" ^ 
 					       string_of_model mdl ^ "]")
   in  (print_string "Terms: ";
-       S.NameMap.iter do_term sbst.terms;
+       NameMap.iter do_term sbst.terms;
        print_string "\nSets: ";
-       S.NameMap.iter do_set sbst.sets;
+       NameMap.iter do_set sbst.sets;
        print_string "\nSets: ";
        S.StringMap.iter do_model sbst.models)
    
@@ -668,9 +664,9 @@ let display_subst sbst =
 		
 	Attempts to avoid renaming if possible. *)
 let updateBoundName sbst nm =
-	if (S.NameSet.mem nm sbst.capturablenames) then
+	if (NameSet.mem nm sbst.capturablenames) then
 	  let rec search nm' =
-		   if (S.NameSet.mem nm' sbst.capturablenames) then
+		   if (NameSet.mem nm' sbst.capturablenames) then
 		      search (S.nextName nm')
 		   else 
 		      (insertTermvar sbst nm (Var(None,nm')), nm')
@@ -769,7 +765,7 @@ and substSet substitution =
            Basic (SLN (None, stnm)) -> 
 	     getSetvar substitution stnm
          | Basic (SLN (Some mdl, stnm)) -> 
-	     Basic (SLN (Some substModel substitution mdl, stnm))
+	     Basic (SLN (Some (substModel substitution mdl), stnm))
          | Product ss -> Product (substProd substitution ss)
          | Exp(y, s1, s2) ->
 	    let (sbst', y') = updateBoundName substitution y in 
@@ -897,3 +893,4 @@ and substMBnds sub = function
        let sub' = insertModelvar sub mdlnm (ModelName mdlnm ) in
        let (rest', sub'') = substMBnds sub' rest in
          ((mdlnm, substTheory sub thry) :: rest', sub'')
+***)

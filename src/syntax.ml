@@ -6,11 +6,8 @@
 
 type label = string
 
-(* We follow ocaml's notions of infix and prefix operations *)
 
-type fixity = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4 | Wild
-
-type name = N of string * fixity
+open Name
 
 type model_name = name (* capitalized *)
 
@@ -110,84 +107,6 @@ and toplevel =
     Theorydef of theory_name * theory
   | TopComment of string
   | TopModel  of string * theory
-
-module NameOrder = struct
-                     type t = name
-                     let compare = Pervasives.compare
-                   end
-
-module StringOrder = struct
-                     type t = string
-                     let compare = Pervasives.compare
-                   end
-
-module NameMap = Map.Make(NameOrder)
-
-module StringMap = Map.Make(StringOrder)
-
-module NameSet = Set.Make(NameOrder)
-
-let unionNameSetList = List.fold_left NameSet.union NameSet.empty
-
-module StringSet = Set.Make(StringOrder)
-
-let stringSubscript s =
-  try
-    let k = String.rindex s '_' in
-      String.sub s 0 k, Some (String.sub s (k+1) (String.length s - k - 1))
-  with Not_found -> s, None
-
-let stringPrime s =
-  try
-    let k = String.index s '\'' in
-      String.sub s 0 k, Some (String.sub s k (String.length s - k))
-  with Not_found -> s, None
-
-let splitString n =
-  let m, p = stringPrime n in
-  let r, s = stringSubscript m in
-    r, s, p
-
-let nextString n =
-  let r, s, p = splitString n in
-    r ^ (match s, p with
-	     None, None -> "'"
-	   | None, Some "'" -> "''"
-	   | None, Some p -> "_1"
-	   | Some s, _ ->
-	       "_" ^ (
-		 try
-		   string_of_int (1 + int_of_string s)
-		 with
-		     Failure "int_of_string" -> "1"
-	       )
-	)
-
-let freshString good bad occurs =
-  let rec find g =
-    try
-      List.find (fun x -> not (List.mem x bad) && not (occurs x)) g
-    with Not_found -> find (List.map nextString g)
-  in
-    find good
-
-let nextName = function
-    N(nm, Word) -> N(nextString nm, Word)
-  | N(_, fixity) -> N(nextString "op", fixity)
-
-let freshName good bad occurs =
-  let rec find g =
-    try
-      List.find (fun ((N(x,_)) as nm) -> not (List.mem nm bad) && not (occurs x)) g
-    with Not_found -> find (List.map nextName g)
-  in
-    find good
-
-let rec string_of_name = function 
-  | N(_, Wild) -> "_"
-  | N(str,Word) -> str
-  | N("*",_) -> "( * )"
-  | N(str,_) -> "(" ^ str ^ ")"
 
 let string_of_label l = l
 

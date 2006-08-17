@@ -1,11 +1,8 @@
 (* Abstract Syntax for the Output Code *)
 
+open Name
+
 module L = Logic
-
-
-type label = string
-
-type name = L.name
 
 type modul_name = L.model_name
 
@@ -98,13 +95,12 @@ and toplevel =
 
 let tln_of_tyname nm = TLN (None, nm)
 let ln_of_name nm = LN (None, nm)
-let string_of_name = Syntax.string_of_name
 
 let id nm = Id (ln_of_name nm)
 let namedty nm = NamedTy (tln_of_tyname nm)
 
-let mk_word str = Syntax.N(str, Syntax.Word)
-let mk_id str = Id (LN(None, Syntax.N(str,Syntax.Word)))
+let mk_word str = N(str, Word)
+let mk_id str = Id (LN(None, N(str,Word)))
 let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
 
 let tupleOrDagger = function
@@ -226,7 +222,7 @@ let getModulvar sbst mdlnm =
 (** see also display_subst below *)
 
 let occursSubstName sbst str =
-  NameMap.fold (fun (Syntax.N(nm,_)) _ b -> b || str = nm) sbst.terms false
+  NameMap.fold (fun (N(nm,_)) _ b -> b || str = nm) sbst.terms false
 
 let occursSubstTyname sbst str =
   try ignore (TyNameMap.find str sbst.tys) ; true with Not_found -> false
@@ -234,20 +230,20 @@ let occursSubstTyname sbst str =
 let occursSubstModulname sbst str =
   try ignore (ModulNameMap.find str sbst.moduls) ; true with Not_found -> false
 
-let freshName good bad ?occ sbst =
+let freshNm good bad ?occ sbst =
   match occ with
-      None -> Syntax.freshName good bad (occursSubstName sbst)
-    | Some occ -> Syntax.freshName good bad (fun n -> occ n || occursSubstName sbst n)
+      None -> freshName good bad (occursSubstName sbst)
+    | Some occ -> freshName good bad (fun n -> occ n || occursSubstName sbst n)
 
 let freshTyName good bad ?occ sbst =
   match occ with
-      None -> Syntax.freshString good bad (occursSubstTyname sbst)
-    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubstTyname sbst n)
+      None -> freshString good bad (occursSubstTyname sbst)
+    | Some occ -> freshString good bad (fun n -> occ n || occursSubstTyname sbst n)
 
 let freshModulName good bad ?occ sbst =
   match occ with
-      None -> Syntax.freshString good bad (occursSubstModulname sbst)
-    | Some occ -> Syntax.freshString good bad (fun n -> occ n || occursSubstModulname sbst n)
+      None -> freshString good bad (occursSubstModulname sbst)
+    | Some occ -> freshString good bad (fun n -> occ n || occursSubstModulname sbst n)
 
 (** The substitution functions accept an optional occ argument which is
     used for extra occur checks (for example in a context). The occ function
@@ -272,8 +268,8 @@ and substProp ?occ sbst = function
   | False -> False
   | IsPer nm -> IsPer nm
   | IsPredicate (prdct,t,x,y,p) ->
-      let x' = freshName [x] [] ?occ sbst in
-      let y' = freshName [y] [x'] ?occ sbst in
+      let x' = freshNm [x] [] ?occ sbst in
+      let y' = freshNm [y] [x'] ?occ sbst in
 	IsPredicate (prdct, substTy ?occ sbst t, x', y',
 		     substProp ?occ (insertTermvar (insertTermvar sbst x (id x')) y (id y')) p)
   | NamedTotal (tln, t) -> NamedTotal (substTLN ?occ sbst tln, substTerm ?occ sbst t)
@@ -287,13 +283,13 @@ and substProp ?occ sbst = function
   | Iff (p, q) -> Iff (substProp ?occ sbst p, substProp ?occ sbst q)
   | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
-      let n' = freshName [n] [] ?occ sbst in
+      let n' = freshNm [n] [] ?occ sbst in
 	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | ForallTotal ((n, ty), q) ->
-      let n' = freshName [n] [] ?occ sbst in
+      let n' = freshNm [n] [] ?occ sbst in
 	ForallTotal ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | Cexists ((n, ty), q) ->
-      let n' = freshName [n] [] ?occ sbst in
+      let n' = freshNm [n] [] ?occ sbst in
 	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
 
 and substTerm ?occ sbst = function
@@ -304,11 +300,11 @@ and substTerm ?occ sbst = function
   | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
   | Lambda ((n, ty), t) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [] ?occ sbst in
+      let n' = freshNm [n] [] ?occ sbst in
 	Lambda ((n', substTy ?occ sbst ty), substTerm ?occ (insertTermvar sbst' n (id n')) t)
   | Let (n, t, u) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [] ?occ sbst in
+      let n' = freshNm [n] [] ?occ sbst in
 	Let (n', substTerm ?occ sbst' t, substTerm ?occ (insertTermvar sbst' n (id n')) u)
   | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
   | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
@@ -320,7 +316,7 @@ and substTerm ?occ sbst = function
 			   (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
 			 | (lb, Some (n, ty), t) ->
 			     let sbst' = insertTermvar sbst n (id n) in
-			     let n' = freshName [n] [] ?occ sbst in
+			     let n' = freshNm [n] [] ?occ sbst in
 			       (lb,
 				Some (n', substTy ?occ sbst ty),
 				substTerm ?occ (insertTermvar sbst' n (id n')) t)
@@ -328,7 +324,7 @@ and substTerm ?occ sbst = function
 	       lst)
   | Obligation ((n, ty), p, trm) ->
       let sbst' = insertTermvar sbst n (id n) in
-      let n' = freshName [n] [] ?occ sbst in
+      let n' = freshNm [n] [] ?occ sbst in
       let sbst'' = insertTermvar sbst' n (id n') in
 	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst'' p, substTerm ?occ sbst'' trm)
 
@@ -351,10 +347,10 @@ and substTyOption ?occ sbst = function
 
 and substModest ?occ sbst {ty=ty; tot=(x,p); per=(y,z,q)} =
   { ty = substTy ?occ sbst ty;
-    tot = (let x' = freshName [x] [] ?occ sbst in
+    tot = (let x' = freshNm [x] [] ?occ sbst in
 	     (x', substProp ?occ (insertTermvar sbst x (id x')) p));
-    per = (let y' = freshName [y] [] ?occ sbst in
-	   let z' = freshName [z] [y'] ?occ sbst in
+    per = (let y' = freshNm [y] [] ?occ sbst in
+	   let z' = freshNm [z] [y'] ?occ sbst in
 	     (y',z', substProp ?occ (insertTermvar (insertTermvar sbst y (id y')) z (id z')) q));
   }
 
@@ -457,7 +453,7 @@ let string_of_ty t = string_of_ty' 999 t
 
 let string_of_infix t op u =
   match op with
-      LN(None, Syntax.N(str,_)) -> t ^ " " ^ str ^ " " ^ u
+      LN(None, N(str,_)) -> t ^ " " ^ str ^ " " ^ u
     | ln -> (string_of_ln ln) ^ " " ^ t ^ " " ^ u
 
 let rec string_of_term' level t =
@@ -465,20 +461,20 @@ let rec string_of_term' level t =
       Id ln -> (0, string_of_ln ln)
     | Star -> (0, "()")
     | Dagger -> (0, "DAGGER")
-    | App (App (Id (LN(_,Syntax.N(_, Syntax.Infix0)) as ln), t), u) -> 
+    | App (App (Id (LN(_,N(_, Infix0)) as ln), t), u) -> 
 	(9, string_of_infix (string_of_term' 9 t) ln (string_of_term' 8 u))
-    | App (App (Id (LN(_,Syntax.N(_, Syntax.Infix1)) as ln), t), u) -> 
+    | App (App (Id (LN(_,N(_, Infix1)) as ln), t), u) -> 
 	(8, string_of_infix (string_of_term' 8 t) ln (string_of_term' 7 u))
-    | App (App (Id (LN(_,Syntax.N(_, Syntax.Infix2)) as ln), t), u) -> 
+    | App (App (Id (LN(_,N(_, Infix2)) as ln), t), u) -> 
 	(7, string_of_infix (string_of_term' 7 t) ln (string_of_term' 6 u))
-    | App (App (Id (LN(_,Syntax.N(_, Syntax.Infix3)) as ln), t), u) -> 
+    | App (App (Id (LN(_,N(_, Infix3)) as ln), t), u) -> 
 	(6, string_of_infix (string_of_term' 6 t) ln (string_of_term' 5 u))
-    | App (App (Id (LN(_,Syntax.N(_, Syntax.Infix4)) as  ln), t), u) -> 
+    | App (App (Id (LN(_,N(_, Infix4)) as  ln), t), u) -> 
 	(5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
     | App (t, u) -> 
 	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
     | Lambda ((n, ty), t) ->
-	(12, "fun (" ^ (Syntax.string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
+	(12, "fun (" ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
 	   (string_of_term' 12 t))
     | Tuple [] -> (0, "()")
     | Tuple [t] -> (0, string_of_term' 0 t)
@@ -492,15 +488,15 @@ let rec string_of_term' level t =
 	      (List.map (function
 			     (lb, None, u) -> "`" ^ lb ^ " -> " ^  (string_of_term' 11 u)
 			   | (lb, Some (n,ty), u) -> 
-			       "`" ^ lb ^ " (" ^ (Syntax.string_of_name n) ^ " : " ^
+			       "`" ^ lb ^ " (" ^ (string_of_name n) ^ " : " ^
 			       (string_of_ty ty) ^ ") -> " ^
 			       (string_of_term' 11 u)) lst)))
     | Let (n, t, u) ->
-	(13, "let " ^ (Syntax.string_of_name n) ^ " = " ^
+	(13, "let " ^ (string_of_name n) ^ " = " ^
 	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
     | Obligation ((n, ty), p, trm) ->
 	(12,
-	 "assure " ^ (Syntax.string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
+	 "assure " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
 	 (string_of_proposition p) ^ " in " ^ (string_of_term trm))
   in
     if level' > level then "(" ^ str ^ ")" else str
@@ -508,7 +504,7 @@ let rec string_of_term' level t =
 and string_of_term t = string_of_term' 999 t
 
 and string_of_app = function
-    (LN(_,Syntax.N(_,(Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4))) as ln, [Tuple [u;v]]) ->
+    (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as ln, [Tuple [u;v]]) ->
       string_of_infix (string_of_term u) ln (string_of_term v)
   | (ln, trms) -> (string_of_ln ln) ^ (String.concat " " (List.map string_of_term trms))
       
@@ -531,11 +527,11 @@ and string_of_prop level p =
     | Imply (p, q) -> (13, (string_of_prop 12 p) ^ " ==> " ^ (string_of_prop 13 q))
     | Iff (p, q) -> (13, (string_of_prop 12 p) ^ " <=> " ^ (string_of_prop 12 q))
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
-    | Forall ((n, ty), p) -> (14, "all (" ^ (Syntax.string_of_name n) ^ " : " ^
+    | Forall ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
-    | ForallTotal ((n, ty), p) -> (14, "all (" ^ (Syntax.string_of_name n) ^ " : ||" ^
+    | ForallTotal ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : ||" ^
 			      (string_of_ty ty) ^ "||) . " ^ (string_of_prop 14 p))
-    | Cexists ((n, ty), p) -> (14, "some (" ^ (Syntax.string_of_name n) ^ " : " ^
+    | Cexists ((n, ty), p) -> (14, "some (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
   in
     if level' > level then "(" ^ str ^ ")" else str
@@ -543,7 +539,7 @@ and string_of_prop level p =
 and string_of_proposition p = string_of_prop 999 p
 
 let string_of_bind bind =
-    String.concat ", " (List.map (fun (n,t) -> (Syntax.string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
+    String.concat ", " (List.map (fun (n,t) -> (string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
 
 let string_of_assertion (nm, bind, p) =
   "(** Assertion " ^ nm ^ ":\n" ^
@@ -555,7 +551,7 @@ let string_of_assertions assertions =
 
 let rec string_of_spec = function
     ValSpec (nm, ty, assertions) ->
-      "val " ^ (Syntax.string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
+      "val " ^ (string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
       ^ string_of_assertions assertions
     | TySpec (nm, None, assertions) -> 
 	"type " ^ nm ^ "\n" ^ string_of_assertions assertions

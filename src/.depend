@@ -1,11 +1,7 @@
 coq_parser.cmi: syntax.cmo 
 parser.cmi: syntax.cmo 
-coq_parser.cmo: syntax.cmo message.cmo coq_parser.cmi 
-coq_parser.cmx: syntax.cmx message.cmx coq_parser.cmi 
 infer.cmo: syntax.cmo 
 infer.cmx: syntax.cmx 
-lexer.cmo: parser.cmi message.cmo 
-lexer.cmx: parser.cmx message.cmx 
 logic.cmo: syntax.cmo 
 logic.cmx: syntax.cmx 
 opt.cmo: syntax.cmo outsyn.cmo flags.cmo 
@@ -17,9 +13,11 @@ parser.cmx: syntax.cmx message.cmx parser.cmi
 pp.cmo: syntax.cmo outsyn.cmo flags.cmo 
 pp.cmx: syntax.cmx outsyn.cmx flags.cmx 
 rz.cmo: translate.cmo syntax.cmo pp.cmo parser.cmi opt.cmo message.cmo \
-    logic.cmo lexer.cmo infer.cmo flags.cmo 
+    logic.cmo infer.cmo flags.cmo 
 rz.cmx: translate.cmx syntax.cmx pp.cmx parser.cmx opt.cmx message.cmx \
-    logic.cmx lexer.cmx infer.cmx flags.cmx 
+    logic.cmx infer.cmx flags.cmx 
+syntax.cmo: name.cmo 
+syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
 translate.cmo: syntax.cmo outsyn.cmo logic.cmo 
