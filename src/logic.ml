@@ -608,3 +608,292 @@ let joinPropType p1 p2 =
   end
 
 let joinPropTypes lst = List.fold_left joinPropType Stable lst
+
+
+(* Substitution functions. *)
+
+type subst = {terms: term S.NameMap.t;
+              sets: set S.NameMap.t;
+              models: model S.StringMap.t;
+              capturablenames: S.NameSet.t}
+
+let emptysubst = {terms = S.NameMap.empty;
+		  sets = S.NameMap.empty;
+		  models = S.StringMap.empty;
+		  capturablenames = S.NameSet.empty}
+
+let insertTermvar sbst nm trm =
+  {sbst with terms = S.NameMap.add nm trm sbst.terms;
+     capturablenames = S.NameSet.union sbst.capturablenames (fnTerm trm)}
+
+let insertSetvar sbst nm st =
+  {sbst with sets = S.NameMap.add nm st sbst.sets;
+	 capturablenames = S.NameSet.union sbst.capturablenames (fnSet st)}
+	
+let insertModelvar sbst strng mdl =
+  {sbst with models = S.StringMap.add strng mdl sbst.models;
+	 capturablenames = S.NameSet.union sbst.capturablenames (fnModel mdl)}
+
+let getTermvar sbst nm =
+   try (S.NameMap.find nm sbst.terms) with
+       Not_found -> Var (LN (None, nm))
+
+let getSetvar sbst stnm =
+   try (S.NameMap.find stnm sbst.sets) with 
+       Not_found -> Set_name (SLN(None, stnm))
+
+let getModelvar sbst mdlnm =
+   try (S.StringMap.find mdlnm sbst.models) with 
+       Not_found -> ModelName mdlnm
+
+let display_subst sbst =
+  let do_term nm trm = print_string ("[" ^ S.string_of_name nm ^ "~>" ^ 
+					string_of_term trm ^ "]")
+  in let do_set stnm st = print_string ("[" ^ S.string_of_name stnm ^ "~>" ^ 
+					   string_of_set st ^ "]")
+  in let do_model mdlnm mdl = print_string ("[" ^ mdlnm ^ "~>" ^ 
+					       string_of_model mdl ^ "]")
+  in  (print_string "Terms: ";
+       S.NameMap.iter do_term sbst.terms;
+       print_string "\nSets: ";
+       S.NameMap.iter do_set sbst.sets;
+       print_string "\nSets: ";
+       S.StringMap.iter do_model sbst.models)
+   
+(** updateboundName: subst -> name -> subst * name 
+	
+	Renames the given bound variable so that it can't capture anything being
+	substituted in by the substitution.  Returns a substitution updated
+	to rename the bound variable, and the new name.
+		
+	Attempts to avoid renaming if possible. *)
+let updateBoundName sbst nm =
+	if (S.NameSet.mem nm sbst.capturablenames) then
+	  let rec search nm' =
+		   if (S.NameSet.mem nm' sbst.capturablenames) then
+		      search (S.nextName nm')
+		   else 
+		      (insertTermvar sbst nm (Var(None,nm')), nm')
+	  in search (nextName nm)
+	else 
+	  (sbst, nm)
+
+let rec subst (substitution : subst) =
+	 
+     let rec sub = function
+         EmptyTuple -> EmptyTuple
+       | Var (LN (None, nm)) -> getTermvar substitution nm
+       | Var (Some mdl, nm) -> Var(Some (substModel substitution mdl), nm)
+       | Tuple ts      -> Tuple(List.map sub ts)
+       | Proj(n,t1)    -> Proj(n, sub t1)
+       | App(t1,t2)    -> App(sub t1, sub t2)
+       | Inj(l,termopt) -> Inj(l, substTermOption substitution termopt)
+       | Case(t1,arms) -> Case(t1,subarms arms)
+       | RzQuot t -> RzQuot (sub t)
+       | RzChoose ((y,sopt),t1,t2,ty) ->
+	   let (sbst', y') = updateBoundName substitution y in
+	     RzChoose ((y', substSet substitution sopt),
+		      sub t1,
+		      subst sbst' t2,
+		      substSet substitution ty)
+        | Quot(trm1,prp2) -> Quot(sub trm1, substProp prop prp2)
+        | Choose((y,sopt),trm_equiv,t1,t2,stopt2) ->
+	    let (sbst', y') = updateBoundName substitution y in
+              Choose((y',substSet substitution sopt),
+                    sub trm_equiv,
+                    sub t1, 
+                    subst sbst' t2,
+		    substSet substitution stopt2)
+        | Subin(trm,st) -> Subin(sub trm, substSet substitution st)
+        | Subout(trm,st) -> Subout(sub trm, substSet substitution st)
+        | Let((y,stopt),t1,t2,stopt2) ->
+	    let (sbst', y') = updateBoundName substitution y in
+            Let((y',substSet substitution stopt),
+               sub t1, 
+	       subst sbst' t2,
+	       substSet substitution stopt2)
+	
+
+	| Lambda((y,sopt),t1) ->
+	    let (sbst', y') = updateBoundName substitution y in 
+	      Lambda((y',substSetOption substitution sopt),
+		    subst sbst' t1)
+	| The((y,sopt),t1) ->
+	    let (sbst', y') = updateBoundName substitution y in 
+	      The((y',substSetOption substitution sopt),
+		    subst sbst' t1)
+        
+
+     and subarms = function
+          [] -> []
+        | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
+        | (l,Some(y,sopt),u)::rest ->
+	    let (sbst',y') = updateBoundName substitution y in
+              (l, Some(y', substSet substitution sopt), subst sbst' u) ::
+	      (subarms rest)
+     in sub
+
+and substProp substitution = 
+  let rec sub = function
+      True -> True
+    | False -> False
+    | And ts        -> And(List.map sub ts)
+    | Imply(t1,t2)  -> Imply(sub t1, sub t2)
+    | Iff(t1,t2)    -> Iff(sub t1, sub t2)
+    | Or ts         -> Or(List.map sub ts)
+    | Not t         -> Not(sub t)
+    | Equal(ty,t1,t2) -> Equal(substSet substitution ty,
+                              sub t1, sub t2)
+    | Forall((y,sopt),t1) ->
+	let (sbst', y') = updateBoundName substitution y in 
+          Forall((y',substSet substitution sopt),
+		substProp sbst' t1)
+    | Exists((y,sopt),t1) ->
+	let (sbst', y') = updateBoundName substitution y in 
+	  Exists((y',substSet substitution sopt),
+		substProp sbst' t1)
+    | Unique((y,sopt),t1) ->
+	let (sbst', y') = updateBoundName substitution y in 
+	  Unique((y',substSet substitution sopt),
+		substProp sbst' t1)
+    | PLambda((y,sopt),t1) ->
+	let (sbst', y') = updateBoundName substitution y in 
+	  Lambda((y',substSet substitution sopt),
+		substProp sbst' t1)
+    | PApp(prp1,prp2) -> PApp(sub prp1, sub prp2)
+  in sub
+      
+
+and substSet substitution =
+     let rec sub = function
+           Basic (SLN (None, stnm)) -> 
+	     getSetvar substitution stnm
+         | Basic (SLN (Some mdl, stnm)) -> 
+	     Basic (SLN (Some substModel substitution mdl, stnm))
+         | Product ss -> Product (substProd substitution ss)
+         | Exp(y, s1, s2) ->
+	    let (sbst', y') = updateBoundName substitution y in 
+              Exp(y', sub s1, substSet sbst' s2)
+         | Subset((y,sopt),u) ->
+	     let (sbst', y') = updateBoundName substitution y in 
+               Subset((y',substSet substitution sopt),
+  	         subst sbst' u)
+         | Quotient(st,trm)   -> 
+              Quotient(sub st, subst substitution trm)
+
+
+     and substProd sbst = function
+	 [] -> []
+       | (None,st)::rest ->  (None, substSet sbst st) :: (substProd sbst rest)
+       | (Some y,st)::rest -> 
+	   let (sbst', y') = updateBoundName sbst y in 
+	   (Some y', substSet sbst st) :: (substProd sbst' rest)
+
+
+     in sub
+
+and substSetOption substitution = function
+      None    -> None
+    | Some st -> Some (substSet substitution st)
+
+and substTermOption substitution = function
+      None     -> None
+    | Some trm -> Some (subst substitution trm)
+
+and substModel substitution = function
+    ModelName strng -> getModelvar substitution strng
+  | ModelProj (mdl, lbl) -> ModelProj(substModel substitution mdl, lbl)
+  | ModelApp (mdl1, mdl2) -> ModelApp(substModel substitution mdl1,
+				      substModel substitution mdl2)
+
+and substKind substitution = function
+  | KindArrow(None, st, k) ->
+      KindArrow(None, substSet substitution st, substKind substitution k)
+  | KindArrow(Some y, st, k) -> 
+      let (sbst', y') = updateBoundName substitution y in
+	KindArrow(Some y', substSet substitution st, substKind sbst' k)
+  | (KindProp _ | KindSet) as knd -> knd
+
+
+let rec substTheory sub = 
+  let rec dosub = function
+      Theory elts       -> Theory (substTheoryElts sub elts)
+	  
+    | TheoryName thrynm -> TheoryName thrynm
+	  
+    | TheoryFunctor ((mdlnm, thry1), thry2) ->
+	TheoryFunctor((mdlnm, dosub thry1),
+                       let sub' = insertModelvar sub mdlnm (ModelName mdlnm)
+                       in substTheory sub' thry2)
+	  
+    | TheoryApp (thry, mdl) ->
+	TheoryApp (dosub thry,  substModel sub mdl)
+  in dosub
+
+and substTheoryElts sub = function
+    [] -> []
+  | Abstract_set (stnm, knd) :: rest ->
+      (Abstract_set (stnm, substKind sub knd)) :: (substTheoryElts sub rest)
+  | Let_set (setnm, None, st) :: rest ->
+      (Let_set (setnm, None, substSet sub st)) :: (substTheoryElts sub rest)
+  | Let_set (setnm, Some knd, st) :: rest ->
+      (Let_set (setnm, Some (substKind sub knd), substSet sub st)) :: 
+	(substTheoryElts sub rest)
+  | Predicate (nm, pk, st) :: rest -> 
+       let this' = Predicate (nm, pk, substSet sub st)
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Let_predicate (nm, pk, trm) :: rest -> 
+       let this' = Let_predicate (nm, pk, subst sub trm)
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Let_term (bnd, trm) :: rest ->
+       let ((nm, _) as bnd', sub_b) = substBnd sub bnd
+       in let this' = Let_term (bnd', subst sub_b trm)
+       in let sub'  = insertTermvar sub nm (Var (None, nm))
+       in let rest' = substTheoryElts sub' rest
+       in this' :: rest'
+  | Value (nm, st) :: rest ->
+       let this'    = Value (nm, substSet sub st)
+       in let sub'  = insertTermvar sub nm (Var (None, nm))
+       in let rest' = substTheoryElts sub' rest
+       in this' :: rest'
+  | Sentence (sentsort, nm, mbnds, bnds, trm) :: rest ->
+       let    (mbnds', sub_m) = substMBnds sub mbnds
+       in let (bnds',  sub_b) = substBnds sub_m bnds
+       in let trm' = subst sub_b trm
+       in let this' = Sentence (sentsort, nm, mbnds', bnds', trm')
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Model (mdlnm, thry) :: rest ->
+       let    thry' = substTheory sub thry 
+       in let this' = Model (mdlnm, thry')
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Implicit (strs, set) :: rest ->
+       let    set'  = substSet sub set
+       in let this' = Implicit (strs, set')
+       in let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | ((Comment c) as this') :: rest ->
+       let rest' = substTheoryElts sub rest
+       in this' :: rest'
+  | Variable _ :: _ -> raise Unimplemented
+
+and substBnd sub (nm, stopt) = 
+    ((nm, substSetOption sub stopt), 
+      insertTermvar sub nm (Var (None, nm)))
+
+and substBnds sub = function
+     [] -> ([], sub)
+    | bnd :: rest -> 
+       let (bnd',  sub' ) = substBnd sub bnd
+       in let (rest', sub'') = substBnds sub' rest 
+       in (bnd' :: rest', sub'')
+
+and substMBnds sub = function
+     [] -> ([], sub)
+    | (mdlnm, thry) :: rest -> 
+       let sub' = insertModelvar sub mdlnm (ModelName mdlnm ) in
+       let (rest', sub'') = substMBnds sub' rest in
+         ((mdlnm, substTheory sub thry) :: rest', sub'')

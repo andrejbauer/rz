@@ -134,11 +134,6 @@ type context = {bindings : (name * ctx_member) list;
 
 let emptyContext = {bindings = []; implicits = []}
 
-let insertTermVariable cntxt nm st trmopt =
-    (raise Unimplemented : context)
-      
-let lookupId cntxt name = (raise Unimplemented : ctx_member)
-
 let lookupImplicit {implicits} nm = 
   try Some (List.assoc nm implicits) with
       Not_Found -> ImpUnknown
@@ -379,15 +374,12 @@ let annotateExpr cntxt = function
 	let rec loop cntxt = function
 	    [] -> []
 	  | sbnd :: rest ->     
-              let ty = annotateType cntxt orig_expr expr
-              in cntxt' = insertTermVariable cntxt nm ty
-              in (nm, ty) :: ann cntxt' rest
+              let (cntxt', lbnd) = annotateSimpleBinding cntxt orig_expr sbnd
+	      in 
+		lbnd :: loop cntxt' rest
 	in    
-	  ResSet(L.Product (loop cntxt nes), KindSet) 
+	  ResSet(L.Product (loop cntxt nes), L.KindSet) 
       end
-      (* Either a [possibly dependent] type for a tuple, or
-	 a use of the term-operator ( * ) . *)
-      raise Unimplemented
 
   | Sum _ ->
       (* Either a sum type, or a use of the term-operator (+) *)
@@ -489,9 +481,25 @@ let annotateExpr cntxt = function
 	in let (trm2'', ty2'') = coerceFromSubset cntxt trm2' ty'
 	in
 	  match ty2'' with 
-	      Product nmtys ->
-		(* Project out the n1-st type *)
-		raise Unimplemented
+	      L.Product nmtys ->
+		let rec loop k subst = function
+		    [] -> raise Impossible
+		      (nm,ty) :: rest ->
+			if (k = n1) then
+			  ResType ( L.proj(n1, trm2''), 
+			          L.substSet subst ty )
+			else
+			  loop (k+1) 
+			    (L.insertTermvar subst nm (Proj(k,trm''))) rest
+		in let len = List.length nmtys
+		in 
+		     if ( (n1 < 0) || (n1 >= len) ) then
+		       tyGenericError ("Projection " ^ string_of_int n1 ^ 
+					  " out of bounds in " ^
+				          string_of_expr orig_expr)
+		     else 
+		       loop 0 emptysubst nmtys
+			 
 	    | _ -> wrongTypeError expr2 ty2' "tuple"  orig_expr
       end
 
@@ -507,8 +515,34 @@ let annotateExpr cntxt = function
   | Case (expr1, arms2) as orig_expr ->
       raise Unimplemented
 
-  | RzChoose(bnd1, expr2, expr3) as orig_expr ->
-      raise Unimplemented
+  | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
+      begin
+	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
+	  (* XXX : annotate...withCheckedDefault would be better *)
+	in let (cntxt', (nm1,ty1) as lbnd1) = 
+	      annotateSimpleBinding cntxt orig_expr sbnd1
+	in 
+	     match hnfSet cntxt ty1 with
+		 RZ ty1' ->
+		   if (subSet cntxt ty2 ty1') then 
+		     let (trm3, ty3) = annotateTerm cntxt' expr3
+		     in 
+		       if NameSet.mem nm1 (L.fnSet ty3) then
+			 cantElimErrorError orig_expr
+		       else 
+			 ResTerm ( L.RzChoose (lbnd1, trm2, trm3, ty3),
+				   ty3 )
+		   else
+		     tyMismatchError expr2 ty1' ty2 orig_expr
+	       | _ -> 
+		   tyGenericError 
+		     ("The bound variable " ^ 
+		         L.string_of_name nm1 ^ 
+		         " in the construct " ^ 
+			 string_of_expr orig_expr ^ 
+		         "should have a realizer type, but here it has type " ^ 
+		         L.string_of_set ty1)
+      end
 
   | Subin(expr1, expr2) as orig_expr ->
       begin
@@ -621,8 +655,15 @@ let annotateExpr cntxt = function
 		       joinPropTypes [prp1; prp2] )
       end
 
-  | Equal (expropt1, expr2, expr3) ->
-      raise Unimplemented
+  | Equal (expr1, expr2) as orig_expr ->
+      begin
+	let    (trm1, ty1) = annotateTerm cntxt orig_expr expr1
+	in let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
+	in let ty = joinTypes orig_expr [ty1; ty2]
+	in 
+	     ResProp( L.Equal(ty, trm1, trm2),
+		      L.Stable )
+      end
 
   | Forall (binding1, expr2) as orig_expr ->
       let (cntxt', lbnds1) = annotateBinding cntxt orig_expr binding1
@@ -650,41 +691,41 @@ let annotateExpr cntxt = function
 	     
 
 
-      and annotateModel cntxt surrounding_expr expr = 
-	(match annotateExpr cntxt expr with
-	    ResModel(mdl, smmry, sbst) -> (mdl, smmry, sbst)
-	  | _ -> notWhatsExpectedInError expr "model" surrounding_expr)
-
-      and annotateTerm cntxt surrounding_expr expr = 
-	(match annotateExpr cntxt trm with
-	    ResTerm(trm, ty) -> (trm, ty)
-	  | _ -> notWhatsExpectedInError expr "term" surrounding_expr)
-
-      and annotateSet cntxt surrounding_expr expr = 
-	(match annotateExpr cntxt trm with
-	    ResSet(st, knd) -> (st, knd)
-	  | _ -> notWhatsExpectedInError expr "set" surrounding_expr)
-
-      and annotateType cntxt surrounding_expr expr = 
-	(match annotateExpr cntxt trm with
-	    ResSet(st, L.KindSet) -> st
-	  | _ -> notWhatsExpectedInError expr "proper type" surrounding_expr)
-
-      and annotateProp cntxt surrounding_expr expr = 
-	(match annotateProp cntxt trm with
-	    ResProp(prp, prpty) -> (prp, prpty)
-	  | _ -> notWhatsExpectedInError expr "proposition" surrounding_expr)
-
-      and annotateProperProp cntxt surrounding_expr expr = 
-	(match annotateProp cntxt trm with
-	    ResProp(prp, (L.Prop | L.Stable) as prpty) -> (prp, prpty)
-	  | ResProp _ -> 
-	      notWhatsExpectedInError expr "proper proposition" surrounding_expr
-	  | _ -> 
-	      notWhatsExpectedInError expr "proposition" surrounding_expr)
-
-      (* : context -> S.expr -> S.binding -> L.binding list
-      *)
+and annotateModel cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt expr with
+      ResModel(mdl, smmry, sbst) -> (mdl, smmry, sbst)
+    | _ -> notWhatsExpectedInError expr "model" surrounding_expr)
+    
+and annotateTerm cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt trm with
+      ResTerm(trm, ty) -> (trm, ty)
+    | _ -> notWhatsExpectedInError expr "term" surrounding_expr)
+    
+and annotateSet cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt trm with
+      ResSet(st, knd) -> (st, knd)
+    | _ -> notWhatsExpectedInError expr "set" surrounding_expr)
+    
+and annotateType cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt trm with
+      ResSet(st, L.KindSet) -> st
+    | _ -> notWhatsExpectedInError expr "proper type" surrounding_expr)
+    
+and annotateProp cntxt surrounding_expr expr = 
+  (match annotateProp cntxt trm with
+      ResProp(prp, prpty) -> (prp, prpty)
+    | _ -> notWhatsExpectedInError expr "proposition" surrounding_expr)
+    
+and annotateProperProp cntxt surrounding_expr expr = 
+  (match annotateProp cntxt trm with
+      ResProp(prp, (L.Prop | L.Stable) as prpty) -> (prp, prpty)
+    | ResProp _ -> 
+	notWhatsExpectedInError expr "proper proposition" surrounding_expr
+    | _ -> 
+	notWhatsExpectedInError expr "proposition" surrounding_expr)
+    
+(* annotateBinding: context -> S.expr -> S.binding -> L.binding list
+*)
 and annotateBinding cntxt surrounding_expr binders =
   (* Loop over variable-list/type pairs *)
   let rec bLoop cntxt' = function

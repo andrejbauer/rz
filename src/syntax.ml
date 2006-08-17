@@ -173,7 +173,7 @@ let freshString good bad occurs =
 
 let nextName = function
     N(nm, Word) -> N(nextString nm, Word)
-  | _ -> N(nextString "op", Word)
+  | N(_, fixity) -> N(nextString "op", fixity)
 
 let freshName good bad occurs =
   let rec find g =
