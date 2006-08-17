@@ -34,7 +34,7 @@ let rec peek = function
     | (y,(k,v)::rest) -> if (y=k) then Some v else peek(y,rest)
 
 let rec lookupName = function
-      (y,[]) -> (print_string ("Unbound name: " ^ Syntax.string_of_name y ^ "\n");
+      (y,[]) -> (print_string ("Unbound name: " ^ Name.string_of_name y ^ "\n");
                  raise NotFound)
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
 
@@ -83,7 +83,7 @@ let rec lookupModulLong ctx = function
 
 let lookupType  ctx   nm = 
    try (NameMap.find nm ctx.types) with 
-      Not_found -> ( print_string ( "Unbound name: " ^ string_of_name nm ^ 
+      Not_found -> ( print_string ( "Unbound name: " ^ Name.string_of_name nm ^ 
 				    "\n");
                      raise Not_found )
 

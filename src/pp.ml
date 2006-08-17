@@ -8,6 +8,7 @@ open Format
 open Outsyn
 
 exception Unimplemented
+exception Impossible
 
 (** Outputs a term to the pretty-printing formatter ppf.
       The various output_term_n functions each will display a term of 
@@ -28,7 +29,8 @@ and output_term_13 ppf = function
           | arm::arms -> fprintf ppf "@[| %a @]@,%a" 
 	      output_arm arm  output_arms' arms
 	in let output_arms ppf = function
-	      arm::arms -> fprintf ppf "@[  %a @]@,%a" 
+	      [] -> raise Impossible
+	    | arm::arms -> fprintf ppf "@[  %a @]@,%a" 
 		output_arm arm  output_arms' arms
 	in  
 	  fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]]" 
@@ -56,7 +58,7 @@ and output_term_12 ppf = function
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
-    App (App (Id (LN(None, Syntax.N(op, Syntax.Infix0))), t), u) -> 
+    App (App (Id (LN(None, Name.N(op, Name.Infix0))), t), u) -> 
       fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_9 t  output_ln ln  output_term_8 u *)
@@ -64,7 +66,7 @@ and output_term_9 ppf = function
   | trm -> output_term_8 ppf trm
       
 and output_term_8 ppf = function
-    App (App (Id (LN(None, Syntax.N(op,Syntax.Infix1))), t), u) -> 
+    App (App (Id (LN(None, Name.N(op,Name.Infix1))), t), u) -> 
       fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_8 t  output_ln ln  output_term_7 u *)
@@ -72,7 +74,7 @@ and output_term_8 ppf = function
   | trm -> output_term_7 ppf trm
       
 and output_term_7 ppf = function
-    App (App (Id (LN(None, Syntax.N(op,Syntax.Infix2))), t), u) -> 
+    App (App (Id (LN(None, Name.N(op,Name.Infix2))), t), u) -> 
       fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_7 t  output_ln ln  output_term_6 u *)
@@ -80,7 +82,7 @@ and output_term_7 ppf = function
   | trm -> output_term_6 ppf trm
 
 and output_term_6 ppf = function
-     App (App (Id (LN(None, Syntax.N(op,Syntax.Infix3))), t), u) -> 
+     App (App (Id (LN(None, Name.N(op,Name.Infix3))), t), u) -> 
       fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_6 t  op  output_term_5 u *)
@@ -88,7 +90,7 @@ and output_term_6 ppf = function
   | trm -> output_term_5 ppf trm
 
 and output_term_5 ppf = function
-     App (App (Id (LN(None,Syntax.N(op,Syntax.Infix4))), t), u) -> 
+     App (App (Id (LN(None,Name.N(op,Name.Infix4))), t), u) -> 
       fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_5 t  output_ln ln  output_term_4 u *)
@@ -100,8 +102,8 @@ and output_term_4 ppf = function
        inner ones to accidentally use the "default" case for
        ordinary non-infix applications
      *)
-    App (App (Id (LN(None, Syntax.N(_, (Syntax.Infix1 | Syntax.Infix2 |
-					    Syntax.Infix3 | Syntax.Infix4))   )), _), _) 
+    App (App (Id (LN(None, Name.N(_, (Name.Infix1 | Name.Infix2 |
+					    Name.Infix3 | Name.Infix4))   )), _), _) 
     as trm -> 
       output_term_0 ppf trm
          
@@ -155,7 +157,7 @@ and output_sum_components outputer separator ppf lst =
 (** Specifically for comma-separated variable/type pairs *)
 and output_binds ppf lst =
       let outputer ppf (n,t) = 
-	fprintf ppf "%s:%a" (Syntax.string_of_name n)  output_ty t
+	fprintf ppf "%s:%a" (Name.string_of_name n)  output_ty t
       in let rec output_loop ppf = function
 	    [] -> ()
 	| [trm] -> outputer ppf trm
@@ -166,7 +168,7 @@ and output_binds ppf lst =
 
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
-	fprintf ppf "%s:||%a||" (Syntax.string_of_name n)  output_ty t
+	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ty t
       in let rec output_loop ppf = function
 	    [] -> ()
 	| [trm] -> outputer ppf trm
@@ -177,7 +179,7 @@ and output_assertion_binds ppf lst =
 
 and output_totalbinds ppf lst =
       let outputer ppf (n,t) = 
-	fprintf ppf "%s:||%a||" (Syntax.string_of_name n)  output_ty t
+	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ty t
       in let rec output_loop ppf = function
 	    [] -> ()
 	| [trm] -> outputer ppf trm
@@ -199,7 +201,7 @@ and output_term_0 ppf = function
 	    fprintf ppf "@[(%a)@]"   output_term trm)
 
 and output_name ppf nm = 
-  fprintf ppf "%s" (Syntax.string_of_name nm)
+  fprintf ppf "%s" (Name.string_of_name nm)
       
 and output_ln ppf ln = 
   fprintf ppf "%s" (string_of_ln ln)
@@ -284,13 +286,13 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
-  | IsPer stnm -> fprintf ppf "PER(=%s=)" stnm
+  | IsPer stnm -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
   | IsPredicate (prdct,t,x,y,p) ->
       fprintf ppf "@[PREDICATE(@[<hov>%s,@ %a,@ @[lam %s %s.(@[%a@])@]@])@]"
-        (Syntax.string_of_name prdct)
+        (Name.string_of_name prdct)
         output_ty t
-        (Syntax.string_of_name x)
-        (Syntax.string_of_name y)
+        (Name.string_of_name x)
+        (Name.string_of_name y)
         output_prop p
   | NamedTotal (ln, t) -> 
       fprintf ppf "%a : ||%a||"  
@@ -300,7 +302,7 @@ and output_prop_0 ppf = function
   | prp -> fprintf ppf "(@[<hov>%a@])"   output_prop prp
     
 and output_app ppf = function
-    ((LN(None, Syntax.N(op, (Syntax.Infix0|Syntax.Infix1|Syntax.Infix2|Syntax.Infix3|Syntax.Infix4)))), [u;v]) ->
+    ((LN(None, Name.N(op, (Name.Infix0|Name.Infix1|Name.Infix2|Name.Infix3|Name.Infix4)))), [u;v]) ->
        fprintf ppf "%a %s %a" 
          output_term u  op  output_term v
   | (ln, trms) -> 
@@ -367,17 +369,19 @@ and output_assertions ppf = function
 and output_spec ppf = function
     ValSpec (nm, ty, assertions) ->
       fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
-      (Syntax.string_of_name nm)   output_ty ty  output_assertions assertions
+      (Name.string_of_name nm)   output_ty ty  output_assertions assertions
   | TySpec (tynm, None, assertions) -> 
-      fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  tynm   output_assertions assertions
+      fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
+	(Name.string_of_name tynm)   output_assertions assertions
   | TySpec (tynm, Some ty, assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s =@ %a@]%a@]"  
-	tynm   output_ty ty   output_assertions assertions
+	(Name.string_of_name tynm)   output_ty ty   output_assertions assertions
   | AssertionSpec assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
       fprintf ppf "(**%s*)" cmmnt
   | ModulSpec (nm, sgntr) ->
-      fprintf ppf "@[module %s : %a@]"   nm   output_signat sgntr
+      fprintf ppf "@[module %s : %a@]"   
+	(Name.string_of_name nm)   output_signat sgntr
 
 and output_specs ppf = function
     [] -> ()
@@ -386,11 +390,11 @@ and output_specs ppf = function
       fprintf ppf "%a@, @,%a" output_spec spec output_specs specs
 
 and output_signat_no_sigapp ppf = function
-    SignatName s -> fprintf ppf "%s" s
+    SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
-         m   output_signat sgnt1   output_signat sgnt2
+         (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl,sgnt2) ->
       fprintf ppf "@[<v>(** %a(%a) *)@, %a@]"
          output_signat_sigapp sgnt1
@@ -398,21 +402,21 @@ and output_signat_no_sigapp ppf = function
          output_signat_no_sigapp sgnt2
 
 and output_signat_sigapp ppf = function
-    SignatName s -> fprintf ppf "%s" s
+    SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
-         m   output_signat sgnt1   output_signat sgnt2
+         (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl,sgnt2) ->
       fprintf ppf "@[%a(%a)@]"
          output_signat_sigapp sgnt1    output_modul mdl
 
 and output_signat ppf = function
-    SignatName s -> fprintf ppf "%s" s
+    SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
-         m   output_signat sgnt1   output_signat sgnt2
+         (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
   | (SignatApp _) as sgnt ->
       if ( ! Flags.do_sigapp ) then
         output_signat_no_sigapp ppf sgnt
@@ -420,18 +424,19 @@ and output_signat ppf = function
         output_signat_sigapp ppf sgnt
 
 and output_modul ppf = function
-    ModulName s -> fprintf ppf "%s" s
-  | ModulProj (mdl, s) -> fprintf ppf "%a.%s"  output_modul mdl   s
-  | ModulApp (mdl1, mdl2) -> fprintf ppf "%a(%a)"
-      output_modul mdl1   output_modul mdl2
+    ModulName s -> fprintf ppf "%s" (Name.string_of_name s)
+  | ModulProj (mdl, s) -> 
+      fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name s)
+  | ModulApp (mdl1, mdl2) -> 
+      fprintf ppf "%a(%a)" output_modul mdl1   output_modul mdl2
 
 and output_toplevel ppf = function
     Signatdef (nm, signat) ->
       fprintf ppf "@[<v>module type %s = @,@[<v>%a@]@]@.@."  
-	  nm   output_signat signat
+	  (Name.string_of_name nm)   output_signat signat
   | TopComment cmmnt -> 
       fprintf ppf "@[(**%s*)@]@." cmmnt
   | TopModul (mdlnm, signat) ->
       fprintf ppf "@[module %s : %a@]@.@."
-	  mdlnm   output_signat signat
+	  (Name.string_of_name mdlnm)   output_signat signat
 	
