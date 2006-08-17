@@ -77,7 +77,7 @@ and proposition =
 
 and set =
     Empty
-  | Unit  (* Unit is the singleton containing Star *)
+  | Unit  (* Unit is the singleton containing EmptyTuple *)
   | Basic    of set_longname
   | Product  of (name * set) list
   | Exp      of name * set * set

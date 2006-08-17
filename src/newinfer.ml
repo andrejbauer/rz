@@ -97,6 +97,12 @@ let notEquivalenceOnError expr expectedDomExpr =
     ("The relation " ^ string_of_expr expr ^ 
 	" is not an equivalence relation on " ^ 
 	string_of_expr expectedDomExpr)
+
+let cantElimError context_expr =
+  tyGenericError 
+    ("Inferred type of " ^ string_of_expr orig_expr ^ 
+	"refers to a locally-bound variable; " ^ 
+	"maybe a constraint on the body would help?")
 	
 
 (*****************************************)
@@ -112,10 +118,10 @@ type inferResult =
   | ResModel    of L.model * summary * substitution
 
 type ctx_member =
-    CtxProp  of L.proposition * L.proptype
-  | CtxSet   of L.set * L.kind
-  | CtxTerm  of L.term * L.set
-  | CtxModel of L.model * summary * substitution
+    CtxProp  of L.proposition option * L.proptype
+  | CtxSet   of L.set option         * L.kind
+  | CtxTerm  of                      * L.set
+  | CtxModel of L.model option       * summary * substitution
   | CtxUnbound
 
 type implicit_info =
@@ -126,13 +132,32 @@ type implicit_info =
 type context = {bindings : (name * ctx_member) list;
 		implicits : (name * implicit_info) list}
 
-let sertTermVariable cntxt nm st trmopt =
+let emptyContext = {bindings = []; implicits = []}
+
+let insertTermVariable cntxt nm st trmopt =
     (raise Unimplemented : context)
       
 let lookupId cntxt name = (raise Unimplemented : ctx_member)
 
-let lookupImplicit cntxt name = (raise Unimplemented : implicit_info)
+let lookupImplicit {implicits} nm = 
+  try Some (List.assoc nm implicits) with
+      Not_Found -> ImpUnknown
 
+let lookupId {bindings} nm =
+  try Some (List.assoc nm bindings) with
+      Not_Found -> CtxUnbound
+
+let insertTermVariable cntxt nm ty =
+  { cntxt with bindings =  (nm, CtxTerm ty) :: cntxt.bindings }
+
+let insertSetVariable cntxt nm knd stopt =
+  { cntxt with bindings =  (nm, CtxSet (stopt,knd)) :: cntxt.bindings }
+
+let insertPropVariable cntxt nm prpty prpopt =
+  { cntxt with bindings =  (nm, CtxProp (prpopt,prpty)) :: cntxt.bindings }
+
+(*** XXX Does not check that names are of the right form,
+     e.g., that set names are lowercased non-infix. *)
 
 let annotateExpr cntxt = function 
     Ident nm -> 
@@ -515,22 +540,33 @@ let annotateExpr cntxt = function
       begin
 	(* Right now, let is for terms only *)
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
-	  (* XXX: AnnotateSimpleBindingWithDefault CheckedDefault? *)
+	  (* XXX: AnnotateSimpleBindingWithDefault CheckedDefault? 
+	     Ideally, we don't need a type annotation since we 
+	     already know what the type of the rhs is... *)
+
 	in let (cntxt', (nm1,ty1)) = annotateSimpleBinding cntxt orig_expr sbnd1
-          (* XXX: If we ever start putting term definitions into the
+
+          (* NB: If we ever start putting term definitions into the
              context, we'd need to do it here, since
              annotateSimpleBinding doesn't know the definition... *)
 	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
 	in 
-	     if (subtype cntxt ty1 ty2) then
-	       ResTerm (
-
-	in 
-	in let 
+	     if NameSet.mem nm1 (L.fnSet ty3) then
+	       cantElimErrorError orig_expr
+	     else 
+	       ResTerm ( L.Let ((nm1,ty1), trm2, trm3),
+		         ty3 )
       end
 
   | The(sbnd1, expr2) as orig_expr ->
-      raise Unimplemented
+      let (cntxt', lbnd1) = annotateSimpleBinding cntxt orig_expr sbnd1
+      in let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
+      in
+	   if NameSet.mem nm1 (L.fnSet ty2) then
+	     cantElimErrorError orig_expr
+	   else 
+	     ResTerm ( L.The ((nm1,ty1), trm2),
+		       ty2 )
 
   | False -> ResProp(L.False, L.StableProp)
 
