@@ -26,7 +26,7 @@ open Name
 module S = Syntax
 
 (** names of models; must be capitalized *)
-type model_name = string
+type model_name = name
 
 type model = 
     ModelName of model_name
@@ -313,10 +313,10 @@ and subst x t =
 *)
 
 let rec string_of_model = function
-    ModelName strng -> strng
+    ModelName nm -> string_of_name nm
   | ModelApp (mdl1, mdl2) ->
       string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
-  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
+  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ string_of_name lbl
 
 let rec string_of_ln = function
     LN (None, nm) -> string_of_name nm
@@ -425,13 +425,13 @@ let fnModel _ = raise Unimplemented
 type subst = {terms: term NameMap.t;
               sets: set NameMap.t;
 	      props : proposition NameMap.t;
-              models: model StringMap.t;
+              models: model NameMap.t;
               capturablenames: NameSet.t}
 
 let emptysubst = {terms = NameMap.empty;
 		  props = NameMap.empty;
 		  sets = NameMap.empty;
-		  models = StringMap.empty;
+		  models = NameMap.empty;
 		  capturablenames = NameSet.empty}
 
 let insertTermvar sbst nm trm =
@@ -447,7 +447,7 @@ let insertSetvar sbst nm st =
 	 capturablenames = NameSet.union sbst.capturablenames (fnSet st)}
 	
 let insertModelvar sbst strng mdl =
-  {sbst with models = StringMap.add strng mdl sbst.models;
+  {sbst with models = NameMap.add strng mdl sbst.models;
 	 capturablenames = NameSet.union sbst.capturablenames (fnModel mdl)}
 
 let getTermvar sbst nm =
@@ -463,7 +463,7 @@ let getSetvar sbst stnm =
        Not_found -> Basic (SLN(None, stnm))
 
 let getModelvar sbst mdlnm =
-   try (StringMap.find mdlnm sbst.models) with 
+   try (NameMap.find mdlnm sbst.models) with 
        Not_found -> ModelName mdlnm
 
 let display_subst sbst =
@@ -471,14 +471,14 @@ let display_subst sbst =
 					string_of_term trm ^ "]")
   in let do_set stnm st = print_string ("[" ^ string_of_name stnm ^ "~>" ^ 
 					   string_of_set st ^ "]")
-  in let do_model mdlnm mdl = print_string ("[" ^ mdlnm ^ "~>" ^ 
+  in let do_model mdlnm mdl = print_string ("[" ^ string_of_name mdlnm ^ "~>" ^ 
 					       string_of_model mdl ^ "]")
   in  (print_string "Terms: ";
        NameMap.iter do_term sbst.terms;
        print_string "\nSets: ";
        NameMap.iter do_set sbst.sets;
        print_string "\nSets: ";
-       StringMap.iter do_model sbst.models)
+       NameMap.iter do_model sbst.models)
    
 (** updateboundName: subst -> name -> subst * name 
 	

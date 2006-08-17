@@ -221,14 +221,19 @@ let getModulvar sbst mdlnm =
 
 (** see also display_subst below *)
 
-let occursSubstName sbst str =
-  NameMap.fold (fun (N(nm,_)) _ b -> b || str = nm) sbst.terms false
+exception FoundName
+let occursSubstName sbst nm =
+  try
+    ignore (NameMap.find nm sbst.terms) ;
+    true
+  with
+      Not_found -> false
 
 let occursSubstTyname sbst str =
   try ignore (TyNameMap.find str sbst.tys) ; true with Not_found -> false
 
-let occursSubstModulname sbst str =
-  try ignore (ModulNameMap.find str sbst.moduls) ; true with Not_found -> false
+let occursSubstModulname sbst nm =
+  try ignore (ModulNameMap.find nm sbst.moduls) ; true with Not_found -> false
 
 let freshNm good bad ?occ sbst =
   match occ with
@@ -237,13 +242,13 @@ let freshNm good bad ?occ sbst =
 
 let freshTyName good bad ?occ sbst =
   match occ with
-      None -> freshString good bad (occursSubstTyname sbst)
-    | Some occ -> freshString good bad (fun n -> occ n || occursSubstTyname sbst n)
+      None -> freshName good bad (occursSubstTyname sbst)
+    | Some occ -> freshName good bad (fun n -> occ n || occursSubstTyname sbst n)
 
 let freshModulName good bad ?occ sbst =
   match occ with
-      None -> freshString good bad (occursSubstModulname sbst)
-    | Some occ -> freshString good bad (fun n -> occ n || occursSubstModulname sbst n)
+      None -> freshName good bad (occursSubstModulname sbst)
+    | Some occ -> freshName good bad (fun n -> occ n || occursSubstModulname sbst n)
 
 (** The substitution functions accept an optional occ argument which is
     used for extra occur checks (for example in a context). The occ function
@@ -400,11 +405,9 @@ let rec collectSignatApps = function
 	hd, args @ [m], n
   | s -> s, [], s
 
-let string_of_name = L.string_of_name
-
 let rec string_of_modul = function
-    ModulName nm -> nm
-  | ModulProj (mdl, nm) -> (string_of_modul mdl) ^ "." ^ nm
+    ModulName nm -> string_of_name nm
+  | ModulProj (mdl, nm) -> (string_of_modul mdl) ^ "." ^ string_of_name nm
   | ModulApp (mdl1, mdl2) -> (string_of_modul mdl1) ^ "(" ^ (string_of_modul mdl2) ^ ")"
 
 let rec string_of_ln = function
@@ -412,8 +415,8 @@ let rec string_of_ln = function
   | LN (Some mdl, nm) -> (string_of_modul mdl) ^ "."  ^ (string_of_name nm)
 
 let rec string_of_tln = function
-    TLN (None, nm) -> nm
-  | TLN (Some mdl, nm) -> (string_of_modul mdl) ^ "."  ^ nm
+    TLN (None, nm) -> string_of_name nm
+  | TLN (Some mdl, nm) -> (string_of_modul mdl) ^ "."  ^ string_of_name nm
 
 
 let rec string_of_ty' level t =
@@ -512,7 +515,7 @@ and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
-    | IsPer nm -> (0, "PER(=_" ^ nm ^ ")")
+    | IsPer nm -> (0, "PER(=_" ^ string_of_name nm ^ ")")
     | IsPredicate (prdct,_,_,_,_) -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ",...)")
     | NamedTotal (n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_tln n) ^ "||")
     | NamedPer (n, t, u) -> (9, (string_of_term' 9 t) ^ " =_" ^
@@ -554,21 +557,21 @@ let rec string_of_spec = function
       "val " ^ (string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
       ^ string_of_assertions assertions
     | TySpec (nm, None, assertions) -> 
-	"type " ^ nm ^ "\n" ^ string_of_assertions assertions
+	"type " ^ string_of_name nm ^ "\n" ^ string_of_assertions assertions
     | TySpec (nm, Some ty, assertions) -> 
-	"type " ^ nm ^ " = " ^ (string_of_ty ty) ^ "\n" ^ 
+	"type " ^ string_of_name nm ^ " = " ^ (string_of_ty ty) ^ "\n" ^ 
 	string_of_assertions assertions
     | AssertionSpec assertion ->
 	string_of_assertion assertion
     | ModulSpec (nm, sgntr) ->
-	"module " ^ nm ^ " : " ^ (string_of_signat sgntr)
+	"module " ^ string_of_name nm ^ " : " ^ (string_of_signat sgntr)
     | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
 and string_of_signat = function
-    SignatName s -> s
+    SignatName nm -> string_of_name nm
   | Signat body  -> "sig\n" ^ (String.concat "\n\n" (List.map string_of_spec body)) ^ "\nend\n"
   | SignatFunctor ((n,t), body) -> 
-      "functor (" ^ n ^ " : " ^ (string_of_signat t) ^ ") ->\n" ^
+      "functor (" ^ string_of_name n ^ " : " ^ (string_of_signat t) ^ ") ->\n" ^
       (string_of_signat body) ^ "\n"
   | (SignatApp _) as s ->
       let hd, args, res = collectSignatApps s in
@@ -579,17 +582,17 @@ and string_of_signat = function
 
 let string_of_toplevel = function
     (Signatdef (s, signat)) ->
-      "module type " ^ s ^ " =\n" ^ (string_of_signat signat) ^ "\n"
+      "module type " ^ string_of_name s ^ " =\n" ^ (string_of_signat signat) ^ "\n"
   | TopComment cmmnt -> "(**" ^ cmmnt ^ "*)"
   | TopModul (mdlnm, signat) ->
-      "module " ^ mdlnm ^ " : " ^ string_of_signat signat
+      "module " ^ string_of_name mdlnm ^ " : " ^ string_of_signat signat
 
 let display_subst sbst =
   let do_term nm trm = print_string ("[" ^ string_of_name nm ^ "~>" ^ 
 					  string_of_term trm ^ "]")
-  in let do_ty tynm ty = print_string ("[" ^ tynm ^ "~>" ^ 
+  in let do_ty tynm ty = print_string ("[" ^ string_of_name tynm ^ "~>" ^ 
 					string_of_ty ty ^ "]")
-  in let do_modul mdlnm mdl = print_string ("[" ^ mdlnm ^ "~>" ^ 
+  in let do_modul mdlnm mdl = print_string ("[" ^ string_of_name mdlnm ^ "~>" ^ 
 					    string_of_modul mdl ^ "]")
   in  (print_string "Terms: ";
        NameMap.iter do_term sbst.terms;

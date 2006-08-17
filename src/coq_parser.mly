@@ -1,6 +1,7 @@
 
 %{
   (* header *)
+  open Name
   open Syntax
 
   let parse_error _ =

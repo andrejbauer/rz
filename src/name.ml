@@ -99,16 +99,31 @@ let nextName = function
 let freshName good bad occurs =
   let rec find g =
     try
-      List.find (fun ((N(x,_)) as nm) -> not (List.mem nm bad) && not (occurs x)) g
+      List.find (fun nm -> not (List.mem nm bad) && not (occurs nm)) g
     with Not_found -> find (List.map nextName g)
   in
     find good
 
-(** [freshName2 goods bad occurs] generates two fresh names. *)
+(** [freshName2 good1 good2 bad occurs] generates two fresh names. *)
 let freshName2 good1 good2 bad occurs =
   let x1 = freshName good1 bad occurs in
   let x2 = freshName good2 (x1::bad) occurs in
     x1, x2
+
+(** [freshName3 good1 good2 good3 bad occurs] generates three fresh names. *)
+let freshName3 good1 good2 good3 bad occurs =
+  let x1 = freshName good1 bad occurs in
+  let x2 = freshName good2 (x1::bad) occurs in
+  let x3 = freshName good3 (x1::x2::bad) occurs in
+    x1, x2, x3
+
+(** [freshName4 good1 good2 good3 good4 bad occurs] generates four fresh names. *)
+let freshName4 good1 good2 good3 good4 bad occurs =
+  let x1 = freshName good1 bad occurs in
+  let x2 = freshName good2 (x1::bad) occurs in
+  let x3 = freshName good3 (x1::x2::bad) occurs in
+  let x4 = freshName good4 (x1::x2::x3::bad) occurs in
+    x1, x2, x3, x4
 
 (** [string_of_name n] converts a name [n] to its string representation. *)
 let rec string_of_name = function 
