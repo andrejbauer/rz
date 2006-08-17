@@ -44,7 +44,7 @@ and expr =
   (*** sets ***)
   | Empty                                  (* empty set, a.k.a, void *)
   | Unit                                   (* unit set *)
-  | Product  of binding1 list              (* finite (dependent) product *)
+  | Product  of (name * expr) list         (* finite (dependent) product *)
   | Sum      of (label * set option) list  (* finite coproduct *)
   | Subset   of binding1 * prop            (* subset *)
   | Quotient of set * prop                 (* quotient of a set or a term *)
@@ -226,8 +226,7 @@ and string_of_expr = function
   | Constraint (e1, e2) -> string_of_expr e1 ^ " : " ^  string_of_expr e2
   | Empty -> "{}"
   | Unit -> "unit"
-  | Product (lst, e) ->
-      String.concat " * " (List.map string_of_name_expr lst) ^ " * " ^ string_of_expr e      
+  | Product lst -> String.concat " * " (List.map string_of_name_expr lst)
   | Sum lst -> String.concat " | " (List.map string_of_label_set lst)
   | Subset (bnd, e) -> "{" ^ string_of_bnd bnd ^ " | " ^ string_of_expr e ^ "}"
   | Quotient (st, e) -> string_of_expr st ^ " % " ^ string_of_expr e
@@ -341,6 +340,8 @@ and string_of_toplevel = function
   | TopModel (mdlnm, thry) ->
       "model " ^ mdlnm ^ " = " ^ string_of_theory thry
 
+(*************************************
+ ******** COMMENTED OUT FROM HERE ****
 
 (************************)
 (** Free name functions *)
@@ -737,3 +738,5 @@ let rec etaEquivTheories thry1 thry2 =
       in etaEquivTheories thry1' thry2 
   | _ -> thry1 = thry2
 )
+
+*)

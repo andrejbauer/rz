@@ -288,11 +288,11 @@ expr_list:
 
 product_list:
   | dep_expr STAR dep_expr             { [$1; $3] }
-  | expr STAR expr                     { [wildName(), $1; wildName(), $3] }
-  | dep_expr STAR expr                 { [$1; wildName(), $3] }
-  | expr STAR dep_expr                 { [wildName(), $1; $3] }
+  | expr STAR expr                     { [(wildName(), $1); (wildName(), $3)] }
+  | dep_expr STAR expr                 { [$1; (wildName(), $3)] }
+  | expr STAR dep_expr                 { [(wildName(), $1); $3] }
   | product_list STAR dep_expr         { $1 @ [$3] }
-  | product_list STAR expr             { $1 @ [wildName(), $3] }
+  | product_list STAR expr             { $1 @ [(wildName(), $3)] }
 
 sum_list:
   | LABEL                                  { [($1, None)] }
