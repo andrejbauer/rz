@@ -916,22 +916,25 @@ let rec annotateExpr cntxt = function
   | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
       begin
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
-	  (* XXX : annotate...withCheckedDefault would be better *)
+
 	in let (cntxt', ((nm1,ty1) as lbnd1)) = 
-	      annotateSimpleBinding cntxt orig_expr sbnd1
-	in 
+	      annotateSimpleBindingWithDefault 
+		cntxt orig_expr (L.Rz ty2) sbnd1
+	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3 
+	in
 	     match hnfSet cntxt ty1 with
 		 L.Rz ty1' ->
-		   if (subSet cntxt ty2 ty1') then 
-		     let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3 
-		     in 
-		       if NameSet.mem nm1 (L.fnSet ty3) then
-			 cantElimError orig_expr
-		       else 
-			 ResTerm ( L.RzChoose (lbnd1, trm2, trm3, ty3),
-				   ty3 )
-		   else
-		     tyMismatchError expr2 ty1' ty2 orig_expr
+		   begin
+		     match  coerce cntxt trm2 ty2 ty1'  with
+			 Some trm2' -> 
+			   if NameSet.mem nm1 (L.fnSet ty3) then
+			     cantElimError orig_expr
+			   else 
+			     ResTerm ( L.RzChoose (lbnd1, trm2', trm3, ty3),
+				     ty3 )
+		       | None -> 
+			   tyMismatchError expr2 ty1' ty2 orig_expr
+		   end
 	       | _ -> 
 		   tyGenericError 
 		     ("The bound variable " ^ 
@@ -992,22 +995,26 @@ let rec annotateExpr cntxt = function
       begin
 	(* Right now, let is for terms only *)
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
-	  (* XXX: AnnotateSimpleBindingWithDefault CheckedDefault? 
-	     Ideally, we don't need a type annotation since we 
-	     already know what the type of the rhs is... *)
 
-	in let (cntxt', (nm1,ty1)) = annotateSimpleBinding cntxt orig_expr sbnd1
+	in let (cntxt', (nm1,ty1)) = 
+	  annotateSimpleBindingWithDefault cntxt orig_expr ty2 sbnd1
 
           (* NB: If we ever start putting term definitions into the
              context, we'd need to do it here, since
              annotateSimpleBinding doesn't know the definition... *)
 	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
 	in 
-	     if NameSet.mem nm1 (L.fnSet ty3) then
-	       cantElimError orig_expr
-	     else 
-	       ResTerm ( L.Let ((nm1,ty1), trm2, trm3, ty3),
-		         ty3 )
+	     begin
+	       match coerce cntxt trm2 ty2 ty1 with
+		   Some trm2' -> 
+		     if NameSet.mem nm1 (L.fnSet ty3) then
+		       cantElimError orig_expr
+		     else 
+		       ResTerm ( L.Let ((nm1,ty1), trm2', trm3, ty3),
+		               ty3 )
+		 | None -> 
+		     tyMismatchError expr2 ty1 ty2 orig_expr
+	     end
       end
 
   | The(sbnd1, expr2) as orig_expr ->
@@ -1188,6 +1195,65 @@ and annotateSimpleBinding cntxt surrounding_expr (nm, expropt) =
 	(cntxt', [lbnd]) -> (cntxt', lbnd)
       | _ -> raise Impossible
   end
+
+(** Like annotatebinding, but takes a (previously annotated) default set to
+    be used if one is not implicitly specified in the binding or
+    specified in an implicit declaration.
+
+    Raises an error (indirectly) if the set in the binding is ill-formed
+    or if the set in the binding is not a supertype of the default.
+*)
+
+and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
+  function
+      (nm, None) -> 
+	begin
+	  (* There's a reasonable argument to say that the default_ty
+             should always be used, since it's most likely to get the
+             imput to typecheck.  On the other hand, if you say that n
+             ranges over integers unless otherwise specified, and you
+             bind it to a boolean, an error seems likely... *)
+	  match (lookupImplicit cntxt nm) with
+	      ImpTermvar ty -> (insertTermVariable cntxt nm ty,
+			          (nm, ty) )
+	    | _             -> (insertTermVariable cntxt nm default_ty, 
+			          (nm, default_ty) )
+	end
+
+    | (nm, Some expr) -> 
+	let ty = annotateType cntxt surrounding_expr expr
+	in 
+	  (* NB:  No checking of binding annotation vs default! *)
+	  (insertTermVariable cntxt nm ty,  (nm, ty) )
+
+(*
+and annotateSimpleBindingWithCheckedDefault cntxt surrounding_expr default_ty =
+  function
+      (nm, None) -> 
+	begin
+	  (* There's a reasonable argument to say that the default_ty
+             should always be used, since it's most likely to get the
+             imput to typecheck.  On the other hand, if you say that n
+             ranges over integers unless otherwise specified, and you
+             bind it to a boolean, an error seems likely... *)
+	  match (lookupImplicit cntxt nm) with
+	      ImpTermvar ty -> (insertTermVariable cntxt nm ty,
+			          (nm, ty) )
+	    | _             -> (insertTermVariable cntxt nm default_ty, 
+			          (nm, default_ty) )
+	end
+
+    | (nm, Some expr) as orig_sbnd -> 
+	let ty = annotateType cntxt surrounding_expr expr
+	in if (subSet cntxt default_ty ty) then
+            (insertTermVariable cntxt nm ty,  (nm, ty) )
+	  else
+            tyGenericError ( "Annotated Binding " ^ 
+			       string_of_bnd orig_sbnd ^
+			       " doesn't match inferred set " ^ 
+			       L.string_of_set default_ty ^ " in " ^
+			       string_of_expr surrounding_expr)
+*)
 
 and annotateTheoryElem cntxt = function
     Definition(nm1, expropt2, expr3) as orig_elem -> 
