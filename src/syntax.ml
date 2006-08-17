@@ -62,7 +62,7 @@ and expr =
   | Proj   of int   * term                 (* projection from a tuple *)
   | Inj    of label * term option          (* injection into a sum type *)
   | Case   of term  * (label * binding1 option * term) list
-  | Choose of binding * term * term * term (* elimination of equivalence class *)
+  | Choose of binding1 * term * term * term (* elimination of equivalence class *)
   | RzChoose of binding1 * term * term     (* elimination of rz *)
   | Subin  of term * set                   (* Injection into a subset;
 					      incurs an obligation *)
@@ -78,7 +78,7 @@ and expr =
   | Iff    of prop  * prop
   | Or     of prop list
   | Not    of prop
-  | Equal  of set option * term * term
+  | Equal  of term * term
   | Forall of binding * prop
   | Exists of binding * prop
   | Unique of binding * prop
@@ -93,7 +93,7 @@ and sentence_type =
 
 and theory_element =
   | Definition of name * expr option * expr
-  | Parameter  of sentence_type * (name list * expr) list
+  | Value      of sentence_type * (name list * expr) list
   | Implicit   of name list * expr
   | Include    of theory
   | Comment    of string
@@ -184,111 +184,96 @@ let freshName good bad occurs =
     find good
 
 let rec string_of_name = function 
-    N(str,Word) -> str
+  | N(_, Wild) -> "_"
+  | N(str,Word) -> str
   | N("*",_) -> "( * )"
   | N(str,_) -> "(" ^ str ^ ")"
 
 let string_of_label l = l
 
-let rec string_of_set set = 
-  (let rec toStr = function 
-      Empty -> "0"
-    | Unit  -> "1"
-    | Set_name (None, stnm) -> stnm
-    | Set_name (Some mdl, stnm) -> string_of_model mdl ^ "." ^ stnm
-    | Product noss -> "(" ^ String.concat " * " (List.map string_of_product_part noss) ^ ")"
-    | Sum sumarms -> "(" ^ String.concat " + " (List.map sumarmToStr sumarms) ^ ")"
-    | Exp (None, set1, set2) -> "(" ^ toStr set1 ^ " -> " ^ toStr set2 ^ ")"
-    | Exp (Some nm, set1, set2) -> 
-        "((" ^ string_of_name nm ^ ":" ^ toStr set1 ^ ") -> " ^ toStr set2 ^ ")"
-    | Set -> "Set"
-    | Prop -> "Prop"
-    | StableProp -> "StableProp"
-    | EquivProp -> "EquivProp"
-    | Rz set -> "rz (" ^ toStr set ^ ")"
-    | Subset (bnd,term) -> "{ " ^ string_of_bnd bnd ^ " with " ^ 
-	                     string_of_term term ^ " }"
-    | Quotient (st, trm) ->
-	(match st with
-	     Product _ | Sum _ | Exp _ | Rz _ ->
-	       "(" ^ (toStr st) ^ ") % " ^ (string_of_term trm)
-	   | _ -> (toStr st) ^ " % " ^ (string_of_term trm))
-    | SetLambda (bnd,st) -> "(lambda " ^ string_of_bnd bnd ^ " -> " ^ 
-	                     toStr st ^ ")"
-    | SetApp (st, trm) -> (toStr st) ^ "( " ^ string_of_term trm ^ " )"
+let embrace s = "(" ^ s ^ ")"
 
+let rec string_of_name_expr = function
+    N(_, Wild), e -> string_of_expr e
+  | nm, e -> string_of_name nm ^ " : " ^ string_of_expr e
 
-   and sumarmToStr = function
-        (lbl, None) -> lbl
-     |  (lbl, Some set) -> lbl ^ ":" ^ toStr set
-
-  in
-    toStr set)
-
-and string_of_product_part = function
-	  (None, st) -> string_of_set st
-	| (Some nm, st) -> (string_of_name nm) ^ ":" ^ (string_of_set st)
-	
-and string_of_term trm =
-  (let rec toStr = function
-      Var(None, nm)  -> string_of_name nm
-    | Var(Some mdl, N(lbl, Word)) -> string_of_model mdl ^ "." ^ lbl
-    | Var(Some mdl, N(lbl, _)) -> "(" ^ string_of_model mdl ^ "." ^ lbl ^ ")"
-    | Constraint(trm, set) -> "(" ^ toStr trm ^ " : " ^ string_of_set set ^ ")"
-    | Star -> "()"
-    | False -> "false"
-    | True -> "true"
-    | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
-    | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
-    | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
-    | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
-    | Inj (lbl, None) -> "`" ^ lbl 
-    | Case (_,_) -> "..."
-    | Quot (trm1,trm2) -> "(" ^ string_of_term trm1 ^ " % " ^ string_of_term trm2 ^ ")"
-    | RzQuot t -> "[" ^ (toStr t) ^ "]"
-    | RzChoose (bnd, trm1, trm2, st_opt) -> 
-	"let [" ^ string_of_bnd bnd ^ "] = " ^
-	string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ " end" ^
-	(match st_opt with None -> "" | Some st -> ": " ^ string_of_set st)
-
-    | Choose (bnd, trm1, trm2, trm3, st_opt) -> 
-	"let " ^ string_of_bnd bnd ^ " % " ^ string_of_term trm1 ^ " = " ^
-	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ " end" ^
-	(match st_opt with None -> "" | Some st -> ": " ^ string_of_set st) 
-    | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
-    | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
-    | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
-    | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
-    | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
-    | Or trms -> "(" ^ String.concat " || " (List.map toStr trms) ^ ")"
-    | Not trm -> "(not " ^ toStr trm ^ ")"
-    | Equal(None,trm1,trm2) -> "(" ^ toStr trm1 ^ " = " ^ toStr trm2 ^ ")"
-    | Equal(Some set, trm1, trm2) -> 
-          "(" ^ toStr trm1 ^ " = " ^ toStr trm2 ^ 
-	  " in " ^ string_of_set set ^ ")"
-    | Let(bnd,trm1,trm2,None) ->
-	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
-	" in " ^ toStr trm2 ^ ")"
-    | Let(bnd,trm1,trm2,Some st) ->
-	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
-	" in " ^ toStr trm2 ^ " : " ^ string_of_set st ^ ")"
-    | Lambda(bnd,trm) ->
-	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
-    | The(bnd,trm) ->
-	"(the " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
-    | Forall(bnd,trm) ->
-	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
-    | Exists(bnd,trm) ->
-	"(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
-    | Unique(bnd,trm) ->
-	"(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
-  in
-    toStr trm)
-
+and string_of_label_set = function
+    lbl, None -> string_of_label lbl
+  | lbl, Some st -> string_of_label lbl ^ ":" ^ string_of_expr st
 
 and string_of_bnd = function
+    nm, None -> string_of_name nm
+  | nm, Some e -> string_of_name nm ^ ":" ^ string_of_expr e
+
+and string_of_binding = function
+    [(vars, None)] -> String.concat " " (List.map string_of_name vars)
+  | lst -> String.concat " "
+      (List.map
+	 (function
+	      vars, None -> embrace (String.concat " " (List.map string_of_name vars))
+	    | vars, Some st -> embrace ((String.concat " " (List.map string_of_name vars) ^
+					   " : " ^ string_of_expr st))
+	 )
+	 lst)
+
+and string_of_expr = function
+  | Ident nm -> string_of_name nm
+  | MProj (mdl, nm) -> string_of_expr mdl ^ "." ^ string_of_name nm
+  | App (e1, e2) -> string_of_expr e1 ^ " " ^ string_of_expr e2
+  | Lambda (bndg, e) -> "fun " ^ string_of_binding bndg ^ " => " ^ string_of_expr e
+  | Arrow (nm, e1, e2) ->
+      string_of_name_expr (nm, e1) ^ " -> " ^ string_of_expr e2
+  | Constraint (e1, e2) -> string_of_expr e1 ^ " : " ^  string_of_expr e2
+  | Empty -> "{}"
+  | Unit -> "unit"
+  | Product (lst, e) ->
+      String.concat " * " (List.map string_of_name_expr lst) ^ " * " ^ string_of_expr e      
+  | Sum lst -> String.concat " | " (List.map string_of_label_set lst)
+  | Subset (bnd, e) -> "{" ^ string_of_bnd bnd ^ " | " ^ string_of_expr e ^ "}"
+  | Quotient (st, e) -> string_of_expr st ^ " % " ^ string_of_expr e
+  | Rz e -> "rz " ^ string_of_expr e
+  | Set -> "Set"
+  | Prop -> "Prop"
+  | Equiv e -> "Euiv " ^ string_of_expr e
+  | Stable -> "Stable"
+  | EmptyTuple -> "()"
+  | Tuple lst -> embrace (String.concat ", " (List.map string_of_expr lst))
+  | Proj (k, e) -> string_of_expr e ^ "." ^ string_of_int k
+  | Inj (lbl, None) -> string_of_label lbl
+  | Inj (lbl, Some e) -> string_of_label lbl ^ " " ^ string_of_expr e
+  | Case (e, lst) ->
+      "match " ^ string_of_expr e ^ " with " ^
+	(String.concat " | " (
+	   List.map
+	     (function
+		  lbl, None, e -> string_of_label lbl ^ " => " ^ string_of_expr e
+		| lbl, Some bnd, e ->
+		    string_of_label lbl ^ embrace (string_of_bnd bnd) ^ " => " ^ string_of_expr e)
+	     lst))
+  | Choose (bnd, e1, e2, e3) ->
+      "let " ^ string_of_bnd bnd ^ " % " ^ string_of_expr e1 ^ " = " ^ string_of_expr e2 ^
+	" in " ^ string_of_expr e3
+  | RzChoose (bnd, e1, e2) ->
+      "let " ^ string_of_bnd bnd ^ " = " ^ string_of_expr e1 ^ " = " ^ string_of_expr e2
+  | Subin (e, st) -> string_of_expr e ^ ":>" ^ string_of_expr st
+  | Subout (e, st) -> string_of_expr e ^ ":<" ^ string_of_expr st
+  | Let (bnd, e1, e2) ->
+      "let " ^ string_of_bnd bnd ^ " = " ^ string_of_expr e1 ^ " in " ^ string_of_expr e2
+  | The (bnd, e) -> "the " ^ string_of_bnd bnd ^ " , " ^ string_of_expr e
+  | False -> "false"
+  | True -> "true"
+  | And lst -> String.concat " /\\ " (List.map string_of_expr lst)
+  | Iff (e1, e2) -> string_of_expr e1 ^ " <-> " ^ string_of_expr e2
+  | Or lst -> String.concat " \\/ " (List.map string_of_expr lst)
+  | Not e -> "not " ^ string_of_expr e
+  | Equal (e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
+  | Forall (bnd, e) -> "forall " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
+  | Exists (bnd, e) -> "exists " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
+  | Unique (bnd, e) -> "exists1 " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
+
+let rec string_of_bnd = function
         (name, None    ) -> string_of_name name
-     |  (name, Some set) -> "(" ^ string_of_name name  ^  ":"  ^  string_of_set set ^ ")"
+     |  (name, Some set) -> "(" ^ string_of_name name  ^  ":"  ^  string_of_expr set ^ ")"
 
 and string_of_bnds = function
     [] -> ""
@@ -296,81 +281,61 @@ and string_of_bnds = function
   | bnd :: bnds -> string_of_bnd bnd ^ " " ^ string_of_bnds bnds
 
 and string_of_mbnd = function
-        (mdlnm, thry) -> mdlnm ^ " : " ^ string_of_theory thry
+        (mdlnm, thry) -> string_of_name mdlnm ^ " : " ^ string_of_theory thry
 
 and string_of_mbnds = function
     [] -> ""
   | [mbnd] -> string_of_mbnd mbnd
   | mbnd :: mbnds -> string_of_mbnd mbnd ^ " " ^ string_of_mbnds mbnds
 
-and string_of_kind = function
-    KindSet -> "KindSet"
-  | KindProp pk -> "KindProp(" ^ string_of_pk pk ^ ")"
-  | KindArrow (None, st, knd) -> 
-      "(" ^ (string_of_set st) ^ ") => " ^ string_of_kind knd
-  | KindArrow (Some nm, st, knd) -> 
-      "(" ^ (string_of_name nm) ^ " : " ^ (string_of_set st) ^ ") => " ^
-	string_of_kind knd
-
-
 and string_of_theory = function
     Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
-  | TheoryName thrynm -> thrynm
+  | TheoryName thrynm -> string_of_name thrynm
   | TheoryApp (thry, mdl) -> 
       string_of_theory thry ^ "(" ^ string_of_model mdl ^ ")"
   | TheoryFunctor (mbnd, thry) ->
       "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
+and string_of_sentence_type = function
+    Axiom -> "Axiom"
+  | Parameter -> "Parameter"
+  | Hypothesis -> "Hypothesis"
+  | Lemma -> "Lemma"
+  | Theorem -> "Theorem"
+  | Corollary -> "Corollary"
+
 and string_of_theory_element = function
-    Abstract_set (stnm, knd) -> "set " ^ stnm ^ " : " ^ (string_of_kind knd)
-  | Let_set (stnm, None, st) -> 
-	  "set " ^ stnm ^ " = " ^ string_of_set st
-  | Let_set (stnm, Some knd, st) -> 
-	  "set " ^ stnm ^ " : " ^ string_of_kind knd ^ " = " ^ string_of_set st
-  | Predicate (nm, pk, st) -> 
-      string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^ string_of_set st
-  | Let_predicate ((nm, None), pk, trm) ->
-      string_of_pk pk ^ " " ^ string_of_name nm ^ " = " ^ string_of_term trm
-  | Let_predicate ((nm, Some st), pk, trm) ->
-      string_of_pk pk ^ " " ^ string_of_name nm ^ " : " ^ string_of_set st ^ " = " ^
-	string_of_term trm
-  | Let_term (bnd, trm) -> 
-      "let " ^ string_of_bnd bnd ^ " = " ^ string_of_term trm
-  | Value (nm, st) ->
-      "const " ^ string_of_name nm ^ " : " ^ string_of_set st
-  | Sentence (ssort, nm, mbnds, bnds, trm) ->
-      "axiom  " ^ string_of_name nm ^ " " ^ 
-      string_of_mbnds mbnds ^ " " ^ string_of_bnds bnds ^ " =\n " ^
-      string_of_term trm
-  | Model (mdlnm, thry) -> 
-      "model " ^ mdlnm ^ " : " ^ string_of_theory thry
-  | Implicit (strs, st) -> 
-      "implicit " ^ (String.concat "," strs) ^ " : " ^ string_of_set st
-  | Comment strng -> 
-      "(* " ^ strng ^ " *)"
-  | Variable (nm, st) -> (print_string  
-			     "We don't have external syntax for Variable!\n";
-			  raise Unimplemented)
+  | Definition (nm, st, e) ->
+      "Definition " ^ string_of_bnd (nm, st) ^ " := " ^ string_of_expr e ^ "."
+  | Value (styp, lst) ->
+      string_of_sentence_type styp ^ " " ^
+	(match lst with
+	     [(nms, e)] ->
+	       String.concat " " (List.map string_of_name nms) ^ " : " ^ string_of_expr e
+	   | lst ->
+	       String.concat " "
+		 (List.map
+		    (fun (nms, e) ->
+		       embrace (String.concat " " (List.map string_of_name nms) ^
+				  " : " ^ string_of_expr e))
+		    lst)
+	) ^ "."
+  | Implicit (nms, e) ->
+      "Implicit Type " ^
+	(String.concat " " (List.map string_of_name nms) ^ " : " ^ string_of_expr e) ^ "."
+  | Include thry -> "Include " ^ string_of_theory thry ^ "."
+  | Comment c -> "(* " ^ c ^ " *)"
 
 and string_of_theory_elements = function
     [] -> ""
   | elt :: elts -> string_of_theory_element elt ^ "\n" ^ 
                    string_of_theory_elements elts
  
-and string_of_pk = function
-    Stable -> "stable relation"
-  | Unstable -> "relation"
-  | Equivalence -> "equivalence " 
-
-and string_of_model = function
-    ModelName strng -> strng
-  | ModelApp (mdl1, mdl2) ->
-      string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
-  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ lbl
+and string_of_model = string_of_expr
 
 and string_of_toplevel = function
     Theorydef (thrynm, thry) -> 
-      "theory " ^ thrynm ^ " = " ^ string_of_theory thry
+      "theory " ^ string_of_name thrynm ^ " = " ^ string_of_theory thry
   | TopComment strng ->
       "(* " ^ strng ^ " *)"
   | TopModel (mdlnm, thry) ->

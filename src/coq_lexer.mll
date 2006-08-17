@@ -53,7 +53,9 @@
 }
 
 
-let ident = ['A'-'Z' 'a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
+let ident = ['a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
+
+let tident = ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
 
 let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
@@ -94,6 +96,13 @@ rule token = parse
                           try
                             List.assoc w reserved 
                           with Not_found -> NAME w
+                        end
+                    }
+  | tident           { let w = Lexing.lexeme lexbuf in
+                        begin
+                          try
+                            List.assoc w reserved 
+                          with Not_found -> TNAME w
                         end
                     }
   | "!" symbolchar *
