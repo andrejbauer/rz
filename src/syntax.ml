@@ -44,7 +44,7 @@ and expr =
   (*** sets ***)
   | Empty                                  (* empty set, a.k.a, void *)
   | Unit                                   (* unit set *)
-  | Product  of (name * expr) list * expr  (* finite (dependent) product *)
+  | Product  of binding1 list              (* finite (dependent) product *)
   | Sum      of (label * set option) list  (* finite coproduct *)
   | Subset   of binding1 * prop            (* subset *)
   | Quotient of set * prop                 (* quotient of a set or a term *)
@@ -350,7 +350,7 @@ and string_of_toplevel = function
 
 let rec fnSet = function
     Empty | Unit | Set | Prop
-  | EquivProp | StableProp | Set_name (None, _) -> NameSet.empty
+  | StableProp | Set_name (None, _) -> NameSet.empty
   | Set_name (Some mdl, _) -> fnModel mdl
   | Product noss -> fnProduct noss
   | Sum lsos -> fnSum lsos

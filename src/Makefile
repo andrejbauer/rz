@@ -17,7 +17,7 @@ BYTE_OBJS = syntax.cmo \
 	coq_parser.cmo \
 	coq_lexer.cmo \
 	flags.cmo \
-        infer.cmo \
+        newinfer.cmo \
 	logic.cmo \
         outsyn.cmo \
 	pp.cmo \

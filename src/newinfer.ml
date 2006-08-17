@@ -20,8 +20,8 @@ exception TypeError
 let type_error_header = "\n\nTYPE ERROR:  "
 let type_error_footer = "\n\n"
 
-let tyGenericError mssg = 
-  (print_string (type_error_header ^ mssg ^ type_error_footer);
+let tyGenericError msg = 
+  (print_string (type_error_header ^ msg ^ type_error_footer);
    raise TypeError)
 
 
@@ -210,12 +210,12 @@ let annotateExpr cntxt = function
                   | L.EquivProp(domty) ->
 		      begin
 			(* Partial application of an equivalence relation.
-			   The result has type domty -> StableProp.        *)
+			   The result has type domty -> Stable.        *)
 			match coerce cntxt trm2 ty2 domty with
 			    Some trm2' ->
 			      ResProp( S.PApp(prp1, trm2'),
 				       L.PropArrow(S.freshWildName(),
-						   domty, L.StableProp) )
+						   domty, L.Stable) )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
 		  | _ -> wrongPropTypeError expr1 prpty1 "predicate" orig_expr
@@ -296,14 +296,20 @@ let annotateExpr cntxt = function
 		noPolymorphismError orig_expr
 	    | ResTerm _ | ResModel _ | ResSet (_, KindArrow _) ->
 		badDomainError()
-	    | ResProp (prp1, (L.Prop | L.StableProp) as stab1) -> 
+	    | ResProp (prp1, (L.Prop | L.Stable) as stab1) -> 
 		if (S.isWild nm) then
 		  begin
 		    (* Typechecking an implication *)
 		    let (prp2, stab2) = annotateProperProp cntxt expr2 
 		    in 
-			ResProp ( L.Imply(prp1, prp2),
-				  joinPropTypes [stab1; stab2] )
+		      (* case.pdf: "Almost negative formulas [are]
+			 built from any combination of 
+			 /\, ->, forall, =, and those
+                         bas ic predicates known to be stable, but 
+			 \/ and exists are only allowed to appear 
+			 on the left side of a -> ..." *) 
+		      ResProp ( L.Imply(prp1, prp2),
+			        stab2 )
 		  end
 		else
 		  badDomainError()
@@ -367,7 +373,18 @@ let annotateExpr cntxt = function
 
   | Unit  -> ResSet(L.Unit, L.KindSet)
 
-  | Product _ -> 
+  | Product sbnds  as orig_expr ->
+      begin
+	(* A [possibly dependent] type for a tuple. *)
+	let rec loop cntxt = function
+	    [] -> []
+	  | sbnd :: rest ->     
+              let ty = annotateType cntxt orig_expr expr
+              in cntxt' = insertTermVariable cntxt nm ty
+              in (nm, ty) :: ann cntxt' rest
+	in    
+	  ResSet(L.Product (loop cntxt nes), KindSet) 
+      end
       (* Either a [possibly dependent] type for a tuple, or
 	 a use of the term-operator ( * ) . *)
       raise Unimplemented
@@ -381,7 +398,7 @@ let annotateExpr cntxt = function
 	let (cntxt', lbnd1) = annotateSimpleBinding cntxt orig_expr sbnd1
 	in
 	  match annotateExpr cntxt' expr2 with
-	      ResProp(prp2', (L.Prop | L.StableProp)) ->
+	      ResProp(prp2', (L.Prop | L.Stable)) ->
 		ResSet( Subset(lbnd1, prp2'), L.KindSet )
 	    | _ ->
 		notWhatsExpectedInError expr2 "proposition" orig_expr
@@ -449,7 +466,7 @@ let annotateExpr cntxt = function
 
   | Prop -> ResPropType (L.Prop)
 
-  | Stable -> ResPropType (L.StableProp)
+  | Stable -> ResPropType (L.Stable)
 
   | Equiv expr as orig_expr ->
       let equiv_domain_type = annotateType cntxt orig_expr expr
@@ -568,9 +585,9 @@ let annotateExpr cntxt = function
 	     ResTerm ( L.The ((nm1,ty1), trm2),
 		       ty2 )
 
-  | False -> ResProp(L.False, L.StableProp)
+  | False -> ResProp(L.False, L.Stable)
 
-  | True -> ResProp(L.False, L.StableProp)
+  | True -> ResProp(L.False, L.Stable)
 
   | And exprs as orig_expr ->
       begin
@@ -578,7 +595,7 @@ let annotateExpr cntxt = function
 	in let (prps, prptys) = List.split pairs
 	in 
 	     ResProp ( L.And prps,
-		     joinPropTypes prptys )
+		       L.joinPropTypes prptys )
       end
 
   | Or exprs as orig_expr ->
@@ -586,8 +603,8 @@ let annotateExpr cntxt = function
 	let pairs = List.map (annotateProperProp cntxt orig_expr) exprs
 	in let (prps, prptys) = List.split pairs
 	in 
-	     ResProp ( L.And prps,
-		     joinPropTypes prptys )
+	     ResProp ( L.Or prps,
+		       L.Prop )
       end
 
   | Not expr as orig_expr ->
@@ -601,7 +618,7 @@ let annotateExpr cntxt = function
 	in let (prp2, prpty2) = annotateProperProp cntxt orig_expr expr2
 	in 
 	     ResProp ( L.Iff(prp1, prp2),
-		     joinPropTypes [prp1; prp2] )
+		       joinPropTypes [prp1; prp2] )
       end
 
   | Equal (expropt1, expr2, expr3) ->
@@ -660,7 +677,7 @@ let annotateExpr cntxt = function
 
       and annotateProperProp cntxt surrounding_expr expr = 
 	(match annotateProp cntxt trm with
-	    ResProp(prp, (L.Prop | L.StableProp) as prpty) -> (prp, prpty)
+	    ResProp(prp, (L.Prop | L.Stable) as prpty) -> (prp, prpty)
 	  | ResProp _ -> 
 	      notWhatsExpectedInError expr "proper proposition" surrounding_expr
 	  | _ -> 

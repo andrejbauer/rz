@@ -79,7 +79,7 @@ and set =
     Empty
   | Unit  (* Unit is the singleton containing EmptyTuple *)
   | Basic    of set_longname
-  | Product  of (name * set) list
+  | Product  of binding list
   | Exp      of name * set * set
   | Sum      of (label * set option) list
   | Subset   of binding * proposition
@@ -597,3 +597,14 @@ and make_model_opt = function
   | Some mdl -> Some (make_model mdl)
 
 and make_model_bindings bnd = List.map (fun (m,th) -> (m, make_theory th)) bnd
+
+
+let joinPropType p1 p2 = 
+  begin
+    match (p1,p2) with
+	(Stable, Stable) -> Stable
+      | ((Prop | Stable), (Prop | Stable)) -> Prop
+      | _ -> failwith "joinPropType only allows Prop and Stable!"
+  end
+
+let joinPropTypes lst = List.fold_left joinPropType Stable lst
