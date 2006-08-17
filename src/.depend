@@ -1,31 +1,25 @@
+coq_parser.cmi: syntax.cmo 
 parser.cmi: syntax.cmo 
-parserc.cmi: syntax.cmo 
-foo.cmo: foo.cmi 
-foo.cmx: foo.cmi 
+coq_parser.cmo: syntax.cmo message.cmo coq_parser.cmi 
+coq_parser.cmx: syntax.cmx message.cmx coq_parser.cmi 
 infer.cmo: syntax.cmo 
 infer.cmx: syntax.cmx 
-inferc.cmo: syntax.cmo logic.cmo 
-inferc.cmx: syntax.cmx logic.cmx 
-lexerc.cmo: parserc.cmi message.cmo 
-lexerc.cmx: parserc.cmx message.cmx 
+lexer.cmo: parser.cmi message.cmo 
+lexer.cmx: parser.cmx message.cmx 
 logic.cmo: syntax.cmo 
 logic.cmx: syntax.cmx 
-newinfer.cmo: syntax.cmo 
-newinfer.cmx: syntax.cmx 
 opt.cmo: syntax.cmo outsyn.cmo flags.cmo 
 opt.cmx: syntax.cmx outsyn.cmx flags.cmx 
 outsyn.cmo: syntax.cmo logic.cmo 
 outsyn.cmx: syntax.cmx logic.cmx 
 parser.cmo: syntax.cmo message.cmo parser.cmi 
 parser.cmx: syntax.cmx message.cmx parser.cmi 
-parserc.cmo: syntax.cmo message.cmo parserc.cmi 
-parserc.cmx: syntax.cmx message.cmx parserc.cmi 
 pp.cmo: syntax.cmo outsyn.cmo flags.cmo 
 pp.cmx: syntax.cmx outsyn.cmx flags.cmx 
 rz.cmo: translate.cmo syntax.cmo pp.cmo parser.cmi opt.cmo message.cmo \
-    logic.cmo infer.cmo flags.cmo 
+    logic.cmo lexer.cmo infer.cmo flags.cmo 
 rz.cmx: translate.cmx syntax.cmx pp.cmx parser.cmx opt.cmx message.cmx \
-    logic.cmx infer.cmx flags.cmx 
+    logic.cmx lexer.cmx infer.cmx flags.cmx 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
 translate.cmo: syntax.cmo outsyn.cmo logic.cmo 

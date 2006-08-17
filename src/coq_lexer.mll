@@ -1,13 +1,14 @@
 (** The lexical structure of theories *)
 
 {
-  open Parser
+  open Coq_parser
 
   let reserved =
     [
       "forall", FORALL;
       "Axiom", AXIOM;
       "Definition", DEFINITION;
+      "empty", EMPTY;
       "Equiv", EQUIV;
       "exists", EXISTS;
       "exists1", UNIQUE;
@@ -72,7 +73,7 @@ rule token = parse
 			LABEL (String.sub w 1 (String.length w - 1))
 		    }
   | '.' ['0'-'9']+  { let w = Lexing.lexeme lexbuf in
-			PROJECT (int_of_string (Sub w 1 (String.length w - 1))) }
+			PROJECT (int_of_string (String.sub w 1 (String.length w - 1))) }
   | '.'             { PERIOD }
   | ':'             { COLON }
   | ":>"            { SUBIN }
