@@ -176,12 +176,14 @@ let rec translateSet (ctx : ctxElement list) = function
 	tot = (any, False);
 	per = (any, any, False)
       }
+
   | L.Unit ->
       let x = fresh [mk "x"] ctx in
       { ty = UnitTy;
 	tot = (x, Equal (id x, Star));
 	per = (any, any, True)
       }
+
   | L.Basic sln ->
       let s' = translateSLN sln in
       let x, y = fresh2 [mk "x"; mk "y"; mk "u"; mk "a"] [mk "y"; mk "v"; mk "b"] ctx in
@@ -189,8 +191,14 @@ let rec translateSet (ctx : ctxElement list) = function
 	  tot = (x, NamedTotal (s', id x));
 	  per = (x, y, NamedPer (s', id x, id y))
 	}
+
   | L.Product lst ->
-      let us = List.map (translateSet ctx) lst in
+      let us = snd
+	(List.fold_left 
+	   (fun (ctx, us) (nm, st) -> (addBind nm st ctx, (translateSet ctx st) :: us))
+	   (ctx, [])
+	   lst)
+      in
 	{
 	  ty = TupleTy (List.map (fun u -> u.ty) us);
 	  tot = (
@@ -216,17 +224,21 @@ let rec translateSet (ctx : ctxElement list) = function
 	      )
 	  )
 	}
-  | L.Exp (_, s, t) ->
+
+  | L.Exp (nm, s, t) ->
       let {ty=u; per=(x,x',p)} = translateSet ctx s in
-      let {ty=v; per=(y,y',q)} = translateSet ctx t in
-      let z, z', f, g = fresh4 [x] [x'] [mk "f"; mk "g"; mk "h"] [mk "g"; mk "h"; mk "k"] ctx in
+      let {ty=v; per=(y,y',q)} = translateSet (addBind nm s ctx) t in
+      let z, z', f, g =
+	fresh4 [x] [x'] [mk "f"; mk "g"; mk "h"] [mk "g"; mk "h"; mk "k"] ~bad:[nm] ctx
+      in
 	{ ty = ArrowTy (u, v);
 	  tot = (
 	      (f,
 	       Forall ((z, u),
 	       Forall ((z', u),
 	         Imply (sbp ctx ~bad:[z;z';f] [(x, id z); (x', id z')] p,
-			sbp ctx ~bad:[z;z';f] [(y, App (id f, id z)); (y', App (id f, id z'))] q)
+			sbp ctx ~bad:[z;z';f]
+			  [(y, App (id f, id z)); (y', App (id f, id z')); (nm, Tot (id z))] q)
 		      ))
 	      )
 	  );
@@ -235,11 +247,13 @@ let rec translateSet (ctx : ctxElement list) = function
 	       Forall ((z,u),
                Forall ((z',u),
                  Imply (sbp ctx ~bad:[z;z';f;g] [(x, id z); (x', id z')] p,
-			sbp ctx ~bad:[z;z';f;g] [(y, App (id f, id x)); (y', App (id g, id x'))] q)
+			sbp ctx ~bad:[z;z';f;g]
+			  [(y, App (id f, id x)); (y', App (id g, id x')); (nm, Tot (id z))] q)
 		      ))
 	      )
 	  )
 	}
+
 
   | L.Subset ((n, s), phi) ->
       let {ty=u; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
@@ -258,15 +272,17 @@ let rec translateSet (ctx : ctxElement list) = function
 	      (w, w', sbp ctx ~bad:[w;w'] [(y, Proj (0, id w)); (y', Proj (0, id w'))] q)
 	  )
 	}
+
   | L.Quotient (s, r) ->
       let {ty=u; tot=(w,p); per=(z,z',q)} = translateSet ctx s in
 	{ ty = u;
 	  tot = (w, p);
 	  per = (
-	    let u, u' = fresh [z] [z'] ctx in
+	    let u, u' = fresh2 [z] [z'] ctx in
 	      u, u', NamedProp (translateLN r, Dagger, [Tuple [id u; id u']])
 	  )
 	}
+
 
   | L.Sum lst -> 
       let lst' = List.map (function

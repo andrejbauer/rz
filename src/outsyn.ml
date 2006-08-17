@@ -38,6 +38,7 @@ and binding = name * ty
 
 and term =
     Id of longname
+  | Tot of term
   | Star
   | Dagger
   | App of term * term
@@ -126,6 +127,7 @@ and fvTerm' flt acc = function
   | Id (LN(None,nm)) -> 
       if List.mem nm flt then acc else nm :: acc
   | Id (LN(Some _, _)) -> acc
+  | Tot t -> fvTerm' flt acc t
   | Star -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -303,6 +305,7 @@ and substTerm ?occ sbst = function
   | Star -> Star
   | Dagger -> Dagger
   | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
+  | Tot t -> Tot (substTerm ?occ sbst t)
   | Lambda ((n, ty), t) ->
       let sbst' = insertTermvar sbst n (id n) in
       let n' = freshNm [n] [] ?occ sbst in
@@ -476,6 +479,7 @@ let rec string_of_term' level t =
 	(5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
     | App (t, u) -> 
 	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
+    | Tot t -> (0, "[" ^ string_of_term' 0 t ^ "]")
     | Lambda ((n, ty), t) ->
 	(12, "fun (" ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
 	   (string_of_term' 12 t))
