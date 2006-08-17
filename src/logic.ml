@@ -139,6 +139,25 @@ and toplevel =
   | TopModel  of model_name * theory
 
 
+(***************************************************)
+(* Constructors-with-bindings as curried functions *)
+(***************************************************)
+
+let fForall x y = Forall(x,y)
+let fExists x y = Exists(x,y)
+let fUnique x y = Unique(x,y)
+let fPLambda x y = PLambda(x,y)
+let fSubset x y = Subset(x,y)
+let fSLambda x y = SLambda(x,y)
+let fLambda x y = Lambda(x,y)
+let fThe x y = The(x,y)
+
+  (* Hack because Exp, PropArrow and KindArrow take a binding semantically,
+     but not syntactically *)
+let fExp       (x,y) z = Exp(x,y,z)
+let fPropArrow (x,y) z = PropArrow(x,y,z)
+let fKindArrow (x,y) z = KindArrow(x,y,z)
+
 (****************************************)
 (* Substitution functions for Logic.xxx *)
 (****************************************)

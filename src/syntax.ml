@@ -64,8 +64,10 @@ and expr =
   | Case   of term  * (label * binding1 option * term) list
   | Choose of binding * term * term * term (* elimination of equivalence class *)
   | RzChoose of binding1 * term * term     (* elimination of rz *)
-  | Subin  of term * set
-  | Subout of term * set
+  | Subin  of term * set                   (* Injection into a subset;
+					      incurs an obligation *)
+  | Subout of term * set                   (* Projection from a subset; 
+                                              always possible *)
   | Let    of binding1 * term * term
   | The    of binding1 * term
 
