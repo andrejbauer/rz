@@ -61,12 +61,6 @@ let tyWrongSortError expr sort ty =
      print_string "\n\n";
      raise TypeError)
 
-let tyUnboundError trm =
-    (print_string "\nTYPE ERROR:  Unbound name ";
-     print_string (string_of_term trm);
-     print_string "\n\n";
-     raise TypeError)
-
 let notProperSetError ty in_string  =
 	    (print_string "\nTYPE ERROR: ";
 	     print_string (string_of_set ty);

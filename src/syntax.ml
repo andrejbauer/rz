@@ -9,6 +9,8 @@ type label = string
 
 open Name
 
+type set_name = name
+
 type model_name = name (* capitalized *)
 
 type theory_name = name (* capitalized *)
@@ -107,6 +109,7 @@ and toplevel =
     Theorydef of theory_name * theory
   | TopComment of string
   | TopModel  of string * theory
+
 
 let string_of_label l = l
 
@@ -258,6 +261,15 @@ and string_of_toplevel = function
       "(* " ^ strng ^ " *)"
   | TopModel (mdlnm, thry) ->
       "model " ^ mdlnm ^ " = " ^ string_of_theory thry
+
+let freshNameString = 
+  let counter = ref 0
+  in
+     function () -> (incr counter;
+	             "]" ^ string_of_int (!counter) ^ "[")
+
+let freshWildName() = N("_" ^ freshNameString(), Wild)
+
 
 (*************************************
  ******** COMMENTED OUT FROM HERE ****
@@ -616,12 +628,6 @@ and substMBnds sub = function
        let sub' = insertModelvar sub mdlnm (ModelName mdlnm ) in
        let (rest', sub'') = substMBnds sub' rest in
          ((mdlnm, substTheory sub thry) :: rest', sub'')
-
-let freshNameString = 
-  let counter = ref 0
-  in
-     function () -> (incr counter;
-	             "]" ^ string_of_int (!counter) ^ "[")
 
 (** etaequivTheories : theory -> theory -> bool
 

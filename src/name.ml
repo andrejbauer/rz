@@ -117,3 +117,6 @@ let rec string_of_name = function
   | N("*",_) -> "( * )"
   | N(str,_) -> "(" ^ str ^ ")"
 
+let isWild = function
+    N(_, Wild) -> true
+  | _ -> false

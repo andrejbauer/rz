@@ -6,7 +6,10 @@
 (** or through a prior "implicit" statement.                       *)
 (*******************************************************************)
 
-open Syntax
+module S = Syntax
+module L = Logic
+open Syntax 
+open Name
 
 exception Unimplemented
 exception Impossible
@@ -27,7 +30,7 @@ let tyGenericError msg =
 
 let tyUnboundError nm =
   tyGenericError
-    ("Unbound name " ^ S.string_of_name nm)
+    ("Unbound name " ^ string_of_name nm)
 
 let notWhatsExpectedError expr expected =
   tyGenericError
@@ -37,7 +40,7 @@ let notWhatsExpectedError expr expected =
 let notWhatsExpectedInError expr expected context_expr =
   tyGenericError
     (S.string_of_expr expr ^ " found where a "
-      ^ expected ^ " was expected, in " ^ S.string_of_expr context)
+      ^ expected ^ " was expected, in " ^ S.string_of_expr context_expr)
 
 let noHigherOrderLogicError expr =
    tyGenericError
@@ -53,7 +56,7 @@ let noPropositionsAsTypesError expr =
 
 let noTypeInferenceInError nm expr =
   tyGenericError
-     ("The bound variable " ^ S.string_of_name x ^ " in " ^
+     ("The bound variable " ^ string_of_name nm ^ " in " ^
       S.string_of_expr expr ^ " is not annotated explicitly or implicitly.")
 
 let wrongTypeError expr hastype expectedsort context_expr =
@@ -100,14 +103,25 @@ let notEquivalenceOnError expr expectedDomExpr =
 
 let cantElimError context_expr =
   tyGenericError 
-    ("Inferred type of " ^ string_of_expr orig_expr ^ 
+    ("Inferred type of " ^ string_of_expr context_expr ^ 
 	"refers to a locally-bound variable; " ^ 
 	"maybe a constraint on the body would help?")
+
+let tyJoinError ty1 ty2 =
+   tyGenericError
+     ("the types " ^ L.string_of_set ty1 ^ " and " ^
+	 L.string_of_set ty2 ^ " are incompatible")
 	
 
 (*****************************************)
 (** {2 Typechecking/Type Reconstruction} *)
 (*****************************************)
+
+
+(******************)
+(** { 3 Contexts} *)
+(******************)
+
 
 type inferResult =
     ResPropType of L.proptype
@@ -115,13 +129,13 @@ type inferResult =
   | ResSet      of L.set * L.setkind
   | ResTerm     of L.term * L.set
   | ResProp     of L.proposition * L.proptype
-  | ResModel    of L.model * summary * substitution
+(*  | ResModel    of L.model * summary * substitution *)
 
 type ctx_member =
     CtxProp  of L.proposition option * L.proptype
-  | CtxSet   of L.set option         * L.kind
-  | CtxTerm  of                      * L.set
-  | CtxModel of L.model option       * summary * substitution
+  | CtxSet   of L.set option         * L.setkind
+  | CtxTerm  of                        L.set
+(*  | CtxModel of L.model option       * summary * substitution *)
   | CtxUnbound
 
 type implicit_info =
@@ -134,13 +148,13 @@ type context = {bindings : (name * ctx_member) list;
 
 let emptyContext = {bindings = []; implicits = []}
 
-let lookupImplicit {implicits} nm = 
-  try Some (List.assoc nm implicits) with
-      Not_Found -> ImpUnknown
+let lookupImplicit cntxt nm = 
+  try (List.assoc nm cntxt.implicits) with
+      Not_found -> ImpUnknown
 
-let lookupId {bindings} nm =
-  try Some (List.assoc nm bindings) with
-      Not_Found -> CtxUnbound
+let lookupId cntxt nm =
+  try (List.assoc nm cntxt.bindings) with
+      Not_found -> CtxUnbound
 
 let insertTermVariable cntxt nm ty =
   { cntxt with bindings =  (nm, CtxTerm ty) :: cntxt.bindings }
@@ -151,10 +165,382 @@ let insertSetVariable cntxt nm knd stopt =
 let insertPropVariable cntxt nm prpty prpopt =
   { cntxt with bindings =  (nm, CtxProp (prpopt,prpty)) :: cntxt.bindings }
 
+
+(*******************)
+(** {3: Coercions} *)
+(*******************)
+
+(** Expand out any top-level definitions or function
+    applications for a (well-formed) set 
+  *)
+let rec hnfSet cntxt = function
+    L.Basic (L.SLN ( None, stnm )) as orig_set ->
+      begin
+	match (lookupId cntxt stnm) with
+            CtxSet(Some st, _) -> hnfSet cntxt st
+	  | CtxSet(None, _) -> orig_set
+	  | _ -> raise Impossible
+      end
+
+  | L.Basic _ -> 
+      (*(SLN ( Some mdl, stnm ) ->  *)
+      raise Unimplemented
+(*      let (whereami, summary, subst) = annotateModel cntxt mdl
+      in ( match summary with
+	     Summary_Struct ( _, items ) -> 
+	       ( match (peekTydef' subst items (Some whereami) stnm) with
+	           None    -> Set_name ( Some mdl, stnm ) 
+	         | Some st -> hnfSet cntxt st )
+           | _ -> raise Impossible )
+*)
+
+  | L.SApp(st1,trm2) -> 
+      begin
+	match (hnfSet cntxt st1) with
+	    L.SLambda((nm,_),st1body) ->
+	      let sub = L.insertTermvar L.emptysubst nm trm2
+	      in
+		hnfSet cntxt (L.substSet sub st1body)
+	  | st1' -> L.SApp(st1', trm2)
+      end
+
+  | st -> st
+
+
+let rec freshNameSubsts' nm1 nm2 subst1 subst2 = 
+  let freshname = N(Syntax.freshNameString(), Word)
+  in let trm = L.Var(L.LN(None, freshname))
+  in let sub1 = L.insertTermvar subst1 nm1 trm
+  in let sub2 = L.insertTermvar subst2 nm2 trm
+  in (freshname, sub1, sub2)
+    
+let freshNameSubsts nm1 nm2 = 
+  freshNameSubsts' nm1 nm2 L.emptysubst L.emptysubst
+
+
+(** eqSet': bool -> cntxt -> set -> set -> bool
+      Precondition:  The two sets are fully-annotated
+                     and proper (first-order) sets.
+      Postcondition:  Whether the two sets are equal (or implicitly-
+                      convertible, if the boolean is true) in the 
+                      given context.  Equality defined as alpha-equivalence,
+                      commutivity of sums, and definition expansion.
+
+                      Implicit convertability just involves subtyping
+                      on sum types in positive positions.  It is here
+                      merely to address defects in type inference, since
+                      we don't want to have to annotate each injection
+                      with the corresponding sum type.
+  *)
+let rec eqSet' do_subset cntxt = 
+   let rec cmp (s1 : L.set) (s2 : L.set) = 
+      (** Short circuting for (we hope) the common case *)
+      (s1 = s2)
+      (** Head-normalize the two sets *)
+      || let    s1' = hnfSet cntxt s1
+         in let s2' = hnfSet cntxt s2
+
+         in (s1' = s2') 
+            || (match (s1',s2') with
+                 ( L.Empty, L.Empty ) -> true       (** Redundant *)
+
+               | ( L.Unit, L.Unit )   -> true       (** Redundant *) 
+
+               | ( L.Basic (L.SLN(mdlopt1, nm1)),
+		   L.Basic (L.SLN(mdlopt2, nm2)) ) -> 
+                    (** Neither has a definition *)
+                    eqModelOpt cntxt mdlopt1 mdlopt2 
+                    && (nm1 = nm2) 
+
+ 	       | ( L.Product ss1, L.Product ss2 ) -> 
+                    cmpProducts (ss1,ss2)
+
+               | ( L.Sum lsos1, L.Sum lsos2 )     -> 
+	            subSum do_subset cntxt (lsos1, lsos2) 
+                    && (do_subset || subSum false cntxt (lsos2, lsos1))
+
+
+               | ( L.Exp( nm1, st3, st4 ), L.Exp ( nm2, st5, st6 ) ) ->
+		   let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+	           in let st4' = L.substSet sub1 st4
+	           in let st6' = L.substSet sub2 st6
+	           in 
+		    (* Domains are now compared contravariantly. *)
+                    subSet cntxt st5 st3 
+                    && cmp st4' st6'
+
+	       | ( L.Subset( (nm1,_) as b1, p1 ), 
+		   L.Subset( (nm2,_) as b2, p2 ) )->
+                    cmpbnd(b1,b2)
+	            (** Alpha-vary the propositions so that they're using the
+                        same (fresh) variable name *)
+                    && let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+	               in let p1' = L.substProp sub1 p1
+	               in let p2' = L.substProp sub2 p2
+	               in 
+                          eqProp cntxt p1' p2'  
+
+               | ( L.Quotient ( st3, eqvlnce3 ), 
+		   L.Quotient ( st4, eqvlnce4 ) ) -> 
+                    (** Quotient is invariant *)
+                    eqSet cntxt st3 st4  
+                    && eqProp cntxt eqvlnce3 eqvlnce4
+
+               | ( L.SApp (st3, trm3), L.SApp (st4, trm4) ) ->
+		    eqSet cntxt st3 st4
+		    && eqTerm cntxt trm3 trm4
+
+               | ( L.Rz st3, L.Rz st4 ) -> 
+                    (** RZ seems like it should be invariant.  *)
+		    (** XXX Is it? *)
+                    eqSet cntxt st3 st4  
+
+               | (_,_) -> false )
+
+     and cmpbnd = function
+	 (* Since we're not verifying equivalence of propositions,
+	    we don't have to worry about the bound variable *)
+         ((_, s1), (_, s2)) -> cmp s1 s2
+
+      and cmpProducts' subst1 subst2 = function
+          ( [] , [] ) -> true
+
+	| ( (nm1, s1) :: s1s, (nm2, s2) :: s2s) -> 
+	    let (_, subst1', subst2') = freshNameSubsts' nm1 nm2 subst1 subst2
+	    in let s1' = L.substSet subst1 s1
+	    in let s2' = L.substSet subst2 s2
+	    in  (cmp s1' s2' && cmpProducts' subst1' subst2' (s1s,s2s) )
+
+        | (_,_) -> false
+
+   and cmpProducts lst = cmpProducts' L.emptysubst L.emptysubst lst
+
+     and subSum do_subset cntxt = function
+          ( [], _ ) -> true
+       | ((l1,None   )::s1s, s2s) ->
+	     (match (List.assoc l1 s2s) with
+		 None -> subSum do_subset cntxt (s1s, s2s)
+	       | _ -> false )
+       | ((l1,Some s1)::s1s, s2s) -> 
+	     (match (List.assoc l1 s2s) with
+		 Some s2 -> eqSet' do_subset cntxt s1 s2  && 
+                            subSum do_subset cntxt (s1s,s2s)
+	       |  _ -> false )
+
+      in cmp
+
+
+and eqPropType' do_subset cntxt = 
+   let rec cmp (pt1 : L.proptype) (pt2 : L.proptype) = 
+     begin
+       (** Short circuting for (we hope) the common case *)
+       (pt1 = pt2) ||
+         match (pt1, pt2) with
+           | ( L.StableProp, L.Prop ) -> true
+	       
+           | ( L.EquivProp st1, L.EquivProp st2) -> 
+	       eqSet' do_subset cntxt st2 st1
+	       
+           | ( L.EquivProp st1, _ ) ->
+	       begin
+		 do_subset &&
+		   let pt1' =
+		     L.PropArrow(S.freshWildName(), st1,
+				L.PropArrow(S.freshWildName(), st1, 
+				           L.StableProp))
+		   in
+		     eqPropType' true cntxt pt1' pt2
+	       end
+		 
+           | ( L.PropArrow( nm1, st1, pt1 ), L.PropArrow ( nm2, st2, pt2 ) ) ->
+	       let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+	       in let pt1' = L.substProptype sub1 pt1
+	       in let pt2' = L.substProptype sub2 pt2
+	           in 
+		    (* Domains are now compared contravariantly. *)
+                    subSet cntxt st2 st1 
+                    && cmp pt1' pt2'
+
+	   | _ -> false
+     end
+   in cmp
+
+and subPropType cntxt pt1 pt2 = eqPropType' true cntxt pt1 pt2
+
+and eqPropType cntxt pt1 pt2 = eqPropType' false cntxt pt1 pt2
+
+and eqKind' do_subset cntxt = 
+   let rec cmp (k1 : L.setkind) (k2 : L.setkind) = 
+     begin
+       (** Short circuting for (we hope) the common case *)
+       (k1 = k2) ||
+         match (k1, k2) with
+             ( L.KindArrow( nm1, st1, kk1 ), L.KindArrow ( nm2, st2, kk2 ) ) ->
+	       let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+	       in let kk1' = L.substKind sub1 kk1
+	       in let kk2' = L.substKind sub2 kk2
+	           in 
+		    (* Domains are now compared contravariantly. *)
+                    subSet cntxt st2 st1 
+                    && cmp kk1' kk2'
+
+	   | _ -> false
+     end
+   in cmp
+
+and subKind cntxt k1 k2 = eqKind' true cntxt k1 k2
+
+and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
+
+and eqProp ctx prp1 prp2 = 
+  (* XXX: Should allow alpha-equiv and set-equiv *)
+  (print_string "WARNING: Fix eqProp!\n";
+   prp1 = prp2)  
+
+and eqTerm ctx trm1 trm2 = 
+  (* XXX: Should allow alpha-equiv and set-equiv and beta *)
+  (print_string "WARNING: Fix eqTerm!\n";
+   trm1 = trm2)  
+
+and eqModelOpt ctx mdlopt1 mdlopt2 = (mdlopt1 = mdlopt2)
+
+and eqSet cntxt st1 st2 = eqSet' false cntxt st1 st2
+
+and subSet cntxt st1 st2 = eqSet' true cntxt st1 st2
+
+
+(** Computes the join of the two sets s1 and s2.
+    Like subtSet (and unlike Coerce), 
+    join does *not* do implicit conversions *)
+let joinType cntxt s1 s2 = 
+   if (s1 = s2) then
+      (* Short circuit *)
+      s1
+   else
+      let    s1' = hnfSet cntxt s1
+      in let s2' = hnfSet cntxt s2
+
+      in let rec joinSums = function 
+	  ([], s2s) -> s2s
+        | ((l1,None)::s1s, s2s) ->
+	    (if (List.mem_assoc l1 s2s) then
+	      (match (List.assoc l1 s2s) with
+	          None -> joinSums(s1s, s2s)
+		| Some _ -> tyGenericError ("Disagreement as to whether " ^ l1 ^
+                         " stands alone or tags a value"))
+	    else (l1,None) :: joinSums(s1s, s2s))
+        | ((l1,Some s1)::s1s, s2s) ->
+	    (if (List.mem_assoc l1 s2s) then
+	      (match (List.assoc l1 s2s) with
+		  Some s2 -> 
+		    if eqSet cntxt s1 s2 then
+		      joinSums(s1s, s2s)
+		    else
+		      tyGenericError ("Disagreement on what type of value " ^ 
+                                        l1 ^ " should tag")
+		| None -> tyGenericError("Disagreement as to whether " ^ l1 ^
+					 " tags a value or stands alone"))
+	    else (l1,Some s1) :: joinSums(s1s, s2s))
+
+
+      in match (s1',s2') with
+        | (L.Sum lsos1, L.Sum lsos2) -> L.Sum (joinSums (lsos1, lsos2))
+        | _ -> if eqSet cntxt s1 s2 then
+                  s1
+       	       else
+	          tyJoinError s1 s2
+ 
+
+let joinTypes cntxt =
+  let rec loop = function
+      [] -> L.Unit
+    | [s] -> s
+    | s::ss -> joinType cntxt s (loop ss)
+  in
+    loop
+
+(* coerce: cntxt -> term -> set -> set -> trm option
+     coerce trm st1 st2 coerces trm from the set st1 to the set st2
+       using subin and subout.
+     Preconditions: trm is in st1 and all arguments are fully-annotated.
+     Returns:  None       if trm cannot be turned into a value in set st2.
+               Some trm'  if we can obtain the term trm'
+*)
+let rec coerce cntxt trm st1 st2 = 
+   if (subSet cntxt st1 st2) then
+      (** Short circuting, since the identity coercion is (we hope)
+          the common case *)
+      Some trm
+   else
+      let    st1' = hnfSet cntxt st1
+      in let st2' = hnfSet cntxt st2
+   
+      in match (trm, st1', st2') with
+	| ( _, L.Subset ( ( _, st1'1 ) , _ ),
+               L.Subset ( ( _, st2'1 ) , _ ) ) -> 
+
+	    (** Try an implicit out-of-subset conversion *)
+           (match ( coerce cntxt ( L.Subout(trm,st1) ) st1'1 st2 ) with
+              Some trm' -> Some trm'
+            | None -> (** That didn't work, so try an implicit 
+                          into-subset conversion *)
+                      (match (coerce cntxt trm st1 st2'1) with
+                        Some trm' -> Some ( L.Subin ( trm', st2 ) )
+                      | None      -> None ) )
+
+        | ( _, L.Subset( ( _, st1'1 ), _ ), _ ) -> 
+	    (** Try an implicit out-of-subset conversion *)
+            coerce cntxt ( L.Subout(trm,st2) ) st1'1 st2 
+
+        | ( _, _, L.Subset( ( _, st2'1 ), _ ) ) -> 
+	    (** Try an implicit into-subset conversion *)
+            ( match (coerce cntxt trm st1 st2'1) with
+                Some trm' -> Some ( L.Subin ( trm', st2 ))
+              | None      -> None )
+
+        | ( L.Tuple trms, L.Product sts1, L.Product sts2 ) ->
+            let rec loop subst2 = function 
+                ([], [], []) -> Some []
+              | ([], _, _)   -> None
+              | (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
+		  if (isWild nm1) then
+		    let st2' = L.substSet subst2 st2
+		    in let subst2' = L.insertTermvar subst2 nm2 trm
+                    in (match (coerce cntxt trm st1 st2', 
+			      loop subst2' (trms,sts1,sts2)) with
+			(Some trm', Some trms') -> Some (trm'::trms')
+                      | _ -> None )
+		  else
+		    (* This case shouldn't ever arise; tuples naturally
+		       yield non-dependent product types.  
+		       But just in case, ...*)
+		    (print_string 
+			("WARNING: coerce: dependent->? case for products " ^
+			    " arose, surprisingly!\n");
+		     None)
+	      | _ -> raise Impossible
+            in (match (loop L.emptysubst (trms, sts1, sts2)) with
+                  Some trms' -> Some (L.Tuple trms')
+                | None -> None)
+
+        | _ -> None
+
+let rec coerceFromSubset cntxt trm st = 
+   match (hnfSet cntxt st) with
+      L.Subset( ( _, st1 ), _ ) -> 
+         coerceFromSubset cntxt (L.Subout(trm, st)) st1
+    | st' -> (trm, st')
+
+
+(*********************)
+(** Inference proper *)
+(*********************)
+
+
 (*** XXX Does not check that names are of the right form,
      e.g., that set names are lowercased non-infix. *)
 
-let annotateExpr cntxt = function 
+let rec annotateExpr cntxt = function 
     Ident nm -> 
       begin
 	match lookupId cntxt nm with
@@ -162,18 +548,22 @@ let annotateExpr cntxt = function
 	                               pty)
 	  | CtxSet  (_, knd) -> ResSet(L.Basic(L.set_longname_of_name nm),
 		 		      knd)
-	  | CtxTerm (_, ty)  -> ResTerm(L.Var(L.longname_of_name nm),
+	  | CtxTerm (ty)  -> ResTerm(L.Var(L.longname_of_name nm),
 				       ty)
-	  | CtxModel(_, smmry, subst) -> 
+(*	  | CtxModel(_, smmry, subst) -> 
               ResModel(L.Model_name(L.model_name_of_name nm),
 		      smmry, subst)
+*)
 	  | CtxUnbound -> tyUnboundError nm
       end
 
-  | MProj (mdl, nm) as orig_expr ->
+  | MProj _ ->
+      (* (mdl, nm) as orig_expr -> *)
+	raise Unimplemented
+(*
       let (mdl' as whereami, summary, subst) = annotateModel cntxt orig_expr mdl
       in
-	raise Unimplemented
+*)
 (*
       in ( match summary with
             Summary_Struct ( _ , items) ->
@@ -188,7 +578,7 @@ let annotateExpr cntxt = function
   | App (expr1, expr2) as orig_expr ->
       begin
 	match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
-	  | (ResProp(prp1,prpty1), ResTerm(expr2,ty2)) -> 
+	  | (ResProp(prp1,prpty1), ResTerm(trm2,ty2)) -> 
 	      begin
 		(* Application of a predicate to a term *)
 		match prpty1 with
@@ -197,8 +587,11 @@ let annotateExpr cntxt = function
 			(* Application of a predicate *)
 			match coerce cntxt trm2 ty2 domty with
 			    Some trm2' ->
-			      ResProp( S.PApp(prp1, trm2'),
-				       L.substTermInPropType nm trm2' codprpty )
+			      let sub = L.insertTermvar L.emptysubst
+				            nm trm2'
+			      in
+				ResProp( L.PApp(prp1, trm2'),
+				         L.substProptype sub codprpty )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
 
@@ -208,9 +601,9 @@ let annotateExpr cntxt = function
 			   The result has type domty -> Stable.        *)
 			match coerce cntxt trm2 ty2 domty with
 			    Some trm2' ->
-			      ResProp( S.PApp(prp1, trm2'),
+			      ResProp( L.PApp(prp1, trm2'),
 				       L.PropArrow(S.freshWildName(),
-						   domty, L.Stable) )
+						   domty, L.StableProp) )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
 		  | _ -> wrongPropTypeError expr1 prpty1 "predicate" orig_expr
@@ -224,26 +617,29 @@ let annotateExpr cntxt = function
 		      begin
 			match coerce cntxt trm2 ty2 domty with
 			    Some trm2' ->
-			      ResSet( S.SApp(st1, trm2'),
-				      L.substTermInKind nm trm2' codknd )
+			      let sub = L.insertTermvar L.emptysubst nm trm2'
+			      in ResSet( L.SApp(st1, trm2'),
+				         L.substKind sub codknd )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
-		  | _ -> wrongKindError expr1 "arrow" orig-expr knd1
+		  | _ -> wrongKindError expr1 knd1 "arrow" orig_expr 
 	      end
 		
 	  | (ResTerm(trm1,ty1), ResTerm(trm2,ty2)) -> 
 	      begin
 		(* Application of a term to a term *)
 		match coerceFromSubset cntxt trm1 ty1 with
-		    Some (trm1', L.Exp(nm,domty,codty)) ->
+		    (trm1', L.Exp(nm,domty,codty)) ->
 		      begin
 			match coerce cntxt trm2 ty2 domty with
 			    Some trm2' ->
-			      ResTerm( S.App(trm1', trm2'),
-				       L.substTermInSet nm trm2' codty )
+			      let sub = L.insertTermvar L.emptysubst nm trm2'
+			      in
+				ResTerm( L.App(trm1', trm2'),
+				         L.substSet sub codty )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
-		  | _ -> wrongTypeError expr1 "function" orig-expr ty1
+		  | _ -> wrongTypeError expr1 ty1 "function" orig_expr
 	      end
 
 	  | _ -> tyGenericError ("Invalid application " ^ 
@@ -257,18 +653,18 @@ let annotateExpr cntxt = function
 	  match annotateExpr cntxt' expr2 with
 	      ResProp(prp2,prpty2) ->
 		(* Defining a predicate *)
-		ResProp ( List.fold_right L.fPlambda   lbnds1 prp2,
+		ResProp ( List.fold_right L.fPLambda   lbnds1 prp2,
 			  List.fold_right L.fPropArrow lbnds1 prpty2 )
 
 	    | ResSet (st2,knd2) ->
 		(* Defining a family of sets *)
-		ResSet ( List.fold_right L.fSlambda   lbnds1 st2,
+		ResSet ( List.fold_right L.fSLambda   lbnds1 st2,
 			 List.fold_right L.fKindArrow lbnds1 knd2 )
 
 	    | ResTerm(trm2,ty2) -> 
 		(* Defining a function term *)
-		ResSet ( List.fold_right L.fLambda lbnds1 trm,
-			 List.fold_right L.fExp    lbnds1 ty2 )
+		ResTerm ( List.fold_right L.fLambda lbnds1 trm2,
+		  	  List.fold_right L.fExp    lbnds1 ty2 )
 
 	    | _ -> tyGenericError("Invalid body in " ^
 				     S.string_of_expr orig_expr)
@@ -277,7 +673,7 @@ let annotateExpr cntxt = function
   | Arrow (nm, expr1, expr2) as orig_expr ->
       begin
 	let badDomainError() = 
-	  if (S.isWild nm) then
+	  if (isWild nm) then
 	    notWhatsExpectedInError expr1 
 	      "proper type or proposition" orig_expr
 	  else
@@ -289,13 +685,16 @@ let annotateExpr cntxt = function
 		noHigherOrderLogicError orig_expr
 	    | ResKind _ ->
 		noPolymorphismError orig_expr
-	    | ResTerm _ | ResModel _ | ResSet (_, KindArrow _) ->
+	    | ResTerm _ | ResSet (_, L.KindArrow _) 
+(*	    | ResModel _ *)
+            | ResProp (_, (L.PropArrow _ | L.EquivProp _) ) ->
 		badDomainError()
-	    | ResProp (prp1, (L.Prop | L.Stable) as stab1) -> 
-		if (S.isWild nm) then
+	    | ResProp (prp1, (L.Prop | L.StableProp)) -> 
+		if (isWild nm) then
 		  begin
 		    (* Typechecking an implication *)
-		    let (prp2, stab2) = annotateProperProp cntxt expr2 
+		    let (prp2, stab2) = 
+		      annotateProperProp cntxt orig_expr expr2 
 		    in 
 		      (* case.pdf: "Almost negative formulas [are]
 			 built from any combination of 
@@ -308,9 +707,6 @@ let annotateExpr cntxt = function
 		  end
 		else
 		  badDomainError()
-	    | ResProp _ ->
-		(* Predicate that's not a proper proposition *)
-		badDomainError()
             | ResSet (ty1, L.KindSet) ->
 		begin
 		  (* Typechecking a Pi *)
@@ -319,7 +715,7 @@ let annotateExpr cntxt = function
 		      ResSet(st2, knd2) -> 
 			(* Typechecking a dependent type of a function *)
 			ResSet ( L.Exp (nm, ty1, st2),
-			         L.Kindarrow(nm, ty1, knd2) )
+			         L.KindArrow(nm, ty1, knd2) )
 
                     | ResPropType(prpty2) -> 
 			(* Typechecking a dependent type of a proposition *)
@@ -339,10 +735,10 @@ let annotateExpr cntxt = function
       begin
 	match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
 	    (ResTerm(trm1,ty1), ResSet(ty2,L.KindSet)) ->
-	      (* Typecheck a term constrained by a type *)
 	      begin
+		(* Typecheck a term constrained by a type *)
 		match coerce cntxt trm1 ty1 ty2 with
-		    trm1' -> ResTerm(trm1', ty2)
+		    Some trm1' -> ResTerm(trm1', ty2)
 		  | _ -> tyMismatchError expr1 ty2 ty1 orig_expr
 	      end
 
@@ -351,14 +747,14 @@ let annotateExpr cntxt = function
 	      if (subPropType cntxt prpty1 prpty2) then
 		ResProp( prp1, prpty2 )
 	      else
-		propTypeMismatchError prp1 prpty2 prpty1 orig_expr 
+		propTypeMismatchError expr1 prpty2 prpty1 orig_expr 
 
 	  | (ResSet(st1,knd1), ResKind(knd2)) ->
 	      (* Typecheck a set constrained by a kind *)
 	      if (subKind cntxt knd1 knd2) then
 		ResSet(st1, knd2)
 	      else
-		kindMismatchError st1 knd2 knd1 orig_expr
+		kindMismatchError expr1 knd2 knd1 orig_expr
  
           | _ -> tyGenericError 
 		 ("Incoherent constraint " ^ string_of_expr orig_expr)
@@ -373,12 +769,13 @@ let annotateExpr cntxt = function
 	(* A [possibly dependent] type for a tuple. *)
 	let rec loop cntxt = function
 	    [] -> []
-	  | sbnd :: rest ->     
-              let (cntxt', lbnd) = annotateSimpleBinding cntxt orig_expr sbnd
+	  | (nm,expr) :: rest ->     
+              let (cntxt', lbnd) = 
+		annotateSimpleBinding cntxt orig_expr (nm, Some expr)
 	      in 
 		lbnd :: loop cntxt' rest
 	in    
-	  ResSet(L.Product (loop cntxt nes), L.KindSet) 
+	  ResSet(L.Product (loop cntxt sbnds), L.KindSet) 
       end
 
   | Sum _ ->
@@ -390,8 +787,8 @@ let annotateExpr cntxt = function
 	let (cntxt', lbnd1) = annotateSimpleBinding cntxt orig_expr sbnd1
 	in
 	  match annotateExpr cntxt' expr2 with
-	      ResProp(prp2', (L.Prop | L.Stable)) ->
-		ResSet( Subset(lbnd1, prp2'), L.KindSet )
+	      ResProp(prp2', (L.Prop | L.StableProp)) ->
+		ResSet( L.Subset(lbnd1, prp2'), L.KindSet )
 	    | _ ->
 		notWhatsExpectedInError expr2 "proposition" orig_expr
       end
@@ -405,8 +802,8 @@ let annotateExpr cntxt = function
 	      ResSet(ty1, L.KindSet) -> 
 		(* Quotient of a set *)
 		begin
-		  match annotateProp cntxt expr2 with 
-		      (prp2, Equiv(domty2)) ->
+		  match annotateProp cntxt orig_expr expr2 with 
+		      (prp2, L.EquivProp(domty2)) ->
 			if (subSet cntxt ty1 domty2) then
 			  ResSet( L.Quotient (ty1, prp2),
 			        L.KindSet )
@@ -418,13 +815,13 @@ let annotateExpr cntxt = function
 	    | ResTerm(trm1, ty1) ->
 		(* Quotient [equivalence class] of a term *)
 		begin
-		  match annotateProp cntxt expr2 with 
-		      (prp2, Equiv(domty2)) ->
+		  match annotateProp cntxt orig_expr expr2 with 
+		      (prp2, L.EquivProp(domty2)) ->
 			begin
 			  match coerce cntxt trm1 ty1 domty2 with
 			      Some trm1' -> 
-				ResSet( L.Quot (trm1', prp2),
-			              L.Quotient (domty2, prp2) )
+				ResTerm( L.Quot (trm1', prp2),
+			                 L.Quotient (domty2, prp2) )
 			    | _ -> notEquivalenceOnError expr2 expr1
 			end
 		    | _ -> badRelation()
@@ -439,7 +836,7 @@ let annotateExpr cntxt = function
 	match annotateExpr cntxt expr1 with
 	    ResSet(ty1, L.KindSet) -> 
 	      (* Set of realizers for this set *)
-	      ResSet (Rz ty1, L.KindSet)
+	      ResSet (L.Rz ty1, L.KindSet)
 
 	  | ResTerm(trm1, ty1) ->
 	      begin
@@ -458,14 +855,14 @@ let annotateExpr cntxt = function
 
   | Prop -> ResPropType (L.Prop)
 
-  | Stable -> ResPropType (L.Stable)
+  | Stable -> ResPropType (L.StableProp)
 
   | Equiv expr as orig_expr ->
       let equiv_domain_type = annotateType cntxt orig_expr expr
       in
 	ResPropType ( L.EquivProp equiv_domain_type )
 
-  | EmptyTuple -> ResTerm ( L.Star, L.Unit )
+  | EmptyTuple -> ResTerm ( L.EmptyTuple, L.Unit )
 
   | Tuple exprs as orig_expr ->
       let pairs = List.map (annotateTerm cntxt orig_expr) exprs
@@ -478,19 +875,19 @@ let annotateExpr cntxt = function
   | Proj(n1, expr2) as orig_expr ->
       begin
 	let    (trm2',  ty2' ) = annotateTerm cntxt orig_expr expr2
-	in let (trm2'', ty2'') = coerceFromSubset cntxt trm2' ty'
+	in let (trm2'', ty2'') = coerceFromSubset cntxt trm2' ty2'
 	in
 	  match ty2'' with 
 	      L.Product nmtys ->
 		let rec loop k subst = function
 		    [] -> raise Impossible
-		      (nm,ty) :: rest ->
-			if (k = n1) then
-			  ResType ( L.proj(n1, trm2''), 
+		  | (nm,ty) :: rest ->
+		      if (k = n1) then
+			ResTerm ( L.Proj(n1, trm2''), 
 			          L.substSet subst ty )
-			else
-			  loop (k+1) 
-			    (L.insertTermvar subst nm (Proj(k,trm''))) rest
+		      else
+			loop (k+1) 
+			  (L.insertTermvar subst nm (L.Proj(k,trm2''))) rest
 		in let len = List.length nmtys
 		in 
 		     if ( (n1 < 0) || (n1 >= len) ) then
@@ -498,7 +895,7 @@ let annotateExpr cntxt = function
 					  " out of bounds in " ^
 				          string_of_expr orig_expr)
 		     else 
-		       loop 0 emptysubst nmtys
+		       loop 0 L.emptysubst nmtys
 			 
 	    | _ -> wrongTypeError expr2 ty2' "tuple"  orig_expr
       end
@@ -512,23 +909,24 @@ let annotateExpr cntxt = function
 	ResTerm ( L.Inj(label, Some trm2'),
 		  L.Sum[ (label, Some ty2') ] )
 	  
-  | Case (expr1, arms2) as orig_expr ->
+  | Case _ ->
+      (* (expr1, arms2) as orig_expr -> *)
       raise Unimplemented
 
   | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
       begin
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
 	  (* XXX : annotate...withCheckedDefault would be better *)
-	in let (cntxt', (nm1,ty1) as lbnd1) = 
+	in let (cntxt', ((nm1,ty1) as lbnd1)) = 
 	      annotateSimpleBinding cntxt orig_expr sbnd1
 	in 
 	     match hnfSet cntxt ty1 with
-		 RZ ty1' ->
+		 L.Rz ty1' ->
 		   if (subSet cntxt ty2 ty1') then 
-		     let (trm3, ty3) = annotateTerm cntxt' expr3
+		     let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3 
 		     in 
 		       if NameSet.mem nm1 (L.fnSet ty3) then
-			 cantElimErrorError orig_expr
+			 cantElimError orig_expr
 		       else 
 			 ResTerm ( L.RzChoose (lbnd1, trm2, trm3, ty3),
 				   ty3 )
@@ -537,12 +935,15 @@ let annotateExpr cntxt = function
 	       | _ -> 
 		   tyGenericError 
 		     ("The bound variable " ^ 
-		         L.string_of_name nm1 ^ 
+		         string_of_name nm1 ^ 
 		         " in the construct " ^ 
 			 string_of_expr orig_expr ^ 
 		         "should have a realizer type, but here it has type " ^ 
 		         L.string_of_set ty1)
       end
+
+  | Choose _ -> 
+      raise Unimplemented
 
   | Subin(expr1, expr2) as orig_expr ->
       begin
@@ -551,7 +952,7 @@ let annotateExpr cntxt = function
 	in let ty2       = annotateType cntxt orig_expr expr2
 	in  
 	     match (hnfSet cntxt ty2) with
-		 L.Subset _ -> 
+		 L.Subset ((_,domty2), _) -> 
 		   begin
 		     match coerce cntxt trm1 ty1 domty2 with
 			 Some trm1' ->
@@ -574,7 +975,7 @@ let annotateExpr cntxt = function
 		   begin
 		     match coerce cntxt trm1 ty1 ty2 with
 			 Some trm1' ->
-			   ResTerm ( L.SubOut ( trm1', ty2),
+			   ResTerm ( L.Subout ( trm1', ty2),
 				   ty2)
 		       | None -> 
 			   tyGenericError
@@ -603,25 +1004,23 @@ let annotateExpr cntxt = function
 	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
 	in 
 	     if NameSet.mem nm1 (L.fnSet ty3) then
-	       cantElimErrorError orig_expr
+	       cantElimError orig_expr
 	     else 
-	       ResTerm ( L.Let ((nm1,ty1), trm2, trm3),
+	       ResTerm ( L.Let ((nm1,ty1), trm2, trm3, ty3),
 		         ty3 )
       end
 
   | The(sbnd1, expr2) as orig_expr ->
-      let (cntxt', lbnd1) = annotateSimpleBinding cntxt orig_expr sbnd1
-      in let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
+      let (cntxt', ((nm1,ty1) as lbnd1) ) = 
+	annotateSimpleBinding cntxt orig_expr sbnd1
+      in let (prp2,_) = annotateProperProp cntxt orig_expr expr2
       in
-	   if NameSet.mem nm1 (L.fnSet ty2) then
-	     cantElimErrorError orig_expr
-	   else 
-	     ResTerm ( L.The ((nm1,ty1), trm2),
-		       ty2 )
+	   ResTerm ( L.The (lbnd1, prp2),
+		       ty1 )
 
-  | False -> ResProp(L.False, L.Stable)
+  | False -> ResProp(L.False, L.StableProp)
 
-  | True -> ResProp(L.False, L.Stable)
+  | True -> ResProp(L.False, L.StableProp)
 
   | And exprs as orig_expr ->
       begin
@@ -629,7 +1028,7 @@ let annotateExpr cntxt = function
 	in let (prps, prptys) = List.split pairs
 	in 
 	     ResProp ( L.And prps,
-		       L.joinPropTypes prptys )
+		       L.joinProperPropTypes prptys )
       end
 
   | Or exprs as orig_expr ->
@@ -652,37 +1051,37 @@ let annotateExpr cntxt = function
 	in let (prp2, prpty2) = annotateProperProp cntxt orig_expr expr2
 	in 
 	     ResProp ( L.Iff(prp1, prp2),
-		       joinPropTypes [prp1; prp2] )
+		       L.joinProperPropTypes [prpty1; prpty2] )
       end
 
   | Equal (expr1, expr2) as orig_expr ->
       begin
 	let    (trm1, ty1) = annotateTerm cntxt orig_expr expr1
 	in let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
-	in let ty = joinTypes orig_expr [ty1; ty2]
+	in let ty = joinTypes cntxt [ty1; ty2]
 	in 
 	     ResProp( L.Equal(ty, trm1, trm2),
-		      L.Stable )
+		      L.StableProp )
       end
 
-  | Forall (binding1, expr2) as orig_expr ->
-      let (cntxt', lbnds1) = annotateBinding cntxt orig_expr binding1
+  | Forall (bnd1, expr2) as orig_expr ->
+      let (cntxt', lbnds1) = annotateBinding cntxt orig_expr bnd1
       in let (prp2, stab2) = annotateProperProp cntxt' orig_expr expr2
       in let forallprp = 
 	List.fold_right (fun lbnd p -> L.Forall(lbnd, p)) lbnds1 prp2
       in
 	   ResProp ( forallprp, stab2 )
 	     
-  | Exists (bnd1, expr2) ->
-      let (cntxt', lbnds1) = annotateBinding cntxt orig_expr binding1
+  | Exists (bnd1, expr2) as orig_expr ->
+      let (cntxt', lbnds1) = annotateBinding cntxt orig_expr bnd1
       in let (prp2, stab2) = annotateProperProp cntxt' orig_expr expr2
       in let existsprp = 
 	List.fold_right (fun lbnd p -> L.Exists(lbnd, p)) lbnds1 prp2
       in
 	   ResProp ( existsprp, L.Prop )
 
-  | Unique (bnd1, expr2) ->
-      let (cntxt', lbnds1) = annotateBinding cntxt orig_expr binding1
+  | Unique (bnd1, expr2) as orig_expr ->
+      let (cntxt', lbnds1) = annotateBinding cntxt orig_expr bnd1
       in let (prp2, stab2) = annotateProperProp cntxt' orig_expr expr2
       in let uniqueprp = 
 	List.fold_right (fun lbnd p -> L.Unique(lbnd, p)) lbnds1 prp2
@@ -692,69 +1091,84 @@ let annotateExpr cntxt = function
 
 
 and annotateModel cntxt surrounding_expr expr = 
+  raise Unimplemented
+(*
   (match annotateExpr cntxt expr with
       ResModel(mdl, smmry, sbst) -> (mdl, smmry, sbst)
     | _ -> notWhatsExpectedInError expr "model" surrounding_expr)
+*)
     
 and annotateTerm cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt trm with
+  (match annotateExpr cntxt expr with
       ResTerm(trm, ty) -> (trm, ty)
     | _ -> notWhatsExpectedInError expr "term" surrounding_expr)
     
 and annotateSet cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt trm with
+  (match annotateExpr cntxt expr with
       ResSet(st, knd) -> (st, knd)
     | _ -> notWhatsExpectedInError expr "set" surrounding_expr)
     
 and annotateType cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt trm with
+  (match annotateExpr cntxt expr with
       ResSet(st, L.KindSet) -> st
     | _ -> notWhatsExpectedInError expr "proper type" surrounding_expr)
     
 and annotateProp cntxt surrounding_expr expr = 
-  (match annotateProp cntxt trm with
+  (match annotateExpr cntxt expr with
       ResProp(prp, prpty) -> (prp, prpty)
     | _ -> notWhatsExpectedInError expr "proposition" surrounding_expr)
     
 and annotateProperProp cntxt surrounding_expr expr = 
-  (match annotateProp cntxt trm with
-      ResProp(prp, (L.Prop | L.Stable) as prpty) -> (prp, prpty)
+  (match annotateExpr cntxt expr with
+      ResProp(prp, ((L.Prop | L.StableProp) as prpty)) -> (prp, prpty)
     | ResProp _ -> 
 	notWhatsExpectedInError expr "proper proposition" surrounding_expr
     | _ -> 
 	notWhatsExpectedInError expr "proposition" surrounding_expr)
+
+and annotateKind cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt expr with
+      ResKind k -> k
+    | _ -> notWhatsExpectedInError expr "kind" surrounding_expr)
+
+
+and annotateProptype cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt expr with
+      ResPropType k -> k
+    | _ -> notWhatsExpectedInError expr "proposition-type" surrounding_expr)
     
+
+
 (* annotateBinding: context -> S.expr -> S.binding -> L.binding list
 *)
 and annotateBinding cntxt surrounding_expr binders =
   (* Loop over variable-list/type pairs *)
   let rec bLoop cntxt' = function
-      []                    -> []
+      []                    -> (cntxt', [])
     | ([],_)::rest          -> bLoop cntxt' rest
-    | (ns, expropt)::rest ->
-	let ty = 
-	  begin
-	    (* Figure out the type for variables in the name list ns *)
-	    match expropt with
-		None -> 
-		  begin
-		    (* No type annotation; hope the variable's Implicit *)
-		    match lookupImplicit cntxt nm with
-			ImpTermvar ty -> ty
-		      | _ -> noTypeInferenceInError nm surrounding_expr
-		  end
-	      | Some expr -> 
-		  annotateType cntxt surrounding_expr expr
-	  end 
+    | (nms, expropt)::rest ->
 
 	(* Now loop to create this pair's bindings and extended context *)
-	in let rec nLoop = function 
+	let rec nLoop = function 
 	    [] -> (cntxt', [])
 	  | n::ns -> 
 	      let (cntxt'', lbnds) = nLoop ns
-	      in ((n,ty) :: lbnds,
-		   insertTermVariable cntxt'' n ty)
-	in let (cntxt'', lbnds) = nLoop ns
+	      in let ty = 
+		begin
+		  (* Figure out the type for variable *)
+		  match expropt with
+		      None -> 
+			begin
+			  (* No type annotation; hope the variable's Implicit *)
+			  match lookupImplicit cntxt n with
+			      ImpTermvar ty -> ty
+			    | _ -> noTypeInferenceInError n surrounding_expr
+			end
+		    | Some expr -> 
+			annotateType cntxt surrounding_expr expr
+		end 
+	      in (insertTermVariable cntxt'' n ty, (n,ty) :: lbnds)
+	in let (cntxt'', lbnds) = nLoop nms
 
 	(* Now handle the rest of the pairs *)
 	in let (cntxt_final, lbnds_rest) = bLoop cntxt'' rest
@@ -775,4 +1189,61 @@ and annotateSimpleBinding cntxt surrounding_expr (nm, expropt) =
       | _ -> raise Impossible
   end
 
+and annotateTheoryElem cntxt = function
+    Definition(nm1, expropt2, expr3) as orig_elem -> 
+      begin
+	match annotateExpr cntxt expr3 with
+	    ResTerm(trm3, ty3) ->
+	      begin
+		(* Definition of a term constant *)
+		match expropt2 with
+		    None       -> L.Let_term(nm1, ty3, trm3)
+		  | Some expr2 ->
+		      let ty2 = annotateType cntxt expr2 (Ident nm1)
+		      in 
+			match (coerce cntxt trm3 ty3 ty2) with
+			    Some trm3' -> L.Let_term(nm1, ty2, trm3')
+			  | _ -> tyMismatchError expr2 ty2 ty3 (Ident nm1)
+	      end
+
+	  | ResSet(st3, k3) ->
+	      begin
+		(* Definition of a set constant *)
+		match expropt2 with
+		    None       -> L.Let_set(nm1, k3, st3)
+		  | Some expr2 ->
+		      let k2 = annotateKind cntxt expr2 (Ident nm1)
+		      in
+			if (subKind cntxt k3 k2) then
+			  L.Let_set(nm1, k2, st3)
+			else
+			  kindMismatchError expr2 k2 k3 (Ident nm1)
+	      end
+
+	  | ResProp(prp3, pt3) ->
+	      begin
+		(* Definition of a propositional constant *)
+		match expropt2 with
+		      None       -> L.Let_predicate(nm1, pt3, prp3)
+		  | Some expr2 ->
+		      let pt2 = annotateProptype cntxt expr2 (Ident nm1)
+		      in
+			if (subPropType cntxt pt3 pt2) then
+			  L.Let_predicate(nm1, pt2, prp3)
+			else
+			  propTypeMismatchError expr2 pt2 pt3 (Ident nm1)
+	      end
+	  | ResPropType _ | ResKind _ ->
+	      tyGenericError 
+		("Invalid right-hand-side in " ^
+		    string_of_theory_element orig_elem)
+      end
+
+  | Comment c -> L.Comment c
+
+  | Include _ -> raise Unimplemented
+
+  | Implicit _ -> raise Impossible
+
+  | Value _ -> raise Unimplemented
 
