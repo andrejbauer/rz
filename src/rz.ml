@@ -19,7 +19,6 @@ let command_line_options =
    ("--sigapp", Arg.Set Flags.do_sigapp, "Retain signature applications");
    ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)");
    ("--dump_infer", Arg.Set Flags.do_dumpinfer, "Dump result of type inference");
-   ("--redo_infer", Arg.Set Flags.do_redoinfer, "Check the results of type inference");
    ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
   ]
 
@@ -82,14 +81,13 @@ let rec process = function
   | (fn::fns, infer_state, translate_state, opt_state) ->
       let thy = read fn in
 
-      let (thy', infer_state') = 
+      let (infer_state', lthy) = 
 	Infer.annotateToplevels infer_state thy in
-
 
       let _ = 
 	(if (! Flags.do_dumpinfer) then
           let print_item tplvl = 
-	    (print_endline (Syntax.string_of_toplevel tplvl);
+	    (print_endline (Logic.string_of_toplevel tplvl);
 	     print_endline "")
 	  in (print_endline "----------------";
 	      print_endline "After Inference:";
@@ -97,18 +95,6 @@ let rec process = function
 	      List.iter print_item thy';
 	      print_endline "----------------")
 	else ()) in
-
-      let _ =
-        (if (! Flags.do_redoinfer) then
-	    Infer.annotateToplevels infer_state thy'
-         else (thy', infer_state')) in
-
-
-
-      let lthy = 
-	(* The translation to Logic form is syntax-directed and 
-	   doesn't need to maintain any state *)
-	List.map Logic.make_toplevel thy' in
 
       let (spec,translate_state') = 
 	Translate.translateToplevel translate_state lthy in

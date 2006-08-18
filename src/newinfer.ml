@@ -129,13 +129,14 @@ type inferResult =
   | ResSet      of L.set * L.setkind
   | ResTerm     of L.term * L.set
   | ResProp     of L.proposition * L.proptype
-(*  | ResModel    of L.model * summary * substitution *)
+(*  | ResModel    of L.model * summary  *)
 
 type ctx_member =
     CtxProp  of L.proposition option * L.proptype
   | CtxSet   of L.set option         * L.setkind
   | CtxTerm  of                        L.set
 (*  | CtxModel of L.model option       * summary * substitution *)
+  | CtxTheory  of L.theory
   | CtxUnbound
 
 type implicit_info =
@@ -144,13 +145,20 @@ type implicit_info =
 
 
 type context = {bindings : (name * ctx_member) list;
-		implicits : (name * implicit_info) list}
+		implicits : (name * implicit_info) list;
+	        renaming : name NameMap.t}
 
-let emptyContext = {bindings = []; implicits = []}
+let emptyContext = {bindings = []; implicits = [];
+		    renaming = NameMap.empty}
 
 let lookupImplicit cntxt nm = 
   try (List.assoc nm cntxt.implicits) with
       Not_found -> ImpUnknown
+
+let rec insertImplicits cntxt names ty = 
+  {cntxt with
+    implicits = ( List.map (fun nm -> (nm, ImpTermvar ty)) names )
+                  @ cntxt.implicits}
 
 let lookupId cntxt nm =
   try (List.assoc nm cntxt.bindings) with
@@ -165,6 +173,57 @@ let insertSetVariable cntxt nm knd stopt =
 let insertPropVariable cntxt nm prpty prpopt =
   { cntxt with bindings =  (nm, CtxProp (prpopt,prpty)) :: cntxt.bindings }
 
+let insertTheoryVariable cntxt nm thry =
+  { cntxt with bindings =  (nm, CtxTheory thry) :: cntxt.bindings }
+
+let renameBoundVar cntxt nm =
+  let rec findUnusedName nm =
+    match (lookupId cntxt nm) with
+	CtxUnbound -> nm
+      | _ -> findUnusedName (nextName nm)
+  in let nm' = findUnusedName nm
+  in 
+       if (nm = nm') then
+	 (cntxt, nm)
+       else
+	 ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
+
+let applyContextSubst cntxt nm = 
+  try  NameMap.find nm cntxt.renaming  with
+      Not_found -> nm
+
+(**  
+    The key idea for lookup of long-names/module projections
+    is to maintain two values as we go along:  
+    (1) where we are in reference to the top level (a model path)
+    (2) a substitution mapping all theory-component names in scope to the
+        paths that would be used to access these values from
+        the top-level.  So, e.g., if we had
+
+    thy
+      set s
+      model M : thy
+                  set t
+                  model N : thy
+                               set u
+                               const x : u
+                            end
+                end
+    end
+
+    and assuming we're looking for M.N.x, by the time we
+    get to x the substitution (2) contains
+      s -> s
+      t -> M.t
+      u -> M.N.u
+    and the "where am I" (1) would be M.N.
+
+    The naming convention is that the primed functions take a list of
+    (theory_summary) items (and in some cases an initial
+    substitution), while the unprimed functions take the whole
+    context and no substitution, and so should only be invoked on
+    the "top-level" context.
+*)
 
 (*******************)
 (** {3: Coercions} *)
@@ -543,18 +602,21 @@ let rec coerceFromSubset cntxt trm st =
 let rec annotateExpr cntxt = function 
     Ident nm -> 
       begin
-	match lookupId cntxt nm with
-            CtxProp (_, pty) -> ResProp(L.Atomic(L.longname_of_name nm),
-	                               pty)
-	  | CtxSet  (_, knd) -> ResSet(L.Basic(L.set_longname_of_name nm),
-		 		      knd)
-	  | CtxTerm (ty)  -> ResTerm(L.Var(L.longname_of_name nm),
-				       ty)
-(*	  | CtxModel(_, smmry, subst) -> 
-              ResModel(L.Model_name(L.model_name_of_name nm),
-		      smmry, subst)
-*)
-	  | CtxUnbound -> tyUnboundError nm
+	let nm' = applyContextSubst cntxt nm 
+	in
+	  match lookupId cntxt nm' with
+              CtxProp (_, pty) -> ResProp(L.Atomic(L.longname_of_name nm'),
+					 pty)
+	    | CtxSet  (_, knd) -> ResSet(L.Basic(L.set_longname_of_name nm'),
+		 			knd)
+	    | CtxTerm (ty)  -> ResTerm(L.Var(L.longname_of_name nm'),
+				      ty)
+		(*	  | CtxModel(_, smmry, subst) -> 
+			  ResModel(L.Model_name(L.model_name_of_name nm),
+			  smmry, subst)
+		*)
+	    | CtxTheory _ -> raise Unimplemented
+	    | CtxUnbound -> tyUnboundError nm
       end
 
   | MProj _ ->
@@ -672,7 +734,8 @@ let rec annotateExpr cntxt = function
 
   | Arrow (nm, expr1, expr2) as orig_expr ->
       begin
-	let badDomainError() = 
+	let (cntxt, nm) = renameBoundVar cntxt nm
+        in let badDomainError() = 
 	  if (isWild nm) then
 	    notWhatsExpectedInError expr1 
 	      "proper type or proposition" orig_expr
@@ -918,6 +981,7 @@ let rec annotateExpr cntxt = function
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
 
 	in let (cntxt', ((nm1,ty1) as lbnd1)) = 
+	      (* Careful with error messages...nm1 might have been renamed *)
 	      annotateSimpleBindingWithDefault 
 		cntxt orig_expr (L.Rz ty2) sbnd1
 	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3 
@@ -937,9 +1001,7 @@ let rec annotateExpr cntxt = function
 		   end
 	       | _ -> 
 		   tyGenericError 
-		     ("The bound variable " ^ 
-		         string_of_name nm1 ^ 
-		         " in the construct " ^ 
+		     ("The bound variable in the construct " ^ 
 			 string_of_expr orig_expr ^ 
 		         "should have a realizer type, but here it has type " ^ 
 		         L.string_of_set ty1)
@@ -997,6 +1059,7 @@ let rec annotateExpr cntxt = function
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
 
 	in let (cntxt', (nm1,ty1)) = 
+	  (* Careful with error messages; nm1 might have been renamed *)
 	  annotateSimpleBindingWithDefault cntxt orig_expr ty2 sbnd1
 
           (* NB: If we ever start putting term definitions into the
@@ -1019,6 +1082,7 @@ let rec annotateExpr cntxt = function
 
   | The(sbnd1, expr2) as orig_expr ->
       let (cntxt', ((nm1,ty1) as lbnd1) ) = 
+	(* Careful with error messages; nm1 might have been renamed *)
 	annotateSimpleBinding cntxt orig_expr sbnd1
       in let (prp2,_) = annotateProperProp cntxt orig_expr expr2
       in
@@ -1162,7 +1226,10 @@ and annotateBinding cntxt surrounding_expr binders =
 	      let (cntxt'', lbnds) = nLoop ns
 	      in let ty = 
 		begin
-		  (* Figure out the type for variable *)
+		  (* Figure out the type for variable.
+		     NB: Check for an Implicit declaration has to happen.
+		         *before* the variable is renamed! 
+                  *)
 		  match expropt with
 		      None -> 
 			begin
@@ -1174,6 +1241,7 @@ and annotateBinding cntxt surrounding_expr binders =
 		    | Some expr -> 
 			annotateType cntxt surrounding_expr expr
 		end 
+	      in let (cntxt'', n) = renameBoundVar cntxt'' n
 	      in (insertTermVariable cntxt'' n ty, (n,ty) :: lbnds)
 	in let (cntxt'', lbnds) = nLoop nms
 
@@ -1201,7 +1269,6 @@ and annotateSimpleBinding cntxt surrounding_expr (nm, expropt) =
     specified in an implicit declaration.
 
     Raises an error (indirectly) if the set in the binding is ill-formed
-    or if the set in the binding is not a supertype of the default.
 *)
 
 and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
@@ -1213,46 +1280,27 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
              imput to typecheck.  On the other hand, if you say that n
              ranges over integers unless otherwise specified, and you
              bind it to a boolean, an error seems likely... *)
-	  match (lookupImplicit cntxt nm) with
-	      ImpTermvar ty -> (insertTermVariable cntxt nm ty,
-			          (nm, ty) )
-	    | _             -> (insertTermVariable cntxt nm default_ty, 
-			          (nm, default_ty) )
+	  let ty = 
+	    match (lookupImplicit cntxt nm) with
+		ImpTermvar implicit_ty -> implicit_ty
+	      | _                      -> default_ty
+	  in let (cntxt, nm) = renameBoundVar cntxt nm
+	  in let cntxt' = insertTermVariable cntxt nm ty
+	  in 
+	       (cntxt',  (nm, ty) )
 	end
 
     | (nm, Some expr) -> 
 	let ty = annotateType cntxt surrounding_expr expr
+	in let (cntxt, nm) = renameBoundVar cntxt nm
 	in 
 	  (* NB:  No checking of binding annotation vs default! *)
 	  (insertTermVariable cntxt nm ty,  (nm, ty) )
 
-(*
-and annotateSimpleBindingWithCheckedDefault cntxt surrounding_expr default_ty =
-  function
-      (nm, None) -> 
-	begin
-	  (* There's a reasonable argument to say that the default_ty
-             should always be used, since it's most likely to get the
-             imput to typecheck.  On the other hand, if you say that n
-             ranges over integers unless otherwise specified, and you
-             bind it to a boolean, an error seems likely... *)
-	  match (lookupImplicit cntxt nm) with
-	      ImpTermvar ty -> (insertTermVariable cntxt nm ty,
-			          (nm, ty) )
-	    | _             -> (insertTermVariable cntxt nm default_ty, 
-			          (nm, default_ty) )
-	end
-
-    | (nm, Some expr) as orig_sbnd -> 
-	let ty = annotateType cntxt surrounding_expr expr
-	in if (subSet cntxt default_ty ty) then
-            (insertTermVariable cntxt nm ty,  (nm, ty) )
-	  else
-            tyGenericError ( "Annotated Binding " ^ 
-			       string_of_bnd orig_sbnd ^
-			       " doesn't match inferred set " ^ 
-			       L.string_of_set default_ty ^ " in " ^
-			       string_of_expr surrounding_expr)
+(* We explicitly do _not_ rename bound variables here, as they will
+   eventually become labels.  Thus, a Definition or a Value declaration
+   is not permitted to shadow an earlier definition, which can only
+   be an earlier top-level or theory-element definition.
 *)
 
 and annotateTheoryElem cntxt = function
@@ -1263,12 +1311,12 @@ and annotateTheoryElem cntxt = function
 	      begin
 		(* Definition of a term constant *)
 		match expropt2 with
-		    None       -> L.Let_term(nm1, ty3, trm3)
+		    None       -> [ L.Let_term(nm1, ty3, trm3) ] 
 		  | Some expr2 ->
 		      let ty2 = annotateType cntxt expr2 (Ident nm1)
 		      in 
 			match (coerce cntxt trm3 ty3 ty2) with
-			    Some trm3' -> L.Let_term(nm1, ty2, trm3')
+			    Some trm3' -> [ L.Let_term(nm1, ty2, trm3') ]
 			  | _ -> tyMismatchError expr2 ty2 ty3 (Ident nm1)
 	      end
 
@@ -1276,12 +1324,12 @@ and annotateTheoryElem cntxt = function
 	      begin
 		(* Definition of a set constant *)
 		match expropt2 with
-		    None       -> L.Let_set(nm1, k3, st3)
+		    None       -> [ L.Let_set(nm1, k3, st3) ]
 		  | Some expr2 ->
 		      let k2 = annotateKind cntxt expr2 (Ident nm1)
 		      in
 			if (subKind cntxt k3 k2) then
-			  L.Let_set(nm1, k2, st3)
+			  [ L.Let_set(nm1, k2, st3) ]
 			else
 			  kindMismatchError expr2 k2 k3 (Ident nm1)
 	      end
@@ -1290,12 +1338,12 @@ and annotateTheoryElem cntxt = function
 	      begin
 		(* Definition of a propositional constant *)
 		match expropt2 with
-		      None       -> L.Let_predicate(nm1, pt3, prp3)
+		      None       -> [ L.Let_predicate(nm1, pt3, prp3) ]
 		  | Some expr2 ->
 		      let pt2 = annotateProptype cntxt expr2 (Ident nm1)
 		      in
 			if (subPropType cntxt pt3 pt2) then
-			  L.Let_predicate(nm1, pt2, prp3)
+			  [ L.Let_predicate(nm1, pt2, prp3) ]
 			else
 			  propTypeMismatchError expr2 pt2 pt3 (Ident nm1)
 	      end
@@ -1305,11 +1353,88 @@ and annotateTheoryElem cntxt = function
 		    string_of_theory_element orig_elem)
       end
 
-  | Comment c -> L.Comment c
+  | Comment c -> [L.Comment c]
 
   | Include _ -> raise Unimplemented
 
-  | Implicit _ -> raise Impossible
+  | Implicit _ -> raise Impossible (* Implicits were already removed *)
 
-  | Value _ -> raise Unimplemented
+  | Value (_, values) as orig_elem ->
+      let process = function
+	  (nm, ResSet(ty, L.KindSet)) -> L.Value(nm, ty)
+	| (nm, ResPropType pt)        -> L.Predicate (nm, pt)
+	| (nm, ResKind k)             -> L.Set(nm, k)
+        | (nm, (ResSet _ | ResTerm _ | ResProp _)) -> 
+	    tyGenericError 
+	      ("Invalid classifier for " ^ string_of_name nm ^
+		  " in " ^ string_of_theory_element orig_elem)
+      in let rec loop = function
+	      [] -> []
+            | (nms,expr)::rest ->
+		let res = annotateExpr cntxt expr 
+		in
+		  (List.map (fun nm -> process(nm, res)) nms) @ (loop rest)
+      in 
+	   loop values
+
+let rec updateContextForElem cntxt = function
+  | L.Set           (nm, knd)     -> insertSetVariable  cntxt nm knd None
+  | L.Let_set       (nm, knd, st) -> insertSetVariable  cntxt nm knd (Some st)
+  | L.Predicate     (nm, pt)      -> insertPropVariable cntxt nm pt None
+  | L.Let_predicate (nm, pt, prp) -> insertPropVariable cntxt nm pt (Some prp)
+  | L.Value         (nm, st)      -> insertTermVariable cntxt nm st
+  | L.Let_term      (nm, st, _)   -> insertTermVariable cntxt nm st
+  | L.Sentence _  -> cntxt
+  | L.Comment _   -> cntxt
+  | L.Model _ ->
+      raise Unimplemented
+
+let updateContextForElems cntxt elems = 
+  List.fold_left updateContextForElem cntxt elems
+
+let rec annotateTheoryElems cntxt = function
+    [] -> (cntxt, [])
+
+  | Implicit(names, st)::rest ->    (** Eliminated during inference *)
+      let    ty = annotateType cntxt (S.False (*XXX*)) st 
+      in let cntxt' = insertImplicits cntxt names ty
+      in 
+	   annotateTheoryElems cntxt' rest
+
+  | elem :: rest ->
+      let    lelems1 = annotateTheoryElem cntxt elem
+      in let cntxt'  = updateContextForElems cntxt lelems1
+      in let (cntxt_final, lelems2) = annotateTheoryElems cntxt' rest
+      in (cntxt_final, lelems1 @ lelems2)
+ 
+let annotateTheory cntxt = function
+    Theory elems -> 
+      let (_, lelems) = annotateTheoryElems cntxt elems
+      in  L.Theory lelems 
+
+  | TheoryName _ -> 
+      raise Unimplemented
+
+  | TheoryFunctor _ -> 
+      raise Unimplemented
+
+  | TheoryApp _ ->
+      raise Unimplemented
+
+let annotateToplevel cntxt = function
+    TopComment c -> (cntxt, L.TopComment c)
+
+  | Theorydef(nm, thry) ->
+      let lthry = annotateTheory cntxt thry
+      in (insertTheoryVariable cntxt nm lthry, 
+	  L.Theorydef(nm, lthry))
+
+  | TopModel _ -> raise Unimplemented
+
+let rec annotateToplevels cntxt = function
+    [] -> (cntxt, [])
+  | tl::tls -> 
+      let    (cntxt',  tl' ) = annotateToplevel cntxt tl
+      in let (cntxt'', tls') = annotateToplevels cntxt' tls
+      in (cntxt'', tl'::tls')
 
