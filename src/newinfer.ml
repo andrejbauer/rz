@@ -1386,7 +1386,7 @@ let rec updateContextForElem cntxt = function
   | L.Let_term      (nm, st, _)   -> insertTermVariable cntxt nm st
   | L.Sentence _  -> cntxt
   | L.Comment _   -> cntxt
-  | L.Model _ ->
+  | L.Model _     ->
       raise Unimplemented
 
 let updateContextForElems cntxt elems = 
