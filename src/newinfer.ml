@@ -112,7 +112,10 @@ let tyJoinError ty1 ty2 =
      ("the types " ^ L.string_of_set ty1 ^ " and " ^
 	 L.string_of_set ty2 ^ " are incompatible")
 	
-
+let componentNotFoundError nm expr =
+  tyGenericError
+    ("Cannot project " ^ string_of_name nm ^ " in " ^ string_of_expr expr)
+      
 (*****************************************)
 (** {2 Typechecking/Type Reconstruction} *)
 (*****************************************)
@@ -126,17 +129,18 @@ let tyJoinError ty1 ty2 =
 type inferResult =
     ResPropType of L.proptype
   | ResKind     of L.setkind
-  | ResSet      of L.set * L.setkind
-  | ResTerm     of L.term * L.set
+  | ResSet      of L.set         * L.setkind
+  | ResTerm     of L.term        * L.set
   | ResProp     of L.proposition * L.proptype
-(*  | ResModel    of L.model * summary  *)
+  | ResModel    of L.model       * L.theory 
+  | ResTheory   of L.theory
 
 type ctx_member =
-    CtxProp  of L.proposition option * L.proptype
-  | CtxSet   of L.set option         * L.setkind
-  | CtxTerm  of                        L.set
-(*  | CtxModel of L.model option       * summary * substitution *)
-  | CtxTheory  of L.theory
+    CtxProp   of L.proposition option * L.proptype
+  | CtxSet    of L.set option         * L.setkind
+  | CtxTerm   of                        L.set
+  | CtxModel  of L.theory
+  | CtxTheory of L.theory
   | CtxUnbound
 
 type implicit_info =
@@ -170,8 +174,11 @@ let insertTermVariable cntxt nm ty =
 let insertSetVariable cntxt nm knd stopt =
   { cntxt with bindings =  (nm, CtxSet (stopt,knd)) :: cntxt.bindings }
 
-let insertPropVariable cntxt nm prpty prpopt =
-  { cntxt with bindings =  (nm, CtxProp (prpopt,prpty)) :: cntxt.bindings }
+let insertPropVariable cntxt nm pt prpopt =
+  { cntxt with bindings =  (nm, CtxProp (prpopt,pt)) :: cntxt.bindings }
+
+let insertModelVariable cntxt nm thry =
+  { cntxt with bindings =  (nm, CtxModel thry) :: cntxt.bindings }
 
 let insertTheoryVariable cntxt nm thry =
   { cntxt with bindings =  (nm, CtxTheory thry) :: cntxt.bindings }
@@ -191,6 +198,47 @@ let renameBoundVar cntxt nm =
 let applyContextSubst cntxt nm = 
   try  NameMap.find nm cntxt.renaming  with
       Not_found -> nm
+
+
+
+let rec searchElems cntxt nm' surrounding_expr mdl = 
+  let rec loop subst = function
+    [] -> componentNotFoundError nm' surrounding_expr
+    | L.Set (nm, knd) :: rest -> 
+	if (nm = nm') then
+	  CtxSet(None, L.substKind subst knd)  (* or Some mdl.nm? *)
+	else 
+	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
+    | L.Let_set (nm, knd, st) :: rest -> 
+	if (nm = nm') then
+	  CtxSet(Some (L.substSet subst st), L.substKind subst knd)
+	else 
+	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
+    | L.Predicate (nm, pt) :: rest -> 
+	if (nm = nm') then
+	  CtxProp(None, L.substProptype subst pt)
+	else 
+	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm)))) rest
+    | L.Let_predicate (nm, pt, prp) :: rest -> 
+	if (nm = nm') then
+	  CtxProp(Some (L.substProp subst prp), L.substProptype subst pt)
+	else 
+	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm)))) rest
+    | L.Value (nm, ty) :: rest 
+    | L.Let_term (nm, ty, _) :: rest -> 
+	if (nm = nm') then
+	  CtxTerm (L.substSet subst ty)
+	else 
+	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
+    | L.Model (nm, thry) :: rest ->
+	if (nm = nm') then
+	  CtxModel (L.substTheory subst thry)
+	else 
+	  loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) rest
+    | L.Sentence _ :: rest -> loop subst rest
+    | L.Comment _  :: rest -> loop subst rest
+  in
+    loop L.emptysubst 
 
 (**  
     The key idea for lookup of long-names/module projections
@@ -229,6 +277,36 @@ let applyContextSubst cntxt nm =
 (** {3: Coercions} *)
 (*******************)
 
+let rec theoryToElems cntxt = function
+    L.Theory elems -> elems
+  | L.TheoryName thrynm' -> 
+      begin
+	match lookupId cntxt thrynm' with
+	    CtxTheory thry' -> theoryToElems cntxt thry'
+	  | _ -> raise Impossible
+      end
+  | L.TheoryFunctor _ -> raise Impossible
+  | L.TheoryApp _ -> raise Unimplemented
+
+(* cntxt -> L.model -> L.theory list *)
+let rec modelToTheory cntxt = function
+    L.ModelName nm ->
+      begin
+	match (lookupId cntxt nm) with
+	    CtxModel thry -> thry
+	  | _ -> raise Impossible
+      end
+  | L.ModelProj (mdl, nm) -> 
+      begin
+	let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
+	in
+	  match searchElems cntxt nm S.False mdl elems with
+	      CtxModel thry -> thry
+	    | _ -> raise Impossible
+      end
+  | L.ModelApp _ -> raise Unimplemented
+	
+
 (** Expand out any top-level definitions or function
     applications for a (well-formed) set 
   *)
@@ -237,21 +315,19 @@ let rec hnfSet cntxt = function
       begin
 	match (lookupId cntxt stnm) with
             CtxSet(Some st, _) -> hnfSet cntxt st
-	  | CtxSet(None, _) -> orig_set
+	  | CtxSet(None, _)    -> orig_set
 	  | _ -> raise Impossible
       end
 
-  | L.Basic _ -> 
-      (*(SLN ( Some mdl, stnm ) ->  *)
-      raise Unimplemented
-(*      let (whereami, summary, subst) = annotateModel cntxt mdl
-      in ( match summary with
-	     Summary_Struct ( _, items ) -> 
-	       ( match (peekTydef' subst items (Some whereami) stnm) with
-	           None    -> Set_name ( Some mdl, stnm ) 
-	         | Some st -> hnfSet cntxt st )
-           | _ -> raise Impossible )
-*)
+  | L.Basic (L.SLN ( Some mdl, nm)) as orig_set -> 
+      begin
+      let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
+      in
+	match searchElems cntxt nm S.False mdl elems with
+            CtxSet(Some st, _) -> hnfSet cntxt st
+	  | CtxSet(None, _)    -> orig_set
+	  | _ -> raise Impossible
+      end
 
   | L.SApp(st1,trm2) -> 
       begin
@@ -611,17 +687,29 @@ let rec annotateExpr cntxt = function
 		 			knd)
 	    | CtxTerm (ty)  -> ResTerm(L.Var(L.longname_of_name nm'),
 				      ty)
-		(*	  | CtxModel(_, smmry, subst) -> 
-			  ResModel(L.Model_name(L.model_name_of_name nm),
-			  smmry, subst)
-		*)
-	    | CtxTheory _ -> raise Unimplemented
+	    | CtxModel  thry -> ResModel(L.ModelName(L.model_name_of_name nm),
+					thry )
+	    | CtxTheory thry -> (print_endline "XXX Do I need to selfify?";
+				 ResTheory thry)
 	    | CtxUnbound -> tyUnboundError nm
       end
 
-  | MProj _ ->
-      (* (mdl, nm) as orig_expr -> *)
-	raise Unimplemented
+  | MProj (expr1, nm2) as orig_expr ->
+      begin
+	match annotateModel cntxt orig_expr expr1 with
+	    (mdl, L.Theory elems) ->
+	      begin
+		match searchElems cntxt nm2 orig_expr mdl elems with
+		    CtxSet (_,knd) -> ResSet(L.Basic(L.SLN(Some mdl, nm2)), knd)
+		  | CtxProp (_,pt) -> ResProp(L.Atomic(L.LN(Some mdl, nm2)), pt)
+		  | CtxTerm ty -> ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
+		  | CtxModel thry -> ResModel(L.ModelProj(mdl,nm2), thry)
+		  | _ -> raise Impossible
+	      end
+	  | _ -> notWhatsExpectedInError expr1 "theory of a model" orig_expr
+      end
+
+
 (*
       let (mdl' as whereami, summary, subst) = annotateModel cntxt orig_expr mdl
       in
@@ -640,11 +728,11 @@ let rec annotateExpr cntxt = function
   | App (expr1, expr2) as orig_expr ->
       begin
 	match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
-	  | (ResProp(prp1,prpty1), ResTerm(trm2,ty2)) -> 
+	  | (ResProp(prp1,pt1), ResTerm(trm2,ty2)) -> 
 	      begin
 		(* Application of a predicate to a term *)
-		match prpty1 with
-		    L.PropArrow(nm,domty,codprpty) -> 
+		match pt1 with
+		    L.PropArrow(nm,domty,codpt) -> 
 		      begin
 			(* Application of a predicate *)
 			match coerce cntxt trm2 ty2 domty with
@@ -653,7 +741,7 @@ let rec annotateExpr cntxt = function
 				            nm trm2'
 			      in
 				ResProp( L.PApp(prp1, trm2'),
-				         L.substProptype sub codprpty )
+				         L.substProptype sub codpt )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
 
@@ -668,7 +756,7 @@ let rec annotateExpr cntxt = function
 						   domty, L.StableProp) )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
-		  | _ -> wrongPropTypeError expr1 prpty1 "predicate" orig_expr
+		  | _ -> wrongPropTypeError expr1 pt1 "predicate" orig_expr
 	      end
 
 	  | (ResSet(st1,knd1), ResTerm(trm2,ty2)) ->
@@ -704,6 +792,13 @@ let rec annotateExpr cntxt = function
 		  | _ -> wrongTypeError expr1 ty1 "function" orig_expr
 	      end
 
+	  | (ResModel(mdl1,thry1), ResModel(mdl2,thry2)) ->
+	      begin
+		(* Appliation of a functor to an argument. *)
+		raise Unimplemented
+	      end
+
+
 	  | _ -> tyGenericError ("Invalid application " ^ 
 				    S.string_of_expr orig_expr) 
       end
@@ -713,10 +808,10 @@ let rec annotateExpr cntxt = function
 	let (cntxt', lbnds1) = annotateBinding cntxt orig_expr binding1
 	in  
 	  match annotateExpr cntxt' expr2 with
-	      ResProp(prp2,prpty2) ->
+	      ResProp(prp2,pt2) ->
 		(* Defining a predicate *)
 		ResProp ( List.fold_right L.fPLambda   lbnds1 prp2,
-			  List.fold_right L.fPropArrow lbnds1 prpty2 )
+			  List.fold_right L.fPropArrow lbnds1 pt2 )
 
 	    | ResSet (st2,knd2) ->
 		(* Defining a family of sets *)
@@ -749,7 +844,7 @@ let rec annotateExpr cntxt = function
 	    | ResKind _ ->
 		noPolymorphismError orig_expr
 	    | ResTerm _ | ResSet (_, L.KindArrow _) 
-(*	    | ResModel _ *)
+	    | ResModel _ | ResTheory _ 
             | ResProp (_, (L.PropArrow _ | L.EquivProp _) ) ->
 		badDomainError()
 	    | ResProp (prp1, (L.Prop | L.StableProp)) -> 
@@ -780,9 +875,9 @@ let rec annotateExpr cntxt = function
 			ResSet ( L.Exp (nm, ty1, st2),
 			         L.KindArrow(nm, ty1, knd2) )
 
-                    | ResPropType(prpty2) -> 
+                    | ResPropType(pt2) -> 
 			(* Typechecking a dependent type of a proposition *)
-			ResPropType( L.PropArrow(nm, ty1, prpty2) )
+			ResPropType( L.PropArrow(nm, ty1, pt2) )
 
 		    | ResKind(knd2) ->
 			(* Typechecking a dependent kind of a family of sets *)
@@ -805,12 +900,12 @@ let rec annotateExpr cntxt = function
 		  | _ -> tyMismatchError expr1 ty2 ty1 orig_expr
 	      end
 
-	  | (ResProp(prp1,prpty1), ResPropType(prpty2)) ->
+	  | (ResProp(prp1,pt1), ResPropType(pt2)) ->
 	      (* Typecheck a proposition constrained by a prop. type *)
-	      if (subPropType cntxt prpty1 prpty2) then
-		ResProp( prp1, prpty2 )
+	      if (subPropType cntxt pt1 pt2) then
+		ResProp( prp1, pt2 )
 	      else
-		propTypeMismatchError expr1 prpty2 prpty1 orig_expr 
+		propTypeMismatchError expr1 pt2 pt1 orig_expr 
 
 	  | (ResSet(st1,knd1), ResKind(knd2)) ->
 	      (* Typecheck a set constrained by a kind *)
@@ -1096,33 +1191,33 @@ let rec annotateExpr cntxt = function
   | And exprs as orig_expr ->
       begin
 	let pairs = List.map (annotateProperProp cntxt orig_expr) exprs
-	in let (prps, prptys) = List.split pairs
+	in let (prps, pts) = List.split pairs
 	in 
 	     ResProp ( L.And prps,
-		       L.joinProperPropTypes prptys )
+		       L.joinProperPropTypes pts )
       end
 
   | Or exprs as orig_expr ->
       begin
 	let pairs = List.map (annotateProperProp cntxt orig_expr) exprs
-	in let (prps, prptys) = List.split pairs
+	in let (prps, pts) = List.split pairs
 	in 
 	     ResProp ( L.Or prps,
 		       L.Prop )
       end
 
   | Not expr as orig_expr ->
-      let (prp, prpty) = annotateProperProp cntxt orig_expr expr
+      let (prp, pt) = annotateProperProp cntxt orig_expr expr
       in
-	ResProp ( L.Not prp, prpty )
+	ResProp ( L.Not prp, pt )
 
   | Iff (expr1,expr2) as orig_expr ->
       begin
-	let    (prp1, prpty1) = annotateProperProp cntxt orig_expr expr1
-	in let (prp2, prpty2) = annotateProperProp cntxt orig_expr expr2
+	let    (prp1, pt1) = annotateProperProp cntxt orig_expr expr1
+	in let (prp2, pt2) = annotateProperProp cntxt orig_expr expr2
 	in 
 	     ResProp ( L.Iff(prp1, prp2),
-		       L.joinProperPropTypes [prpty1; prpty2] )
+		       L.joinProperPropTypes [pt1; pt2] )
       end
 
   | Equal (expr1, expr2) as orig_expr ->
@@ -1159,16 +1254,6 @@ let rec annotateExpr cntxt = function
       in
 	   ResProp ( uniqueprp, L.Prop )
 	     
-
-
-and annotateModel cntxt surrounding_expr expr = 
-  raise Unimplemented
-(*
-  (match annotateExpr cntxt expr with
-      ResModel(mdl, smmry, sbst) -> (mdl, smmry, sbst)
-    | _ -> notWhatsExpectedInError expr "model" surrounding_expr)
-*)
-    
 and annotateTerm cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResTerm(trm, ty) -> (trm, ty)
@@ -1186,12 +1271,12 @@ and annotateType cntxt surrounding_expr expr =
     
 and annotateProp cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
-      ResProp(prp, prpty) -> (prp, prpty)
+      ResProp(prp, pt) -> (prp, pt)
     | _ -> notWhatsExpectedInError expr "proposition" surrounding_expr)
     
 and annotateProperProp cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
-      ResProp(prp, ((L.Prop | L.StableProp) as prpty)) -> (prp, prpty)
+      ResProp(prp, ((L.Prop | L.StableProp) as pt)) -> (prp, pt)
     | ResProp _ -> 
 	notWhatsExpectedInError expr "proper proposition" surrounding_expr
     | _ -> 
@@ -1208,6 +1293,10 @@ and annotateProptype cntxt surrounding_expr expr =
       ResPropType k -> k
     | _ -> notWhatsExpectedInError expr "proposition-type" surrounding_expr)
     
+and annotateModel cntxt surrounding_expr expr = 
+  (match annotateExpr cntxt expr with
+      ResModel(mdl, thry) -> (mdl, thry)
+    | _ -> notWhatsExpectedInError expr "model" surrounding_expr)
 
 
 (* annotateBinding: context -> S.expr -> S.binding -> L.binding list
@@ -1347,7 +1436,8 @@ and annotateTheoryElem cntxt = function
 			else
 			  propTypeMismatchError expr2 pt2 pt3 (Ident nm1)
 	      end
-	  | ResPropType _ | ResKind _ ->
+
+	  | ResPropType _ | ResKind _ | ResModel _ | ResTheory _ ->
 	      tyGenericError 
 		("Invalid right-hand-side in " ^
 		    string_of_theory_element orig_elem)
@@ -1364,7 +1454,8 @@ and annotateTheoryElem cntxt = function
 	  (nm, ResSet(ty, L.KindSet)) -> L.Value(nm, ty)
 	| (nm, ResPropType pt)        -> L.Predicate (nm, pt)
 	| (nm, ResKind k)             -> L.Set(nm, k)
-        | (nm, (ResSet _ | ResTerm _ | ResProp _)) -> 
+	| (nm, ResTheory thry)        -> L.Model(nm, thry)
+        | (nm, (ResSet _ | ResTerm _ | ResProp _ | ResModel _)) -> 
 	    tyGenericError 
 	      ("Invalid classifier for " ^ string_of_name nm ^
 		  " in " ^ string_of_theory_element orig_elem)
@@ -1384,10 +1475,9 @@ let rec updateContextForElem cntxt = function
   | L.Let_predicate (nm, pt, prp) -> insertPropVariable cntxt nm pt (Some prp)
   | L.Value         (nm, st)      -> insertTermVariable cntxt nm st
   | L.Let_term      (nm, st, _)   -> insertTermVariable cntxt nm st
+  | L.Model         (nm, thry)    -> insertModelVariable cntxt nm thry
   | L.Sentence _  -> cntxt
   | L.Comment _   -> cntxt
-  | L.Model _     ->
-      raise Unimplemented
 
 let updateContextForElems cntxt elems = 
   List.fold_left updateContextForElem cntxt elems
@@ -1412,8 +1502,14 @@ let annotateTheory cntxt = function
       let (_, lelems) = annotateTheoryElems cntxt elems
       in  L.Theory lelems 
 
-  | TheoryName _ -> 
-      raise Unimplemented
+  | TheoryName nm -> 
+      begin
+	match lookupId cntxt nm with
+	    CtxTheory thry -> thry
+	  | CtxUnbound -> tyUnboundError nm
+	  | _ -> tyGenericError 
+	      ("The name " ^ string_of_name nm ^ " is not a theory.")
+      end
 
   | TheoryFunctor _ -> 
       raise Unimplemented
@@ -1429,7 +1525,10 @@ let annotateToplevel cntxt = function
       in (insertTheoryVariable cntxt nm lthry, 
 	  L.Theorydef(nm, lthry))
 
-  | TopModel _ -> raise Unimplemented
+  | TopModel (nm, thry) -> 
+      let lthry = annotateTheory cntxt thry
+      in (insertModelVariable cntxt nm lthry,
+	 L.TopModel(nm, lthry))
 
 let rec annotateToplevels cntxt = function
     [] -> (cntxt, [])

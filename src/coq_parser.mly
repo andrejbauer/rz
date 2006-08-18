@@ -136,7 +136,7 @@ toplevels:
 toplevel:
   | THEORY NAME thargs COLONEQUAL theory { Theorydef (makeWord $2, foldTheoryFunctor $3 $5) }
   | COMMENT                              { TopComment($1) }
-  | MODEL NAME COLON theory              { TopModel($2, $4) }
+  | MODEL NAME COLON theory              { TopModel(makeWord $2, $4) }
 
 thargs:
   |                                         { [] }

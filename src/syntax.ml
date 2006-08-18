@@ -108,7 +108,7 @@ and theory =
 and toplevel = 
     Theorydef of theory_name * theory
   | TopComment of string
-  | TopModel  of string * theory
+  | TopModel  of model_name * theory
 
 
 let string_of_label l = l
@@ -260,7 +260,7 @@ and string_of_toplevel = function
   | TopComment strng ->
       "(* " ^ strng ^ " *)"
   | TopModel (mdlnm, thry) ->
-      "model " ^ mdlnm ^ " = " ^ string_of_theory thry
+      "model " ^ string_of_name mdlnm ^ " = " ^ string_of_theory thry
 
 let freshNameString = 
   let counter = ref 0

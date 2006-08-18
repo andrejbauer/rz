@@ -396,7 +396,7 @@ let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
 let longname_of_name nm = LN(None, nm)
 let set_longname_of_name nm = SLN(None, nm)
 let model_name_of_name = function
-    N(strng, Word) -> strng
+    N(strng, Word) as nm -> nm
   | nm -> (print_string "Cannot treat the name ";
 	   print_string (string_of_name nm);
 	   print_string " as a model name.";
@@ -654,23 +654,25 @@ and substProptype substitution = function
       let (sbst', y') = updateBoundName substitution y in
 	PropArrow(y', substSet substitution st, substProptype sbst' prpty)
       
-(*
-let rec substTheory sub = 
-  let rec dosub = function
-      Theory elts       -> Theory (substTheoryElts sub elts)
-	  
+let rec substTheory substitution = function 
+      Theory elts       -> Theory (substTheoryElts substitution elts)
     | TheoryName thrynm -> TheoryName thrynm
-	  
-    | TheoryFunctor ((mdlnm, thry1), thry2) ->
-	TheoryFunctor((mdlnm, dosub thry1),
-                       let sub' = insertModelvar sub mdlnm (ModelName mdlnm)
-                       in substTheory sub' thry2)
-	  
+    | TheoryFunctor ((y, thry1), thry2) ->
+	let (sbst',y') = updateBoundName substitution y in
+	  TheoryFunctor((y, substTheory substitution thry1),
+		        substTheory sbst' thry2)
     | TheoryApp (thry, mdl) ->
-	TheoryApp (dosub thry,  substModel sub mdl)
-  in dosub
+	TheoryApp (substTheory substitution thry,  
+		   substModel substitution mdl)
 
-and substTheoryElts sub = function
+and substTheoryElts _ = raise Unimplemented
+
+(* Can't implement this correctly without an outer label / inner variable
+   distinction. :( *)
+
+
+(*
+    sub = function ->
     [] -> []
   | Set (stnm, knd) :: rest ->
       (Set (stnm, substKind sub knd)) :: (substTheoryElts sub rest)
