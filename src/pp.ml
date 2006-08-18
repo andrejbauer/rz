@@ -267,7 +267,7 @@ and output_prop_10 ppf = function
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
-    NamedPer (ln, t, u) -> 
+    NamedPer ln, t, u) -> 
       fprintf ppf "%a =%a= %a" 
         output_term_9 t   output_tln ln   output_term_8 u
   | NamedProp (n, Dagger, u) -> 

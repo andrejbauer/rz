@@ -415,7 +415,7 @@ and translateTerm ctx = function
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
 			     
-(* (string * ty) list -> L.proposition -> Outsyn.ty * string * Outsyn.negative *)
+(* (string * ty) list -> L.proposition -> Outsyn.ty * name * Outsyn.negative *)
 and translateProp ctx = function
     L.False -> (TopTy, any, False)
 
@@ -431,8 +431,7 @@ and translateProp ctx = function
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
-      let t =
-	fresh [mk "t"; mk "p"; mk "u"; mk "q"; mk "r"] ctx in
+      let t = fresh [mk "t"; mk "p"; mk "u"; mk "q"; mk "r"] ctx in
 	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
 	 And (let k = ref 0 in
 		List.map (fun (_, x, p) ->
