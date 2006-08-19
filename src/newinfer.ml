@@ -873,7 +873,7 @@ let rec annotateExpr cntxt = function
 		      ResSet(st2, knd2) -> 
 			(* Typechecking a dependent type of a function *)
 			ResSet ( L.Exp (nm, ty1, st2),
-			         L.KindArrow(nm, ty1, knd2) )
+			         L.KindSet )
 
                     | ResPropType(pt2) -> 
 			(* Typechecking a dependent type of a proposition *)
@@ -1186,7 +1186,7 @@ let rec annotateExpr cntxt = function
 
   | False -> ResProp(L.False, L.StableProp)
 
-  | True -> ResProp(L.False, L.StableProp)
+  | True -> ResProp(L.True, L.StableProp)
 
   | And exprs as orig_expr ->
       begin
@@ -1449,12 +1449,14 @@ and annotateTheoryElem cntxt = function
 
   | Implicit _ -> raise Impossible (* Implicits were already removed *)
 
-  | Value (_, values) as orig_elem ->
+  | Value (sentence_type, values) as orig_elem ->
       let process = function
 	  (nm, ResSet(ty, L.KindSet)) -> L.Value(nm, ty)
 	| (nm, ResPropType pt)        -> L.Predicate (nm, pt)
 	| (nm, ResKind k)             -> L.Set(nm, k)
 	| (nm, ResTheory thry)        -> L.Model(nm, thry)
+        | (nm, ResProp(prp, (L.Prop | L.StableProp))) ->
+	    L.Sentence(sentence_type, nm, [], [], prp)
         | (nm, (ResSet _ | ResTerm _ | ResProp _ | ResModel _)) -> 
 	    tyGenericError 
 	      ("Invalid classifier for " ^ string_of_name nm ^

@@ -27,6 +27,8 @@ rz.cmo: translate.cmo pp.cmo parser.cmi opt.cmo message.cmo logic.cmo \
     infer.cmo flags.cmo 
 rz.cmx: translate.cmx pp.cmx parser.cmx opt.cmx message.cmx logic.cmx \
     infer.cmx flags.cmx 
+rzinfer.cmo: newinfer.cmo message.cmo logic.cmo flags.cmo coq_parser.cmi 
+rzinfer.cmx: newinfer.cmx message.cmx logic.cmx flags.cmx coq_parser.cmi 
 syntax.cmo: name.cmo 
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 

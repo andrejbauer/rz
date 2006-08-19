@@ -13,7 +13,7 @@
       "Equiv", EQUIV;
       "exists", EXISTS;
       "exists1", UNIQUE;
-      "false", FALSE;
+      "False", FALSE;
       "fun", FUN;
       "Hypothesis", HYPOTHESIS;
       "Implicit", IMPLICIT;
@@ -31,7 +31,7 @@
       "the", THE;
       "theory", THEORY;
       "thy", THY ;
-      "true", TRUE;
+      "True", TRUE;
       "Type", TYPE;
       "unit", UNIT;
       "with", WITH;

@@ -337,6 +337,9 @@ let rec string_of_set = function
 		      (N(_, Wild), s) -> string_of_set s
 		    | (nm, s) -> string_of_name nm ^ " : " ^ string_of_set s) lst)) ^ ")"
   | Exp (nm, s, t) ->
+      if isWild nm then
+	"(" ^ string_of_set s ^ " -> " ^ string_of_set t ^ ")"
+      else
       "((" ^ string_of_name nm ^ " : " ^ (string_of_set s) ^ ") -> " ^ (string_of_set t) ^ ")"
   | Sum lst ->
       "[" ^ (
@@ -411,7 +414,17 @@ and string_of_prop prp =
   in
     toStr prp)
 
-and string_of_proptype pt = "<proptype>"
+and string_of_proptype = function
+    Prop -> "Prop"
+  | StableProp -> "StableProp"
+  | EquivProp st -> "EquivProp(" ^ string_of_set st ^ ")"
+  | PropArrow(nm, st, pt) -> 
+      if isWild nm then
+	string_of_set st ^ " -> " ^ string_of_proptype pt
+      else 
+	"(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") -> " ^
+	  string_of_proptype pt
+
 
 and string_of_kind = function
     KindSet -> "KindSet"
