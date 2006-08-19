@@ -1497,7 +1497,7 @@ let rec annotateTheoryElems cntxt = function
       in let (cntxt_final, lelems2) = annotateTheoryElems cntxt' rest
       in (cntxt_final, lelems1 @ lelems2)
  
-let annotateTheory cntxt = function
+let rec annotateTheory cntxt = function
     Theory elems -> 
       let (_, lelems) = annotateTheoryElems cntxt elems
       in  L.Theory lelems 
@@ -1511,8 +1511,15 @@ let annotateTheory cntxt = function
 	      ("The name " ^ string_of_name nm ^ " is not a theory.")
       end
 
-  | TheoryFunctor _ -> 
-      raise Unimplemented
+  | TheoryFunctor ((nm, sthry1), sthry2) -> 
+      begin
+	let thry1 = annotateTheory cntxt sthry1
+	in let (cntxt, nm) = renameBoundVar cntxt nm
+	in let cntxt' = insertModelVariable cntxt nm thry1
+	in let thry2 = annotateTheory cntxt' sthry2
+	in
+	     L.TheoryFunctor ((nm, thry1), thry2)
+      end
 
   | TheoryApp _ ->
       raise Unimplemented

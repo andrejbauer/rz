@@ -54,6 +54,17 @@ $(TARGETS): %: $(BYTE_OBJS) %.cmo
 $(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx 
 	$(OCAMLOPT) -o rz.opt $(OCAMLOPTFLAGS) $(LIB_OPT_OBJS) $+
 
+rzinfer: name.cmo \
+	syntax.cmo \
+	message.cmo \
+	coq_parser.cmo \
+	coq_lexer.cmo \
+	flags.cmo \
+	logic.cmo \
+        newinfer.cmo \
+	rzinfer.cmo	
+	$(OCAMLC) -o rzinfer $(OCAMLFLAGS) unix.cma $+ 
+
 # Suffixes.
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 

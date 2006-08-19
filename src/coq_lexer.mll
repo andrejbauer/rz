@@ -9,6 +9,7 @@
       "Axiom", AXIOM;
       "Definition", DEFINITION;
       "empty", EMPTY;
+      "end", END;
       "Equiv", EQUIV;
       "exists", EXISTS;
       "exists1", UNIQUE;

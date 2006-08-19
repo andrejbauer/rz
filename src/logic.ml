@@ -353,11 +353,135 @@ let rec string_of_set = function
   | SApp (s, t) -> (string_of_set s) ^ " " ^ (string_of_term t)
   | SLambda ((n,s), t) -> "lam " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^ string_of_set t
 
-and string_of_term t = "<term>"
+and string_of_term trm =
+  (let rec toStr = function
+      Var(LN(None, nm))  -> string_of_name nm
+    | Var(LN(Some mdl, nm)) -> string_of_model mdl ^ "." ^ string_of_name nm
+    | EmptyTuple -> "()"
+    | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
+    | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
+    | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
+    | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
+    | Inj (lbl, None) -> "`" ^ lbl 
+    | Case (_,_) -> "...case..."
+    | Quot (trm1,prp2) -> "(" ^ toStr trm1 ^ " % " ^ string_of_prop prp2 ^ ")"
+    | RzQuot t -> "[" ^ (toStr t) ^ "]"
+    | RzChoose (bnd, trm1, trm2, st) -> 
+	"let [" ^ string_of_bnd bnd ^ "] = " ^
+	string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ " end" ^
+	 ": " ^ string_of_set st
+
+    | Choose (bnd, trm1, trm2, trm3, st) -> 
+	"let " ^ string_of_bnd bnd ^ " % " ^ string_of_term trm1 ^ " = " ^
+	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ " end" ^
+	 ": " ^ string_of_set st
+    | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
+    | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
+    | Let(bnd,trm1,trm2,st) ->
+	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
+	" in " ^ toStr trm2 ^ " : " ^ string_of_set st  ^ ")"
+    | Lambda(bnd,trm) ->
+	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | The(bnd,prp) ->
+	"(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
+  in
+    toStr trm)
+
+and string_of_prop prp =
+  (let rec toStr = function
+      Atomic(LN(None, nm))  -> string_of_name nm
+    | Atomic(LN(Some mdl, nm)) -> string_of_model mdl ^ "." ^ string_of_name nm
+    | False -> "False"
+    | True -> "True"
+    | PApp (prp1, trm2) -> "(" ^ toStr prp1 ^ " " ^ string_of_term trm2 ^ ")"
+    | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
+    | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
+    | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
+    | Or trms -> "(" ^ String.concat " || " (List.map toStr trms) ^ ")"
+    | Not trm -> "(not " ^ toStr trm ^ ")"
+    | Equal(st,trm1,trm2) -> "(" ^ string_of_term trm1 ^ " = " ^ string_of_term trm2 ^ " : " ^ string_of_set st ^ ")"
+    | Forall(bnd,trm) ->
+	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | Exists(bnd,trm) ->
+	"(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | Unique(bnd,trm) ->
+	"(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+    | PLambda(bnd,prp) ->
+	"(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
+  in
+    toStr prp)
 
 and string_of_proptype pt = "<proptype>"
 
-and string_of_kind k = "<kind>"
+and string_of_kind = function
+    KindSet -> "KindSet"
+  | KindArrow (nm, st, knd) -> 
+      if isWild nm then
+	string_of_set st ^ " => " ^ string_of_kind knd
+      else 
+	"(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") => " ^
+	  string_of_kind knd
+
+
+
+and string_of_theory = function
+    Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
+  | TheoryName thrynm -> string_of_name thrynm
+  | TheoryApp (thry, mdl) -> 
+      string_of_theory thry ^ "(" ^ string_of_model mdl ^ ")"
+  | TheoryFunctor (mbnd, thry) ->
+      "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
+
+and string_of_theory_element = function
+    Set (stnm, knd) -> "set " ^ string_of_name stnm ^ " : " ^ (string_of_kind knd)
+  | Let_set (stnm, knd, st) -> 
+	  "set " ^ string_of_name stnm ^ " : " ^ string_of_kind knd ^ " = " ^ string_of_set st
+  | Predicate (nm, pt) -> 
+      "predicate " ^ string_of_name nm ^ " : " ^ string_of_proptype pt
+  | Let_predicate (nm, pt, prp) ->
+      "predicate " ^ string_of_name nm ^ " : " ^ string_of_proptype pt ^ "  = " ^ string_of_prop prp
+  | Value (nm, st) ->
+      "const " ^ string_of_name nm ^ " : " ^ string_of_set st
+  | Let_term (nm, st, trm) -> 
+      "let " ^ string_of_name nm ^ " : " ^ string_of_set st ^ " = " ^ string_of_term trm
+  | Sentence (ssort, nm, mbnds, bnds, prp) ->
+      "axiom  " ^ string_of_name nm ^ " " ^ 
+      string_of_mbnds mbnds ^ " " ^ string_of_bnds bnds ^ " =\n " ^
+      string_of_prop prp
+  | Model (mdlnm, thry) -> 
+      "model " ^ string_of_name mdlnm ^ " : " ^ string_of_theory thry
+  | Comment strng -> 
+      "(* " ^ strng ^ " *)"
+
+and string_of_theory_elements = function
+    [] -> ""
+  | elt :: elts -> string_of_theory_element elt ^ "\n" ^ 
+                   string_of_theory_elements elts
+
+and string_of_mbnd = function
+        (mdlnm, thry) -> string_of_name mdlnm ^ " : " ^ string_of_theory thry
+
+and string_of_mbnds = function
+    [] -> ""
+  | [mbnd] -> string_of_mbnd mbnd
+  | mbnd :: mbnds -> string_of_mbnd mbnd ^ " " ^ string_of_mbnds mbnds
+
+and string_of_bnd = function
+     (name, set) -> "(" ^ string_of_name name  ^  ":"  ^  string_of_set set ^ ")"
+
+and string_of_bnds = function
+    [] -> ""
+  | [bnd] -> string_of_bnd bnd
+  | bnd :: bnds -> string_of_bnd bnd ^ " " ^ string_of_bnds bnds
+
+let string_of_toplevel = function
+    Theorydef (thrynm, thry) -> 
+      "theory " ^ string_of_name thrynm ^ " = " ^ string_of_theory thry
+  | TopComment strng ->
+      "(* " ^ strng ^ " *)"
+  | TopModel (mdlnm, thry) ->
+      "model " ^ string_of_name mdlnm ^ " = " ^ string_of_theory thry
+
 
 (** *** *)
 
