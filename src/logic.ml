@@ -552,10 +552,90 @@ let joinProperPropType p1 p2 =
 let joinProperPropTypes lst = List.fold_left joinProperPropType StableProp lst
 
 
-let fnTerm _ = raise Unimplemented
-let fnProp _ = raise Unimplemented
-let fnSet _ = raise Unimplemented
-let fnModel _ = raise Unimplemented
+let rec fnSet = function
+    Empty | Unit  -> NameSet.empty
+  | Basic (SLN(None, nm)) -> NameSet.singleton nm
+  | Basic (SLN(Some mdl, _)) -> fnModel mdl
+  | Product noss -> fnProduct noss
+  | Sum lsos     -> fnSum lsos
+  | Exp (nm, st1, st2) ->
+      NameSet.union (fnSet st1) (NameSet.remove nm (fnSet st2))
+  | SLambda ((nm, st1), st2) -> 
+      NameSet.union (fnSet st1) (NameSet.remove nm (fnSet st2))
+  | Subset((nm, st), prp) -> 
+      NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
+  | Quotient(st, prp) ->
+      NameSet.union (fnSet st) (fnProp prp)
+  | SApp(st, trm) -> NameSet.union (fnSet st) (fnTerm trm)
+  | Rz st -> fnSet st	
+      
+and fnSetOpt = function
+	  None -> NameSet.empty
+	| Some st -> fnSet st
+	
+and fnProduct = function
+    [] -> NameSet.empty
+  | (nm, st)::rest -> NameSet.union (fnSet st) (NameSet.remove nm (fnProduct rest))
+	
+and fnSum = function	 
+    [] -> NameSet.empty
+  | (_, stOpt)::rest -> NameSet.union (fnSetOpt stOpt) (fnSum rest)
+
+and fnKind = function
+    KindSet -> NameSet.empty
+  | KindArrow(nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnKind knd))
+      
+and fnTerm = function
+    EmptyTuple | Inj(_, None)-> NameSet.empty
+  | Var(LN(None, nm)) -> NameSet.singleton nm
+  | Var(LN(Some mdl, nm)) -> NameSet.add nm (fnModel mdl)
+  | Subin(trm, st) 
+  | Subout(trm, st) -> NameSet.union (fnTerm trm) (fnSet st) 
+  | Tuple trms -> unionNameSetList (List.map fnTerm trms)
+  | Proj(_, trm) 
+  | Inj(_, Some trm)
+  | RzQuot trm -> fnTerm trm
+  | App(trm1, trm2) -> NameSet.union (fnTerm trm1) (fnTerm trm2)
+  | Quot(trm1, prp2) -> NameSet.union (fnTerm trm1) (fnProp prp2)
+  | Choose((nm, st1), trm1, trm2, trm3, st2) ->
+      unionNameSetList [fnSet st1; fnTerm trm1; fnTerm trm2;
+		        NameSet.remove nm (fnTerm trm3); fnSet st2]
+  | RzChoose ((nm, st1), trm1, trm2, st2) 
+  | Let ((nm, st1), trm1, trm2, st2) -> 
+      unionNameSetList [fnSet st1; fnTerm trm1; 
+		        NameSet.remove nm (fnTerm trm2); fnSet st2]
+  | Lambda((nm, st), trm) ->
+      NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
+  | The((nm, st), prp) ->
+      NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
+  | Case (trm, arms) ->
+      NameSet.union (fnTerm trm) (unionNameSetList (List.map fnCaseArm arms))
+
+and fnProp = function
+    False | True -> NameSet.empty
+  | Atomic(LN(None, nm)) -> NameSet.singleton nm
+  | Atomic(LN(Some mdl, nm)) -> fnModel mdl
+  | And prps
+  | Or prps -> unionNameSetList (List.map fnProp prps)
+  | Not prp -> fnProp prp
+  | Imply(prp1, prp2)
+  | Iff(prp1, prp2) -> NameSet.union (fnProp prp1) (fnProp prp2)
+  | Equal(st, trm1, trm2) -> 
+      unionNameSetList [fnSet st; fnTerm trm1; fnTerm trm2]
+  | PApp(prp, trm) -> NameSet.union (fnProp prp) (fnTerm trm)
+  | PLambda((nm, st), prp)
+  | Forall((nm, st), prp)
+  | Exists((nm, st), prp)
+  | Unique((nm, st), prp) -> 
+      NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
+
+and fnCaseArm = function
+    (_, None, trm) -> fnTerm trm
+  | (_, Some (nm, st), trm) -> 
+      NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
+   
+	
+and fnModel _ = raise Unimplemented
 
 (* Substitution functions. *)
 

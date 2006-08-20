@@ -160,7 +160,7 @@ definition_decl:
   | DEFINITION      { () }
 
 theory_element:
-  | definition_decl ident binder_list decl COLONEQUAL expr PERIOD
+  | definition_decl ident binderz decl COLONEQUAL expr PERIOD
                                                       { Definition ($2, $4, makeLambda $3 $6) }
   | parameter_decl ident_list COLON expr PERIOD       { Value ($1, [($2, $4)]) }
   | parameter_decl assums PERIOD                      { Value ($1, $2) }
@@ -194,6 +194,10 @@ assum:
 binder_list:
   | binder                       { [$1] }
   | binder binder_list           { $1 :: $2 }
+
+binderz:
+    /* Empty */              { [] }
+  | binder binderz           { $1 :: $2 }
 
 binder:
   | LPAREN ident_list COLON expr RPAREN  { ($2, Some $4) }

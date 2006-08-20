@@ -11,7 +11,7 @@ module L = Logic
 open Syntax 
 open Name
 
-exception Unimplemented
+exception Unimplemented of string
 exception Impossible
 
 (************************)
@@ -20,8 +20,8 @@ exception Impossible
 
 exception TypeError
 
-let type_error_header = "\n\nTYPE ERROR:  "
-let type_error_footer = "\n\n"
+let type_error_header = "\n-------------------------------\nTYPE ERROR:\n"
+let type_error_footer = "\n-------------------------------\n\n"
 
 let tyGenericError msg = 
   (print_string (type_error_header ^ msg ^ type_error_footer);
@@ -73,7 +73,7 @@ let wrongPropTypeError expr hasPT expectedsort context_expr =
 
 let wrongKindError expr hasK expectedsort context_expr =
   tyGenericError
-    ("The set " ^ string_of_expr expr ^ " is used as if had a "
+    ("The set " ^ string_of_expr expr ^ "\nis used as if had a "
       ^ expectedsort ^ " kind in " ^ string_of_expr context_expr ^ 
       ", but it's actually has kind " ^ L.string_of_kind hasK)
 
@@ -81,13 +81,13 @@ let tyMismatchError expr expectedTy foundTy context_expr =
   tyGenericError
     ("The term " ^ string_of_expr expr ^ " was expected to have type " ^
 	L.string_of_set expectedTy ^ " instead of type " ^ 
-	L.string_of_set foundTy ^ " in " ^ string_of_expr context_expr)
+	L.string_of_set foundTy ^ " in\n" ^ string_of_expr context_expr)
 
 let propTypeMismatchError expr expectedTy foundTy context_expr =
   tyGenericError
     ("The proposition " ^ string_of_expr expr ^ " was expected to have type " ^
 	L.string_of_proptype expectedTy ^ " instead of type " ^ 
-	L.string_of_proptype foundTy ^ " in " ^ string_of_expr context_expr)
+	L.string_of_proptype foundTy ^ " in\n" ^ string_of_expr context_expr)
 
 let kindMismatchError expr expectedK foundK context_expr =
   tyGenericError
@@ -286,7 +286,7 @@ let rec theoryToElems cntxt = function
 	  | _ -> raise Impossible
       end
   | L.TheoryFunctor _ -> raise Impossible
-  | L.TheoryApp _ -> raise Unimplemented
+  | L.TheoryApp _ -> raise (Unimplemented "L.TheoryApp")
 
 (* cntxt -> L.model -> L.theory list *)
 let rec modelToTheory cntxt = function
@@ -304,7 +304,7 @@ let rec modelToTheory cntxt = function
 	      CtxModel thry -> thry
 	    | _ -> raise Impossible
       end
-  | L.ModelApp _ -> raise Unimplemented
+  | L.ModelApp _ -> raise (Unimplemented "L.ModelApp")
 	
 
 (** Expand out any top-level definitions or function
@@ -795,7 +795,7 @@ let rec annotateExpr cntxt = function
 	  | (ResModel(mdl1,thry1), ResModel(mdl2,thry2)) ->
 	      begin
 		(* Appliation of a functor to an argument. *)
-		raise Unimplemented
+		raise (Unimplemented "ResModel ResModel")
 	      end
 
 
@@ -938,7 +938,7 @@ let rec annotateExpr cntxt = function
 
   | Sum _ ->
       (* Either a sum type, or a use of the term-operator (+) *)
-      raise Unimplemented
+      raise (Unimplemented "Sum")
 
   | Subset (sbnd1, expr2) as orig_expr ->
       begin
@@ -1069,7 +1069,7 @@ let rec annotateExpr cntxt = function
 	  
   | Case _ ->
       (* (expr1, arms2) as orig_expr -> *)
-      raise Unimplemented
+      raise (Unimplemented "Case")
 
   | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
       begin
@@ -1103,7 +1103,7 @@ let rec annotateExpr cntxt = function
       end
 
   | Choose _ -> 
-      raise Unimplemented
+      raise (Unimplemented "Choose")
 
   | Subin(expr1, expr2) as orig_expr ->
       begin
@@ -1402,11 +1402,11 @@ and annotateTheoryElem cntxt = function
 		match expropt2 with
 		    None       -> [ L.Let_term(nm1, ty3, trm3) ] 
 		  | Some expr2 ->
-		      let ty2 = annotateType cntxt expr2 (Ident nm1)
+		      let ty2 = annotateType cntxt (Ident nm1) expr2 
 		      in 
 			match (coerce cntxt trm3 ty3 ty2) with
 			    Some trm3' -> [ L.Let_term(nm1, ty2, trm3') ]
-			  | _ -> tyMismatchError expr2 ty2 ty3 (Ident nm1)
+			  | _ -> tyMismatchError expr3 ty2 ty3 (Ident nm1)
 	      end
 
 	  | ResSet(st3, k3) ->
@@ -1415,12 +1415,12 @@ and annotateTheoryElem cntxt = function
 		match expropt2 with
 		    None       -> [ L.Let_set(nm1, k3, st3) ]
 		  | Some expr2 ->
-		      let k2 = annotateKind cntxt expr2 (Ident nm1)
+		      let k2 = annotateKind cntxt (Ident nm1) expr2
 		      in
 			if (subKind cntxt k3 k2) then
 			  [ L.Let_set(nm1, k2, st3) ]
 			else
-			  kindMismatchError expr2 k2 k3 (Ident nm1)
+			  kindMismatchError expr3 k2 k3 (Ident nm1)
 	      end
 
 	  | ResProp(prp3, pt3) ->
@@ -1429,12 +1429,12 @@ and annotateTheoryElem cntxt = function
 		match expropt2 with
 		      None       -> [ L.Let_predicate(nm1, pt3, prp3) ]
 		  | Some expr2 ->
-		      let pt2 = annotateProptype cntxt expr2 (Ident nm1)
+		      let pt2 = annotateProptype cntxt (Ident nm1) expr2 
 		      in
 			if (subPropType cntxt pt3 pt2) then
 			  [ L.Let_predicate(nm1, pt2, prp3) ]
 			else
-			  propTypeMismatchError expr2 pt2 pt3 (Ident nm1)
+			  propTypeMismatchError expr3 pt2 pt3 (Ident nm1)
 	      end
 
 	  | ResPropType _ | ResKind _ | ResModel _ | ResTheory _ ->
@@ -1445,7 +1445,7 @@ and annotateTheoryElem cntxt = function
 
   | Comment c -> [L.Comment c]
 
-  | Include _ -> raise Unimplemented
+  | Include _ -> raise (Unimplemented "Include")
 
   | Implicit _ -> raise Impossible (* Implicits were already removed *)
 
@@ -1524,7 +1524,7 @@ let rec annotateTheory cntxt = function
       end
 
   | TheoryApp _ ->
-      raise Unimplemented
+      raise (Unimplemented "TheoryApp")
 
 let annotateToplevel cntxt = function
     TopComment c -> (cntxt, L.TopComment c)
