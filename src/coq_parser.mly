@@ -193,9 +193,10 @@ arg:
   | ident                              { $1, None }
   | LPAREN ident COLON expr RPAREN     { $2, Some $4 }
 
-arg_noparen:
+arg_noparen_required:
   | ident                              { $1, None }
   | ident COLON expr                   { $1, Some $3 }
+  | LPAREN ident COLON expr RPAREN     { $2, Some $4 }
 
 assums:
   | assum                        { [$1] }
@@ -235,13 +236,6 @@ model:
   | model PERIOD TNAME                        { MProj ($1, makeWord $3) }
   | model LPAREN model RPAREN                 { App ($1, $3) }
 
-/* Parsing ambiguity with
-     ( x : ....
-   which could either be a constraint (hence x should be reduced to Name)
-     ( x : int)
-   or a dependent function type (hence x should be reduced to ident)
-     ( x : Set) -> int.
-*/
 name:
   | model PERIOD NAME                     { makeMProj $1 ($3, Word) }
   | model PERIOD LPAREN operator RPAREN   { makeMProj $1 $4 }
@@ -273,9 +267,10 @@ apply_expr:
   | EQUIV simple_expr                         { Equiv $2 }
   | LABEL simple_expr                         { Inj ($1, Some $2) }
   | simple_expr PROJECT                       { Proj ($2, $1) }
+  | simple_expr                               { $1 } 
 
 expr:
-  | simple_expr                               { $1 }
+/*  | simple_expr                               { $1 }  */
   | apply_expr                                { $1 }
   | or_list                                   { Or $1 }
   | and_list                                  { And $1 }
@@ -285,20 +280,31 @@ expr:
   | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
   | product_list                              { Product $1 }
   | expr IFFSYMBOL expr                       { Iff ($1, $3) }
-  | FORALL binder_list COMMA expr             { Forall ($2, $4) }
-  | EXISTS binder_list COMMA expr             { Exists ($2, $4) }
-  | UNIQUE binder_list COMMA expr             { Unique ($2, $4) }
-  | THE arg_noparen COMMA expr                { The ($2, $4) }
+  | FORALL xbinder_list COMMA expr             { Forall ($2, $4) }
+  | EXISTS xbinder_list COMMA expr             { Exists ($2, $4) }
+  | UNIQUE xbinder_list COMMA expr             { Unique ($2, $4) }
+  | THE arg_noparen_required COMMA expr       { The ($2, $4) }
   | MATCH expr WITH case_list END             { Case ($2, $4) }
   | LET RZ arg EQUAL expr IN expr             { RzChoose ($3, $5, $7) }
   | LET arg PERCENT expr EQUAL expr IN expr   { Choose ($2, $4, $6, $8) }
-  | LET arg_noparen EQUAL expr IN expr        { Let ($2, $4, $6) }
-  | FUN binder_list DOUBLEARROW expr          { Lambda ($2, $4) }
-  | LPAREN ident COLON expr RPAREN ARROW expr { Arrow ($2, $4, $7) }  
+  | LET arg_noparen_required EQUAL expr IN expr { Let ($2, $4, $6) }
+  | FUN xbinder_list DOUBLEARROW expr          { Lambda ($2, $4) }
   | expr COLON expr                           { Constraint ($1, $3) } 
   | expr PERCENT expr                         { Quotient ($1, $3) }
   | expr SUBIN expr                           { Subin ($1, $3) }
   | expr SUBOUT expr                          { Subout ($1, $3) }
+  | expr INFIXOP0 expr                        
+      { App(App(makeIdent($2,Infix0), $1), $3) }
+  | expr INFIXOP1 expr                        
+      { App(App(makeIdent($2,Infix1), $1), $3) }
+  | expr INFIXOP2 expr                        
+      { App(App(makeIdent($2,Infix2), $1), $3) }
+  | expr INFIXOP3 expr                        
+      { App(App(makeIdent($2,Infix3), $1), $3) }
+  | expr INFIXOP4 expr                        
+      { App(App(makeIdent($2,Infix4), $1), $3) }
+
+  /* Also need cases for binary relations inside modules */
 
 and_list:
   | expr ANDSYMBOL expr                { [$1; $3] }
@@ -340,3 +346,33 @@ case1:
 case_list:
   | case1                                        { [$1] }
   | case1 BAR case_list                          { $1 :: $3 }
+
+/* Bindings that can include wildcards */
+
+identorwildcard:
+    ident                              { $1 }
+  | WILDCARD                           { wildName() }
+
+identorwildcards:
+    /* Empty */                        { [] }
+  | identorwildcard identorwildcards   { $1 :: $2 }
+
+xbinder:
+    identorwildcard                   { ([$1], None) }
+  | LPAREN identorwildcards COLON expr RPAREN  
+                                     { ($2, Some $4)} 
+xbinder_list:
+    identorwildcards                  { [($1, None)] }
+  | identorwildcards COLON expr       { [($1, Some $3)] }
+  | xbindersStartingWithParen         { $1 }
+
+xbindersStartingWithParen:
+    LPAREN identorwildcards COLON expr RPAREN    
+                                     { [($2, Some $4)] }
+  | xbindersStartingWithParen xbinder  { $1 @ [$2] }
+
+/*
+xbinderz:
+                                     { [] }
+  | xbinder xbinderz                 { $1 :: $2 }
+*/
