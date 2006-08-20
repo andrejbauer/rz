@@ -59,7 +59,7 @@ and expr =
   | EmptyTuple                             (* the member of Unit *)
   | Tuple  of term list
   | Proj   of int   * term                 (* projection from a tuple *)
-  | Inj    of label * term option          (* injection into a sum type *)
+  | Label  of label                        (* tag for a sum type *)
   | Case   of term  * (label * binding1 option * term) list
   | Choose of binding1 * term * term * term (* elimination of equivalence class *)
   | RzChoose of binding1 * term * term     (* elimination of rz *)
@@ -160,8 +160,11 @@ and string_of_expr = function
   | EmptyTuple -> "()"
   | Tuple lst -> embrace (String.concat ", " (List.map string_of_expr lst))
   | Proj (k, e) -> string_of_expr e ^ "." ^ string_of_int k
+(*
   | Inj (lbl, None) -> string_of_label lbl
   | Inj (lbl, Some e) -> string_of_label lbl ^ " " ^ string_of_expr e
+*)
+  | Label l -> string_of_label l
   | Case (e, lst) ->
       "match " ^ string_of_expr e ^ " with " ^
 	(String.concat " | " (
@@ -316,7 +319,7 @@ and fnKind = function
   | KindArrow(Some nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnKind knd))
       
 and fnTerm = function
-    Star | False | True | Inj(_, None)-> NameSet.empty
+    Star | False | True | (* Inj(_, None) *) | Label _ -> NameSet.empty
   | Var(None, nm) -> NameSet.singleton nm
   | Var(Some mdl, nm) -> NameSet.add nm (fnModel mdl)
   | Constraint(trm, st) 
@@ -326,7 +329,7 @@ and fnTerm = function
   | And trms
   | Or trms -> unionNameSetList (List.map fnTerm trms)
   | Proj(_, trm) 
-  | Inj(_, Some trm)
+(*  | Inj(_, Some trm) *)
   | RzQuot trm 
   | Not trm -> fnTerm trm
   | App(trm1, trm2) 

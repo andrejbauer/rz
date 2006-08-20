@@ -1,19 +1,32 @@
 theory T := thy
        Parameter s : Set.
-       Parameter t : s -> Set.
 
-       
+       Parameter t : s -> Set.
+       Definition www : (s -> Set) := t.
+
+       Parameter u : s -> (s -> Set).
+       Definition wwww : (s -> s -> Set) := u.
+
        Implicit Type y : s.
 
-       Parameter (a b : s->s) (c : s).
+       Parameter (a b : s->s) (c d : s).
        Axiom m : forall (x : s), exists (y:s), True /\ True \/ True /\ True.
 
        Definition n := the y, y = y.
-       Definition u := t n.
+       Definition uu := t n.
 
        Definition q : Set := s -> s.
-(*       Definition (d : q) := a. *)
-         Definition d : q := a.
+       Definition dd : q := a.
+
+       Parameter yy : [x:s] * [y : t x] * s.
+       Parameter zz : [x:s] -> [y : t x] -> s.
+       Parameter ww : [x:s] -> [y:s] -> u x y.
+
+       Definition yy0 := yy.0.
+       Definition yy1 := yy.1.
+       Definition yy2 := yy.2.
+
+       Definition wwcd := ww c d.
 end
 
 Module Type U.
@@ -54,4 +67,27 @@ thy
   Axiom dense:
         forall x y, x < y -> exists z, x < z /\ z < y.
 
+end
+
+theory Sums :=
+thy
+
+	Parameter s : Set.
+
+	Parameter a b c : s.
+
+        Definition sum : Set := [`yes : s + `no : unit + `maybe].
+
+	Definition tmp1  := `yes a.
+	Definition tmp2 : sum := tmp1.
+(* match isn't implemented yet.
+const (d : s * 1) = 
+  match tmp with
+     `yes (q : s) -> (q, ())
+   | `no (r : 1) -> (c, r)
+   | `maybe -> (a, ())
+  end
+
+const (e : s) = d.0  
+*)
 end

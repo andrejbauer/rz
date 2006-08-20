@@ -256,7 +256,7 @@ simple_expr:
   | name                                      { $1 }
   | LPAREN expr RPAREN                        { $2 }
   | LPAREN expr_list RPAREN                   { Tuple $2 }
-  | LABEL                                     { Inj ($1, None) }
+  | LABEL                                     { Label $1 }
   | LBRACE binding1 WITH expr RBRACE          { Subset ($2, $4) }
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
   | LBRACK sum_list RBRACK                    { Sum $2 }
@@ -265,7 +265,6 @@ apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
   | RZ simple_expr                            { Rz $2 }
   | EQUIV simple_expr                         { Equiv $2 }
-  | LABEL simple_expr                         { Inj ($1, Some $2) }
   | simple_expr PROJECT                       { Proj ($2, $1) }
   | simple_expr                               { $1 } 
 

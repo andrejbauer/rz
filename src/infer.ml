@@ -1452,6 +1452,11 @@ and annotateTerm cntxt =
           else
             tyGenericError ("Projection " ^ string_of_int n ^ 
 			       " out of bounds")
+
+    | App (Label l, e) -> 
+        let (e', ty)= ann e
+        in (Inj(l, Some e'), Sum [(l, Some ty)])
+
     | App (t1, t2) ->
         let (t1', ty1) = ann t1 in
         let (t2', ty2) = ann t2 in
@@ -1474,9 +1479,6 @@ and annotateTerm cntxt =
     | Inj (l, None) ->
 	(Inj (l, None), Sum [(l, None)])
 
-    | Inj(l, Some e) -> 
-        let (e', ty)= ann e
-        in (Inj(l, Some e'), Sum [(l, Some ty)])
 
     | Case(e,arms) -> 
 	let (e', ty) = ann e

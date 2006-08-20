@@ -11,7 +11,7 @@ module L = Logic
 open Syntax 
 open Name
 
-exception Unimplemented of string
+exception Unimplemented
 exception Impossible
 
 (************************)
@@ -91,8 +91,8 @@ let propTypeMismatchError expr expectedTy foundTy context_expr =
 
 let kindMismatchError expr expectedK foundK context_expr =
   tyGenericError
-    ("The set " ^ string_of_expr expr ^ " was expected to have type " ^
-	L.string_of_kind expectedK ^ " instead of type " ^ 
+    ("The set " ^ string_of_expr expr ^ " was expected to have kind " ^
+	L.string_of_kind expectedK ^ " instead of kind " ^ 
 	L.string_of_kind foundK ^ " in " ^ string_of_expr context_expr)
 
 let notEquivalenceOnError expr expectedDomExpr =
@@ -168,6 +168,11 @@ let lookupId cntxt nm =
   try (List.assoc nm cntxt.bindings) with
       Not_found -> CtxUnbound
 
+(* These functions ought to detect and complain about shadowing.
+   In most cases, the system will already have renamed bound variables
+   before this point.  For module labels we can't rename, and so we
+   may have to just give up here with an error.
+*)
 let insertTermVariable cntxt nm ty =
   { cntxt with bindings =  (nm, CtxTerm ty) :: cntxt.bindings }
 
@@ -193,7 +198,12 @@ let renameBoundVar cntxt nm =
        if (nm = nm') then
 	 (cntxt, nm)
        else
-	 ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
+	 begin
+	   print_endline 
+	     ("WARNING:  Shadowing of " ^ string_of_name nm ^ 
+		 "detected.");
+	   ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
+	 end
 
 let applyContextSubst cntxt nm = 
   try  NameMap.find nm cntxt.renaming  with
@@ -286,7 +296,7 @@ let rec theoryToElems cntxt = function
 	  | _ -> raise Impossible
       end
   | L.TheoryFunctor _ -> raise Impossible
-  | L.TheoryApp _ -> raise (Unimplemented "L.TheoryApp")
+  | L.TheoryApp _ -> raise Unimplemented
 
 (* cntxt -> L.model -> L.theory list *)
 let rec modelToTheory cntxt = function
@@ -304,7 +314,7 @@ let rec modelToTheory cntxt = function
 	      CtxModel thry -> thry
 	    | _ -> raise Impossible
       end
-  | L.ModelApp _ -> raise (Unimplemented "L.ModelApp")
+  | L.ModelApp _ -> raise Unimplemented 
 	
 
 (** Expand out any top-level definitions or function
@@ -725,6 +735,12 @@ let rec annotateExpr cntxt = function
               ( "Term projection from parameterized model in:\n  " ^ 
 		  string_of_term orig_trm ) )
 *)
+  | App(Label label, expr2) as orig_expr ->
+      let (trm2', ty2') = annotateTerm cntxt orig_expr expr2
+      in 
+	ResTerm ( L.Inj(label, Some trm2'),
+		  L.Sum[ (label, Some ty2') ] )
+
   | App (expr1, expr2) as orig_expr ->
       begin
 	match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
@@ -795,7 +811,7 @@ let rec annotateExpr cntxt = function
 	  | (ResModel(mdl1,thry1), ResModel(mdl2,thry2)) ->
 	      begin
 		(* Appliation of a functor to an argument. *)
-		raise (Unimplemented "ResModel ResModel")
+		raise Unimplemented
 	      end
 
 
@@ -936,9 +952,17 @@ let rec annotateExpr cntxt = function
 	  ResSet(L.Product (loop cntxt sbnds), L.KindSet) 
       end
 
-  | Sum _ ->
-      (* Either a sum type, or a use of the term-operator (+) *)
-      raise (Unimplemented "Sum")
+  | Sum lsos as orig_expr ->
+      begin
+      (* We assume that the parser has figured out this is really a sum type
+         and not a use of the term operator +. *)
+	let process = function 
+	    (lbl, None) -> (lbl, None)
+	  | (lbl, Some expr) -> (lbl, Some (annotateType cntxt orig_expr expr))
+	in
+	  ResSet( L.Sum( List.map process lsos),
+		  L.KindSet )
+      end
 
   | Subset (sbnd1, expr2) as orig_expr ->
       begin
@@ -1058,18 +1082,12 @@ let rec annotateExpr cntxt = function
 	    | _ -> wrongTypeError expr2 ty2' "tuple"  orig_expr
       end
 
-  | Inj(label, None) -> ResTerm ( L.Inj(label, None),
-				  L.Sum[(label, None)] )
+  | Label label -> ResTerm ( L.Inj(label, None),
+			     L.Sum[(label, None)] )
 
-  | Inj(label, Some expr2) as orig_expr ->
-      let (trm2', ty2') = annotateTerm cntxt orig_expr expr2
-      in 
-	ResTerm ( L.Inj(label, Some trm2'),
-		  L.Sum[ (label, Some ty2') ] )
-	  
   | Case _ ->
       (* (expr1, arms2) as orig_expr -> *)
-      raise (Unimplemented "Case")
+      raise Unimplemented
 
   | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
       begin
@@ -1103,7 +1121,7 @@ let rec annotateExpr cntxt = function
       end
 
   | Choose _ -> 
-      raise (Unimplemented "Choose")
+      raise Unimplemented
 
   | Subin(expr1, expr2) as orig_expr ->
       begin
@@ -1445,7 +1463,7 @@ and annotateTheoryElem cntxt = function
 
   | Comment c -> [L.Comment c]
 
-  | Include _ -> raise (Unimplemented "Include")
+  | Include _ -> raise Unimplemented
 
   | Implicit _ -> raise Impossible (* Implicits were already removed *)
 
@@ -1529,7 +1547,7 @@ let rec annotateTheory cntxt = function
       end
 
   | TheoryApp _ ->
-      raise (Unimplemented "TheoryApp")
+      raise "TheoryApp"
 
 let annotateToplevel cntxt = function
     TopComment c -> (cntxt, L.TopComment c)

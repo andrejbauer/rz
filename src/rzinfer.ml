@@ -22,6 +22,8 @@ let command_line_options =
    ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
   ]
 
+let _ = Flags.do_dumpinfer := true
+
 (** One-line usage message
  *)
 let usage_msg = 
