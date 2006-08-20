@@ -1179,7 +1179,7 @@ let rec annotateExpr cntxt = function
       let (cntxt', ((nm1,ty1) as lbnd1) ) = 
 	(* Careful with error messages; nm1 might have been renamed *)
 	annotateSimpleBinding cntxt orig_expr sbnd1
-      in let (prp2,_) = annotateProperProp cntxt orig_expr expr2
+      in let (prp2,_) = annotateProperProp cntxt' orig_expr expr2
       in
 	   ResTerm ( L.The (lbnd1, prp2),
 		       ty1 )
@@ -1466,7 +1466,12 @@ and annotateTheoryElem cntxt = function
             | (nms,expr)::rest ->
 		let res = annotateExpr cntxt expr 
 		in
-		  (List.map (fun nm -> process(nm, res)) nms) @ (loop rest)
+		  (List.map (fun nm -> process(nm, res)) nms) @ 
+		    (* XXX: ought to extend the context, since in Coq
+		          Parameter (a : Set) (x : a).
+		       is perfectly legal.
+                    *)
+		    (loop rest)
       in 
 	   loop values
 

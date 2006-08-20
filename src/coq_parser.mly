@@ -235,13 +235,13 @@ model:
   | model PERIOD TNAME                        { MProj ($1, makeWord $3) }
   | model LPAREN model RPAREN                 { App ($1, $3) }
 
-(* Parsing ambiguity with
+/* Parsing ambiguity with
      ( x : ....
    which could either be a constraint (hence x should be reduced to Name)
      ( x : int)
    or a dependent function type (hence x should be reduced to ident)
      ( x : Set) -> int.
-*)
+*/
 name:
   | model PERIOD NAME                     { makeMProj $1 ($3, Word) }
   | model PERIOD LPAREN operator RPAREN   { makeMProj $1 $4 }
