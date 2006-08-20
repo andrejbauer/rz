@@ -23,6 +23,11 @@
     match lst with
 	[] -> st
       | bnd -> Lambda (bnd, st)
+
+  let nameError str1 str2 = 
+    raise (Message.Parse (Message.loc_here 1,  
+			 "End " ^ str2 ^ " found where End " ^
+			   str1 ^ " was expected"))
 %}
 
 /* Tokens */
@@ -38,6 +43,7 @@
 %token DEFINITION
 %token DOUBLEARROW
 %token EMPTY
+%token EMPTYTUPLE
 %token END
 %token EOF
 %token EQUAL
@@ -64,6 +70,7 @@
 %token LPAREN
 %token MATCH
 %token MODEL
+%token MODULE
 %token <string> NAME
 %token NOT
 %token ORSYMBOL
@@ -90,6 +97,7 @@
 %token TYPE
 %token UNIQUE
 %token UNIT
+%token WILDCARD
 %token WITH
 
 /* Precedence and associativity */
@@ -134,16 +142,21 @@ toplevels:
   | toplevel toplevels      { $1 :: $2 }
 
 toplevel:
-  | THEORY NAME thargs COLONEQUAL theory { Theorydef (makeWord $2, foldTheoryFunctor $3 $5) }
+  | THEORY TNAME thargs COLONEQUAL theory { Theorydef (makeWord $2, foldTheoryFunctor $3 $5) }
   | COMMENT                              { TopComment($1) }
   | MODEL NAME COLON theory              { TopModel(makeWord $2, $4) }
+  | MODULE TYPE TNAME PERIOD theory_elements END TNAME PERIOD 
+      { if $3 = $7 then
+	  Theorydef (makeWord $3, Theory $5) 
+        else
+          nameError $3 $7}
 
 thargs:
   |                                         { [] }
   | LPAREN NAME COLON theory RPAREN thargs  { (makeWord $2, $4) :: $6 }
 
 theory:
-  | NAME                                { TheoryName (makeWord $1) }
+  | TNAME                                { TheoryName (makeWord $1) }
   | theory LPAREN expr RPAREN           { TheoryApp ($1, $3) }
   | THY theory_elements END             { Theory $2 }
 
@@ -222,6 +235,13 @@ model:
   | model PERIOD TNAME                        { MProj ($1, makeWord $3) }
   | model LPAREN model RPAREN                 { App ($1, $3) }
 
+(* Parsing ambiguity with
+     ( x : ....
+   which could either be a constraint (hence x should be reduced to Name)
+     ( x : int)
+   or a dependent function type (hence x should be reduced to ident)
+     ( x : Set) -> int.
+*)
 name:
   | model PERIOD NAME                     { makeMProj $1 ($3, Word) }
   | model PERIOD LPAREN operator RPAREN   { makeMProj $1 $4 }
@@ -236,6 +256,7 @@ simple_expr:
   | PROP                                      { Prop }
   | STABLE                                    { Stable }
   | LPAREN RPAREN                             { EmptyTuple }
+  | EMPTYTUPLE                                { EmptyTuple }
   | FALSE                                     { False }
   | TRUE                                      { True }
   | name                                      { $1 }

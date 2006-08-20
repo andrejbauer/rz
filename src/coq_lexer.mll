@@ -9,7 +9,9 @@
       "Axiom", AXIOM;
       "Definition", DEFINITION;
       "empty", EMPTY;
+      "Empty_set", EMPTY;
       "end", END;
+      "End", END;
       "Equiv", EQUIV;
       "exists", EXISTS;
       "exists1", UNIQUE;
@@ -22,6 +24,7 @@
       "let", LET;
       "match", MATCH;
       "model", MODEL;
+      "Module", MODULE;
       "not", NOT;
       "Parameter", PARAMETER;
       "Prop", PROP;
@@ -32,6 +35,7 @@
       "theory", THEORY;
       "thy", THY ;
       "True", TRUE;
+      "tt", EMPTYTUPLE;
       "Type", TYPE;
       "unit", UNIT;
       "with", WITH;
