@@ -24,10 +24,15 @@
 	[] -> st
       | bnd -> Lambda (bnd, st)
 
-  let nameError str1 str2 = 
-    raise (Message.Parse (Message.loc_here 1,  
+  let nameError str1 str2 n = 
+    raise (Message.Parse (Message.loc_here n,  
 			 "End " ^ str2 ^ " found where End " ^
 			   str1 ^ " was expected"))
+
+  let unclosed what n =
+    raise (Message.Parse (Message.loc_here n,  
+			 "Missing " ^ what))
+
 %}
 
 /* Tokens */
@@ -149,7 +154,7 @@ toplevel:
       { if $3 = $7 then
 	  Theorydef (makeWord $3, Theory $5) 
         else
-          nameError $3 $7}
+          nameError $3 $7 7}
 
 thargs:
   |                                         { [] }
@@ -175,6 +180,10 @@ definition_decl:
 theory_element:
   | definition_decl ident binderz decl COLONEQUAL expr PERIOD
                                                       { Definition ($2, $4, makeLambda $3 $6) }
+/*
+  | definition_decl ident binderz decl COLONEQUAL expr error
+                                                      { unclosed "Definition" 7 }
+*/
   | parameter_decl ident_list COLON expr PERIOD       { Value ($1, [($2, $4)]) }
   | parameter_decl assums PERIOD                      { Value ($1, $2) }
   | IMPLICIT TYPE ident_list COLON expr PERIOD        { Implicit ($3, $5) }
@@ -205,9 +214,11 @@ assums:
 assum:
   | LPAREN ident_list COLON expr RPAREN  { ($2, $4) }
 
+/*
 binder_list:
   | binder                       { [$1] }
   | binder binder_list           { $1 :: $2 }
+*/
 
 binderz:
     /* Empty */              { [] }

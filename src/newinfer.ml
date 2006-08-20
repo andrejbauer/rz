@@ -463,14 +463,20 @@ let rec eqSet' do_subset cntxt =
      and subSum do_subset cntxt = function
           ( [], _ ) -> true
        | ((l1,None   )::s1s, s2s) ->
-	     (match (List.assoc l1 s2s) with
-		 None -> subSum do_subset cntxt (s1s, s2s)
-	       | _ -> false )
+	   (try
+	       match (List.assoc l1 s2s) with
+		   None -> subSum do_subset cntxt (s1s, s2s)
+		 | _ -> false 
+	     with 
+		 Not_found -> false)
        | ((l1,Some s1)::s1s, s2s) -> 
-	     (match (List.assoc l1 s2s) with
-		 Some s2 -> eqSet' do_subset cntxt s1 s2  && 
-                            subSum do_subset cntxt (s1s,s2s)
-	       |  _ -> false )
+	   (try
+	       match (List.assoc l1 s2s) with
+		   Some s2 -> eqSet' do_subset cntxt s1 s2  && 
+                              subSum do_subset cntxt (s1s,s2s)
+		 |  _ -> false 
+	     with
+		 Not_found -> false)
 
       in cmp
 
@@ -675,6 +681,11 @@ let rec coerceFromSubset cntxt trm st =
       L.Subset( ( _, st1 ), _ ) -> 
          coerceFromSubset cntxt (L.Subout(trm, st)) st1
     | st' -> (trm, st')
+
+let noDuplicates strngs =
+  let sset = List.fold_right StringSet.add strngs StringSet.empty
+  in
+    List.length strngs = StringSet.cardinal sset
 
 
 (*********************)
@@ -1085,9 +1096,74 @@ let rec annotateExpr cntxt = function
   | Label label -> ResTerm ( L.Inj(label, None),
 			     L.Sum[(label, None)] )
 
-  | Case _ ->
-      (* (expr1, arms2) as orig_expr -> *)
-      raise Unimplemented
+  | Case (expr1, arms2) as orig_expr -> 
+      begin
+	(* Typecheck the term being cased on *)
+	let (trm1, ty1) = annotateTerm cntxt orig_expr expr1 
+
+        (* Typecheck each arm individually *)	  
+	in let annotateArm = function
+	    (lbl, None, expr3) -> 
+	      (lbl, None, annotateExpr cntxt expr3, expr3)
+	  | (lbl, Some sbnd, expr3) ->
+	      let (cntxt', lbnd) = annotateSimpleBinding cntxt orig_expr sbnd
+	      in (lbl, Some lbnd, annotateExpr cntxt' expr3, expr3)
+	in let arms2' = List.map annotateArm arms2
+
+	(* Check that there are no duplicate labels *)
+	in let lbls = List.map (fun (l,_,_) -> l) arms2
+	in let _ = if (noDuplicates lbls) then () else
+	    tyGenericError ("There are duplicate labels in " ^ 
+			       string_of_expr orig_expr)
+
+        (* Check that the bindings match the term being cased on. *)
+	in let rec createSumtype = function
+	    [] -> []
+	  | (lbl, None,_,_)::rest -> (lbl,None) :: createSumtype rest
+	  | (lbl, Some(_,ty),_,_)::rest -> (lbl, Some ty) :: createSumtype rest
+	in let armty = L.Sum (createSumtype arms2')
+	in let _ = if (eqSet cntxt armty ty1) then
+	              ()
+	            else
+	              tyMismatchError expr1 armty ty1 orig_expr
+
+	in 
+	     match arms2' with
+		 (_,_,ResTerm _,_)::_ ->
+		   begin
+		     (* Term-level Case *)
+		     let rec process = function
+		         [] -> ([], [])
+		       | (lbl, None, ResTerm(trm3,ty3), _)::rest -> 
+			   let (arms, tys) = process rest
+			   in ( (lbl,None,trm3) :: arms, ty3 :: tys )
+		       | (lbl, (Some (nm,_) as bopt), ResTerm(trm3,ty3), expr3) :: rest ->
+			   if (NameSet.mem nm (L.fnSet ty3)) then
+			     cantElimError expr3
+			   else
+			     let (arms, tys) = process rest
+			     in ( (lbl,bopt,trm3) :: arms, ty3 :: tys )
+		       | (lbl,_,_,_)::_ -> tyGenericError 
+			          ("Bad case arm " ^ string_of_label lbl ^
+				      " in " ^ string_of_expr orig_expr)
+		     in let (arms, tys) = process arms2'
+		     in let ty = joinTypes cntxt tys
+		     in 
+			  ResTerm(L.Case (trm1, arms), ty)
+		   end
+	       | (_,_,ResProp _, _)::_ ->
+		   begin
+		     (* Prop-level Case *)
+		     raise Unimplemented
+		   end
+	       | _::_ ->
+		   tyGenericError 
+		     ("Invalid first case in " ^ string_of_expr orig_expr)
+	       | _ ->
+		   tyGenericError
+		     ("Case must have at least one arm in " ^ 
+			 string_of_expr orig_expr)
+      end
 
   | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
       begin
@@ -1547,7 +1623,7 @@ let rec annotateTheory cntxt = function
       end
 
   | TheoryApp _ ->
-      raise "TheoryApp"
+      raise Unimplemented
 
 let annotateToplevel cntxt = function
     TopComment c -> (cntxt, L.TopComment c)

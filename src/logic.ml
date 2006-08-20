@@ -366,7 +366,17 @@ and string_of_term trm =
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
     | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
     | Inj (lbl, None) -> "`" ^ lbl 
-    | Case (_,_) -> "...case..."
+    | Case (trm,arms) -> 
+	let rec doArm = function
+	    (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
+	  | (lbl, Some (n,ty), trm) -> 
+	      lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
+		") => " ^ toStr trm
+	in 
+	  "case " ^ toStr trm ^ " of " ^
+	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
+
+
     | Quot (trm1,prp2) -> "(" ^ toStr trm1 ^ " % " ^ string_of_prop prp2 ^ ")"
     | RzQuot t -> "[" ^ (toStr t) ^ "]"
     | RzChoose (bnd, trm1, trm2, st) -> 

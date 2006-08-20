@@ -80,14 +80,13 @@ thy
 
 	Definition tmp1  := `yes a.
 	Definition tmp2 : sum := tmp1.
-(* match isn't implemented yet.
-const (d : s * 1) = 
-  match tmp with
-     `yes (q : s) -> (q, ())
-   | `no (r : 1) -> (c, r)
-   | `maybe -> (a, ())
-  end
+	
+	Definition d  := match tmp2 with
+   `yes (q : s) => (q, ( ))
+   | `no (r : unit) => (c, r)
+   | `maybe => (a, ())
+  end.
 
-const (e : s) = d.0  
-*)
+	Definition e : s := d.0.
+
 end
