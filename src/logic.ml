@@ -635,7 +635,10 @@ and fnCaseArm = function
       NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
    
 	
-and fnModel _ = raise Unimplemented
+and fnModel = function
+    ModelName nm -> NameSet.singleton nm
+  | ModelProj (mdl, _) -> fnModel mdl
+  | ModelApp (mdl1, mdl2) -> NameSet.union (fnModel mdl1) (fnModel mdl2)
 
 (* Substitution functions. *)
 
