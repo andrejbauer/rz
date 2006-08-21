@@ -61,8 +61,8 @@ and expr =
   | Proj   of int   * term                 (* projection from a tuple *)
   | Label  of label                        (* tag for a sum type *)
   | Case   of term  * (label * binding1 option * term) list
-  | Choose of binding1 * term * term * term (* elimination of equivalence class *)
-  | RzChoose of binding1 * term * term     (* elimination of rz *)
+  | Choose of name * term * term      (* elimination for equivalence classes *)
+  | RzChoose of name * term * term        (* let rz x = t1 in t2 *)
   | Subin  of term * set                   (* Injection into a subset;
 					      incurs an obligation *)
   | Subout of term * set                   (* Projection from a subset; 
@@ -174,11 +174,12 @@ and string_of_expr = function
 		| lbl, Some bnd, e ->
 		    string_of_label lbl ^ embrace (string_of_bnd bnd) ^ " => " ^ string_of_expr e)
 	     lst))
-  | Choose (bnd, e1, e2, e3) ->
-      "let " ^ string_of_bnd bnd ^ " % " ^ string_of_expr e1 ^ " = " ^ string_of_expr e2 ^
-	" in " ^ string_of_expr e3
-  | RzChoose (bnd, e1, e2) ->
-      "let " ^ string_of_bnd bnd ^ " = " ^ string_of_expr e1 ^ " = " ^ string_of_expr e2
+  | Choose (nm, e1, e2) ->
+      "let [" ^ string_of_name nm ^ "] = " ^ string_of_expr e1 ^
+	" in " ^ string_of_expr e2
+  | RzChoose (nm, e1, e2) ->
+      "let rz " ^ string_of_name nm ^ " = " ^ string_of_expr e1 ^
+	" in " ^ string_of_expr e2
   | Subin (e, st) -> string_of_expr e ^ ":>" ^ string_of_expr st
   | Subout (e, st) -> string_of_expr e ^ ":<" ^ string_of_expr st
   | Let (bnd, e1, e2) ->

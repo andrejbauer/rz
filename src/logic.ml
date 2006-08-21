@@ -107,7 +107,7 @@ and term =
   | RzQuot   of term
   | RzChoose of binding * term * term * set
   | Quot     of term * proposition
-  | Choose   of binding * term * term * term * set
+  | Choose   of binding * proposition * term * term * set
   | Let      of binding * term * term * set  (* set is type of the whole let *)
   | Subin    of term * set
   | Subout   of term * set
@@ -213,8 +213,8 @@ and substMTerm m mdl t =
     | RzChoose ((n,s), t, u, s') ->
 	RzChoose ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
     | Quot (t, p) -> Quot (subst t, substMProp m mdl p)
-    | Choose ((n,s),v,t,u,s') ->
-	Choose ((n, substMSet m mdl s), subst v, subst t, subst u, substMSet m mdl s')
+    | Choose ((n,s),r,t,u,s') ->
+	Choose ((n, substMSet m mdl s), substMProp m mdl r, subst t, subst u, substMSet m mdl s')
     | Let ((n,s), t, u, s') -> Let ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
     | Subin (t, s) -> Subin (subst t, substMSet m mdl s)
     | Subout (t, s) -> Subout (subst t, substMSet m mdl s)
@@ -350,9 +350,11 @@ let rec string_of_set = function
 	  ) lst)
       ) ^ "]"
 
-  | Subset _ -> "{... with ...}"
+  | Subset ((n,s), p) -> 
+      "{" ^ string_of_name n ^ " : " ^ string_of_set s ^ " with " ^ 
+	string_of_prop p ^ "}"
   | Rz s -> "rz " ^ (string_of_set s)
-  | Quotient (s, p) -> (string_of_set s) ^ " % (...)"
+  | Quotient (s, p) -> (string_of_set s) ^ " % " ^ string_of_prop p
   | SApp (s, t) -> (string_of_set s) ^ " " ^ (string_of_term t)
   | SLambda ((n,s), t) -> "lam " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^ string_of_set t
 
@@ -380,14 +382,14 @@ and string_of_term trm =
     | Quot (trm1,prp2) -> "(" ^ toStr trm1 ^ " % " ^ string_of_prop prp2 ^ ")"
     | RzQuot t -> "[" ^ (toStr t) ^ "]"
     | RzChoose (bnd, trm1, trm2, st) -> 
-	"let [" ^ string_of_bnd bnd ^ "] = " ^
-	string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ " end" ^
-	 ": " ^ string_of_set st
+	"let rz " ^ string_of_bnd bnd ^ " = " ^
+	string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ 
+	 ": " ^ string_of_set st ^ " end"
 
-    | Choose (bnd, trm1, trm2, trm3, st) -> 
-	"let " ^ string_of_bnd bnd ^ " % " ^ string_of_term trm1 ^ " = " ^
-	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ " end" ^
-	 ": " ^ string_of_set st
+    | Choose (bnd, prp1, trm2, trm3, st) -> 
+	"let [" ^ string_of_bnd bnd ^ "] % " ^ string_of_prop prp1 ^ " = " ^
+	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ 
+	 ": " ^ string_of_set st ^ " end" 
     | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | Let(bnd,trm1,trm2,st) ->
@@ -412,7 +414,7 @@ and string_of_prop prp =
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
     | Or trms -> "(" ^ String.concat " || " (List.map toStr trms) ^ ")"
     | Not trm -> "(not " ^ toStr trm ^ ")"
-    | Equal(st,trm1,trm2) -> "(" ^ string_of_term trm1 ^ " = " ^ string_of_term trm2 ^ " : " ^ string_of_set st ^ ")"
+    | Equal(st,trm1,trm2) -> "(" ^ string_of_term trm1 ^ " =" ^ string_of_set st ^ "= " ^ string_of_term trm2 ^ ")"
     | Forall(bnd,trm) ->
 	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Exists(bnd,trm) ->
@@ -607,8 +609,8 @@ and fnTerm = function
   | RzQuot trm -> fnTerm trm
   | App(trm1, trm2) -> NameSet.union (fnTerm trm1) (fnTerm trm2)
   | Quot(trm1, prp2) -> NameSet.union (fnTerm trm1) (fnProp prp2)
-  | Choose((nm, st1), trm1, trm2, trm3, st2) ->
-      unionNameSetList [fnSet st1; fnTerm trm1; fnTerm trm2;
+  | Choose((nm, st1), prp1, trm2, trm3, st2) ->
+      unionNameSetList [fnSet st1; fnProp prp1; fnTerm trm2;
 		        NameSet.remove nm (fnTerm trm3); fnSet st2]
   | RzChoose ((nm, st1), trm1, trm2, st2) 
   | Let ((nm, st1), trm1, trm2, st2) -> 
@@ -748,10 +750,10 @@ let rec subst (substitution : subst) =
 		      subst sbst' t2,
 		      substSet substitution ty)
         | Quot(trm1,prp2) -> Quot(sub trm1, substProp substitution prp2)
-        | Choose((y,sopt),trm_equiv,t1,t2,stopt2) ->
+        | Choose((y,sopt),p,t1,t2,stopt2) ->
 	    let (sbst', y') = updateBoundName substitution y in
               Choose((y',substSet substitution sopt),
-                    sub trm_equiv,
+                    substProp substitution p,
                     sub t1, 
                     subst sbst' t2,
 		    substSet substitution stopt2)
@@ -895,7 +897,8 @@ let rec substTheory substitution = function
 	TheoryApp (substTheory substitution thry,  
 		   substModel substitution mdl)
 
-and substTheoryElts _ = raise Unimplemented
+and substTheoryElts _ = (print_endline "CANNOT substTheoryElts";
+			 raise Unimplemented)
 
 (* Can't implement this correctly without an outer label / inner variable
    distinction. :( *)

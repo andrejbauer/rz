@@ -341,8 +341,7 @@ term:
   | term EQUAL term             { Equal (None, $1, $3) }
   | LPAREN term EQUAL term IN set RPAREN   { Equal (Some $6 , $2, $4) }
   | LET name_typed EQUAL term IN term { Let ($2, $4, $6, None) }
-  | LET LBRACK name_typed RBRACK EQUAL term IN term { RzChoose ($3, $6, $8, None) }
-  | LET name_typed PERCENT longtermname EQUAL term IN term { Choose ($2, $4, $6, $8, None) }
+  | CHOOSE name_typed FROM term in term { Choose ($2, $4, $6) }
   | and_term                    { And $1 }
   | or_term                     { Or $1 }
   | term INFIXOP0 term          { App (App (makeTermVar $2 Infix0, $1), $3) }

@@ -90,3 +90,70 @@ thy
 	Definition e : s := d.0.
 
 end
+
+theory TestSubset :=
+thy
+  Parameter s : Set.
+  Parameter p : s -> Prop.
+  Parameter q : {x : s | p(x) } -> Prop.
+
+  Parameter r : s -> s -> Prop.
+  Definition t : Set := { x : s | r x x  }.
+  Parameter c : t.
+
+  Axiom warning : q c.
+
+  Axiom foo : forall x:s, p(x) -> q(x :> {y : s | p(y)}).
+
+  Axiom bar : forall x:s,  p(x) -> q(x).
+  Axiom baz : forall x : t, r x x.
+
+end
+
+theory Choice :=
+thy
+  Parameter (a b : Set).
+  Parameter r : a -> b -> Prop.
+
+  Implicit Type x : a.
+  Implicit Type y : b.
+
+  Axiom choice :
+   (forall x, exists y, r x y) -> exists (f : a -> b), forall x,  r x (f x).
+
+  Axiom intensionalChoice :
+   (forall x, exists y, r x y) -> exists (f : (rz a) -> b) , forall (x' : rz a) , r (rz x') (f x').
+
+end
+
+theory Trivial :=
+thy
+ Parameter s : Set.
+
+ Parameter f : rz s -> (s -> s).
+
+ Axiom foo : forall (x : s), forall (y : s) , (y = let rz u = x in f u y).
+
+end
+
+theory Quotients :=
+thy
+  Parameter s : Set.
+  Parameter (<<) : s -> s -> Stable.
+
+  Parameter r : Equiv s.
+
+  Implicit Type x y z : s.
+  Implicit Type e : s % r.
+
+  Axiom reflexive : forall x, x << x.
+
+  Axiom transitive : forall x y z, (x << y /\ y << z) -> x << z.
+
+(*  Definition eq := (fun x y  => (x << y /\ y << x)) : Equiv(s). *)
+
+  Axiom surj : forall e,  exists x,  e = x % r.
+
+  Axiom bar : forall (f : s -> s) (a : s) e, r a (let [x] = e in f x).
+
+end

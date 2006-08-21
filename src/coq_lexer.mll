@@ -5,8 +5,8 @@
 
   let reserved =
     [
-      "forall", FORALL;
       "Axiom", AXIOM;
+      "choose", CHOOSE;
       "Definition", DEFINITION;
       "empty", EMPTY;
       "Empty_set", EMPTY;
@@ -16,6 +16,8 @@
       "exists", EXISTS;
       "exists1", UNIQUE;
       "False", FALSE;
+      "forall", FORALL;
+      "from", FROM;
       "fun", FUN;
       "Hypothesis", HYPOTHESIS;
       "Implicit", IMPLICIT;

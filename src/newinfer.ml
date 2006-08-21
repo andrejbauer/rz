@@ -18,15 +18,41 @@ exception Impossible
 (** {2 Error Reporting} *)
 (************************)
 
+
+let warnings = ref ([] : string list)
+
+let tyGenericWarning msg =
+  warnings := msg :: (!warnings)
+
+let printWarning msg = 
+  let    warning_header = "\n-------------------------------\nWARNNG:\n"
+  in let warning_footer = "\n-------------------------------\n\n"
+  in print_string (warning_header ^ msg ^ warning_footer)
+
+let printWarnings () =
+  begin
+    List.iter printWarning (!warnings);
+    warnings := []
+  end
+
+
+let noEqPropWarning prp1 prp2 context_expr =
+  tyGenericWarning 
+    ("Did not verify that " ^ L.string_of_prop prp1 ^ " and " ^
+	L.string_of_prop prp2 ^ " are equivalent in " ^ 
+	string_of_expr context_expr)
+
 exception TypeError
 
-let type_error_header = "\n-------------------------------\nTYPE ERROR:\n"
-let type_error_footer = "\n-------------------------------\n\n"
+
 
 let tyGenericError msg = 
-  (print_string (type_error_header ^ msg ^ type_error_footer);
-   raise TypeError)
-
+  let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
+  in let error_footer = "\n-------------------------------\n\n"
+  in 
+       (printWarnings();
+	print_string (error_header ^ msg ^ error_footer);
+	raise TypeError)
 
 let tyUnboundError nm =
   tyGenericError
@@ -62,20 +88,20 @@ let noTypeInferenceInError nm expr =
 let wrongTypeError expr hastype expectedsort context_expr =
   tyGenericError
     ("The term " ^ string_of_expr expr ^ " is used as if it were a "
-      ^ expectedsort ^ " in " ^ string_of_expr context_expr ^ 
-      ", but it's actually has type " ^ L.string_of_set hastype)
+      ^ expectedsort ^ " in\n " ^ string_of_expr context_expr ^ 
+      "\nbut it actually has type " ^ L.string_of_set hastype)
 
 let wrongPropTypeError expr hasPT expectedsort context_expr =
   tyGenericError
     ("The term " ^ string_of_expr expr ^ " is used as if it were a "
-      ^ expectedsort ^ " in " ^ string_of_expr context_expr ^ 
-      ", but it's actually has type " ^ L.string_of_proptype hasPT)
+      ^ expectedsort ^ " in\n " ^ string_of_expr context_expr ^ 
+      "\nbut it actually has type " ^ L.string_of_proptype hasPT)
 
 let wrongKindError expr hasK expectedsort context_expr =
   tyGenericError
     ("The set " ^ string_of_expr expr ^ "\nis used as if had a "
-      ^ expectedsort ^ " kind in " ^ string_of_expr context_expr ^ 
-      ", but it's actually has kind " ^ L.string_of_kind hasK)
+      ^ expectedsort ^ " kind in\n " ^ string_of_expr context_expr ^ 
+      "\nbut it actually has kind " ^ L.string_of_kind hasK)
 
 let tyMismatchError expr expectedTy foundTy context_expr =
   tyGenericError
@@ -199,9 +225,8 @@ let renameBoundVar cntxt nm =
 	 (cntxt, nm)
        else
 	 begin
-	   print_endline 
-	     ("WARNING:  Shadowing of " ^ string_of_name nm ^ 
-		 "detected.");
+	   tyGenericWarning
+	     ("Shadowing of " ^ string_of_name nm ^ "detected.");
 	   ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
 	 end
 
@@ -545,12 +570,11 @@ and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
 
 and eqProp ctx prp1 prp2 = 
   (* XXX: Should allow alpha-equiv and set-equiv *)
-  (print_string "WARNING: Fix eqProp!\n";
-   prp1 = prp2)  
+  (prp1 = prp2)  
 
 and eqTerm ctx trm1 trm2 = 
   (* XXX: Should allow alpha-equiv and set-equiv and beta *)
-  (print_string "WARNING: Fix eqTerm!\n";
+  (print_string "eqTerm returning True without checking";
    trm1 = trm2)  
 
 and eqModelOpt ctx mdlopt1 mdlopt2 = (mdlopt1 = mdlopt2)
@@ -665,9 +689,9 @@ let rec coerce cntxt trm st1 st2 =
 		    (* This case shouldn't ever arise; tuples naturally
 		       yield non-dependent product types.  
 		       But just in case, ...*)
-		    (print_string 
-			("WARNING: coerce: dependent->? case for products " ^
-			    " arose, surprisingly!\n");
+		    (tyGenericWarning
+			("coerce: dependent->? case for products arose. " ^
+			    "Maybe it should be implemented after all");
 		     None)
 	      | _ -> raise Impossible
             in (match (loop L.emptysubst (trms, sts1, sts2)) with
@@ -710,7 +734,7 @@ let rec annotateExpr cntxt = function
 				      ty)
 	    | CtxModel  thry -> ResModel(L.ModelName(L.model_name_of_name nm),
 					thry )
-	    | CtxTheory thry -> (print_endline "XXX Do I need to selfify?";
+	    | CtxTheory thry -> (tyGenericWarning "XXX Do I need to selfify?";
 				 ResTheory thry)
 	    | CtxUnbound -> tyUnboundError nm
       end
@@ -1033,7 +1057,7 @@ let rec annotateExpr cntxt = function
 
 	  | ResTerm(trm1, ty1) ->
 	      begin
-		(* Value realized by this term(?) *)
+		(* Value realized by this term *)
 		match coerceFromSubset cntxt trm1 ty1 with
 		    (trm1', L.Rz ty1') ->
 		      ResTerm( L.RzQuot trm1', ty1')
@@ -1165,39 +1189,42 @@ let rec annotateExpr cntxt = function
 			 string_of_expr orig_expr)
       end
 
-  | RzChoose(sbnd1, expr2, expr3) as orig_expr ->
+  | Choose(nm1, expr2, expr3) as orig_expr ->
+      begin
+	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2 
+	in let (trm2', ty2') = coerceFromSubset cntxt trm2 ty2
+	in match ty2' with
+	   L.Quotient(dom2, prp2) ->
+	     begin
+	       let (cntxt, nm) = renameBoundVar cntxt nm1
+	       in let cntxt' = insertTermVariable cntxt nm dom2
+	       in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
+	       in 
+		    if NameSet.mem nm1 (L.fnSet ty3) then
+		      cantElimError orig_expr
+		    else 
+		      ResTerm ( L.Choose ((nm,dom2), prp2, trm2', trm3, ty3),
+			        ty3 )
+	      end
+
+	  | _ -> 
+	      notWhatsExpectedInError 
+		expr2 "equivalence class or realizers" orig_expr
+      end
+ 
+  | RzChoose(nm1, expr2, expr3) as orig_expr ->
       begin
 	let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
-
-	in let (cntxt', ((nm1,ty1) as lbnd1)) = 
-	      (* Careful with error messages...nm1 might have been renamed *)
-	      annotateSimpleBindingWithDefault 
-		cntxt orig_expr (L.Rz ty2) sbnd1
-	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3 
-	in
-	     match hnfSet cntxt ty1 with
-		 L.Rz ty1' ->
-		   begin
-		     match  coerce cntxt trm2 ty2 ty1'  with
-			 Some trm2' -> 
-			   if NameSet.mem nm1 (L.fnSet ty3) then
-			     cantElimError orig_expr
-			   else 
-			     ResTerm ( L.RzChoose (lbnd1, trm2', trm3, ty3),
-				     ty3 )
-		       | None -> 
-			   tyMismatchError expr2 ty1' ty2 orig_expr
-		   end
-	       | _ -> 
-		   tyGenericError 
-		     ("The bound variable in the construct " ^ 
-			 string_of_expr orig_expr ^ 
-		         "should have a realizer type, but here it has type " ^ 
-		         L.string_of_set ty1)
+	in let (cntxt, nm) = renameBoundVar cntxt nm1
+	in let cntxt' = insertTermVariable cntxt nm (L.Rz ty2)
+	in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
+	in 
+	     if NameSet.mem nm1 (L.fnSet ty3) then
+	       cantElimError orig_expr
+	     else 
+	       ResTerm ( L.RzChoose ((nm,L.Rz ty2), trm2, trm3, ty3),
+		         ty3 )
       end
-
-  | Choose _ -> 
-      raise Unimplemented
 
   | Subin(expr1, expr2) as orig_expr ->
       begin
@@ -1606,7 +1633,7 @@ let rec annotateTheory cntxt = function
   | TheoryName nm -> 
       begin
 	match lookupId cntxt nm with
-	    CtxTheory thry -> thry
+	    CtxTheory thry -> L.TheoryName nm (* thry *)
 	  | CtxUnbound -> tyUnboundError nm
 	  | _ -> tyGenericError 
 	      ("The name " ^ string_of_name nm ^ " is not a theory.")
@@ -1645,3 +1672,37 @@ let rec annotateToplevels cntxt = function
       in let (cntxt'', tls') = annotateToplevels cntxt' tls
       in (cntxt'', tl'::tls')
 
+let rec hnfTheory cntxt = function
+    L.TheoryName nm ->
+      begin
+	match lookupId cntxt nm with
+	    CtxTheory thry -> hnfTheory cntxt thry
+	  | _ -> raise Impossible
+      end
+  | L.TheoryApp (thry, mdl) ->
+      begin
+	match hnfTheory cntxt thry with
+	    L.TheoryFunctor((nm,_), thry2) ->
+	      let subst = L.insertModelvar L.emptysubst nm mdl
+	      in hnfTheory cntxt (L.substTheory subst thry2)
+	  | _ -> raise Impossible
+      end
+  | thry -> thry
+
+(*
+(* Inputs must be a well-formed logical model and theory *)
+let checkModelConstraint cntxt mdl thry = 
+  match (hnfTheory cntxt thry) with
+      L.TheoryName _ | L.TheoryApp _ -> 
+	(* There are no "abstract" theory variables *)
+	raise Impossible
+    | L.TheoryFunctor _ -> raise Unimplemented
+
+    | L.Theory elems ->
+	let loop cntxt = function
+	    [] -> true
+	  | (L.Set(nm,knd)) :: rest ->
+	      match searchElems cntxt nm2 orig_expr mdl elems with
+		  CtxSet (_,knd) -> ResSet(L.Basic(L.SLN(Some mdl, nm2)), knd)
+*)	      
+    

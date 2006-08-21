@@ -37,6 +37,7 @@
 %token ARROW
 %token AXIOM
 %token BAR
+%token CHOOSE
 %token COLON
 %token COLONEQUAL
 %token COMMA
@@ -52,6 +53,7 @@
 %token EXISTS
 %token FALSE
 %token FORALL
+%token FROM
 %token FUN
 %token HYPOTHESIS
 %token IFFSYMBOL
@@ -116,7 +118,7 @@
 %left ORSYMBOL
 %left ANDSYMBOL
 
-%nonassoc LET IN
+%nonassoc LET IN CHOOSE FROM
 %nonassoc PERIOD
 %nonassoc EQUAL 
 %nonassoc FUN MATCH WITH BAR
@@ -291,8 +293,8 @@ expr:
   | UNIQUE xbinder_list COMMA expr             { Unique ($2, $4) }
   | THE arg_noparen_required COMMA expr       { The ($2, $4) }
   | MATCH expr WITH case_list END             { Case ($2, $4) }
-  | LET RZ arg EQUAL expr IN expr             { RzChoose ($3, $5, $7) }
-  | LET arg PERCENT expr EQUAL expr IN expr   { Choose ($2, $4, $6, $8) }
+  | LET LBRACK ident RBRACK EQUAL expr IN expr { Choose ($3, $6, $8) }
+  | LET RZ ident EQUAL expr IN expr           { RzChoose ($3, $5, $7) }
   | LET arg_noparen_required EQUAL expr IN expr { Let ($2, $4, $6) }
   | FUN xbinder_list DOUBLEARROW expr          { Lambda ($2, $4) }
   | expr COLON expr                           { Constraint ($1, $3) } 

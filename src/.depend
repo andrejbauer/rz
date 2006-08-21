@@ -1,6 +1,8 @@
 coq_parser.cmi: syntax.cmo 
 parser.cmi: syntax.cmo 
 parserc.cmi: syntax.cmo 
+coq_parser.cmo: syntax.cmo name.cmo message.cmo coq_parser.cmi 
+coq_parser.cmx: syntax.cmx name.cmx message.cmx coq_parser.cmi 
 foo.cmo: foo.cmi 
 foo.cmx: foo.cmi 
 infer.cmo: syntax.cmo 
@@ -28,7 +30,7 @@ rz.cmo: translate.cmo pp.cmo parser.cmi opt.cmo message.cmo logic.cmo \
 rz.cmx: translate.cmx pp.cmx parser.cmx opt.cmx message.cmx logic.cmx \
     infer.cmx flags.cmx 
 rzinfer.cmo: newinfer.cmo message.cmo logic.cmo flags.cmo coq_parser.cmi 
-rzinfer.cmx: newinfer.cmx message.cmx logic.cmx flags.cmx coq_parser.cmi 
+rzinfer.cmx: newinfer.cmx message.cmx logic.cmx flags.cmx coq_parser.cmx 
 syntax.cmo: name.cmo 
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 

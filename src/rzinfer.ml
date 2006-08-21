@@ -99,8 +99,10 @@ let rec process = function
 	      print_endline "After Inference:";
 	      print_endline "----------------";
 	      List.iter print_item lthy;
-	      print_endline "----------------")
+	      print_endline "----------------");
 	else ()) in
+
+      let _ = Newinfer.printWarnings() in
 (*
 
       let (spec,translate_state') = 
