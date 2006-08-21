@@ -150,7 +150,7 @@ thy
 
   Axiom transitive : forall x y z, (x << y /\ y << z) -> x << z.
 
-(*  Definition eq := (fun x y  => (x << y /\ y << x)) : Equiv(s). *)
+  Definition eq x y : Equiv(s) :=  (x << y /\ y << x).
 
   Axiom surj : forall e,  exists x,  e = x % r.
 

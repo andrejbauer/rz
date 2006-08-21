@@ -190,7 +190,7 @@ theory_element:
 
 decl:
   |                              { None }
-  | COLON simple_expr            { Some $2 }
+  | COLON expr            { Some $2 }
 
 ident_list:
   | ident                        { [$1] }
@@ -224,7 +224,7 @@ binderz:
 
 binder:
   | LPAREN ident_list COLON expr RPAREN  { ($2, Some $4) }
-  | LPAREN ident_list RPAREN             { ($2, None) }
+  | ident                                { ([$1], None) }
 
 ident:
     NAME                          { N ($1, Word) }
