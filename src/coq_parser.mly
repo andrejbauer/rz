@@ -15,10 +15,6 @@
   let makeIdent (strng, fxty) = Ident (N (strng, fxty))
   let makeMProj mdl (strng, fxty) = MProj (mdl, N (strng, fxty))
 
-  let wildName =
-    let k = ref 0 in
-      fun () -> incr k; N ("_" ^ string_of_int !k, Wild)
-
   let rec makeLambda lst st =
     match lst with
 	[] -> st

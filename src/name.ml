@@ -132,6 +132,11 @@ let rec string_of_name = function
   | N("*",_) -> "( * )"
   | N(str,_) -> "(" ^ str ^ ")"
 
+(** [wildName ()] generates a new wildcard (an anonymous name). *)
+let wildName =
+  let k = ref 0 in
+    fun () -> incr k; N ("_" ^ string_of_int !k, Wild)
+
 let isWild = function
     N(_, Wild) -> true
   | _ -> false

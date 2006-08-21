@@ -38,14 +38,14 @@ let name_of_ctx_entry = function
 
 let occursCtx ctx nm = List.exists (fun e -> nm = name_of_ctx_entry e) ctx
 
-let addBind  n s ctx = CtxVar(n,s) :: ctx
-let addSet   n s ctx = CtxSet(n,s) :: ctx
-let addProp  n stb ctx = CtxProp(n,stb) :: ctx
-let addModel n thr ctx = CtxModel(n,thr) :: ctx
+let insertTermvar    n s ctx = CtxVar(n,s) :: ctx
+let insertSetvar    n s ctx = CtxSet(n,s) :: ctx
+let insertPropvar   n stb ctx = CtxProp(n,stb) :: ctx
+let insertModelvar  n thr ctx = CtxModel(n,thr) :: ctx
 let addTheory n thr ctx = CtxTheory(n,thr) :: ctx
 
-let addBinding bind ctx =
-  List.fold_left (fun ctx (n,s) -> addBind n s ctx) ctx bind
+let insertBinding bind ctx =
+  List.fold_left (fun ctx (n,s) -> insertTermvar n s ctx) ctx bind
 
 let getBind n ctx =
   let rec find = function
@@ -154,9 +154,9 @@ let rec toSubset ctx = function
   | L.Basic ln -> toSubset ctx (getLongSet ctx ln)
   | _ -> failwith "not a subset"
 
-let any = N("_", Wild)
-
 (** translation functions *)
+
+let any = wildName
 
 let mk s = N(s, Word)
 
@@ -170,116 +170,110 @@ let sbp ctx ?(bad=[]) lst =
 
 let sbt ctx lst = substTerm ~occ:(occursCtx ctx) (termsSubst lst)
 
+let makeTot (x, t) p = PLambda ((x,t), p)
+
+let makePer (x, y, t) p = PLambda ((x,t), PLambda ((y,t), p))
+
 let rec translateSet (ctx : ctxElement list) = function
     L.Empty -> 
-      { ty = VoidTy;
-	tot = (any, False);
-	per = (any, any, False)
+      { ty  = VoidTy;
+	tot = makeTot (any(), VoidTy) False;
+	per = makePer (any(), any(), VoidTy) False;
       }
 
   | L.Unit ->
       let x = fresh [mk "x"] ctx in
-      { ty = UnitTy;
-	tot = (x, Equal (id x, Star));
-	per = (any, any, True)
+      { ty  = UnitTy;
+	tot = makeTot (x, UnitTy) (Equal (id x, EmptyTuple));
+	per = makePer (any(), any(), UnitTy) True;
       }
 
   | L.Basic sln ->
       let s' = translateSLN sln in
-      let x, y = fresh2 [mk "x"; mk "y"; mk "u"; mk "a"] [mk "y"; mk "v"; mk "b"] ctx in
-	{ ty = NamedTy s';
-	  tot = (x, NamedTotal (s', id x));
-	  per = (x, y, NamedPer (s', id x, id y))
+	{ ty  = NamedTy s';
+	  tot = NamedTotal s';
+	  per = NamedPer s'
 	}
 
   | L.Product lst ->
       let us = snd
 	(List.fold_left 
-	   (fun (ctx, us) (nm, st) -> (addBind nm st ctx, (translateSet ctx st) :: us))
+	   (fun (ctx, us) (nm, st) -> (insertTermvar nm st ctx, (translateSet ctx st) :: us))
 	   (ctx, [])
-	   lst)
-      in
+	   lst) in
+      let v = TupleTy (List.map (fun u -> u.ty) us) in
 	{
-	  ty = TupleTy (List.map (fun u -> u.ty) us);
+	  ty = v;
 	  tot = (
 	    let t = fresh [mk "t"; mk "u"; mk "v"] ctx in
-	      (t, And (
-		 let k = ref 0 in
-		   List.map (fun {tot=(x,p)} ->
-			       let q = sbp ctx ~bad:[t] [x, (Proj (!k, id t))] p in
-				 incr k ; q) us
-	       )
-	      )
+	      makeTot (t, v)
+		(And (let k = ref 0 in
+			List.map
+			  (fun u -> let q = pApp u (Proj (!k, id t)) in incr k ; q)
+			  us
+		))
 	  );
 	  per = (
-	    let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] ctx in
-	      (t, u, And (
-		 let k = ref 0 in
-		   List.map (fun {per=(x,y,p)} ->
-			       let q = sbp ctx ~bad:[t;u]
-					 [(x, Proj (!k, id t)); (y, Proj (!k, id u))] p in
-				 incr k; q
-			    ) us
-	       )
-	      )
+	      let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] ctx in
+		makePer (t, u, v) (And (
+		    let k = ref 0 in
+		      List.map
+			(fun u -> let q = pApp (pApp u.per (Proj (!k, id t))) (Proj (!k, id t)) in incr k; q)
+			us
+		))
 	  )
 	}
 
   | L.Exp (nm, s, t) ->
-      let {ty=u; per=(x,x',p)} = translateSet ctx s in
-      let {ty=v; per=(y,y',q)} = translateSet (addBind nm s ctx) t in
+      let {ty=u; per=p} = translateSet ctx s in
+      let {ty=v; per=q} = translateSet (insertTermvar nm s ctx) t in
+      let w = ArrowTy (u, v) in
       let z, z', f, g =
 	fresh4 [x] [x'] [mk "f"; mk "g"; mk "h"] [mk "g"; mk "h"; mk "k"] ~bad:[nm] ctx
       in
-	{ ty = ArrowTy (u, v);
-	  tot = (
-	      (f,
-	       Forall ((z, u),
-	       Forall ((z', u),
-	         Imply (sbp ctx ~bad:[z;z';f] [(x, id z); (x', id z')] p,
-			sbp ctx ~bad:[z;z';f]
-			  [(y, App (id f, id z)); (y', App (id f, id z')); (nm, Tot (id z))] q)
-		      ))
-	      )
-	  );
-	  per = (
-	      (f, g,
-	       Forall ((z,u),
-               Forall ((z',u),
-                 Imply (sbp ctx ~bad:[z;z';f;g] [(x, id z); (x', id z')] p,
-			sbp ctx ~bad:[z;z';f;g]
-			  [(y, App (id f, id x)); (y', App (id g, id x')); (nm, Tot (id z))] q)
-		      ))
-	      )
-	  )
+	{ ty = w;
+	  tot = makeTot (f, w)
+	    (Forall ((z, u),
+		    Forall ((z', u),
+			   Imply (
+			       pApp (pApp p (id z)) (id z'),
+			       pApp (pApp (propSApp q (id z)) (App (id f, id z)) (App (id f, id z')))
+			   ))));
+	  per = makePer (f, g, w)
+	    (Forall ((z, u),
+		    Forall ((z', u),
+			   Imply (
+			       pApp (pApp p (id z)) (id z'),
+			       pApp (pApp (propSApp q (id z)) (App (id f, id z)) (App (id g, id z')))
+			   ))))
 	}
 
 
   | L.Subset ((n, s), phi) ->
-      let {ty=u; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
-      let (v,z,r) = translateProp (addBind n s ctx) phi in
+      let {ty=u; tot=p; per=q} = translateSet ctx s in
+      let (v,r) = translateProp (insertTermvar n s ctx) phi in
+      let w = TupleTy [u; v] in
 	{
-	  ty = TupleTy [u; v];
+	  ty = w;
 	  tot = (
 	    let k = fresh [mk "k"; mk "j"; mk "x"] ctx in
-	      (k,
-	       And [sbp ctx ~bad:[k] [(x, Proj (0, id k))] p;
-		    sbp ctx ~bad:[k] [(n, Proj (0, id k)); (z, Proj (1, id k))] r]
-	      )
-	  );
+	      makeTot (k,w)
+	      (And [pApp p (Proj (0, id k));
+		    pApp (substProp ctx [(n, Proj (0, id k))] r) (id k)]
+	      ));
 	  per = (
-	    let w, w'  = fresh2 [y; mk "w"] [y'; mk "w'"] ctx in
-	      (w, w', sbp ctx ~bad:[w;w'] [(y, Proj (0, id w)); (y', Proj (0, id w'))] q)
-	  )
-	}
+	    let y, y'  = fresh2 [mk "x"; mk "y"; mk "w"] [mk "x'"; mk "y'"; mk "w'"] ctx in
+	      makePer (y, y', w) pApp (pApp (Proj (0, id y))) (Proj (0, id y')));
 
-  | L.Quotient (s, r) ->
-      let {ty=u; tot=(w,p); per=(z,z',q)} = translateSet ctx s in
-	{ ty = u;
-	  tot = (w, p);
+	}
+  | L.Quotient (s, e) ->
+      let {ty=t; tot=p; per=q} = translateSet ctx s in
+      let _, r = translateProp ctx e in
+	{ ty = t;
+	  tot = p;
 	  per = (
-	    let u, u' = fresh2 [z] [z'] ctx in
-	      u, u', NamedProp (translateLN r, Dagger, [Tuple [id u; id u']])
+	    let x, x' = fresh2 [mk "x"] [mk "y"] ctx in
+	      makePer (x, y, t) (pApp (pApp (pApp r (id x)) (id x')) Dagger)
 	  )
 	}
 
@@ -326,17 +320,38 @@ let rec translateSet (ctx : ctxElement list) = function
 	}
 
   | L.Rz s ->
-      let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
+      let {ty=t; tot=p} = translateSet ctx s in
 	{
 	  ty = t;
-	  tot = (x, p);
-	  per = (y, y', Equal (id y, id y'));
+	  tot = p;
+	  per = 
+	    let x, x' = fresh2 [mk "x"; mk "y"] [mk "x'"; mk "y'"] ctx in
+	      makePer (x, x',t) (Equal (id x, id x'));
 	}
+
+  | L.SApp (s, t) ->
+      let {ty=v; tot=p; per=q} = translateSet ctx s in
+      let t_tr = translateTerm ctx t in
+	{
+	  ty = v;
+	  tot = setApply p t_tr;
+	  per = setApply q t_tr;
+	}
+
+  | L.SLambda ((n, s), t) ->
+       let {ty=u; tot=h} = translateSet ctx s in
+       let {ty=v; tot=p; per=q} = translateSet (insertTermvar n s ctx) t in
+       {
+	 ty = v;
+	 tot = PTLambda ((n, u), h, p);
+	 per = PTLambda ((n, u), h, q)
+       }
+
 
 and translateTerm ctx = function
     L.Var ln -> Id (translateLN ln)
 
-  | L.Star -> Star
+  | L.EmptyTuple -> EmptyTuple
 
   | L.Tuple lst -> Tuple (List.map (translateTerm ctx) lst)
 
@@ -349,7 +364,7 @@ and translateTerm ctx = function
   | L.The ((n, s), phi) ->
       let {per=(x,y,p); ty=t} = translateSet ctx s in
       let (v,z,q) = translateProp ctx phi in
-      let n', z' = fresh [n] [z] ~bad:[n] ctx in
+      let n', z' = fresh2 [n] [z] ~bad:[n] ctx in
 	Obligation ((n, t), True,
 		    Obligation ((z',v),
 				And [sbp ctx ~bad:[z'] [(z, id z')] q;
@@ -366,10 +381,10 @@ and translateTerm ctx = function
       Case (translateTerm ctx t1, List.map
 	       (function
 		    (lb, Some (n, s), t) ->
-		      let ctx' = addBind n s ctx in
+		      let ctx' = insertTermvar n s ctx in
 			(lb, Some (n, (translateSet ctx' s).ty), translateTerm ctx' t)
                   | (lb, None, t) ->
-                      (lb, None, translateTerm (addBind any L.Unit ctx) t)
+                      (lb, None, translateTerm (insertTermvar any L.Unit ctx) t)
 	       )
                lst
 	    )
@@ -379,7 +394,7 @@ and translateTerm ctx = function
       let {ty=ty1; per=(x1,y1,p1)} = translateSet ctx st1 in
       let {per=(x2,y2,p2)} = translateSet ctx st2 in
       let n' = fresh [n] ~bad:[n] ctx in
-      let v = translateTerm (addBind n st1 ctx) u in
+      let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
 	     Obligation ((any, TopTy),
@@ -394,7 +409,7 @@ and translateTerm ctx = function
       let {ty=ty1; per=(x1,y1,p1)} = translateSet ctx st1 in
       let {per=(x2,y2,p2)} = translateSet ctx st2 in
       let n' = fresh [n] ~bad:[n] ctx in
-      let v = translateTerm (addBind n st1 ctx) u in
+      let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
 	     Obligation ((any, TopTy),
@@ -404,11 +419,11 @@ and translateTerm ctx = function
 			 v))
 
   | L.Let ((n, s), u, v, _) ->
-      Let (n, translateTerm ctx u, translateTerm (addBind n s ctx) v)
+      Let (n, translateTerm ctx u, translateTerm (insertTermvar n s ctx) v)
 
   | L.Subin (t, sb) ->
       let ((x, s), p) = toSubset ctx sb in
-      let (ty, y, p') = translateProp (addBind x s ctx) p in
+      let (ty, y, p') = translateProp (insertTermvar x s ctx) p in
       let t' = translateTerm ctx t in
       let y' = fresh [y; mk "v"; mk "u"; mk "t"] ctx in
 	Obligation ((y', ty), sbp ctx ~bad:[y'] [(y, id y'); (x,t')] p', Tuple [t'; id y'])
@@ -483,7 +498,7 @@ and translateProp ctx = function
 
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=(x,q)} = translateSet ctx s in
-      let (u, y, p') = translateProp (addBind n s ctx) p in
+      let (u, y, p') = translateProp (insertTermvar n s ctx) p in
       let x', f = fresh2 [n] [mk "f"; mk "g"; mk "h"; mk "l"] ctx in
 	(ArrowTy (t, u),
 	 f,
@@ -493,7 +508,7 @@ and translateProp ctx = function
 
   | L.Exists ((n, s), p) -> 
       let {ty=t; tot=(x,q)} = translateSet ctx s in
-      let (u, y, p') = translateProp (addBind n s ctx) p in
+      let (u, y, p') = translateProp (insertTermvar n s ctx) p in
       let w = fresh [mk "w"; mk "u"; mk "p"; mk "t"] ctx
       in
 	(TupleTy [t; u], w,
@@ -504,7 +519,7 @@ and translateProp ctx = function
 
   | L.Unique ((n, s), p) -> 
       let {ty=t; tot=(x,q); per=(z,z',pr)} = translateSet ctx s in
-      let (u, y, p') = translateProp (addBind n s ctx) p in
+      let (u, y, p') = translateProp (insertTermvar n s ctx) p in
       let w, w' = fresh2 [mk "w"; mk "u"; mk "p"; mk "t"] [mk "u"; mk "p"; mk "t"] ctx in
 	(TupleTy [t; u], w,
 	 And [
@@ -537,22 +552,22 @@ and translateBinding ctx bind =
 and translateTheoryElements ctx = function
     [] -> [], emptyCtx
   | L.Set n :: rest -> 
-      let sgnt, smmry = translateTheoryElements (addSet n L.SET ctx) rest in
+      let sgnt, smmry = translateTheoryElements (insertSetvar n L.SET ctx) rest in
 	(TySpec (n, None, [("per_" ^ n, [], IsPer n)])) :: sgnt,
-	(addSet n L.SET smmry)
+	(insertSetvar n L.SET smmry)
 
   | L.Let_set (n, s) :: rest ->
-      let sgnt, smmry = translateTheoryElements (addSet n s ctx) rest in	
+      let sgnt, smmry = translateTheoryElements (insertSetvar n s ctx) rest in	
 	(let {ty=t; tot=(x,p); per=(y,y',q)} = translateSet ctx s in
 	   TySpec (n, Some t,
 		    [(n ^ "_def_total", [(x,t)], Iff (NamedTotal (tln_of_tyname n, id x), p));
 		     (n ^ "_def_per", [(y,t); (y',t)],
 		      Iff (NamedPer (tln_of_tyname n, id y, id y'), q))])
 	) :: sgnt,
-	addSet n s smmry
+	insertSetvar n s smmry
 
   | L.Predicate (n, stab, s) :: rest -> begin
-      let sgnt, smmry = translateTheoryElements (addProp n stab ctx) rest in
+      let sgnt, smmry = translateTheoryElements (insertPropvar n stab ctx) rest in
       let {ty=t; per=(y,y',p)} = translateSet ctx s in
 	(match stab with
 	     S.Unstable ->
@@ -565,13 +580,13 @@ and translateTheoryElements ctx = function
 	     AssertionSpec ("predicate_" ^ (string_of_name n), [],
 			    IsPredicate (n,t,y,y',p))
 	) :: sgnt,
-	addProp n stab smmry
+	insertPropvar n stab smmry
     end
 
   | L.Let_predicate (n, stab, bind, p) :: rest ->
-      let sgnt, smmry = translateTheoryElements (addProp n stab ctx) rest in
+      let sgnt, smmry = translateTheoryElements (insertPropvar n stab ctx) rest in
 	(let bind' = translateBinding ctx bind in
-	 let ctx' = addBinding bind ctx in
+	 let ctx' = insertBinding bind ctx in
 	 let (ty, r, p') = translateProp ctx' p in
 	 let r' = fresh [r] ~bad:(List.map fst bind) ctx in
 	   TySpec (L.typename_of_name n, Some ty,
@@ -580,34 +595,34 @@ and translateTheoryElements ctx = function
 		     Iff (NamedProp (ln_of_name n, id r', List.map (fun (y,_) -> id y) bind),
 			  sbp ctx ~bad:[r'] ([(r, id r')]) p'))])
 	) :: sgnt,
-	addProp n stab smmry
+	insertPropvar n stab smmry
 
   | L.Let_term (n, s, None, t) :: rest ->
-      let sgnt, smmry = translateTheoryElements (addBind n s ctx) rest in
+      let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
 	(let {ty=u; per=(y,y',q)} = translateSet ctx s in
 	 let t' = translateTerm ctx t in
 	   ValSpec (n, u, [((string_of_name n) ^ "_def", [],
 			sbp ctx [(y, id n); (y', t')] q)])
 	) :: sgnt,
-	addBind n s smmry
+	insertTermvar n s smmry
 
   | L.Let_term (n, s, Some args, t) :: rest ->
-      let sgnt, smmry = translateTheoryElements (addBind n s ctx) rest in
+      let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
 	(let {ty=u; per=(y,y',q)} = translateSet ctx s in
-	 let t' = translateTerm (addBinding args ctx) t in
+	 let t' = translateTerm (insertBinding args ctx) t in
 	   ValSpec (n, u, [((string_of_name n) ^ "_def", [], 
 			    sbp ctx [(y, (id n));
 				     (y', nested_lambda (translateBinding ctx args) t')] q)])
 	) :: sgnt,
-	addBind n s smmry
+	insertTermvar n s smmry
 
   | L.Value (n, s) :: rest ->
-      let sgnt, smmry = translateTheoryElements (addBind n s ctx) rest in
+      let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
        (let {ty=t; tot=(x,p)} = translateSet ctx s in
 	  ValSpec (n, t, [((string_of_name n) ^ "_total", [],
 		      sbp ctx [(x, id n)] p)])
        ) :: sgnt,
-       addBind n s smmry
+       insertTermvar n s smmry
 
   | L.Comment cmmnt :: rest ->
       let sgnt, smmry = translateTheoryElements ctx rest in
@@ -617,7 +632,7 @@ and translateTheoryElements ctx = function
       let sgnt, smmry = translateTheoryElements ctx rest in
 	begin
 	  let strctbind, ctx' = translateModelBinding ctx mdlbind in
-	  let ctx'' = addBinding valbnd ctx' in
+	  let ctx'' = insertBinding valbnd ctx' in
 	  let bnd = translateBinding ctx' valbnd in
 	  let (typ, x, prp') = translateProp ctx'' prp in
 	  let typ' = List.fold_right (fun (_,t) a -> ArrowTy (t, a)) bnd typ in
@@ -637,9 +652,9 @@ and translateTheoryElements ctx = function
 
   | L.Model (mdlnm, thr) :: rest ->
       let sgnt, smmry = translateTheory ctx thr in
-      let sgnt', smmry' = translateTheoryElements (addModel mdlnm smmry ctx) rest in
+      let sgnt', smmry' = translateTheoryElements (insertModelvar mdlnm smmry ctx) rest in
 	ModulSpec (mdlnm, sgnt) :: sgnt',
-	(addModel mdlnm smmry smmry')
+	(insertModelvar mdlnm smmry smmry')
 
 
 and translateSLN = function
@@ -650,7 +665,7 @@ and translateModelBinding ctx = function
     [] -> [], ctx
   | (m, th) :: rest ->
       let signat, smmry = translateTheory ctx th in
-      let signats, ctx' = translateModelBinding (addModel m smmry ctx) rest in
+      let signats, ctx' = translateModelBinding (insertModelvar m smmry ctx) rest in
 	(m, signat) :: signats, ctx'
 
 and translateTheory ctx = function
@@ -660,7 +675,7 @@ and translateTheory ctx = function
   | L.TheoryName id -> SignatName id, getTheory id ctx
   | L.TheoryFunctor ((nm,thr1),thr2) ->
       let sgnt1, smmry1 = translateTheory ctx thr1 in
-      let sgnt2, smmry2 = translateTheory (addModel nm smmry1 ctx) thr2 in
+      let sgnt2, smmry2 = translateTheory (insertModelvar nm smmry1 ctx) thr2 in
 	SignatFunctor ((nm, sgnt1), sgnt2), CtxParam (nm, sgnt2, smmry2)
   | L.TheoryApp (thr, mdl) ->
       let sgnt, smmry = translateTheory ctx thr in
@@ -682,4 +697,4 @@ let rec translateToplevel ctx = function
       attachSignat (TopComment cmmnt) (translateToplevel ctx rest)
   | L.TopModel (mdlnm, thry) :: rest ->
       let sgnt, smmry = translateTheory ctx thry in
-	attachSignat (TopModul (mdlnm, sgnt)) (translateToplevel (addModel mdlnm smmry ctx) rest)
+	attachSignat (TopModul (mdlnm, sgnt)) (translateToplevel (insertModelvar mdlnm smmry ctx) rest)
