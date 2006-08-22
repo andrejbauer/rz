@@ -57,8 +57,7 @@ and proposition =
   | True                                       (* truth *)
   | False                                      (* falsehood *)
   | IsPer of ty_name                           (* the fact that a type is equipped with a per *)
-  | IsPredicate of name * ty * name * name * proposition
-                                               (* [name] is a predicate on type *)
+  | IsPredicate of name * ty * proposition     (* [name] is a predicate on type *)
   | NamedTotal of ty_longname                  (* totality of a term *)
   | NamedPer of ty_longname                    (* extensional equality of terms *)
   | NamedProp of longname                      (* basic proposition *)
@@ -209,6 +208,8 @@ let emptysubst = {terms = NameMap.empty;
 		  tys = TyNameMap.empty;
 		  moduls = ModulNameMap.empty}
 
+let fvSubst {terms=ts} = NameMap.fold (fun _ t acc -> fvTerm' [] acc t) ts []
+
 let insertTermvar sbst nm trm =
   {sbst with terms = NameMap.add nm trm sbst.terms}
 
@@ -285,11 +286,7 @@ and substProp ?occ sbst = function
     True -> True
   | False -> False
   | IsPer nm -> IsPer nm
-  | IsPredicate (prdct,t,x,y,p) ->
-      let x' = freshVar [x] ?occ sbst in
-      let y' = freshVar [y] ~bad:[x'] ?occ sbst in
-	IsPredicate (prdct, substTy ?occ sbst t, x', y',
-		     substProp ?occ (insertTermvar (insertTermvar sbst x (id x')) y (id y')) p)
+  | IsPredicate (prdct,t,p) -> IsPredicate (prdct, substTy ?occ sbst t, substProp ?occ sbst p)
   | NamedTotal tln -> NamedTotal (substTLN ?occ sbst tln)
   | NamedPer tln -> NamedPer (substTLN ?occ sbst tln)
   | NamedProp ln -> NamedProp (substLN ?occ sbst ln)
@@ -300,21 +297,21 @@ and substProp ?occ sbst = function
   | Iff (p, q) -> Iff (substProp ?occ sbst p, substProp ?occ sbst q)
   | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | ForallTotal ((n, ty), q) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	ForallTotal ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | Cexists ((n, ty), q) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | PApp (p, t) -> PApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PTApp (p, t) -> PTApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PLambda ((n, s), p) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	PLambda ((n', s), substProp ?occ (insertTermvar sbst n (id n')) p)
   | PTLambda ((n, ty), p, q) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	PTLambda ((n', substTy ?occ sbst ty), substProp ?occ sbst p, substProp ?occ (insertTermvar sbst n (id n')) q)
 
 and substTerm ?occ sbst = function
@@ -528,7 +525,7 @@ and string_of_prop level p =
       True -> (0, "true")
     | False -> (0, "false")
     | IsPer nm -> (0, "PER(=_" ^ string_of_name nm ^ ")")
-    | IsPredicate (prdct,_,_,_,_) -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ",...)")
+    | IsPredicate (prdct,_,_) -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ",...)")
     | NamedTotal n -> (0, "||" ^ (string_of_tln n) ^ "||")
     | NamedPer n -> (0, "(=_" ^ string_of_tln n ^ ")")
     | NamedProp n -> (0, string_of_ln n)

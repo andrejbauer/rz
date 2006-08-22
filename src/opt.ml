@@ -140,7 +140,7 @@ let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; moduli = []}
 let rec hnfTy ctx = function
     NamedTy tynm ->
       (match (peekTydefLong ctx tynm) with
-      | None | Some TYPE -> NamedTy tynm
+      | None -> NamedTy tynm
       | Some s' -> hnfTy ctx s')
   | s -> s
 
@@ -169,7 +169,7 @@ let joinTy ctx s1 s2 =
         | ((l1,None)::s1s, s2s) ->
 	    (if (List.mem_assoc l1 s2s) then
 	      try
-		let None = List.assoc l1 s2s
+		let xNone = List.assoc l1 s2s
 		in (l1,None) :: joinSums(s1s, s2s)
               with _ -> raise (Impossible "jointTy 1")
 	    else (l1,None) :: joinSums(s1s, s2s))

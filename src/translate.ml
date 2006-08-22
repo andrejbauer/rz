@@ -170,9 +170,25 @@ let sbp ctx ?(bad=[]) lst =
 
 let sbt ctx lst = substTerm ~occ:(occursCtx ctx) (termsSubst lst)
 
+let pApp ctx p t = match p with
+    PLambda ((n,_), q) -> sbp ctx [(n,t)] q
+  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PTApp _ -> PApp (p, t)
+  | PTLambda _ | True | False | IsPer _ | IsPredicate _ | Equal _ | And _
+  | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ ->
+      failwith "bad propositional application"
+
+let pTApp ctx p t = match p with
+    PTLambda ((n,_), _, q) -> sbp ctx [(n,t)] q
+  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PTApp _ -> PTApp (p, t)
+  | PLambda _ | True | False | IsPer _ | IsPredicate _ | Equal _ | And _
+  | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ ->
+      failwith "bad propositional application"
+
 let makeTot (x, t) p = PLambda ((x,t), p)
 
 let makePer (x, y, t) p = PLambda ((x,t), PLambda ((y,t), p))
+
+let makeProp (x, t) p = (t, PLambda ((x,t), p))
 
 let rec translateSet (ctx : ctxElement list) = function
     L.Empty -> 
@@ -209,7 +225,7 @@ let rec translateSet (ctx : ctxElement list) = function
 	      makeTot (t, v)
 		(And (let k = ref 0 in
 			List.map
-			  (fun u -> let q = pApp u (Proj (!k, id t)) in incr k ; q)
+			  (fun u -> let q = pApp ctx u.tot (Proj (!k, id t)) in incr k ; q)
 			  us
 		))
 	  );
@@ -218,7 +234,7 @@ let rec translateSet (ctx : ctxElement list) = function
 		makePer (t, u, v) (And (
 		    let k = ref 0 in
 		      List.map
-			(fun u -> let q = pApp (pApp u.per (Proj (!k, id t))) (Proj (!k, id t)) in incr k; q)
+			(fun u -> let q = pApp ctx (pApp ctx u.per (Proj (!k, id t))) (Proj (!k, id t)) in incr k; q)
 			us
 		))
 	  )
@@ -229,22 +245,26 @@ let rec translateSet (ctx : ctxElement list) = function
       let {ty=v; per=q} = translateSet (insertTermvar nm s ctx) t in
       let w = ArrowTy (u, v) in
       let z, z', f, g =
-	fresh4 [x] [x'] [mk "f"; mk "g"; mk "h"] [mk "g"; mk "h"; mk "k"] ~bad:[nm] ctx
+	fresh4
+	  [mk "x"; mk "y"; mk "z"]
+	  [mk "x'"; mk "y'"; mk "z'"]
+	  [mk "f"; mk "g"; mk "h"]
+	  [mk "g"; mk "h"; mk "k"] ~bad:[nm] ctx
       in
 	{ ty = w;
 	  tot = makeTot (f, w)
 	    (Forall ((z, u),
 		    Forall ((z', u),
 			   Imply (
-			       pApp (pApp p (id z)) (id z'),
-			       pApp (pApp (propSApp q (id z)) (App (id f, id z)) (App (id f, id z')))
+			       pApp ctx (pApp ctx p (id z)) (id z'),
+			       pApp ctx (pApp ctx (pTApp ctx q (id z)) (App (id f, id z))) (App (id f, id z'))
 			   ))));
 	  per = makePer (f, g, w)
 	    (Forall ((z, u),
 		    Forall ((z', u),
 			   Imply (
-			       pApp (pApp p (id z)) (id z'),
-			       pApp (pApp (propSApp q (id z)) (App (id f, id z)) (App (id g, id z')))
+			       pApp ctx (pApp ctx p (id z)) (id z'),
+			       pApp ctx (pApp ctx (pTApp ctx q (id z)) (App (id f, id z))) (App (id g, id z'))
 			   ))))
 	}
 
@@ -258,14 +278,14 @@ let rec translateSet (ctx : ctxElement list) = function
 	  tot = (
 	    let k = fresh [mk "k"; mk "j"; mk "x"] ctx in
 	      makeTot (k,w)
-	      (And [pApp p (Proj (0, id k));
-		    pApp (substProp ctx [(n, Proj (0, id k))] r) (id k)]
+	      (And [pApp ctx p (Proj (0, id k));
+		    pApp ctx (sbp ctx [(n, Proj (0, id k))] r) (id k)]
 	      ));
 	  per = (
 	    let y, y'  = fresh2 [mk "x"; mk "y"; mk "w"] [mk "x'"; mk "y'"; mk "w'"] ctx in
-	      makePer (y, y', w) pApp (pApp (Proj (0, id y))) (Proj (0, id y')));
-
+	      makePer (y, y', w) (pApp ctx (pApp ctx q (Proj (0, id y))) (Proj (0, id y'))))
 	}
+
   | L.Quotient (s, e) ->
       let {ty=t; tot=p; per=q} = translateSet ctx s in
       let _, r = translateProp ctx e in
@@ -273,7 +293,7 @@ let rec translateSet (ctx : ctxElement list) = function
 	  tot = p;
 	  per = (
 	    let x, x' = fresh2 [mk "x"] [mk "y"] ctx in
-	      makePer (x, y, t) (pApp (pApp (pApp r (id x)) (id x')) Dagger)
+	      makePer (x, x', t) (pApp ctx (pApp ctx (pApp ctx r (id x)) (id x')) Dagger)
 	  )
 	}
 
@@ -284,37 +304,38 @@ let rec translateSet (ctx : ctxElement list) = function
 			     | (lb, Some s) -> (lb, Some (translateSet ctx s)))
 		   lst
       in
-      let x, y, y' = fresh3 [mk "w"; mk "t"; mk "u"; mk "p"] [mk "v"; mk "u"; mk "s"; mk "p"] [mk "w"; mk "t"; mk "r"; mk "q"] ctx in
-	{
-	  ty = SumTy (List.map (function
+      let t = SumTy (List.map (function
 				    (lb, None) -> (lb, None)
 				  | (lb, Some {ty=u}) -> (lb, Some u)
-			       ) lst');
-	  tot = (
-	    x,
-	    Cor (List.map (
-		   function
+			       ) lst')
+      in
+      let x, y, y' = fresh3
+	[mk "w"; mk "t"; mk "u"; mk "p"]
+	[mk "v"; mk "u"; mk "s"; mk "p"]
+	[mk "w"; mk "t"; mk "r"; mk "q"] ctx
+      in
+	{
+	  ty = t;
+	  tot = makeTot (x, t)
+	    (Cor (List.map
+		   (function
 		       (lb, None) -> Equal (id x, Inj (lb, None))
-		     | (lb, Some {ty=u; tot=(x',p)}) ->
-			 let x'' = fresh [x'] ~bad:[x] ctx in
-			   Cexists ((x'', u),
-				   And [Equal (id x, Inj (lb, Some (id x'')));
-					sbp ctx ~bad:[x;x''] [(x', id x'')] p]))
+		     | (lb, Some {ty=u; tot=p}) ->
+			 let x' = fresh [x] ~bad:[x] ctx in
+			   Cexists ((x', u), And [Equal (id x, Inj (lb, Some (id x'))); pApp ctx p (id x')]))
 		   lst')
-	  );
-	  per = (
-	    y, y',
-	    Cor (List.map (
-		   function
-		       (lb, None) -> And [Equal (id y,  Inj (lb, None));
-					  Equal (id y', Inj (lb, None))]
-		     | (lb, Some {ty=u; per=(z,z',q)}) ->
-			 let w, w' =  fresh2 [z] [z'] ~bad:[y;y'] ctx in
+	    );
+	  per = makePer (y, y', t)
+	    (Cor (List.map
+		   (function
+		       (lb, None) -> And [Equal (id y,  Inj (lb, None)); Equal (id y', Inj (lb, None))]
+		     | (lb, Some {ty=u; per=q}) ->
+			 let w, w' =  fresh2 [y] [y'] ~bad:[y;y'] ctx in
 			   Cexists ((w,u),
 		           Cexists ((w',u),
 				    And [Equal (id y, Inj (lb, Some (id w)));
 					 Equal (id y', Inj (lb, Some (id w')));
-					 sbp ctx ~bad:[y;y';w;w'] [(z, id w); (z', id w')] q])))
+					 pApp ctx (pApp ctx q (id w)) (id w')])))
 		   lst')
 	  )
 	}
@@ -331,11 +352,11 @@ let rec translateSet (ctx : ctxElement list) = function
 
   | L.SApp (s, t) ->
       let {ty=v; tot=p; per=q} = translateSet ctx s in
-      let t_tr = translateTerm ctx t in
+      let t' = translateTerm ctx t in
 	{
 	  ty = v;
-	  tot = setApply p t_tr;
-	  per = setApply q t_tr;
+	  tot = pTApp ctx p t';
+	  per = pTApp ctx q t';
 	}
 
   | L.SLambda ((n, s), t) ->
@@ -362,16 +383,17 @@ and translateTerm ctx = function
   | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet ctx s).ty), translateTerm ctx t)
 
   | L.The ((n, s), phi) ->
-      let {per=(x,y,p); ty=t} = translateSet ctx s in
-      let (v,z,q) = translateProp ctx phi in
-      let n', z' = fresh2 [n] [z] ~bad:[n] ctx in
+      let {per=p; ty=t} = translateSet ctx s in
+      let (v,q) = translateProp (insertTermvar n s ctx) phi in
+      let n', z = fresh2 [n] [mk "z"] ~bad:[n] ctx in
 	Obligation ((n, t), True,
-		    Obligation ((z',v),
-				And [sbp ctx ~bad:[z'] [(z, id z')] q;
-				     Forall ((n',t),
-					     Imply (sbp ctx ~bad:[z';n'] [(n, id n'); (z, id z')] q,
-						    sbp ctx ~bad:[z';n'] [(x, id n); (y, id n')] p))], id n)
-		   )
+		   Obligation ((z,v),
+			      And [pApp ctx q (id z);
+				   Forall ((n',t),
+					  Imply (pApp ctx (sbp ctx [(n, id n')] q) (id z),
+						pApp ctx (pApp ctx p (id n)) (id n')))],
+			      id n
+		    ))
 
   | L.Inj (lb, None) -> Inj (lb, None)
 
@@ -384,7 +406,7 @@ and translateTerm ctx = function
 		      let ctx' = insertTermvar n s ctx in
 			(lb, Some (n, (translateSet ctx' s).ty), translateTerm ctx' t)
                   | (lb, None, t) ->
-                      (lb, None, translateTerm (insertTermvar any L.Unit ctx) t)
+                      (lb, None, translateTerm (insertTermvar (any()) L.Unit ctx) t)
 	       )
                lst
 	    )
@@ -432,67 +454,63 @@ and translateTerm ctx = function
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * name * Outsyn.negative *)
 and translateProp ctx = function
-    L.False -> (TopTy, any, False)
+    L.False -> makeProp (any(), TopTy) False
 
-  | L.True -> (TopTy, any, True)
+  | L.True -> makeProp (any(), TopTy) True
 
-  | L.Atomic (ln, trms) ->
-      let r = fresh [mk "r"; mk "q"; mk "s"] ctx in
+  | L.Atomic ln ->
       let ty = (match getLong getProp ctx ln with
 		    S.Unstable -> NamedTy (translateSLN (L.sln_of_ln ln))
 		  | S.Stable | S.Equivalence -> TopTy)
       in
-	(ty, r, NamedProp (translateLN ln, id r, List.map (translateTerm ctx) trms))
+	(ty, NamedProp (translateLN ln))
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
       let t = fresh [mk "t"; mk "p"; mk "u"; mk "q"; mk "r"] ctx in
-	(TupleTy (List.map (fun (s,_,_) -> s) lst'), t,
-	 And (let k = ref 0 in
-		List.map (fun (_, x, p) ->
-			    let q = sbp ctx ~bad:[t] [(x, Proj (!k, id t))] p in incr k ; q)
-		  lst')
-	)
+	makeProp (t, TupleTy (List.map fst lst'))
+	  (And (let k = ref 0 in
+		  List.map
+		    (fun (_, p) -> let q = pApp ctx p (Proj (!k, id t)) in incr k ; q)
+		    lst'))
 
   | L.Imply (p, q) ->
-      let (t, x, p') = translateProp ctx p in
-      let (u, y, q') = translateProp ctx q in
-      let x', f = fresh2 [x; mk "x"; mk "y"; mk "z"] [mk "f"; mk "g"; mk "h"; mk "p"; mk "q"] ctx in
-	(ArrowTy (t, u),
-	 f,
-	 Forall ((x', t), Imply (sbp ctx ~bad:[x';f] [(x, id x')] p',
-				 sbp ctx ~bad:[x';f] [(y, App (id f, id x'))] q')))
+      let (t, p') = translateProp ctx p in
+      let (u, q') = translateProp ctx q in
+      let x, f = fresh2 [mk "x"; mk "y"; mk "z"] [mk "f"; mk "g"; mk "h"; mk "p"; mk "q"] ctx in
+	makeProp (f, ArrowTy (t, u))
+	  (Forall ((x, t),
+		  Imply (pApp ctx p' (id x), pApp ctx q' (App (id f, id x)))))
 
   | L.Iff (p, q) -> 
-      let (t, x, p') = translateProp ctx p in
-      let (u, y, q') = translateProp ctx q in
-      let x', y', f = fresh3 [x; mk "x"; mk "y"; mk "z"] [y; mk "y"; mk "z"; mk "x"] [mk "f"; mk "g"; mk "h"; mk "p"; mk "q"] ctx in
-	(TupleTy [ArrowTy (t, u); ArrowTy (u, t)],
-	 f,
-	 And [
-	   Forall ((x', t), Imply (sbp ctx ~bad:[x';f] [(x, id x')] p',
-				   sbp ctx ~bad:[x';f] [(y, App (Proj (0, id f), id x))] q'));
-	   Forall ((y', u), Imply (sbp ctx ~bad:[y';f] [(y, id y')] q',
-				   sbp ctx ~bad:[y';f] [(x, App (Proj (1, id f), id y))] p'))
-	 ]
-	)
-
+      let (t, p') = translateProp ctx p in
+      let (u, q') = translateProp ctx q in
+      let ty = TupleTy [ArrowTy (t, u); ArrowTy (u, t)] in
+      let x, y, f = fresh3
+	[mk "x"; mk "y"; mk "z"]
+	[mk "y"; mk "z"; mk "x"]
+	[mk "f"; mk "g"; mk "h"; mk "p"; mk "q"] ctx
+      in
+	makeProp (f, ty = TupleTy [ArrowTy (t, u); ArrowTy (u, t)])
+	  (And [
+	      Forall ((x', t), Imply (pApp ctx p' (id x), pApp ctx q' (App (Proj (0, id f), id x))));
+	      Forall ((x', t), Imply (pApp ctx q' (id x), pApp ctx p' (App (Proj (1, id f), id x))))
+	  ])
+	  
   | L.Or lst ->
       let rec make_labels i j =
 	if i >= j then [] else ("or" ^ (string_of_int i)) :: (make_labels (i+1) j)
       in
       let lst' = List.map (translateProp ctx) lst in
       let lbs = make_labels 0 (List.length lst) in
-      let u = fresh [mk "u"; mk "v"; mk "w"; mk "r"] ctx
-      in
-	(SumTy (List.map2 (fun lb (t,_,_) -> (lb, Some t)) lbs lst'),
-	 u,
-	 Cor (
+      let u = fresh [mk "u"; mk "v"; mk "w"; mk "r"] ctx in
+      let ty = SumTy (List.map2 (fun lb (t,_,_) -> (lb, Some t)) lbs lst') in
+	makeProp (u, ty)
+	 (Cor (
 	   List.map2
-		(fun lb (t,x,p) ->
-		   let x' = fresh [x] ~bad:[u] ctx in
-		     Cexists ((x',t), And [Equal(id u, Inj (lb, Some (id x')));
-					   sbp ctx ~bad:[x';u] [(x, id x')] p]))
+		(fun lb (t,p) ->
+		   let x = fresh [mk "x"; mk "y"] ~bad:[u] ctx in
+		     Cexists ((x,t), And [Equal(id u, Inj (lb, Some (id x))); pApp ctx p (id x)]))
 		lbs lst'
 	 ))
 
