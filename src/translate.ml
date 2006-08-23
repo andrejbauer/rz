@@ -413,31 +413,32 @@ and translateTerm ctx = function
   | L.RzQuot t -> translateTerm ctx t
 
   | L.RzChoose ((n, st1), t, u, st2) ->
-      let {ty=ty1; per=(x1,y1,p1)} = translateSet ctx st1 in
-      let {per=(x2,y2,p2)} = translateSet ctx st2 in
+      let {ty=ty1; per=p1} = translateSet ctx st1 in
+      let {per=p2} = translateSet ctx st2 in
       let n' = fresh [n] ~bad:[n] ctx in
       let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
-	     Obligation ((any, TopTy),
-			 Forall ((n', ty1), Imply (
-				   sbp ctx ~bad:[n'] [(x1, id n); (y1, id n')] p1, 
-				   sbp ctx ~bad:[n'] [(x2, v); (y2, v')] p2)),
+	     Obligation ((any(), TopTy),
+			 Forall ((n', ty1),
+				 Imply (pApp ctx (pApp ctx p1 (id n)) (id n'),
+					pApp ctx (pApp ctx p2 v) v')),
 			 v))
 
   | L.Quot (t, _) -> translateTerm ctx t
 
   | L.Choose ((n, st1), r, t, u, st2) ->
-      let {ty=ty1; per=(x1,y1,p1)} = translateSet ctx st1 in
-      let {per=(x2,y2,p2)} = translateSet ctx st2 in
+      let {ty=ty1; per=p1} = translateSet ctx st1 in
+      let {per=p2} = translateSet ctx st2 in
+      let _, q = translateProp ctx r in
       let n' = fresh [n] ~bad:[n] ctx in
       let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
-	     Obligation ((any, TopTy),
+	     Obligation ((any(), TopTy),
 			 Forall ((n', ty1), Imply (
-				   NamedProp(translateLN r, Dagger, [Tuple [id n; id n']]),
-				   sbp ctx ~bad:[n'] [(x2, v); (y2, v')] p2)),
+				   pApp ctx (pApp ctx (pApp ctx q (id n)) (id n')) Dagger,
+				   pApp ctx (pApp ctx p2 v) v')),
 			 v))
 
   | L.Let ((n, s), u, v, _) ->
@@ -445,12 +446,12 @@ and translateTerm ctx = function
 
   | L.Subin (t, sb) ->
       let ((x, s), p) = toSubset ctx sb in
-      let (ty, y, p') = translateProp (insertTermvar x s ctx) p in
+      let (ty, p') = translateProp (insertTermvar x s ctx) p in
       let t' = translateTerm ctx t in
-      let y' = fresh [y; mk "v"; mk "u"; mk "t"] ctx in
-	Obligation ((y', ty), sbp ctx ~bad:[y'] [(y, id y'); (x,t')] p', Tuple [t'; id y'])
-  | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
+      let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ctx in
+	Obligation ((y, ty), pApp ctx (pApp ctx p' t') (id y), Tuple [t'; id y])
 
+  | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * name * Outsyn.negative *)
 and translateProp ctx = function
