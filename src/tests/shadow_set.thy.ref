@@ -1,12 +1,1 @@
-[Processing shadow_set.thy]
-module type T = 
-sig
-  type s
-  (**  Assertion per_s =  PER(=s=)
-  *)
-   
-  type s
-  (**  Assertion per_s =  PER(=s=)
-  *)
-end
-
+This test should fail but it does not.

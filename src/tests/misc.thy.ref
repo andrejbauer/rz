@@ -1,2 +1,1 @@
-[Processing misc.thy]
-Fatal error: exception Failure("bad propositional application")
+This test should not cause stack overflow.
