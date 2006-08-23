@@ -1,2 +1,2 @@
-[Processing test_misc.thy]
+[Processing misc.thy]
 Fatal error: exception Failure("bad propositional application")

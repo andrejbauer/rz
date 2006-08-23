@@ -10,7 +10,7 @@ if [ "$1" = "-v" ]
     VALIDATE=1
 fi
 
-for FILE in test_*.thy
+for FILE in *.thy
   do
   $RZ --nosave $FILE &> $FILE.out
   if [ -f $FILE.ref ]
