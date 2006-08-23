@@ -1841,8 +1841,6 @@ and annotateToplevel cntxt = function
 
   | Theorydef(nm, thry) ->
       begin
-	print_endline "Found Theorydef, with theory";
-	print_endline (string_of_expr thry);
 	let (lthry, tknd) = annotateTheory cntxt False(*X*) thry 
 	in (insertTheoryVariable cntxt nm lthry tknd, 
 	   L.Theorydef(nm, lthry))
