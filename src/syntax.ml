@@ -82,6 +82,9 @@ and expr =
   | Exists of binding * prop
   | Unique of binding * prop
 
+  (*** Theories ***)
+  | Theory of theory_element list
+
 and sentence_type =
     Axiom
   | Parameter
@@ -94,21 +97,15 @@ and theory_element =
   | Definition of name * expr option * expr
   | Value      of sentence_type * (name list * expr) list
   | Implicit   of name list * expr
-  | Include    of theory
+  | Include    of expr
   | Comment    of string
 
-and model_binding = model_name * theory
-
-and theory = 
-    Theory of theory_element list
-  | TheoryName of theory_name
-  | TheoryFunctor of model_binding * theory
-  | TheoryApp of theory * model
+and model_binding = model_name * expr
 
 and toplevel = 
-    Theorydef of theory_name * theory
+    Theorydef of theory_name * expr
   | TopComment of string
-  | TopModel  of model_name * theory
+  | TopModel  of model_name * expr
 
 
 let string_of_label l = l
@@ -195,31 +192,12 @@ and string_of_expr = function
   | Forall (bnd, e) -> "forall " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
   | Exists (bnd, e) -> "exists " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
   | Unique (bnd, e) -> "exists1 " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
-
-let rec string_of_bnd = function
-        (name, None    ) -> string_of_name name
-     |  (name, Some set) -> "(" ^ string_of_name name  ^  ":"  ^  string_of_expr set ^ ")"
+  | Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "\nend"
 
 and string_of_bnds = function
     [] -> ""
   | [bnd] -> string_of_bnd bnd
   | bnd :: bnds -> string_of_bnd bnd ^ " " ^ string_of_bnds bnds
-
-and string_of_mbnd = function
-        (mdlnm, thry) -> string_of_name mdlnm ^ " : " ^ string_of_theory thry
-
-and string_of_mbnds = function
-    [] -> ""
-  | [mbnd] -> string_of_mbnd mbnd
-  | mbnd :: mbnds -> string_of_mbnd mbnd ^ " " ^ string_of_mbnds mbnds
-
-and string_of_theory = function
-    Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
-  | TheoryName thrynm -> string_of_name thrynm
-  | TheoryApp (thry, mdl) -> 
-      string_of_theory thry ^ "(" ^ string_of_model mdl ^ ")"
-  | TheoryFunctor (mbnd, thry) ->
-      "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_sentence_type = function
     Axiom -> "Axiom"
@@ -248,7 +226,7 @@ and string_of_theory_element = function
   | Implicit (nms, e) ->
       "Implicit Type " ^
 	(String.concat " " (List.map string_of_name nms) ^ " : " ^ string_of_expr e) ^ "."
-  | Include thry -> "Include " ^ string_of_theory thry ^ "."
+  | Include thry -> "Include " ^ string_of_expr thry ^ "."
   | Comment c -> "(* " ^ c ^ " *)"
 
 and string_of_theory_elements = function
@@ -256,15 +234,15 @@ and string_of_theory_elements = function
   | elt :: elts -> string_of_theory_element elt ^ "\n" ^ 
                    string_of_theory_elements elts
  
-and string_of_model = string_of_expr
+and string_of_model expr = string_of_expr expr
 
 and string_of_toplevel = function
     Theorydef (thrynm, thry) -> 
-      "theory " ^ string_of_name thrynm ^ " = " ^ string_of_theory thry
+      "theory " ^ string_of_name thrynm ^ " = " ^ string_of_expr thry
   | TopComment strng ->
       "(* " ^ strng ^ " *)"
-  | TopModel (mdlnm, thry) ->
-      "model " ^ string_of_name mdlnm ^ " = " ^ string_of_theory thry
+  | TopModel (mdlnm, expr) ->
+      "model " ^ string_of_name mdlnm ^ " = " ^ string_of_expr expr
 
 let freshNameString = 
   let counter = ref 0

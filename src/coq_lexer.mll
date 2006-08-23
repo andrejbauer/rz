@@ -58,12 +58,19 @@
       Lexing.pos_lnum = pos.Lexing.pos_lnum + 1;
       Lexing.pos_bol = pos.Lexing.pos_cnum;
     }
+
+  (* Remove the first character from a string *)
+  let trim w = 
+    String.sub w 1 (String.length w - 1)
 }
 
 
+(*
 let ident = ['a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
-
 let tident = ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
+*)
+
+let ident = ['A'-'Z' 'a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
 
 let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
@@ -76,11 +83,10 @@ rule token = parse
   | ":="            { COLONEQUAL }
   | '|'             { BAR }
   | "->"            { ARROW }
-  | '`' ident       { let w = Lexing.lexeme lexbuf in
-			LABEL (String.sub w 1 (String.length w - 1))
-		    }
-  | '.' ['0'-'9']+  { let w = Lexing.lexeme lexbuf in
-			PROJECT (int_of_string (String.sub w 1 (String.length w - 1))) }
+  | '`' ident       { LABEL (trim (Lexing.lexeme lexbuf)) }
+  | '.' ['0'-'9']+  { PROJECT (int_of_string (trim (Lexing.lexeme lexbuf))) }
+  | '.' ident       { MPROJECT (trim (Lexing.lexeme lexbuf)) }
+  | '.' '('         { PERIOD_LPAREN }
   | '.'             { PERIOD }
   | ':'             { COLON }
   | ":>"            { SUBIN }
@@ -106,6 +112,7 @@ rule token = parse
                           with Not_found -> NAME w
                         end
                     }
+(*
   | tident           { let w = Lexing.lexeme lexbuf in
                         begin
                           try
@@ -113,6 +120,7 @@ rule token = parse
                           with Not_found -> TNAME w
                         end
                     }
+*)
   | "!" symbolchar *
             { PREFIXOP(Lexing.lexeme lexbuf) }
   | ['~' '?'] symbolchar *

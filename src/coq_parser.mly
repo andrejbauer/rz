@@ -9,8 +9,6 @@
 
   exception Impossible
 
-  let foldTheoryFunctor bnd bdy = List.fold_right (fun bnd thr -> TheoryFunctor (bnd, thr)) bnd bdy
-
   let makeWord strng = N (strng, Word)
   let makeIdent (strng, fxty) = Ident (N (strng, fxty))
   let makeMProj mdl (strng, fxty) = MProj (mdl, N (strng, fxty))
@@ -65,7 +63,6 @@
 %token <string> INFIXOP2
 %token <string> INFIXOP3
 %token <string> INFIXOP4
-%token <int> PROJECT
 %token <string> LABEL
 %token LBRACE
 %token LBRACK
@@ -74,14 +71,17 @@
 %token MATCH
 %token MODEL
 %token MODULE
+%token <string> MPROJECT
 %token <string> NAME
 %token NOT
 %token ORSYMBOL
 %token PARAMETER
 %token PERCENT
 %token PERIOD
+%token PERIOD_LPAREN
 %token PLUS
 %token <string> PREFIXOP
+%token <int> PROJECT
 %token PROP
 %token RBRACE
 %token RBRACK
@@ -95,7 +95,7 @@
 %token THE
 %token THEORY
 %token THY
-%token <string> TNAME
+/* %token <string> TNAME */
 %token TRUE
 %token TYPE
 %token UNIQUE
@@ -115,11 +115,11 @@
 %nonassoc COMMA DOUBLEARROW
 %nonassoc FORALL EXISTS UNIQUE THE NOT
 %right ARROW
-%left ORSYMBOL
-%left ANDSYMBOL
+%right ORSYMBOL
+%right ANDSYMBOL
 
 %nonassoc LET IN CHOOSE FROM
-%nonassoc PERIOD
+%nonassoc PERIOD PERIOD_LPAREN
 %nonassoc EQUAL 
 %nonassoc FUN MATCH WITH BAR
 %nonassoc SUBIN SUBOUT
@@ -145,23 +145,14 @@ toplevels:
   | toplevel toplevels      { $1 :: $2 }
 
 toplevel:
-  | THEORY TNAME thargs COLONEQUAL theory { Theorydef (makeWord $2, foldTheoryFunctor $3 $5) }
+  | THEORY NAME tbinderz COLONEQUAL expr   { Theorydef (makeWord $2, makeLambda $3 $5) }
   | COMMENT                              { TopComment($1) }
-  | MODEL NAME COLON theory              { TopModel(makeWord $2, $4) }
-  | MODULE TYPE TNAME PERIOD theory_elements END TNAME PERIOD 
+  | MODEL NAME COLON expr                { TopModel(makeWord $2, $4) }
+  | MODULE TYPE NAME PERIOD theory_elements END NAME PERIOD 
       { if $3 = $7 then
 	  Theorydef (makeWord $3, Theory $5) 
         else
           nameError $3 $7 7}
-
-thargs:
-  |                                         { [] }
-  | LPAREN NAME COLON theory RPAREN thargs  { (makeWord $2, $4) :: $6 }
-
-theory:
-  | TNAME                                { TheoryName (makeWord $1) }
-  | theory LPAREN expr RPAREN           { TheoryApp ($1, $3) }
-  | THY theory_elements END             { Theory $2 }
 
 theory_elements:
   |                            	   { [] }
@@ -185,7 +176,7 @@ theory_element:
   | parameter_decl ident_list COLON expr PERIOD       { Value ($1, [($2, $4)]) }
   | parameter_decl assums PERIOD                      { Value ($1, $2) }
   | IMPLICIT TYPE ident_list COLON expr PERIOD        { Implicit ($3, $5) }
-  | INCLUDE theory PERIOD                             { Include $2 }
+  | INCLUDE expr PERIOD                               { Include $2 }
   | COMMENT                                           { Comment ($1) }
 
 decl:
@@ -239,15 +230,9 @@ operator:
   | INFIXOP3         { $1, Infix3 }
   | STAR             { "*", Infix3 }
 
-
-model:
-  | TNAME                                     { Ident (makeWord $1) }
-  | model PERIOD TNAME                        { MProj ($1, makeWord $3) }
-  | model LPAREN model RPAREN                 { App ($1, $3) }
-
 name:
-  | model PERIOD NAME                     { makeMProj $1 ($3, Word) }
-  | model PERIOD LPAREN operator RPAREN   { makeMProj $1 $4 }
+  | name MPROJECT                        { makeMProj $1 ($2, Word) }
+  | name PERIOD_LPAREN operator RPAREN   { makeMProj $1 $3 }
   | NAME                                  { makeIdent ($1, Word) }
   | LPAREN operator RPAREN                { makeIdent $2 }
 
@@ -270,6 +255,8 @@ simple_expr:
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
   | LBRACK sum_list RBRACK                    { Sum $2 }
 
+  | THY theory_elements END                   { Theory $2 }
+
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
   | RZ simple_expr                            { Rz $2 }
@@ -280,13 +267,13 @@ apply_expr:
 expr:
 /*  | simple_expr                               { $1 }  */
   | apply_expr                                { $1 }
-  | or_list                                   { Or $1 }
-  | and_list                                  { And $1 }
+  | or_list %prec ORSYMBOL                    { Or $1 }
+  | and_list %prec ANDSYMBOL                  { And $1 }
   | expr EQUAL expr                           { Equal ($1, $3) }
   | NOT expr                                  { Not $2 }
   | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
   | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
-  | product_list                              { Product $1 }
+  | product_list %prec PLUS /* < STAR */      { Product $1 }
   | expr IFFSYMBOL expr                       { Iff ($1, $3) }
   | FORALL xbinder_list COMMA expr             { Forall ($2, $4) }
   | EXISTS xbinder_list COMMA expr             { Exists ($2, $4) }
@@ -384,3 +371,10 @@ xbinderz:
                                      { [] }
   | xbinder xbinderz                 { $1 :: $2 }
 */
+
+tbinder:
+    LPAREN ident COLON expr RPAREN  { ([$2], Some $4) }
+
+tbinderz:
+                                    { [] }
+  | tbinder tbinderz                { $1 :: $2 }

@@ -50,11 +50,11 @@ lexer.cmi: lexer.mli parser.mli syntax.mli
 
 coq_parser.cmo: coq_parser.ml coq_parser.cmi
 
-coq_parser.cmi: coq_parser.mli syntax.cmo
+coq_parser.cmi: coq_parser.mli syntax.cmo name.cmo
 	$(OCAMLC) $(OCAMLFLAGS) -c coq_parser.mli
 
-coq_lexer.cmi: coq_lexer.mli coq_parser.mli syntax.cmo
-	$(OCAMLC) $(OCAMLFLAGS) -c coq_lexer.mli
+coq_lexer.ml: coq_lexer.mll syntax.cmo name.cmo
+	$(OCAMLLEX) coq_lexer.mll
 
 $(TARGETS): %: $(BYTE_OBJS) %.cmo
 	$(OCAMLC) -o rz $(OCAMLFLAGS) $(LIB_OBJS) $+ 

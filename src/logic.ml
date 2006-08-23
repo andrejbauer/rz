@@ -57,79 +57,85 @@ and model_binding = model_name * theory
 (** first-order proposition *)
 and proposition =
     False
-  | True
-  | Atomic  of longname
-  | And     of proposition list
-  | Imply   of proposition * proposition
-  | Iff     of proposition * proposition
-  | Or      of proposition list
-  | Forall  of binding * proposition
-  | Exists  of binding * proposition
-  | Unique  of binding * proposition
-  | Not     of proposition
-  | Equal   of set * term * term
-  | PApp    of proposition * term
-  | PLambda of binding * proposition
-  | EquivCoerce of set * proposition
+    | True
+    | Atomic  of longname
+    | And     of proposition list
+    | Imply   of proposition * proposition
+    | Iff     of proposition * proposition
+    | Or      of proposition list
+    | Forall  of binding * proposition
+    | Exists  of binding * proposition
+    | Unique  of binding * proposition
+    | Not     of proposition
+    | Equal   of set * term * term
+    | PApp    of proposition * term
+    | PLambda of binding * proposition
+    | EquivCoerce of set * proposition
 
 and set =
     Empty
-  | Unit  (* Unit is the singleton containing EmptyTuple *)
-  | Basic    of set_longname
-  | Product  of binding list
-  | Exp      of name * set * set
-  | Sum      of (label * set option) list
-  | Subset   of binding * proposition
-  | Rz       of set (** the set of realizers *)
-  | Quotient of set * proposition
-  | SApp     of set * term
-  | SLambda  of binding * set
+    | Unit  (* Unit is the singleton containing EmptyTuple *)
+    | Basic    of set_longname
+    | Product  of binding list
+    | Exp      of name * set * set
+    | Sum      of (label * set option) list
+    | Subset   of binding * proposition
+    | Rz       of set (** the set of realizers *)
+    | Quotient of set * proposition
+    | SApp     of set * term
+    | SLambda  of binding * set
 
 and proptype =
     Prop
-  | StableProp
-  | EquivProp of set
-  | PropArrow of name * set * proptype
+    | StableProp
+    | EquivProp of set
+    | PropArrow of name * set * proptype
 
 and setkind =
     KindSet
-  | KindArrow of name * set * setkind
+    | KindArrow of name * set * setkind
 
 and term =
     EmptyTuple
-  | Var      of longname
-  | Tuple    of term list
-  | Proj     of int * term
-  | App      of term * term
-  | Lambda   of binding  * term
-  | The      of binding  * proposition (* description operator *)
-  | Inj      of label * term option
-  | Case     of term * (label * binding option * term) list
-  | RzQuot   of term
-  | RzChoose of binding * term * term * set
-  | Quot     of term * proposition
-  | Choose   of binding * proposition * term * term * set
-  | Let      of binding * term * term * set  (* set is type of the whole let *)
-  | Subin    of term * set
-  | Subout   of term * set
+    | Var      of longname
+    | Tuple    of term list
+    | Proj     of int * term
+    | App      of term * term
+    | Lambda   of binding  * term
+    | The      of binding  * proposition (* description operator *)
+    | Inj      of label * term option
+    | Case     of term * (label * binding option * term) list
+    | RzQuot   of term
+    | RzChoose of binding * term * term * set
+    | Quot     of term * proposition
+    | Choose   of binding * proposition * term * term * set
+    | Let      of binding * term * term * set  (* set is type of the whole let *)
+    | Subin    of term * set
+    | Subout   of term * set
 
 and theory_element =
     Set of set_name * setkind
-  | Let_set of set_name * setkind * set
-  | Predicate of name * proptype
-  | Let_predicate of name * proptype * proposition
-  | Let_term of name * set * term
-  | Value of name * set
-  | Sentence of name * model_binding list * proposition
-  | Model of model_name * theory
-  | Comment of string
+    | Let_set of set_name * setkind * set
+    | Predicate of name * proptype
+    | Let_predicate of name * proptype * proposition
+    | Let_term of name * set * term
+    | Value of name * set
+    | Sentence of name * model_binding list * proposition
+    | Model of model_name * theory
+    | Comment of string
 
 and theory = 
     Theory of theory_element list
-  | TheoryName of theory_name
-  | TheoryFunctor of model_binding * theory
-  | TheoryApp of theory * model
-    
+    | TheoryName of theory_name
+    | TheoryLambda of model_binding * theory   (* Family of theories *)
+    | TheoryArrow of model_binding * theory    (* Theory of a family of models *)
+    | TheoryApp of theory * model
+	
+and theorykind =
+    ModelTheoryKind    (* Kind of theories that classify models,
+		          including classifiersfor families of models. *)
+  | TheoryKindArrow of model_binding * theorykind (* Classifies TheoryLambdas *)
+
 and toplevel =
     Theorydef of theory_name * theory
   | TopComment of string
@@ -161,6 +167,19 @@ let fThe x y = The(x,y)
 let fExp       (x,y) z = Exp(x,y,z)
 let fPropArrow (x,y) z = PropArrow(x,y,z)
 let fKindArrow (x,y) z = KindArrow(x,y,z)
+
+(************************)
+(* Random useful things *)
+(************************)
+
+let foldTheoryArrow bnds bdy = 
+  List.fold_right (fun mbnd thry -> TheoryArrow (mbnd, thry)) bnds bdy
+
+let foldTheoryLambda bnds bdy = 
+  List.fold_right (fun mbnd thry -> TheoryLambda (mbnd, thry)) bnds bdy
+
+let foldTheoryKindArrow bnds bdy = 
+  List.fold_right (fun mbnd thry -> TheoryKindArrow (mbnd, thry)) bnds bdy
 
 (****************************************)
 (* Substitution functions for Logic.xxx *)
@@ -473,8 +492,10 @@ and string_of_theory = function
   | TheoryName thrynm -> string_of_name thrynm
   | TheoryApp (thry, mdl) -> 
       string_of_theory thry ^ "(" ^ string_of_model mdl ^ ")"
-  | TheoryFunctor (mbnd, thry) ->
-      "TFunctor " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
+  | TheoryLambda (mbnd, thry) ->
+      "TLambda " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
+  | TheoryArrow (mbnd, thry) ->
+      "TArrow " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_theory_element = function
     Set (stnm, knd) -> "set " ^ string_of_name stnm ^ " : " ^ (string_of_kind knd)
@@ -908,9 +929,13 @@ and substProptype substitution = function
 let rec substTheory substitution = function 
       Theory elts       -> Theory (substTheoryElts substitution elts)
     | TheoryName thrynm -> TheoryName thrynm
-    | TheoryFunctor ((y, thry1), thry2) ->
+    | TheoryArrow ((y, thry1), thry2) ->
 	let (sbst',y') = updateBoundName substitution y in
-	  TheoryFunctor((y, substTheory substitution thry1),
+	  TheoryArrow((y, substTheory substitution thry1),
+		        substTheory sbst' thry2)
+    | TheoryLambda ((y, thry1), thry2) ->
+	let (sbst',y') = updateBoundName substitution y in
+	  TheoryLambda((y, substTheory substitution thry1),
 		        substTheory sbst' thry2)
     | TheoryApp (thry, mdl) ->
 	TheoryApp (substTheory substitution thry,  
