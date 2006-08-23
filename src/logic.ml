@@ -70,6 +70,7 @@ and proposition =
   | Equal   of set * term * term
   | PApp    of proposition * term
   | PLambda of binding * proposition
+  | EquivCoerce of set * proposition
 
 and set =
     Empty
@@ -119,7 +120,7 @@ and theory_element =
   | Let_predicate of name * proptype * proposition
   | Let_term of name * set * term
   | Value of name * set
-  | Sentence of sentence_type * name * model_binding list * binding list * proposition
+  | Sentence of name * model_binding list * proposition
   | Model of model_name * theory
   | Comment of string
 
@@ -134,6 +135,13 @@ and toplevel =
   | TopComment of string
   | TopModel  of model_name * theory
 
+
+(** Helper function to determined stability of a proptype. *)
+let rec is_stable = function
+    Prop -> false
+  | StableProp -> true
+  | EquivProp _ -> true
+  | PropArrow (_, _, pt) -> is_stable pt
 
 (***************************************************)
 (* Constructors-with-bindings as curried functions *)
@@ -238,6 +246,14 @@ and substMSet m mdl s =
     | SLambda ((n,s), t) -> SLambda ((n, subst s), subst t)
   in
     subst s
+
+and substMSetOption m mdl = function
+    None -> None
+  | Some s -> Some (substMSet m mdl s)
+
+and substMSetkind m mdl = function
+    KindSet -> KindSet
+  | KindArrow (n, s, k) -> KindArrow (n, substMSet m mdl s, substMSetkind m mdl k)
 
 (*
   substProp:  name -> term -> proposition -> proposition
