@@ -382,7 +382,7 @@ and optProp ctx = function
   | IsEquiv (ms, p)         -> IsEquiv (optModest ctx ms, optProp ctx p)
   | NamedTotal n            -> NamedTotal n
   | NamedPer n              -> NamedPer n
-  | NamedProp n             -> NamedProp n
+  | NamedProp (n, t)        -> NamedProp (n, optTerm' ctx t)
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2

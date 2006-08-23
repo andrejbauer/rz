@@ -469,7 +469,8 @@ and translateProp ctx = function
 	  then TopTy
 	  else NamedTy (translateSLN (L.sln_of_ln ln)))
       in
-	(ty, NamedProp (translateLN ln))
+      let r = fresh [mk "r"] ctx in
+	(ty, PLambda ((r, ty), NamedProp (translateLN ln, id r)))
 
   | L.And lst ->
       let lst' = List.map (translateProp ctx) lst in
@@ -582,18 +583,17 @@ and translateProp ctx = function
 and translateBinding ctx bind =
   List.map (fun (n, s) -> n, (translateSet ctx s).ty) bind
 
-and translateProptype ctx n = function
-    L.Prop ->
-      (match n with
-	  None -> failwith "invalid proptype translation"
-	| Some n -> NamedTy (tln_of_tyname n))
-  | L.StableProp -> TopTy
-  | L.EquivProp s ->
-      let {ty=t} = translateSet ctx s in
-	ArrowTy (t, ArrowTy (t, TopTy))
-  | L.PropArrow (m, s, pt) ->
-      let {ty=t} = translateSet ctx s in
-	ArrowTy (t, translateProptype (insertTermvar m s ctx) n pt)
+and translateProptype ctx n pt =
+  let rec to_modest = function
+      L.Prop ->
+	(match n with
+	    None -> failwith "invalid proptype translation"
+	  | Some n -> L.Basic (L.set_longname_of_name n))
+    | L.StableProp -> L.Unit
+    | L.EquivProp s -> L.Exp (wildName(), s, L.Exp (wildName(), s, L.Unit) )
+    | L.PropArrow (m, s, pt) -> L.Exp (m, s, to_modest pt)
+  in
+    translateSet ctx (to_modest pt)
 
 and bindings_of_proptype ctx = function
     L.Prop | L.StableProp | L.EquivProp _ -> []
@@ -646,12 +646,11 @@ and translateTheoryElements ctx = function
             [((string_of_name n) ^ "_def",
 	     nest_forall binds
 	       (Forall ((r, ty),
-		       Iff (
-			   PApp (List.fold_left (fun p (y,_) -> PApp (p, id y))
-				  (NamedProp (ln_of_name n)) binds, id r),
-			   pApp ctx (List.fold_left (fun p (y,_) -> pApp ctx p (id y)) p' binds) (id r)
-		       )
-		 ))
+		  Iff (
+		      (List.fold_left (fun p (y,_) -> PApp (p, id y))
+			(NamedProp (ln_of_name n, id r)) binds),
+		      pApp ctx (List.fold_left (fun p (y,_) -> pApp ctx p (id y)) p' binds) (id r)
+		  )))
 	    )])
 	) :: sgnt,
       insertPropvar n pt smmry

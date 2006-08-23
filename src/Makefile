@@ -18,8 +18,8 @@ BYTE_OBJS = name.cmo \
 	coq_parser.cmo \
 	coq_lexer.cmo \
 	flags.cmo \
-        newinfer.cmo \
 	logic.cmo \
+        newinfer.cmo \
         outsyn.cmo \
 	pp.cmo \
         opt.cmo \
@@ -40,13 +40,13 @@ default: $(TARGETS)
 all: $(TARGETS) $(OPT_TARGETS)
 	echo $(OPT_TARGETS); echo $(TARGETS)
 
-parser.cmo: parser.ml parser.cmi
-
-parser.cmi: parser.mli syntax.cmi
-	$(OCAMLC) $(OCAMLFLAGS) -c parser.mli
-
-lexer.cmi: lexer.mli parser.mli syntax.mli
-	$(OCAMLC) $(OCAMLFLAGS) -c lexer.mli
+#parser.cmo: parser.ml parser.cmi
+#
+#parser.cmi: parser.mli syntax.cmi
+#	$(OCAMLC) $(OCAMLFLAGS) -c parser.mli
+#
+#lexer.cmi: lexer.mli parser.mli syntax.mli
+#	$(OCAMLC) $(OCAMLFLAGS) -c lexer.mli
 
 coq_parser.cmo: coq_parser.ml coq_parser.cmi
 

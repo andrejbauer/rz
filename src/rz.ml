@@ -43,7 +43,7 @@ let read fn =
   let fin = open_in fn in
   let lexbuf = Lexing.from_channel fin in
   try
-    let e = Parser.toplevels Lexer.token lexbuf in
+    let e = Coq_parser.toplevels Coq_lexer.token lexbuf in
       (close_in fin ;
        e)
   with
@@ -60,7 +60,7 @@ let read fn =
       end
 
 (* Helper function:  parses a string [currently unused]. *)
-let parse str = Parser.toplevels Lexer.token (Lexing.from_string str);;
+let parse str = Coq_parser.toplevels Coq_lexer.token (Lexing.from_string str);;
 
 (* Helper function:  write the final output to a pretty-printing
    formatter. *)
@@ -82,7 +82,7 @@ let rec process = function
       let thy = read fn in
 
       let (infer_state', lthy) = 
-	Infer.annotateToplevels infer_state thy in
+	Newinfer.annotateToplevels infer_state thy in
 
       let _ = 
 	(if (! Flags.do_dumpinfer) then
@@ -92,7 +92,7 @@ let rec process = function
 	  in (print_endline "----------------";
 	      print_endline "After Inference:";
 	      print_endline "----------------";
-	      List.iter print_item thy';
+	      List.iter print_item lthy;
 	      print_endline "----------------")
 	else ()) in
 
@@ -153,7 +153,7 @@ try
     stored).
   *)
   process (List.rev !filenames, 
-	   Infer.emptyCtx, 
+	   Newinfer.emptyContext, 
 	   Translate.emptyCtx, 
 	   Opt.emptyCtx)
 with

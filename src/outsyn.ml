@@ -60,7 +60,7 @@ and proposition =
   | IsEquiv of modest * proposition            (* is a stable equivalence relation on a modest set *)
   | NamedTotal of ty_longname                  (* totality of a term *)
   | NamedPer of ty_longname                    (* extensional equality of terms *)
-  | NamedProp of longname                      (* basic proposition *)
+  | NamedProp of longname * term               (* basic proposition with a realizer *)
   | Equal of term * term                       (* (observational?) equality of terms *)
   | And of proposition list                    (* conjunction *)
   | Cor of proposition list                    (* classical disjunction *)
@@ -162,8 +162,10 @@ and fvProp' flt acc = function
   | Cexists ((n, _), p) -> fvProp' (n::flt) acc p
   | Not p -> fvProp' flt acc p
   | Iff (p, q) -> fvProp' flt (fvProp' flt acc p) q
-  | NamedProp (LN(None,nm)) -> if List.mem nm flt then acc else nm :: acc
-  | NamedProp (LN(Some _, _)) -> acc
+  | NamedProp (LN(None,nm), t) ->
+      let acc' = fvTerm' flt acc t in
+	if List.mem nm flt then acc' else nm :: acc'
+  | NamedProp (LN(Some _, _), t) -> fvTerm' flt acc t
   | PApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | PLambda ((n, _), p) -> fvProp' (n::flt) acc p
@@ -293,7 +295,7 @@ and substProp ?occ sbst = function
 	      substProp ?occ sbst r)
   | NamedTotal tln -> NamedTotal (substTLN ?occ sbst tln)
   | NamedPer tln -> NamedPer (substTLN ?occ sbst tln)
-  | NamedProp ln -> NamedProp (substLN ?occ sbst ln)
+  | NamedProp (ln, t) -> NamedProp (substLN ?occ sbst ln, substTerm ?occ sbst t)
   | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
   | And lst -> And (List.map (substProp ?occ sbst) lst)
   | Cor lst -> Cor (List.map (substProp ?occ sbst) lst)
@@ -534,7 +536,8 @@ and string_of_prop level p =
     | IsEquiv (m, p) -> (0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest m ^ ")")
     | NamedTotal n -> (0, "||" ^ (string_of_tln n) ^ "||")
     | NamedPer n -> (0, "(=_" ^ string_of_tln n ^ ")")
-    | NamedProp n -> (0, string_of_ln n)
+    | NamedProp (n, Dagger) -> (0, string_of_ln n)
+    | NamedProp (n, t) -> (9, string_of_term t ^ " |= " ^ string_of_ln n)
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
     | And [] -> (0, "true")
     | And lst -> (10, String.concat " and " (List.map (string_of_prop 10) lst))
@@ -558,10 +561,10 @@ and string_of_prop level p =
     | PApp (NamedTotal n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_tln n) ^ "||")
     | PApp (PApp (NamedPer n, t), u) ->
 	(9, (string_of_term' 9 t) ^ " =_" ^ (string_of_tln n) ^ " " ^ (string_of_term' 9 u))
-    | PApp (NamedProp n, Dagger) -> (0, string_of_ln n)
-    | PApp (NamedProp n, t) -> (9, string_of_term t ^ " |= " ^ string_of_ln n)
-    | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op), u), t) ->
+    | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, Dagger), u), t) ->
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
+    | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, r), u), t) ->
+	(9, string_of_term r ^ " |= " ^ (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
   in

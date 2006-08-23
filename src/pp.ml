@@ -191,7 +191,7 @@ and output_totalbinds ppf lst =
 
 and output_term_0 ppf = function
     Id ln -> output_ln ppf ln
-  | Star -> fprintf ppf "()"
+  | EmptyTuple -> fprintf ppf "()"
   | Dagger -> fprintf ppf "DAGGER"
   | Tuple [] -> fprintf ppf "()"
   | Tuple [t] -> output_term_0 ppf t
@@ -267,13 +267,15 @@ and output_prop_10 ppf = function
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
-    NamedPer ln, t, u) -> 
+    PApp (PApp (NamedPer ln, t), u) -> 
       fprintf ppf "%a =%a= %a" 
         output_term_9 t   output_tln ln   output_term_8 u
-  | NamedProp (n, Dagger, u) -> 
-       output_app ppf (n,u)  (* ??? *)
-  | NamedProp (n, t, u) ->
-      fprintf ppf "%a |= %a"   output_term_8 t   output_app (n,u)
+  | PApp (p, t) ->
+      fprintf ppf "%a %a"
+	output_prop_9 p   output_term_8 t
+  | NamedProp (ln, Dagger) -> output_ln ppf ln
+  | NamedProp (ln, t) ->
+      fprintf ppf "%a |= %a"   output_term_8 t   output_ln ln
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
@@ -286,17 +288,14 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
+  | NamedPer ln -> output_tln ppf ln
   | IsPer stnm -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
-  | IsPredicate (prdct,t,x,y,p) ->
-      fprintf ppf "@[PREDICATE(@[<hov>%s,@ %a,@ @[lam %s %s.(@[%a@])@]@])@]"
-        (Name.string_of_name prdct)
-        output_ty t
-        (Name.string_of_name x)
-        (Name.string_of_name y)
-        output_prop p
-  | NamedTotal (ln, t) -> 
-      fprintf ppf "%a : ||%a||"  
-	output_term t   output_tln ln
+  | IsPredicate (nm, ms) ->
+      fprintf ppf "@[PREDICATE(@[<hov>%s, ...@])]"
+        (Name.string_of_name nm)
+  | NamedTotal ln -> 
+      fprintf ppf "||%a||"  
+	output_tln ln
   | And [] -> fprintf ppf "true"
   | Cor [] -> fprintf ppf "false"
   | prp -> fprintf ppf "(@[<hov>%a@])"   output_prop prp
@@ -340,18 +339,13 @@ and output_ty_0 ppf = function
     NamedTy ln -> output_tln ppf ln
   | UnitTy     -> fprintf ppf "unit"
   | TopTy      -> fprintf ppf "top"
-  | TYPE       -> fprintf ppf "TYPE"
   | TupleTy [] -> fprintf ppf "top"
   | SumTy []   -> fprintf ppf "void"
   | typ        -> ((* print_string (string_of_ty typ); *)
 		   fprintf ppf "(%a)"  output_ty typ)
 
-and output_assertion ppf = function
-    (nm, [], p) ->
-      fprintf ppf "@[<hov 2>Assertion %s = @ %a@]"  nm   output_prop p
-  | (nm, binds, p) ->
-      fprintf ppf "@[<hov 7>Assertion %s (%a) = @ %a@]" 
-	nm   output_assertion_binds binds   output_prop p
+and output_assertion ppf (nm, p) =
+  fprintf ppf "@[<hov 2>Assertion %s = @ %a@]"  nm   output_prop p
 
 and output_assertions ppf = function
     [] -> ()
