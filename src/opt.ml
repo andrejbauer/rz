@@ -77,8 +77,10 @@ let rec lookupModulLong ctx = function
 	 | _ -> raise (Impossible "lookupModulLong")
        end
   | ModulApp (mdl1, mdl2)  -> 
-       let    ( Summary_Functor ( mdlnm, summary11 ), sub) = lookupModulLong ctx mdl1
-       in  ( summary11, insertModulvar sub mdlnm mdl2 )
+      (match lookupModulLong ctx mdl1 with
+	  Summary_Functor ( mdlnm, summary11 ), sub -> (summary11, insertModulvar sub mdlnm mdl2)
+	| Summary_Struct _, _ -> raise (Impossible "lookupModulLong, app")
+      )
 
 
 let lookupType  ctx   nm = 
@@ -166,22 +168,11 @@ let joinTy ctx s1 s2 =
 
       in let rec joinSums = function 
 	  ([], s2s) -> s2s
-        | ((l1,None)::s1s, s2s) ->
-	    (if (List.mem_assoc l1 s2s) then
-	      try
-		let xNone = List.assoc l1 s2s
-		in (l1,None) :: joinSums(s1s, s2s)
-              with _ -> raise (Impossible "jointTy 1")
-	    else (l1,None) :: joinSums(s1s, s2s))
-        | ((l1,Some s1)::s1s, s2s) ->
-	    (if (List.mem_assoc l1 s2s) then
-	      try
-		let Some s2 = List.assoc l1 s2s
-		in (** Assume input to optimizer typechecks *)
-		   (l1,None) :: joinSums(s1s, s2s)
-              with _ -> raise (Impossible "jointTy 2")
-	    else (l1,None) :: joinSums(s1s, s2s))
-
+	| ((l1,t)::s1s, s2s) ->
+	    if List.mem_assoc l1 s2s then
+	      joinSums (s1s, s2s)
+	    else
+	      (l1,t) :: (joinSums (s1s, s2s))
 
       in match (s1',s2') with
         | (SumTy lsos1, SumTy lsos2) -> SumTy (joinSums (lsos1, lsos2))
@@ -224,7 +215,7 @@ let rec optBinds ctx = function
 
 let simpleTerm = function
     Id _ -> true
-  | Star -> true
+  | EmptyTuple -> true
   | Dagger -> true
   | _ -> false
 
@@ -251,7 +242,7 @@ let rec optTerm ctx = function
             in  match (optTy ctx oldty) with
                    TopTy -> (oldty, Dagger, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
- | Star -> (UnitTy, Star, UnitTy)
+ | EmptyTuple -> (UnitTy, EmptyTuple, UnitTy)
  | Dagger -> (print_string "Is this a Dagger which I see before me?\n";
 	      (UnitTy, Dagger, UnitTy))
  | App(e1,e2) -> 
@@ -387,14 +378,11 @@ and optProp ctx = function
     True                    -> True
   | False                   -> False
   | IsPer nm                -> IsPer nm
-  | IsPredicate (nm,ty,x,y,p) ->
-      IsPredicate (nm, optTy ctx ty, x, y, optProp (insertType (insertType ctx x ty) y ty) p)
-  | NamedTotal(str, e)      -> 
-      NamedTotal(str, optTerm' ctx e)
-  | NamedPer(str, e1, e2)   -> 
-      NamedPer (str, optTerm' ctx e1, optTerm' ctx e2)
-  | NamedProp(str, e1, es2) -> 
-      NamedProp(str, optTerm' ctx e1, List.map (optTerm' ctx) es2)
+  | IsPredicate (nm, ms)    -> IsPredicate (nm, optModest ctx ms)
+  | IsEquiv (ms, p)         -> IsEquiv (optModest ctx ms, optProp ctx p)
+  | NamedTotal n            -> NamedTotal n
+  | NamedPer n              -> NamedPer n
+  | NamedProp n             -> NamedProp n
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2
@@ -464,7 +452,7 @@ and optProp ctx = function
       in (match (optTy ctx ty, p') with
         (_, True) -> True
       | (TopTy,_) -> p'
-      | (NamedTy n1,Imply(NamedTotal (n2,Id n3),p'')) ->
+      | (NamedTy n1, Imply (PApp (NamedTotal n2, Id n3), p'')) ->
 	  if (LN(None,n) = n3) && (n1 = n2) then
 	    ForallTotal((n,NamedTy n1), p'')
 	  else
@@ -482,13 +470,31 @@ and optProp ctx = function
 	   | (TopTy, _) -> p'
 	   | (ty', _) -> Cexists((n, ty'), p'))
 
-and optAssertion ctx (name, bnds, prop) =
-      let ctx' = insertTypeBnds ctx bnds in
-      let bnds' = optBinds ctx bnds in
-      let prop' = optProp ctx' prop
-      in
-	(name, bnds', prop')
+  | PObligation (p, q) ->
+      let q' = optProp ctx q in
+	(match optProp ctx p with
+	    True -> q'
+	  | p' -> PObligation (p', q'))
 
+  | PMLambda ((n, ms), p) ->
+      let ms' = optModest ctx ms in
+      let p' = optProp (insertType ctx n ms'.ty) p in
+	PMLambda ((n,ms'), p')
+
+  | PLambda ((n,ty), p) ->
+      let p' = optProp (insertType ctx n ty) p
+      in PLambda((n,optTy ctx ty), p')
+
+  | PApp (p, t) -> PApp (optProp ctx p, optTerm' ctx t)
+
+  | PMApp (p, t) -> PMApp (optProp ctx p, optTerm' ctx t)
+
+and optAssertion ctx (name, prop) = (name, optProp ctx prop)
+
+and optModest ctx {ty=t; tot=p; per=q} =
+  {ty = optTy ctx t;
+   tot = optProp ctx p;
+   per = optProp ctx q}
 
 and optElems ctx = function
     [] -> [], emptyCtx
@@ -524,7 +530,7 @@ and optElems ctx = function
        not; we're assuming that the input was well-formed *)
        let assertions' = List.map (optAssertion ctx) assertions in
        let rest', ctx'' = optElems ctx rest in
-	 (TySpec (nm, None, assertions') :: rest'), insertTydef ctx'' nm TYPE
+	 (TySpec (nm, None, assertions') :: rest'), ctx''
 
   |  TySpec(nm, Some ty, assertions) :: rest ->
        let ty' = optTy ctx ty in

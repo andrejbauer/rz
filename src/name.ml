@@ -30,6 +30,8 @@ let unionNameSetList = List.fold_left NameSet.union NameSet.empty
 
 module StringSet = Set.Make(StringOrder)
 
+let capitalize_name (N(nm, fxty)) = N(String.capitalize nm, fxty)
+
 (** [stringSubscript s] splits name [s] into everything that comes beofore
     and after the first underscore ['_'] appearing in [s]. *)
 let stringSubscript s =
@@ -124,6 +126,14 @@ let freshName4 good1 good2 good3 good4 bad occurs =
   let x3 = freshName good3 (x1::x2::bad) occurs in
   let x4 = freshName good4 (x1::x2::x3::bad) occurs in
     x1, x2, x3, x4
+
+(** [freshNameList goods bad occurs] generates a list of fresh names. *)
+let rec freshNameList goods bad occurs =
+  match goods with
+      [] -> []
+    | g::gs ->
+	let n = freshName g bad occurs in
+	  n :: (freshNameList gs (n::bad) occurs)
 
 (** [string_of_name n] converts a name [n] to its string representation. *)
 let rec string_of_name = function 

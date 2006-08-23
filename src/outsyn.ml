@@ -40,7 +40,6 @@ and mbinding = name * modest
 
 and term =
     Id of longname
-  | Tot of term
   | EmptyTuple
   | Dagger
   | App of term * term
@@ -57,7 +56,8 @@ and proposition =
   | True                                       (* truth *)
   | False                                      (* falsehood *)
   | IsPer of ty_name                           (* the fact that a type is equipped with a per *)
-  | IsPredicate of name * ty * proposition     (* [name] is a predicate on type *)
+  | IsPredicate of name * modest               (* [name] is a predicate on modest set *)
+  | IsEquiv of modest * proposition            (* is a stable equivalence relation on a modest set *)
   | NamedTotal of ty_longname                  (* totality of a term *)
   | NamedPer of ty_longname                    (* extensional equality of terms *)
   | NamedProp of longname                      (* basic proposition *)
@@ -71,12 +71,12 @@ and proposition =
   | ForallTotal of binding * proposition       (* universal ranging over total elements *)
   | Cexists of binding * proposition           (* classical existential *)
   | PApp of proposition * term                 (* application of propositional function *)
-  | PTApp of proposition * term                (* application of propositional function to a total element *)
+  | PMApp of proposition * term                (* application of propositional function to a total element *)
   | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
-  | PTLambda of binding * proposition * proposition   (* abstraction over total elements of a type *)
+  | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
   | PObligation of proposition * proposition   (* Obligation *)
 
-type assertion = string * binding list * proposition
+type assertion = string * proposition
 
 type signat_element =
     ValSpec of name * ty * assertion list
@@ -98,7 +98,6 @@ and toplevel =
   | TopComment of string
   | TopModul   of modul_name  * signat
     
-
 let tln_of_tyname nm = TLN (None, nm)
 let ln_of_name nm = LN (None, nm)
 
@@ -131,7 +130,6 @@ and fvTerm' flt acc = function
   | Id (LN(None,nm)) -> 
       if List.mem nm flt then acc else nm :: acc
   | Id (LN(Some _, _)) -> acc
-  | Tot t -> fvTerm' flt acc t
   | EmptyTuple -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -152,6 +150,7 @@ and fvProp' flt acc = function
   | False -> acc
   | IsPer _ -> acc
   | IsPredicate _ -> acc
+  | IsEquiv ({tot=p; per=q}, r) -> fvProp' flt (fvProp' flt (fvProp' flt acc p) q) r
   | NamedTotal _ -> acc
   | NamedPer _ -> acc
   | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -166,9 +165,10 @@ and fvProp' flt acc = function
   | NamedProp (LN(None,nm)) -> if List.mem nm flt then acc else nm :: acc
   | NamedProp (LN(Some _, _)) -> acc
   | PApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
-  | PTApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
+  | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | PLambda ((n, _), p) -> fvProp' (n::flt) acc p
-  | PTLambda ((n, _), p, q) -> fvProp' (n::flt) (fvProp' flt acc q) p
+  | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
+  | PObligation (p, q) -> fvProp' flt (fvProp' flt acc p) q
 
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
@@ -287,7 +287,10 @@ and substProp ?occ sbst = function
     True -> True
   | False -> False
   | IsPer nm -> IsPer nm
-  | IsPredicate (prdct,t,p) -> IsPredicate (prdct, substTy ?occ sbst t, substProp ?occ sbst p)
+  | IsPredicate (n,s) -> IsPredicate (n, substModest ?occ sbst s)
+  | IsEquiv ({ty=t; tot=p; per=q}, r) ->
+      IsEquiv ({ty = substTy ?occ sbst t; tot = substProp ?occ sbst p; per = substProp ?occ sbst q},
+	      substProp ?occ sbst r)
   | NamedTotal tln -> NamedTotal (substTLN ?occ sbst tln)
   | NamedPer tln -> NamedPer (substTLN ?occ sbst tln)
   | NamedProp ln -> NamedProp (substLN ?occ sbst ln)
@@ -307,13 +310,15 @@ and substProp ?occ sbst = function
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | PApp (p, t) -> PApp (substProp ?occ sbst p, substTerm ?occ sbst t)
-  | PTApp (p, t) -> PTApp (substProp ?occ sbst p, substTerm ?occ sbst t)
+  | PMApp (p, t) -> PMApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PLambda ((n, s), p) ->
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	PLambda ((n', s), substProp ?occ (insertTermvar sbst n (id n')) p)
-  | PTLambda ((n, ty), p, q) ->
+  | PMLambda ((n, {ty=t; tot=p; per=q}), r) ->
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
-	PTLambda ((n', substTy ?occ sbst ty), substProp ?occ sbst p, substProp ?occ (insertTermvar sbst n (id n')) q)
+	PMLambda ((n', {ty=substTy ?occ sbst t; tot=substProp ?occ sbst p; per=substProp ?occ sbst q}),
+		 substProp ?occ (insertTermvar sbst n (id n')) r)
+  | PObligation (p, q) -> PObligation (substProp ?occ sbst p, substProp ?occ sbst q)
 
 and substTerm ?occ sbst = function
     Id (LN (None, nm)) -> getTermvar sbst nm
@@ -321,7 +326,6 @@ and substTerm ?occ sbst = function
   | EmptyTuple -> EmptyTuple
   | Dagger -> Dagger
   | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
-  | Tot t -> Tot (substTerm ?occ sbst t)
   | Lambda ((n, ty), t) ->
       let sbst' = insertTermvar sbst n (id n) in
       let n' = freshVar [n] ?occ sbst in
@@ -405,8 +409,7 @@ and substSignatElements ?occ sbst =
   in
     subst sbst
 
-and substAssertion ?occ sbst (nm, lst, prop) =
-  (nm, List.map (substBinding  ?occ sbst) lst, substProp ?occ sbst prop)
+and substAssertion ?occ sbst (nm, prop) = (nm, substProp ?occ sbst prop)
 
 and substBinding ?occ sbst (nm, ty) = (nm, substTy ?occ sbst ty)
 
@@ -490,7 +493,6 @@ let rec string_of_term' level t =
 	(5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
     | App (t, u) -> 
 	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
-    | Tot t -> (0, "[" ^ string_of_term' 0 t ^ "]")
     | Lambda ((n, ty), t) ->
 	(12, "fun (" ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
 	   (string_of_term' 12 t))
@@ -521,12 +523,15 @@ let rec string_of_term' level t =
 
 and string_of_term t = string_of_term' 999 t
 
+and string_of_modest m = "<string_of_modest>"
+
 and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
     | IsPer nm -> (0, "PER(=_" ^ string_of_name nm ^ ")")
-    | IsPredicate (prdct,_,_) -> (0, "PREDICATE(" ^ (string_of_name prdct) ^ ",...)")
+    | IsPredicate (p, m) -> (0, "PREDICATE(" ^ (string_of_name p) ^ ", " ^ string_of_modest m ^ ")")
+    | IsEquiv (m, p) -> (0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest m ^ ")")
     | NamedTotal n -> (0, "||" ^ (string_of_tln n) ^ "||")
     | NamedPer n -> (0, "(=_" ^ string_of_tln n ^ ")")
     | NamedProp n -> (0, string_of_ln n)
@@ -546,10 +551,10 @@ and string_of_prop level p =
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
     | PLambda ((n, ty), p) ->
 	(14, "fun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
-    | PTLambda ((n, ty), p, q) ->
+    | PMLambda ((n, {ty=ty; tot=p}), q) ->
 	(14, "fun " ^ string_of_name n ^ " : " ^ (string_of_ty ty) ^ " (" ^ string_of_prop 0 p^ ") => " ^
 	  string_of_prop 14 q)
-    | PTApp (p, t) -> failwith "Outsyn.string_of_prop: PTApp unimplemented"
+    | PMApp (p, t) -> failwith "Outsyn.string_of_prop: PMApp unimplemented"
     | PApp (NamedTotal n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_tln n) ^ "||")
     | PApp (PApp (NamedPer n, t), u) ->
 	(9, (string_of_term' 9 t) ^ " =_" ^ (string_of_tln n) ^ " " ^ (string_of_term' 9 u))
@@ -558,6 +563,7 @@ and string_of_prop level p =
     | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op), u), t) ->
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
+    | PObligation (p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
   in
     if level' > level then "(" ^ str ^ ")" else str
 
@@ -566,10 +572,8 @@ and string_of_proposition p = string_of_prop 999 p
 let string_of_bind bind =
     String.concat ", " (List.map (fun (n,t) -> (string_of_name n) ^ " : " ^ (string_of_ty t)) bind)
 
-let string_of_assertion (nm, bind, p) =
-  "(** Assertion " ^ nm ^ ":\n" ^
-  (if bind = [] then "" else (string_of_bind bind) ^ ":\n") ^
-  (string_of_proposition p) ^ "\n*)"
+let string_of_assertion (nm, p) =
+  "(** Assertion " ^ nm ^ ":\n" ^ (string_of_proposition p) ^ "\n*)"
 
 let string_of_assertions assertions = 
   (String.concat "\n" (List.map string_of_assertion assertions))
