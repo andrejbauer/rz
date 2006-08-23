@@ -198,6 +198,7 @@ and substMProp m mdl p =
     | Unique ((n,s),p) -> Unique ((n, substMSet m mdl s), subst p)
     | Not p -> Not (subst p)
     | Equal (s, t, u) -> Equal (substMSet m mdl s, substMTerm m mdl t, substMTerm m mdl u)
+    | EquivCoerce (s, p) -> EquivCoerce (substMSet m mdl s, substMProp m mdl p)    
   in
     subst p
 
@@ -439,6 +440,8 @@ and string_of_prop prp =
 	"(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | PLambda(bnd,prp) ->
 	"(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
+    | EquivCoerce (st, prp) ->
+	"(" ^ toStr prp ^ " : Equiv(" ^ string_of_set st ^ "))"
   in
     toStr prp)
 
@@ -485,10 +488,8 @@ and string_of_theory_element = function
       "const " ^ string_of_name nm ^ " : " ^ string_of_set st
   | Let_term (nm, st, trm) -> 
       "let " ^ string_of_name nm ^ " : " ^ string_of_set st ^ " = " ^ string_of_term trm
-  | Sentence (ssort, nm, mbnds, bnds, prp) ->
-      "axiom  " ^ string_of_name nm ^ " " ^ 
-      string_of_mbnds mbnds ^ " " ^ string_of_bnds bnds ^ " =\n " ^
-      string_of_prop prp
+  | Sentence (nm, mbnds, prp) ->
+      "axiom  " ^ string_of_name nm ^ " " ^ string_of_mbnds mbnds ^ " =\n " ^ string_of_prop prp
   | Model (mdlnm, thry) -> 
       "model " ^ string_of_name mdlnm ^ " : " ^ string_of_theory thry
   | Comment strng -> 
@@ -656,6 +657,7 @@ and fnProp = function
   | Exists((nm, st), prp)
   | Unique((nm, st), prp) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
+  | EquivCoerce (st, prp) -> NameSet.union (fnSet st) (fnProp prp)
 
 and fnCaseArm = function
     (_, None, trm) -> fnTerm trm
@@ -834,6 +836,7 @@ and substProp substitution =
 	  PLambda((y',substSet substitution sopt),
 		 substProp sbst' t1)
     | PApp(prp1,trm2) -> PApp(sub prp1, subst substitution trm2)
+    | EquivCoerce (st, prp) -> EquivCoerce(substSet substitution st, sub prp)
   in sub
       
 

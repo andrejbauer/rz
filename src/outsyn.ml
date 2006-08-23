@@ -73,7 +73,8 @@ and proposition =
   | PApp of proposition * term                 (* application of propositional function *)
   | PTApp of proposition * term                (* application of propositional function to a total element *)
   | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
-  | PTLambda of binding * proposition * proposition  (* abstraction over total elements of a type *)
+  | PTLambda of binding * proposition * proposition   (* abstraction over total elements of a type *)
+  | PObligation of proposition * proposition   (* Obligation *)
 
 type assertion = string * binding list * proposition
 
