@@ -977,6 +977,21 @@ let rec annotateExpr cntxt = function
 		  | _ -> tyMismatchError expr1 ty2 ty1 orig_expr
 	      end
 
+          | (ResProp(prp1, ( (L.PropArrow(nm1a, st1a, 
+					 L.PropArrow(_, st1b, 
+						    L.StableProp))) as pt1) ), 
+	    ResPropType( (L.EquivProp st2) as pt2 ) ) ->
+		begin
+		  (* Special case of coercion into an equivalence relation!*)
+		  let (cntxt, nm1a) = renameBoundVar cntxt nm1a
+		  in let cntxt' = insertTermVariable cntxt nm1a st1a None
+		  in
+		       if (subSet cntxt st2 st1a && subSet cntxt' st2 st1b) then
+			 ResProp(L.EquivCoerce(st2, prp1), L.EquivProp(st2))
+		       else
+			 propTypeMismatchError expr1 pt2 pt1 orig_expr
+		end
+
 	  | (ResProp(prp1,pt1), ResPropType(pt2)) ->
 	      (* Typecheck a proposition constrained by a prop. type *)
 	      if (subPropType cntxt pt1 pt2) then
