@@ -1,0 +1,2 @@
+theory Empty := thy
+end

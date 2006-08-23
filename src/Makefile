@@ -40,6 +40,9 @@ default: $(TARGETS)
 all: $(TARGETS) $(OPT_TARGETS)
 	echo $(OPT_TARGETS); echo $(TARGETS)
 
+test: $(TARGETS)
+	cd test && ./test.sh
+
 #parser.cmo: parser.ml parser.cmi
 #
 #parser.cmi: parser.mli syntax.cmi
