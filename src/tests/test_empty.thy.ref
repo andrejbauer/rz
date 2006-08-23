@@ -1,0 +1,6 @@
+[Processing test_empty.thy]
+module type Empty = 
+sig
+  
+end
+

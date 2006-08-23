@@ -41,7 +41,10 @@ all: $(TARGETS) $(OPT_TARGETS)
 	echo $(OPT_TARGETS); echo $(TARGETS)
 
 test: $(TARGETS)
-	cd test && ./test.sh
+	cd tests && ./test.sh
+
+vtest: $(TARGETS)
+	cd tests && ./test.sh -v
 
 #parser.cmo: parser.ml parser.cmi
 #
