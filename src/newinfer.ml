@@ -1784,7 +1784,21 @@ and annotateTheoryElem cntxt = function
 
   | Comment c -> [L.Comment c]
 
-  | Include _ -> raise Unimplemented
+  | Include expr -> 
+      begin
+	let badTheory() = 
+	  tyGenericError ("Theory " ^ string_of_expr expr ^ 
+			     "is not includable.")
+	in
+	  match annotateTheory cntxt expr(*X*) expr with
+	      (thry, L.ModelTheoryKind) ->
+		begin
+		  match hnfTheory cntxt thry with
+		      L.Theory elems -> elems
+		    | _ -> badTheory()
+		end
+	    | _ -> badTheory()
+      end
 
   | Implicit _ -> raise Impossible (* Implicits were already removed *)
 
