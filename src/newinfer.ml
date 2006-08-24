@@ -152,7 +152,18 @@ let illegalBindingError nm where_type_came_from context_expr =
     ("The " ^ where_type_came_from ^ " type of " ^ string_of_name nm ^
 	" is not suitable for a binding in " ^
 	string_of_expr context_expr)
-      
+ 
+let illegalNameError nm what_kind_its_supposed_to_be =
+  tyGenericError
+    ("The name " ^ string_of_name nm ^ " is not legal for a " ^
+	what_kind_its_supposed_to_be)
+
+let shadowingError nm =
+  tyGenericError
+    ("Illegal shadowing; the name " ^ string_of_name nm ^ 
+	" appears twice in the same context," ^ 
+        "\nand automatic renaming is not possible.")
+     
 (*****************************************)
 (** {2 Typechecking/Type Reconstruction} *)
 (*****************************************)
@@ -202,25 +213,55 @@ let lookupId cntxt nm =
   try (List.assoc nm cntxt.bindings) with
       Not_found -> CtxUnbound
 
+let unBound cntxt nm =
+  try (ignore (List.assoc nm cntxt.bindings); false) with
+      Not_found -> true
+  
+
 (* These functions ought to detect and complain about shadowing.
    In most cases, the system will already have renamed bound variables
    before this point.  For module labels we can't rename, and so we
    may have to just give up here with an error.
 *)
-let insertTermVariable cntxt nm ty trmopt =
+let makeInsertChecker validator insertFn idString cntxt nm =
+    if validator nm then
+      if unBound cntxt nm then
+	insertFn cntxt nm
+      else
+	shadowingError nm
+    else
+      illegalNameError nm idString
+
+
+let insertTermVariable' cntxt nm ty trmopt =
   { cntxt with bindings =  (nm, CtxTerm (trmopt, ty)) :: cntxt.bindings }
 
-let insertSetVariable cntxt nm knd stopt =
+let insertTermVariable = 
+  makeInsertChecker validTermName insertTermVariable' "term"
+
+let insertSetVariable' cntxt nm knd stopt =
   { cntxt with bindings =  (nm, CtxSet (stopt,knd)) :: cntxt.bindings }
 
-let insertPropVariable cntxt nm pt prpopt =
+let insertSetVariable = 
+  makeInsertChecker validSetName insertSetVariable' "set"
+
+let insertPropVariable' cntxt nm pt prpopt =
   { cntxt with bindings =  (nm, CtxProp (prpopt,pt)) :: cntxt.bindings }
 
-let insertModelVariable cntxt nm thry =
+let insertPropVariable = 
+  makeInsertChecker validPropName insertPropVariable' "predicate/proposition"
+
+let insertModelVariable' cntxt nm thry =
   { cntxt with bindings =  (nm, CtxModel thry) :: cntxt.bindings }
 
-let insertTheoryVariable cntxt nm thry tknd =
+let insertModelVariable = 
+  makeInsertChecker validModelName insertModelVariable' "model"
+
+let insertTheoryVariable' cntxt nm thry tknd =
   { cntxt with bindings =  (nm, CtxTheory (thry,tknd)) :: cntxt.bindings }
+
+let insertTheoryVariable = 
+  makeInsertChecker validTheoryName insertTheoryVariable' "theory"
 
 let renameBoundVar cntxt nm =
   let rec findUnusedName nm =
@@ -234,7 +275,7 @@ let renameBoundVar cntxt nm =
        else
 	 begin
 	   tyGenericWarning
-	     ("Shadowing of " ^ string_of_name nm ^ "detected.");
+	     ("Shadowing of " ^ string_of_name nm ^ " detected.");
 	   ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
 	 end
 
@@ -906,8 +947,7 @@ let rec annotateExpr cntxt = function
 
   | Arrow (nm, expr1, expr2) as orig_expr ->
       begin
-	let (cntxt, nm) = renameBoundVar cntxt nm
-        in let badDomainError() = 
+        let badDomainError() = 
 	  if (isWild nm) then
 	    notWhatsExpectedInError expr1 
 	      "proper type or proposition" orig_expr
@@ -925,6 +965,7 @@ let rec annotateExpr cntxt = function
             | ResProp (_, (L.PropArrow _ | L.EquivProp _) ) ->
 		badDomainError()
 	    | ResProp (prp1, (L.Prop | L.StableProp)) -> 
+		let (cntxt, nm) = renameBoundVar cntxt nm in
 		if (isWild nm) then
 		  begin
 		    (* Typechecking an implication *)
@@ -945,7 +986,8 @@ let rec annotateExpr cntxt = function
             | ResSet (ty1, L.KindSet) ->
 		begin
 		  (* Typechecking a Pi *)
-		  let cntxt' = insertTermVariable cntxt nm ty1 None
+		  let (cntxt, nm) = renameBoundVar cntxt nm
+		  in let cntxt' = insertTermVariable cntxt nm ty1 None
 		  in match annotateExpr cntxt' expr2 with
 		      ResSet(st2, knd2) -> 
 			(* Typechecking a dependent type of a function *)
@@ -1647,7 +1689,7 @@ and annotateTopLevelExpr cntxt = function
 		    string_of_expr orig_expr)
       end
 
-  | Arrow (nm1, expr2, expr3) as orig_expr -> 
+  | (Arrow (nm1, expr2, expr3)) as orig_expr -> 
       begin
 	match annotateExpr cntxt expr2 with
 	    ResTheory(thry2, L.ModelTheoryKind) ->
@@ -1661,8 +1703,7 @@ and annotateTopLevelExpr cntxt = function
 				   L.ModelTheoryKind) )
 	      end
 		
-	  | _ -> 
-	      ([], annotateExpr cntxt orig_expr)
+	  | _ -> ([], annotateExpr cntxt orig_expr)
       end
 
   | expr ->  ([], annotateExpr cntxt expr)

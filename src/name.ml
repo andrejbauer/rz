@@ -150,3 +150,20 @@ let wildName =
 let isWild = function
     N(_, Wild) -> true
   | _ -> false
+
+let validTermName = function
+    N(str, (Word | Wild)) -> (str = String.uncapitalize str) 
+  | _ -> true
+
+let validSetName = validTermName
+
+let validPropName = validTermName
+
+let validModelName = function
+    N(str, (Word | Wild)) -> (str = String.capitalize str)
+  | _ -> false
+
+let validTheoryName = validModelName
+    
+    
+	
