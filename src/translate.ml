@@ -615,12 +615,13 @@ and translateTheoryElements ctx = function
 	   TySpec (n, Some t,
 		    [(string_of_name n ^ "_def_total",
 		      let x = fresh [mk "x"; mk "y"] ctx in
-			Forall((x,t), Iff (PApp (NamedTotal (tln_of_tyname n), id x), p)));
+			Forall((x,t), Iff (PApp (NamedTotal (tln_of_tyname n), id x), pApp ctx p (id x))));
 		     (string_of_name n ^ "_def_per",
 		      let y, y' = fresh2 [mk "y"; mk "z"; mk "w"] [mk "y"; mk "z"; mk "w"] ctx in
 			Forall ((y,t),
 			       Forall ((y',t),
-				      Iff (PApp (PApp (NamedPer (tln_of_tyname n), id y), id y'), q))))]
+				      Iff (PApp (PApp (NamedPer (tln_of_tyname n), id y), id y'),
+					  pApp ctx (pApp ctx q (id y)) (id y')))))]
 	)) :: sgnt,
 	insertSetvar n knd s smmry
 

@@ -283,6 +283,9 @@ and output_prop_9 ppf = function
     PApp (PApp (NamedPer ln, t), u) -> 
       fprintf ppf "%a =%a= %a" 
         output_term_9 t   output_tln ln   output_term_8 u
+  | PApp (NamedTotal ln, t) ->
+      fprintf ppf "%a : ||%a||"
+	output_term_9 t   output_tln ln
   | PApp (p, t) ->
       fprintf ppf "%a %a"
 	output_prop_9 p   output_term_8 t

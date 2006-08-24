@@ -29,13 +29,11 @@ sig
    
   type d = b * a
   (**  Assertion d_def_total = 
-         all (x:b * a).  ||d|| x <=>
-           (Pfun (t : b * a) -> ||b|| pi0 t and ||a|| pi1 t)
+         all (x:b * a).  x : ||d|| <=> pi0 x : ||b|| and pi1 x : ||a||
         
        Assertion d_def_per = 
-         all (y:b * a, z:b * a).  y =d= z <=>
-           (Pfun (u : b * a) ->
-            Pfun (v : b * a) -> pi0 u =b= pi0 u and pi1 u =a= pi1 u)
+         all (y:b * a, z:b * a).  y =d= z <=> pi0 y =b= pi0 y and 
+           pi1 y =a= pi1 y
   *)
 end
 
