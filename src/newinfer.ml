@@ -365,6 +365,23 @@ let rec searchElems cntxt nm' surrounding_expr mdl =
 (** {3: Coercions} *)
 (*******************)
 
+let rec hnfTheory cntxt = function
+    L.TheoryName nm ->
+      begin
+	match lookupId cntxt nm with
+	    CtxTheory (thry, _) -> hnfTheory cntxt thry
+	  | _ -> raise Impossible
+      end
+  | L.TheoryApp (thry, mdl) ->
+      begin
+	match hnfTheory cntxt thry with
+	    L.TheoryLambda((nm,_), thry2) ->
+	      let subst = L.insertModelvar L.emptysubst nm mdl
+	      in hnfTheory cntxt (L.substTheory subst thry2)
+	  | _ -> raise Impossible
+      end
+  | thry -> thry
+
 let rec theoryToElems cntxt = function
     L.Theory elems -> elems
   | L.TheoryName thrynm' -> 
@@ -373,9 +390,10 @@ let rec theoryToElems cntxt = function
 	    CtxTheory (thry',L.ModelTheoryKind) -> theoryToElems cntxt thry'
 	  | _ -> raise Impossible
       end
-  | L.TheoryApp _ -> raise Unimplemented
+  | L.TheoryApp _ as thry -> theoryToElems cntxt (hnfTheory cntxt thry)
   | L.TheoryLambda _ -> raise Impossible
   | L.TheoryArrow _ -> raise Impossible
+
 
 (* cntxt -> L.model -> L.theory list *)
 let rec modelToTheory cntxt = function
@@ -393,7 +411,14 @@ let rec modelToTheory cntxt = function
 	      CtxModel thry -> thry
 	    | _ -> raise Impossible
       end
-  | L.ModelApp _ -> raise Unimplemented 
+  | L.ModelApp (mdl1, mdl2) ->
+      begin
+	match hnfTheory cntxt (modelToTheory cntxt mdl1) with
+	    L.TheoryArrow((nm, thry1), thry2) ->
+	      let subst = L.insertModelvar L.emptysubst nm mdl2
+	      in L.substTheory subst thry2
+	  | _ -> raise Impossible
+      end
 	
 
 (** Expand out any top-level definitions or function
@@ -909,7 +934,13 @@ let rec annotateExpr cntxt = function
 
 	  | (ResModel(mdl1,thry1), ResModel(mdl2,thry2)) ->
 	      begin
-		(* Appliation of a functor to an argument. *)
+		(* Appliation of a model to an argument. *)
+		raise Unimplemented
+	      end
+
+	  | (ResTheory(thry1,tknd1), ResModel(mdl2,thry2)) ->
+	      begin
+		(* Appliation of a theory to an argument. *)
 		raise Unimplemented
 	      end
 
@@ -1912,23 +1943,6 @@ and annotateToplevels cntxt = function
       let    (cntxt',  tl' ) = annotateToplevel cntxt tl
       in let (cntxt'', tls') = annotateToplevels cntxt' tls
       in (cntxt'', tl'::tls')
-
-and hnfTheory cntxt = function
-    L.TheoryName nm ->
-      begin
-	match lookupId cntxt nm with
-	    CtxTheory (thry, _) -> hnfTheory cntxt thry
-	  | _ -> raise Impossible
-      end
-  | L.TheoryApp (thry, mdl) ->
-      begin
-	match hnfTheory cntxt thry with
-	    L.TheoryLambda((nm,_), thry2) ->
-	      let subst = L.insertModelvar L.emptysubst nm mdl
-	      in hnfTheory cntxt (L.substTheory subst thry2)
-	  | _ -> raise Impossible
-      end
-  | thry -> thry
 
 (* Inputs must be a well-formed logical model, its infered theory, and
    some other theory *)
