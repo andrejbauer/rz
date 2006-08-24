@@ -47,7 +47,7 @@ let read fn =
       (close_in fin ;
        e)
   with
-    Message.Parse(_,_) ->
+    Message.Parse(_,msg) ->
       let pos = lexbuf.Lexing.lex_curr_p in
       begin
         print_string "Syntax error detected at line ";
@@ -55,7 +55,8 @@ let read fn =
         print_string " column ";
         print_string ( string_of_int ( pos.Lexing.pos_cnum - 
 					 pos.Lexing.pos_bol ) );
-        print_string "\n";
+        print_string ":\n\n";
+	print_endline msg;
         raise Parsing.Parse_error 
       end
 
@@ -95,6 +96,8 @@ let rec process = function
 	      List.iter print_item lthy;
 	      print_endline "----------------")
 	else ()) in
+
+      let _ = Newinfer.printWarnings() in
 
       let (spec,translate_state') = 
 	Translate.translateToplevel translate_state lthy in

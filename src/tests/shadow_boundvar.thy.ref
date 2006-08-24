@@ -1,1 +1,19 @@
-This test should at least print a warning but it does not.
+[Processing shadow_boundvar.thy]
+
+-------------------------------
+WARNNG:
+Shadowing of x detected.
+-------------------------------
+
+module type T = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  val shadow : s -> s
+  (**  Assertion shadow = 
+         all (x:||s||).  ||s|| shadow x and shadow x =s= shadow x
+  *)
+end
+
