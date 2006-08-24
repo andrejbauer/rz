@@ -6,23 +6,35 @@ open Message
 
 exception BadArgs;;
 
+let _ = Flags.do_dumpinfer := true
+
 (** Possible command-line options.  Ocaml automatically adds
     -help and --help.
 *)
 let command_line_options = 
-  [("--opt", Arg.Set Flags.do_opt, "Turn on simplification optimations (default)");
-   ("--noopt", Arg.Clear Flags.do_opt,"Turn off simplification optimizations");
-   ("--show", Arg.Set Flags.do_print, "Show output on stdout (default)");
-   ("--noshow", Arg.Clear Flags.do_print, "No output to stdout");
-   ("--save", Arg.Set Flags.do_save, "Send output to .mli file (default)");
-   ("--nosave", Arg.Clear Flags.do_save, "No output to file");
-   ("--sigapp", Arg.Set Flags.do_sigapp, "Retain signature applications");
-   ("--nosigapp", Arg.Clear Flags.do_sigapp, "Expand away signature applications (default)");
-   ("--dump_infer", Arg.Set Flags.do_dumpinfer, "Dump result of type inference");
-   ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
-  ]
+  let    fSet = ((fun x -> Arg.Set x), true)
+  in let fClear = ((fun x -> Arg.Clear x), false)
+  in let flag_data = 
+    [("--opt", fSet, Flags.do_opt, "Turn on simplification optimations");
+     ("--noopt", fClear, Flags.do_opt,"Turn off simplification optimizations");
+     ("--show", fSet, Flags.do_print, "Show output on stdout");
+     ("--noshow", fClear, Flags.do_print, "No output to stdout");
+     ("--save", fSet, Flags.do_save, "Send output to .mli file");
+     ("--nosave", fClear, Flags.do_save, "No output to file");
+     ("--sigapp", fSet, Flags.do_sigapp, "Retain signature applications");
+     ("--nosigapp", fClear, Flags.do_sigapp, "Expand away signature applications");
+     ("--dump_infer", fSet, Flags.do_dumpinfer, "Dump result of type inference");
+    ]
+  in let other_flags = 
+     [
+     ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
+     ]
+  in let processFlag (flag, (action,result) , boolref, description) =
+    (flag, action boolref, 
+     description ^ (if (!boolref = result) then " (default)" else ""))
+  in
+       (List.map processFlag flag_data) @ other_flags
 
-let _ = Flags.do_dumpinfer := true
 
 (** One-line usage message
  *)
