@@ -103,6 +103,12 @@ let wrongKindError expr hasK expectedsort context_expr =
       ^ expectedsort ^ " kind in\n " ^ string_of_expr context_expr ^ 
       "\nbut it actually has kind " ^ L.string_of_kind hasK)
 
+let wrongTheoryError expr hasthry expectedsort context_expr =
+  tyGenericError
+    ("The model " ^ string_of_expr expr ^ " is used as if it were a "
+      ^ expectedsort ^ " in\n " ^ string_of_expr context_expr ^ 
+      "\nbut it actually has the theory " ^ L.string_of_theory hasthry)
+
 let tyMismatchError expr expectedTy foundTy context_expr =
   tyGenericError
     ("The term " ^ string_of_expr expr ^ " was expected to have type " ^
@@ -120,6 +126,12 @@ let kindMismatchError expr expectedK foundK context_expr =
     ("The set " ^ string_of_expr expr ^ " was expected to have kind " ^
 	L.string_of_kind expectedK ^ " instead of kind " ^ 
 	L.string_of_kind foundK ^ " in " ^ string_of_expr context_expr)
+
+let theoryMismatchError expr expectedT foundT context_expr =
+  tyGenericError
+    ("The model " ^ string_of_expr expr ^ " was expected to satisfy theory\n\n" ^
+	L.string_of_theory expectedT ^ "\n\ninstead of theory\n\n" ^ 
+	L.string_of_theory foundT ^ "\n\nin " ^ string_of_expr context_expr)
 
 let notEquivalenceOnError expr expectedDomExpr =
   tyGenericError
@@ -285,42 +297,43 @@ let applyContextSubst cntxt nm =
 
 
 
-let rec searchElems cntxt nm' surrounding_expr mdl = 
+let rec searchElems cntxt nm' mdl = 
   let rec loop subst = function
-    [] -> componentNotFoundError nm' surrounding_expr
+    [] -> None
     | L.Set (nm, knd) :: rest -> 
 	if (nm = nm') then
-	  CtxSet(None, L.substKind subst knd)  (* or Some mdl.nm? *)
+	  Some (CtxSet(None, (* or Some mdl.nm? *)
+		       L.substKind subst knd))  
 	else 
 	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
     | L.Let_set (nm, knd, st) :: rest -> 
 	if (nm = nm') then
-	  CtxSet(Some (L.substSet subst st), L.substKind subst knd)
+	  Some (CtxSet(Some (L.substSet subst st), L.substKind subst knd))
 	else 
 	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
     | L.Predicate (nm, pt) :: rest -> 
 	if (nm = nm') then
-	  CtxProp(None, L.substProptype subst pt)
+	  Some (CtxProp(None, L.substProptype subst pt))
 	else 
 	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm)))) rest
     | L.Let_predicate (nm, pt, prp) :: rest -> 
 	if (nm = nm') then
-	  CtxProp(Some (L.substProp subst prp), L.substProptype subst pt)
+	  Some (CtxProp(Some (L.substProp subst prp), L.substProptype subst pt))
 	else 
 	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm)))) rest
     | L.Value (nm, ty) :: rest -> 
 	if (nm = nm') then
-	  CtxTerm (None, L.substSet subst ty)
+	  Some( CtxTerm (None, L.substSet subst ty) )
 	else 
 	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
     | L.Let_term (nm, ty, trm) :: rest -> 
 	if (nm = nm') then
-	  CtxTerm (Some (L.subst subst trm), L.substSet subst ty)
+	  Some( CtxTerm (Some (L.subst subst trm), L.substSet subst ty) )
 	else 
 	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
     | L.Model (nm, thry) :: rest ->
 	if (nm = nm') then
-	  CtxModel (L.substTheory subst thry)
+	  Some( CtxModel (L.substTheory subst thry) )
 	else 
 	  loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) rest
     | L.Sentence _ :: rest -> loop subst rest
@@ -407,8 +420,8 @@ let rec modelToTheory cntxt = function
       begin
 	let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
 	in
-	  match searchElems cntxt nm S.False mdl elems with
-	      CtxModel thry -> thry
+	  match searchElems cntxt nm mdl elems with
+	      Some (CtxModel thry) -> thry
 	    | _ -> raise Impossible
       end
   | L.ModelApp (mdl1, mdl2) ->
@@ -437,9 +450,9 @@ let rec hnfSet cntxt = function
       begin
       let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
       in
-	match searchElems cntxt nm S.False mdl elems with
-            CtxSet(Some st, _) -> hnfSet cntxt st
-	  | CtxSet(None, _)    -> orig_set
+	match searchElems cntxt nm mdl elems with
+            Some (CtxSet(Some st, _)) -> hnfSet cntxt st
+	  | Some (CtxSet(None, _))    -> orig_set
 	  | _ -> raise Impossible
       end
 
@@ -649,12 +662,21 @@ and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
 
 and eqProp ctx prp1 prp2 = 
   (* XXX: Should allow alpha-equiv and set-equiv *)
-  (prp1 = prp2)  
+  (prp1 = prp2) ||
+    (tyGenericWarning 
+	("eqProp guessing that " ^
+	    L.string_of_prop prp1 ^ " <=> " ^ 
+	    L.string_of_prop prp2);
+     true)
 
 and eqTerm ctx trm1 trm2 = 
   (* XXX: Should allow alpha-equiv and set-equiv and beta *)
-  (print_string "eqTerm returning True without checking";
-   trm1 = trm2)  
+  (trm1 = trm2) ||
+    (tyGenericWarning 
+	("eqProp guessing that " ^
+	    L.string_of_term trm1 ^ " == " ^ 
+	    L.string_of_term trm2);
+     true)
 
 and eqModelOpt ctx mdlopt1 mdlopt2 = (mdlopt1 = mdlopt2)
 
@@ -833,12 +855,16 @@ let rec annotateExpr cntxt = function
 	match annotateModel cntxt orig_expr expr1 with
 	    (mdl, L.Theory elems) ->
 	      begin
-		match searchElems cntxt nm2 orig_expr mdl elems with
-		    CtxSet (_,knd) -> ResSet(L.Basic(L.SLN(Some mdl, nm2)), knd)
-		  | CtxProp (_,pt) -> ResProp(L.Atomic(L.LN(Some mdl, nm2)), pt)
-		  | CtxTerm (_,ty) -> ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
-		  | CtxModel thry -> ResModel(L.ModelProj(mdl,nm2), thry)
-		  | _ -> raise Impossible
+		match searchElems cntxt nm2 mdl elems with
+		    Some (CtxSet (_,knd)) -> 
+		      ResSet(L.Basic(L.SLN(Some mdl, nm2)), knd)
+		  | Some (CtxProp (_,pt)) -> 
+		      ResProp(L.Atomic(L.LN(Some mdl, nm2)), pt)
+		  | Some (CtxTerm (_,ty)) -> 
+		      ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
+		  | Some (CtxModel thry) -> 
+		      ResModel(L.ModelProj(mdl,nm2), thry)
+		  | _ -> componentNotFoundError nm2 orig_expr
 	      end
 	  | _ -> notWhatsExpectedInError expr1 "theory of a model" orig_expr
       end
@@ -934,13 +960,22 @@ let rec annotateExpr cntxt = function
 
 	  | (ResModel(mdl1,thry1), ResModel(mdl2,thry2)) ->
 	      begin
-		(* Appliation of a model to an argument. *)
-		raise Unimplemented
+		(* Application of a model to an argument. *)
+		match hnfTheory cntxt thry1 with
+		    L.TheoryArrow((nm1, thry1a), thry1b) ->
+		      if checkModelConstraint cntxt mdl2 thry2 thry1a then
+			let subst = L.insertModelvar L.emptysubst nm1 mdl2
+			in let thry = L.substTheory subst thry1b
+			in
+			     ResModel( L.ModelApp(mdl1, mdl2), thry)
+		      else
+			theoryMismatchError expr2 thry1a thry2 orig_expr
+		  | _ -> wrongTheoryError expr1 thry1 "arrow" orig_expr
 	      end
 
 	  | (ResTheory(thry1,tknd1), ResModel(mdl2,thry2)) ->
 	      begin
-		(* Appliation of a theory to an argument. *)
+		(* Application of a theory to an argument. *)
 		raise Unimplemented
 	      end
 
@@ -1081,8 +1116,9 @@ let rec annotateExpr cntxt = function
 
 	  | (ResModel(mdl1,thry1), ResTheory (thry2, L.ModelTheoryKind)) ->
 	      (* Typecheck a model constrained by a theory *)
+	      (* NB: Does not actually change the signature; just checks! *)
 	      if checkModelConstraint cntxt mdl1 thry1 thry2 then
-		ResModel(mdl1, thry1)
+		ResModel(mdl1, thry1)  
 	      else
 		tyGenericError "Module constraint failed"
           | _ -> tyGenericError 
@@ -1710,7 +1746,7 @@ and annotateTopLevelExpr cntxt = function
 				     L.foldTheoryKindArrow mbnds tknd))
 		  | _ -> 
 		      tyGenericError 
-			("Cannot have model parameters in" ^ 
+			("Cannot have model parameters in " ^ 
 			    string_of_expr orig_expr)
 	      end
 	  | _ ->
@@ -1944,17 +1980,14 @@ and annotateToplevels cntxt = function
       in let (cntxt'', tls') = annotateToplevels cntxt' tls
       in (cntxt'', tl'::tls')
 
-(* Inputs must be a well-formed logical model, its infered theory, and
+(* Inputs must be a well-formed logical model, its inferred theory, and
    some other theory *)
 and checkModelConstraint cntxt mdl thry thry2 = 
-  true  (*XXX ! *)
-(*
   match (hnfTheory cntxt thry, hnfTheory cntxt thry2) with
-      (L.TheoryFunctor _, L.TheoryFunctor _ ) -> raise Unimplemented
+      (L.TheoryArrow _, L.TheoryArrow _ ) -> raise Unimplemented
 
     | (L.Theory elems, L.Theory elems2) ->
-	let xxx : expr = False
-	in let projAsTerm  nm = L.Var(L.LN(Some mdl, nm))
+	let projAsTerm  nm = L.Var(L.LN(Some mdl, nm))
 	in let projAsSet   nm = L.Basic(L.SLN(Some mdl, nm))
 	in let projAsProp  nm = L.Atomic(L.LN(Some mdl, nm))
 	in let projAsModel nm = L.ModelProj(mdl, nm)
@@ -1962,25 +1995,103 @@ and checkModelConstraint cntxt mdl thry thry2 =
 	    [] -> true
 	  | (L.Set(nm,knd)) :: rest ->
 	      begin
-		match searchElems cntxt nm xxx mdl elems with
-		    CtxSet (_,knd') -> 
-		      subKind cntxt knd' knd &&
-			let cntxt' = insertSetVariable cntxt nm knd' (Some (projAsSet nm))
-			in loop cntxt' rest
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxSet (_,knd')) -> 
+		      (subKind cntxt knd' knd &&
+			let cntxt' = 
+			  insertSetVariable cntxt nm knd' (Some (projAsSet nm))
+			in loop cntxt' rest)
 		  | _ -> false
 	      end    
 	  | L.Let_set(nm,knd,st) :: rest ->
 	      begin
-		match searchElems cntxt nm xxx mdl elems with
-		    CtxSet (_,knd') -> 
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxSet (_,knd')) -> 
 		      subKind cntxt knd' knd &&
 			eqSet cntxt (projAsSet nm) st &&
-			let cntxt' = insertSetVariable cntxt nm knd' (Some (projAsSet nm))
+			let cntxt' = 
+			  insertSetVariable cntxt nm knd' (Some (projAsSet nm))
 			in loop cntxt' rest
 		  | _ -> false
 	      end    
-	  | _ -> raise Unimplemented
-	in loop cntxt elems2      
+
+	  | L.Predicate(nm,pt) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxProp(_, pt')) ->
+		      (subPropType cntxt pt' pt &&
+			  let cntxt' = 
+			    insertPropVariable cntxt nm pt' (Some (projAsProp nm))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Let_predicate(nm,pt,prp) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxProp(_, pt')) ->
+		      (subPropType cntxt pt' pt &&
+			  eqProp cntxt (projAsProp nm) prp &&
+			  let cntxt' = 
+			    insertPropVariable cntxt nm pt' (Some (projAsProp nm))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Value(nm,st) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxTerm(_, st')) ->
+		      (subSet cntxt st' st &&
+			  let cntxt' = 
+			    insertTermVariable cntxt nm st' (Some (projAsTerm nm))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Let_term(nm,st,trm) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxTerm(_, st')) ->
+		      (subSet cntxt st' st &&
+			  eqTerm cntxt (projAsTerm nm) trm &&
+			  let cntxt' = 
+			    insertTermVariable cntxt nm st' (Some (projAsTerm nm))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+          | L.Model(nm, thry) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxModel thry') ->
+		      (checkModelConstraint cntxt (projAsModel nm) thry' thry &&
+			  let cntxt' = 
+			    insertModelVariable cntxt nm thry'
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Comment _ :: rest -> loop cntxt rest
+
+          | L.Sentence (nm, mbnds, prp) :: rest ->
+	      (tyGenericWarning "L.Sentence case of checkModelConstraint unfinished";
+	       loop cntxt rest)
+	      (* XXX!
+		 searchElems can't find sentences :(
+
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (CtxModel thry') ->
+		      (checkModelConstraint cntxt (projAsModel nm) thry' thry &&
+			  let cntxt' = 
+			    insertModelVariable cntxt nm thry'
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+	      *)	      
+           
+	in loop cntxt elems2
 
     | _ -> false (* No abstract Theory variables *)
-*)
+

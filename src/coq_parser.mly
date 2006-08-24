@@ -119,7 +119,7 @@
 %right ANDSYMBOL
 
 %nonassoc LET IN CHOOSE FROM
-%nonassoc PERIOD PERIOD_LPAREN
+%nonassoc PERIOD PERIOD_LPAREN MPROJECT
 %nonassoc EQUAL 
 %nonassoc FUN MATCH WITH BAR
 %nonassoc SUBIN SUBOUT
@@ -298,6 +298,7 @@ expr:
       { App(App(makeIdent($2,Infix3), $1), $3) }
   | expr INFIXOP4 expr                        
       { App(App(makeIdent($2,Infix4), $1), $3) }
+  | expr MPROJECT { makeMProj $1 ($2, Word) }
 
   /* Also need cases for binary relations inside modules */
 

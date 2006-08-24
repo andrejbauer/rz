@@ -721,6 +721,14 @@ let insertModelvar sbst strng mdl =
   {sbst with models = NameMap.add strng mdl sbst.models;
 	 capturablenames = NameSet.union sbst.capturablenames (fnModel mdl)}
 
+let removeName sbst nm =
+  {terms  = NameMap.remove nm sbst.terms;
+   props  = NameMap.remove nm sbst.props;
+   sets   = NameMap.remove nm sbst.sets;
+   models = NameMap.remove nm sbst.models;
+   capturablenames = sbst.capturablenames}  (* XXX Overly conservative? *)
+
+
 let getTermvar sbst nm =
    try (NameMap.find nm sbst.terms) with
        Not_found -> Var (LN (None, nm))
@@ -769,61 +777,70 @@ let updateBoundName sbst nm =
 	else 
 	  (sbst, nm)
 
+(* Verify that the given name will not incur variable capture.  (I.e.,
+   that we'd have to alpha-vary it if we wanted to push the
+   substitution inside the scope of this bound variable. *)
+let checkNoCapture sbst nm =
+  if (NameSet.mem nm sbst.capturablenames) then
+    failwith ("Cannote remove shadowing of " ^ string_of_name nm)
+  else
+    ()
+
 let rec subst (substitution : subst) =
-	 
-     let rec sub = function
-         EmptyTuple -> EmptyTuple
-       | Var (LN (None, nm)) -> getTermvar substitution nm
-       | Var (LN (Some mdl, nm)) -> 
-	   Var( LN(Some(substModel substitution mdl), nm) )
-       | Tuple ts      -> Tuple(List.map sub ts)
-       | Proj(n,t1)    -> Proj(n, sub t1)
-       | App(t1,t2)    -> App(sub t1, sub t2)
-       | Inj(l,termopt) -> Inj(l, substTermOption substitution termopt)
-       | Case(t1,arms) -> Case(t1,subarms arms)
-       | RzQuot t -> RzQuot (sub t)
-       | RzChoose ((y,sopt),t1,t2,ty) ->
-	   let (sbst', y') = updateBoundName substitution y in
-	     RzChoose ((y', substSet substitution sopt),
-		      sub t1,
-		      subst sbst' t2,
-		      substSet substitution ty)
-        | Quot(trm1,prp2) -> Quot(sub trm1, substProp substitution prp2)
-        | Choose((y,sopt),p,t1,t2,stopt2) ->
-	    let (sbst', y') = updateBoundName substitution y in
-              Choose((y',substSet substitution sopt),
-                    substProp substitution p,
-                    sub t1, 
-                    subst sbst' t2,
-		    substSet substitution stopt2)
-        | Subin(trm,st) -> Subin(sub trm, substSet substitution st)
-        | Subout(trm,st) -> Subout(sub trm, substSet substitution st)
-        | Let((y,stopt),t1,t2,stopt2) ->
-	    let (sbst', y') = updateBoundName substitution y in
-            Let((y',substSet substitution stopt),
-               sub t1, 
-	       subst sbst' t2,
-	       substSet substitution stopt2)
-	
+  
+  let rec sub = function
+      EmptyTuple -> EmptyTuple
+    | Var (LN (None, nm)) -> getTermvar substitution nm
+    | Var (LN (Some mdl, nm)) -> 
+	Var( LN(Some(substModel substitution mdl), nm) )
+    | Tuple ts      -> Tuple(List.map sub ts)
+    | Proj(n,t1)    -> Proj(n, sub t1)
+    | App(t1,t2)    -> App(sub t1, sub t2)
+    | Inj(l,termopt) -> Inj(l, substTermOption substitution termopt)
+    | Case(t1,arms) -> Case(t1,subarms arms)
+    | RzQuot t -> RzQuot (sub t)
+    | RzChoose ((y,sopt),t1,t2,ty) ->
+	let (sbst', y') = updateBoundName substitution y in
+	  RzChoose ((y', substSet substitution sopt),
+		   sub t1,
+		   subst sbst' t2,
+		   substSet substitution ty)
+    | Quot(trm1,prp2) -> Quot(sub trm1, substProp substitution prp2)
+    | Choose((y,sopt),p,t1,t2,stopt2) ->
+	let (sbst', y') = updateBoundName substitution y in
+          Choose((y',substSet substitution sopt),
+                substProp substitution p,
+                sub t1, 
+                subst sbst' t2,
+		substSet substitution stopt2)
+    | Subin(trm,st) -> Subin(sub trm, substSet substitution st)
+    | Subout(trm,st) -> Subout(sub trm, substSet substitution st)
+    | Let((y,stopt),t1,t2,stopt2) ->
+	let (sbst', y') = updateBoundName substitution y in
+          Let((y',substSet substitution stopt),
+             sub t1, 
+	     subst sbst' t2,
+	     substSet substitution stopt2)
+	    
 
-	| Lambda((y,sopt),t1) ->
-	    let (sbst', y') = updateBoundName substitution y in 
-	      Lambda((y',substSet substitution sopt),
-		    subst sbst' t1)
-	| The((y,sopt), prp) ->
-	    let (sbst', y') = updateBoundName substitution y in 
-	      The((y',substSet substitution sopt),
-		    substProp sbst' prp)
-        
+    | Lambda((y,sopt),t1) ->
+	let (sbst', y') = updateBoundName substitution y in 
+	  Lambda((y',substSet substitution sopt),
+		subst sbst' t1)
+    | The((y,sopt), prp) ->
+	let (sbst', y') = updateBoundName substitution y in 
+	  The((y',substSet substitution sopt),
+	     substProp sbst' prp)
+            
 
-     and subarms = function
-          [] -> []
-        | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
-        | (l,Some(y,sopt),u)::rest ->
-	    let (sbst',y') = updateBoundName substitution y in
-              (l, Some(y', substSet substitution sopt), subst sbst' u) ::
-	      (subarms rest)
-     in sub
+  and subarms = function
+      [] -> []
+    | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
+    | (l,Some(y,sopt),u)::rest ->
+	let (sbst',y') = updateBoundName substitution y in
+          (l, Some(y', substSet substitution sopt), subst sbst' u) ::
+	    (subarms rest)
+  in sub
 
 and substProp substitution = 
   let rec sub = function
@@ -838,8 +855,8 @@ and substProp substitution =
     | Or ts         -> Or(List.map sub ts)
     | Not t         -> Not(sub t)
     | Equal(ty,t1,t2) -> Equal(substSet substitution ty,
-                               subst substitution t1,
-			       subst substitution t2)
+                              subst substitution t1,
+			      subst substitution t2)
     | Forall((y,sopt),t1) ->
 	let (sbst', y') = updateBoundName substitution y in 
           Forall((y',substSet substitution sopt),
@@ -859,58 +876,58 @@ and substProp substitution =
     | PApp(prp1,trm2) -> PApp(sub prp1, subst substitution trm2)
     | EquivCoerce (st, prp) -> EquivCoerce(substSet substitution st, sub prp)
   in sub
-      
+    
 
 and substSet substitution =
-     let rec sub = function
-	   Unit -> Unit
-	 | Empty -> Empty
-         | Basic (SLN (None, stnm)) -> 
-	     getSetvar substitution stnm
-         | Basic (SLN (Some mdl, stnm)) -> 
-	     Basic (SLN (Some (substModel substitution mdl), stnm))
-         | Product ss -> Product (substProd substitution ss)
-         | Exp(y, s1, s2) ->
-	    let (sbst', y') = updateBoundName substitution y in 
-              Exp(y', sub s1, substSet sbst' s2)
-         | Subset((y,sopt),u) ->
-	     let (sbst', y') = updateBoundName substitution y in 
-               Subset((y',substSet substitution sopt),
-  	         substProp sbst' u)
-         | Quotient(st,prp)   -> 
-              Quotient(sub st, substProp substitution prp)
-	 | Rz st -> Rz (sub st)
-	 | SApp(st1,trm2) -> SApp(sub st1, subst substitution trm2)
-	 | Sum lsos ->
-	     let f (l, so) = (l, substSetOption substitution so)
-	     in Sum (List.map f lsos)
-         | SLambda((y,st),u) ->
-	     let (sbst', y') = updateBoundName substitution y in 
-               SLambda((y',substSet substitution st),
-  	              substSet sbst' u)
+  let rec sub = function
+      Unit -> Unit
+    | Empty -> Empty
+    | Basic (SLN (None, stnm)) -> 
+	getSetvar substitution stnm
+    | Basic (SLN (Some mdl, stnm)) -> 
+	Basic (SLN (Some (substModel substitution mdl), stnm))
+    | Product ss -> Product (substProd substitution ss)
+    | Exp(y, s1, s2) ->
+	let (sbst', y') = updateBoundName substitution y in 
+          Exp(y', sub s1, substSet sbst' s2)
+    | Subset((y,sopt),u) ->
+	let (sbst', y') = updateBoundName substitution y in 
+          Subset((y',substSet substitution sopt),
+  	        substProp sbst' u)
+    | Quotient(st,prp)   -> 
+        Quotient(sub st, substProp substitution prp)
+    | Rz st -> Rz (sub st)
+    | SApp(st1,trm2) -> SApp(sub st1, subst substitution trm2)
+    | Sum lsos ->
+	let f (l, so) = (l, substSetOption substitution so)
+	in Sum (List.map f lsos)
+    | SLambda((y,st),u) ->
+	let (sbst', y') = updateBoundName substitution y in 
+          SLambda((y',substSet substitution st),
+  	         substSet sbst' u)
 
-     and substProd sbst = function
-	 [] -> []
-       | (y,st)::rest -> 
-	   let (sbst', y') = updateBoundName sbst y in 
-	   (y', substSet sbst st) :: (substProd sbst' rest)
+  and substProd sbst = function
+      [] -> []
+    | (y,st)::rest -> 
+	let (sbst', y') = updateBoundName sbst y in 
+	  (y', substSet sbst st) :: (substProd sbst' rest)
 
 
-     in sub
+  in sub
 
 and substSetOption substitution = function
-      None    -> None
-    | Some st -> Some (substSet substitution st)
+    None    -> None
+  | Some st -> Some (substSet substitution st)
 
 and substTermOption substitution = function
-      None     -> None
-    | Some trm -> Some (subst substitution trm)
+    None     -> None
+  | Some trm -> Some (subst substitution trm)
 
 and substModel substitution = function
     ModelName strng -> getModelvar substitution strng
   | ModelProj (mdl, lbl) -> ModelProj(substModel substitution mdl, lbl)
   | ModelApp (mdl1, mdl2) -> ModelApp(substModel substitution mdl1,
-				      substModel substitution mdl2)
+				     substModel substitution mdl2)
 
 and substKind substitution = function
     KindArrow(y, st, k) -> 
@@ -925,78 +942,82 @@ and substProptype substitution = function
   | PropArrow(y,st,prpty) ->
       let (sbst', y') = updateBoundName substitution y in
 	PropArrow(y', substSet substitution st, substProptype sbst' prpty)
-      
+	  
 let rec substTheory substitution = function 
-      Theory elts       -> Theory (substTheoryElts substitution elts)
-    | TheoryName thrynm -> TheoryName thrynm
-    | TheoryArrow ((y, thry1), thry2) ->
-	let (sbst',y') = updateBoundName substitution y in
-	  TheoryArrow((y, substTheory substitution thry1),
-		        substTheory sbst' thry2)
-    | TheoryLambda ((y, thry1), thry2) ->
-	let (sbst',y') = updateBoundName substitution y in
-	  TheoryLambda((y, substTheory substitution thry1),
-		        substTheory sbst' thry2)
-    | TheoryApp (thry, mdl) ->
-	TheoryApp (substTheory substitution thry,  
-		   substModel substitution mdl)
+    Theory elts       -> Theory (substTheoryElts substitution elts)
+  | TheoryName thrynm -> TheoryName thrynm
+  | TheoryArrow ((y, thry1), thry2) ->
+      let (sbst',y') = updateBoundName substitution y in
+	TheoryArrow((y, substTheory substitution thry1),
+		   substTheory sbst' thry2)
+  | TheoryLambda ((y, thry1), thry2) ->
+      let (sbst',y') = updateBoundName substitution y in
+	TheoryLambda((y, substTheory substitution thry1),
+		    substTheory sbst' thry2)
+  | TheoryApp (thry, mdl) ->
+      TheoryApp (substTheory substitution thry,  
+		substModel substitution mdl)
 
-and substTheoryElts _ = (print_endline "CANNOT substTheoryElts";
-			 raise Unimplemented)
-
-(* Can't implement this correctly without an outer label / inner variable
-   distinction. :( *)
-
-
-(*
-    sub = function ->
+(* Can't implement this fully without an outer label / inner variable
+   distinction. !
+*)
+and substTheoryElts sub = function
     [] -> []
-  | Set (stnm, knd) :: rest ->
-      (Set (stnm, substKind sub knd)) :: (substTheoryElts sub rest)
-  | Let_set (setnm, knd, st) :: rest ->
-      (Let_set (setnm, substKind sub knd, substSet sub st)) :: 
-	(substTheoryElts sub rest)
+  | Set (nm, knd) :: rest ->
+      let _ = checkNoCapture sub nm
+      in let sub' = removeName sub nm
+      in
+	(Set (nm, substKind sub knd)) :: (substTheoryElts sub' rest)
+  | Let_set (nm, knd, st) :: rest ->
+      let _ = checkNoCapture sub nm
+      in let sub' = removeName sub nm
+      in (Let_set (nm, substKind sub knd, substSet sub st)) :: 
+	(substTheoryElts sub' rest)
   | Predicate (nm, pt) :: rest -> 
-       let this' = Predicate (nm, substProptype sub pt, substSet sub st)
-       in let rest' = substTheoryElts sub rest
-       in this' :: rest'
-  | Let_predicate (nm, prpty, prp) :: rest -> 
-       let this' = Let_predicate (nm, substProptype sub pt, substProp sub prp)
-       in let rest' = substTheoryElts sub rest
-       in this' :: rest'
+      let _ = checkNoCapture sub nm
+      in let this' = Predicate (nm, substProptype sub pt)
+      in let sub' = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
+  | Let_predicate (nm, pt, prp) :: rest -> 
+      let _ = checkNoCapture sub nm
+      in let this' = Let_predicate(nm, substProptype sub pt, substProp sub prp)
+      in let sub'  = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
   | Let_term (nm, st, trm) :: rest ->
-       let ((nm, st'), sub_b) = substBnd sub (nm, st)
-       in let this' = Let_term (nm, st', subst sub_b trm)
-       in let sub'  = insertTermvar sub nm (Var (None, nm))
-       in let rest' = substTheoryElts sub' rest
-       in this' :: rest'
+      let _ = checkNoCapture sub nm
+      in let this' = Let_term(nm, substSet sub st, subst sub trm)
+      in let sub'  = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
   | Value (nm, st) :: rest ->
-       let this'    = Value (nm, substSet sub st)
-       in let sub'  = insertTermvar sub nm (Var (None, nm))
-       in let rest' = substTheoryElts sub' rest
-       in this' :: rest'
-  | Sentence (sentsort, nm, mbnds, bnds, trm) :: rest ->
-       let    (mbnds', sub_m) = substMBnds sub mbnds
-       in let (bnds',  sub_b) = substBnds sub_m bnds
-       in let trm' = subst sub_b trm
-       in let this' = Sentence (sentsort, nm, mbnds', bnds', trm')
-       in let rest' = substTheoryElts sub rest
-       in this' :: rest'
-  | Model (mdlnm, thry) :: rest ->
-       let    thry' = substTheory sub thry 
-       in let this' = Model (mdlnm, thry')
-       in let rest' = substTheoryElts sub rest
-       in this' :: rest'
-  | Implicit (strs, set) :: rest ->
-       let    set'  = substSet sub set
-       in let this' = Implicit (strs, set')
-       in let rest' = substTheoryElts sub rest
-       in this' :: rest'
+      let _ = checkNoCapture sub nm
+      in let this'    = Value (nm, substSet sub st)
+      in let sub'  = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
+  | Sentence (nm, mbnds, prp) :: rest ->
+      (* What is the binding behavior of a sentence? *)
+      let _ = checkNoCapture sub nm 
+      in let (mbnds', sub_m) = substMBnds sub mbnds
+      in let prp' = substProp sub prp
+      in let this' = Sentence (nm, mbnds', prp')
+      in let sub'  = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
+  | Model (nm, thry) :: rest ->
+      let _ = checkNoCapture sub nm
+      in let thry' = substTheory sub thry 
+      in let this' = Model (nm, thry')
+      in let sub' = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
   | ((Comment c) as this') :: rest ->
        let rest' = substTheoryElts sub rest
        in this' :: rest'
-  | Variable _ :: _ -> raise Unimplemented
 
+(*
 and substBnd sub (nm, stopt) = 
     ((nm, substSetOption sub stopt), 
       insertTermvar sub nm (Var (None, nm)))
@@ -1007,6 +1028,7 @@ and substBnds sub = function
        let (bnd',  sub' ) = substBnd sub bnd
        in let (rest', sub'') = substBnds sub' rest 
        in (bnd' :: rest', sub'')
+*)
 
 and substMBnds sub = function
      [] -> ([], sub)
@@ -1014,5 +1036,4 @@ and substMBnds sub = function
        let sub' = insertModelvar sub mdlnm (ModelName mdlnm ) in
        let (rest', sub'') = substMBnds sub' rest in
          ((mdlnm, substTheory sub thry) :: rest', sub'')
-*)
 
