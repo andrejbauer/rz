@@ -177,14 +177,15 @@ let pApp ctx p t = match p with
   | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ -> PApp (p, t)
   | PMLambda _ | True | False | IsPer _ | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ ->
-      failwith "bad propositional application"
+      failwith "bad propositional application 1"
 
 let pMApp ctx p t = match p with
     PMLambda ((n,_), q) -> sbp ctx [(n,t)] q
-  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ -> PMApp (p, t)
-  | PLambda _ | True | False | IsPer _ | IsPredicate _ | IsEquiv _ | Equal _ | And _
+  | IsPer _ | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ -> PMApp (p, t)
+  | PLambda _ ->       failwith ("bad propositional application on " ^ string_of_proposition p)
+  | True | False | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ ->
-      failwith "bad propositional application"
+      failwith "bad propositional application 2"
 
 let nest_forall = List.fold_right (fun b p -> Forall (b, p))
 
@@ -216,31 +217,38 @@ let rec translateSet (ctx : ctxElement list) = function
 	}
 
   | L.Product lst ->
-      let us = snd
-	(List.fold_left 
-	   (fun (ctx, us) (nm, st) -> (insertTermvar nm st ctx, (translateSet ctx st) :: us))
+      let us = List.rev (snd
+	(List.fold_left
+	   (fun (ctx, us) (nm,st) -> (insertTermvar nm st ctx, (nm, translateSet ctx st) :: us))
 	   (ctx, [])
-	   lst) in
-      let v = TupleTy (List.map (fun u -> u.ty) us) in
+	   lst)) in
+      let v = TupleTy (List.map (fun (_, u) -> u.ty) us) in
 	{
 	  ty = v;
 	  tot = (
 	    let t = fresh [mk "t"; mk "u"; mk "v"] ctx in
 	      makeTot (t, v)
-		(And (let k = ref 0 in
-			List.map
-			  (fun u -> let q = pApp ctx u.tot (Proj (!k, id t)) in incr k ; q)
-			  us
-		))
+		(And (List.rev (fst (List.fold_left
+	               (fun (ps, (sbst, k)) (nm, w) ->
+			 let t' = Proj (k, id t) in
+			   ((pApp ctx (sbp ctx sbst w.tot) t') :: ps, ((nm,t')::sbst, k + 1))
+		       )
+		       ([], ([], 0))
+		       us
+		))))
 	  );
 	  per = (
 	      let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] ctx in
-		makePer (t, u, v) (And (
-		    let k = ref 0 in
-		      List.map
-			(fun u -> let q = pApp ctx (pApp ctx u.per (Proj (!k, id t))) (Proj (!k, id t)) in incr k; q)
-			us
-		))
+		makePer (t, u, v) 
+		  (And (List.rev (fst (List.fold_left
+			      (fun (ps, (sbst, k)) (nm, w) ->
+				let t' = Proj (k, id t) in
+				let u' = Proj (k, id u) in
+				  ((pApp ctx (pApp ctx (sbp ctx sbst w.per) t') u') :: ps, ((nm,t')::sbst, k + 1))
+			      )
+			      ([], ([], 0))
+			      us
+		  ))))
 	  )
 	}
 
@@ -602,11 +610,22 @@ and bindings_of_proptype ctx = function
       let {ty=t} = translateSet ctx s in
 	(n,t) :: (bindings_of_proptype (insertTermvar m s ctx) pt)
 
+and bindings_of_setkind ctx = function
+    L.KindSet -> []
+  | L.KindArrow (m, s, knd) ->
+      let n = fresh [(if isWild m then mk "x" else m)] ctx in
+      let {ty=t} = translateSet ctx s in
+	(n,t) :: (bindings_of_setkind (insertTermvar m s ctx) knd)
+
 and translateTheoryElements ctx = function
     [] -> [], emptyCtx
   | L.Set (n, knd) :: rest -> 
       let sgnt, smmry = translateTheoryElements (insertAbstractSetvar n knd ctx) rest in
-	(TySpec (n, None, [("per_" ^ string_of_name n, IsPer n)])) :: sgnt,
+	(TySpec (n, None, [("per_" ^ string_of_name n,
+			   (let binds = bindings_of_setkind ctx knd in
+			      nest_forall binds
+				(List.fold_left (fun p (y,_) -> pMApp ctx p (id y)) (IsPer n) binds)
+			   ))])) :: sgnt,
 	(insertAbstractSetvar n knd smmry)
 
   | L.Let_set (n, knd, s) :: rest ->

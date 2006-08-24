@@ -282,16 +282,19 @@ and output_prop_10 ppf = function
 and output_prop_9 ppf = function
     PApp (PApp (NamedPer ln, t), u) -> 
       fprintf ppf "%a =%a= %a" 
-        output_term_9 t   output_tln ln   output_term_8 u
+        output_term_4 t   output_tln ln   output_term_4 u
   | PApp (NamedTotal ln, t) ->
       fprintf ppf "%a : ||%a||"
 	output_term_9 t   output_tln ln
   | PApp (p, t) ->
       fprintf ppf "%a %a"
-	output_prop_9 p   output_term_8 t
+	output_prop_9 p   output_term_4 t
+  | PMApp (p, t) ->
+      fprintf ppf "(%a %a)"
+	output_prop_9 p   output_term_4 t
   | NamedProp (ln, Dagger) -> output_ln ppf ln
   | NamedProp (ln, t) ->
-      fprintf ppf "%a |= %a"   output_term_8 t   output_ln ln
+      fprintf ppf "%a |= %a"   output_term_4 t   output_ln ln
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
@@ -304,7 +307,7 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
-  | NamedPer ln -> output_tln ppf ln
+  | NamedPer ln -> fprintf ppf "=%a=" output_tln ln
   | IsPer stnm -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
   | IsPredicate (nm, ms) ->
       fprintf ppf "@[PREDICATE(@[<hov>%s, ...@])]"
@@ -314,7 +317,9 @@ and output_prop_0 ppf = function
 	output_tln ln
   | And [] -> fprintf ppf "true"
   | Cor [] -> fprintf ppf "false"
-  | prp -> fprintf ppf "(@[<hov>%a@])"   output_prop prp
+  | prp ->
+      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp));
+      fprintf ppf "(@[<hov>%a@])"   output_prop prp
     
 and output_app ppf = function
     ((LN(None, Name.N(op, (Name.Infix0|Name.Infix1|Name.Infix2|Name.Infix3|Name.Infix4)))), [u;v]) ->

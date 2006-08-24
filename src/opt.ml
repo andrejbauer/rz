@@ -23,9 +23,8 @@ exception Impossible of string
 let emptyenv = []
 let insert (x,s,env) = (x,s)::env
 
-exception NotFound
 let rec lookup = function
-      (y,[]) -> (raise NotFound)
+      (y,[]) -> (raise Not_found)
     | (y,(k,v)::rest) -> if (y=k) then v else lookup(y,rest)
 
 
@@ -35,7 +34,7 @@ let rec peek = function
 
 let rec lookupName = function
       (y,[]) -> (print_string ("Unbound name: " ^ Name.string_of_name y ^ "\n");
-                 raise NotFound)
+                 raise Not_found)
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
 
 (*********************************)
@@ -85,8 +84,7 @@ let rec lookupModulLong ctx = function
 
 let lookupType  ctx   nm = 
    try (NameMap.find nm ctx.types) with 
-      Not_found -> ( print_string ( "Unbound name: " ^ Name.string_of_name nm ^ 
-				    "\n");
+      Not_found -> ( print_string ( "Unbound name: " ^ Name.string_of_name nm ^ "\n");
                      raise Not_found )
 
 let lookupTypeLong  ctx = function
@@ -552,8 +550,7 @@ and optSignat ctx = function
       let body', ctx' = optElems ctx body in
       ( Signat body', Summary_Struct ctx' )
   | SignatFunctor(arg, body) ->
-      (* XXX: Just write optStructBinding directly *)
-      let    ( [(mdlnm, _) as arg'], ctx'  ) = optStructBindings ctx [arg]
+      let    ( (mdlnm, _) as arg', ctx'  ) = optStructBinding ctx arg
       in let ( body', summary ) = optSignat ctx' body
       in ( SignatFunctor ( arg', body' ), 
 	   Summary_Functor (mdlnm, summary) )
@@ -562,6 +559,11 @@ and optSignat ctx = function
 	SignatApp(fst (optSignat ctx sgnt1), mdl, sgnt2'),
 	smmry
       
+and optStructBinding ctx (m, signat) =
+  let signat', summary = optSignat ctx signat in
+    ( (m, signat'),
+      insertModul ctx m summary )
+
 and optStructBindings ctx = function
     [] -> [], ctx
   | (m, signat) :: bnd ->

@@ -557,7 +557,6 @@ and string_of_prop level p =
     | PMLambda ((n, {ty=ty; tot=p}), q) ->
 	(14, "fun " ^ string_of_name n ^ " : " ^ (string_of_ty ty) ^ " (" ^ string_of_prop 0 p^ ") => " ^
 	  string_of_prop 14 q)
-    | PMApp (p, t) -> failwith "Outsyn.string_of_prop: PMApp unimplemented"
     | PApp (NamedTotal n, t) -> (0, (string_of_term t) ^ " : ||" ^ (string_of_tln n) ^ "||")
     | PApp (PApp (NamedPer n, t), u) ->
 	(9, (string_of_term' 9 t) ^ " =_" ^ (string_of_tln n) ^ " " ^ (string_of_term' 9 u))
@@ -565,6 +564,7 @@ and string_of_prop level p =
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, r), u), t) ->
 	(9, string_of_term r ^ " |= " ^ (string_of_infix (string_of_term u) op (string_of_term t)))
+    | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ " " ^ (string_of_term' 9 t))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
   in
