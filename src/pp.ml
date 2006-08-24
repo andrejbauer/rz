@@ -249,6 +249,19 @@ and output_prop_14 ppf = function
 	  output_binds  somes   output_prop_14 prp'
   | Imply (p, q) -> 
       fprintf ppf "%a =>@ %a"  output_prop_11 p   output_prop_14 q
+
+  | PLambda ((n, ty), p) ->
+      fprintf ppf "@[<hov>Pfun (%a : %a) ->@ %a@]" 
+        output_name n  output_ty ty  output_prop_14 p
+
+  | PMLambda ((n, {ty=ty; tot=p}), q) ->
+      fprintf ppf "@[<hov 2>PMfun (%a : %a(%a)) ->@ %a@]" 
+        output_name n  output_ty ty  output_prop_14 p  output_prop_14 q
+
+  | PObligation (p, q) ->
+      fprintf ppf "assure %a in %a" 
+        output_prop_13 p  output_prop_14 q
+
   | prp -> output_prop_13 ppf prp
     
 and output_prop_13 ppf = function
