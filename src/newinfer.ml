@@ -18,23 +18,34 @@ exception Impossible
 (** {2 Error Reporting} *)
 (************************)
 
+(*****************)
+(** {3 Warnings} *)
+(*****************)
+
+(** 
+    Warnings are collected rather than being displayed immediately,
+    because often the output runs for more than a page and
+    the warnings would just scroll off the screen.
+
+    A type error causes warnings to be displayed immediately (right
+    before the type error message).  Otherwise, the top level is
+    responsible for calling printAndResetWarnings() at an appropriate
+    time when they are likely to be seen.
+*)
 
 let warnings = ref ([] : string list)
 
 let tyGenericWarning msg =
   warnings := msg :: (!warnings)
 
-let printWarning msg = 
+
+let printAndResetWarnings () =
   let    warning_header = "\n-------------------------------\nWARNING:\n"
   in let warning_footer = "\n-------------------------------\n\n"
-  in print_string (warning_header ^ msg ^ warning_footer)
-
-let printWarnings () =
-  begin
-    List.iter printWarning (!warnings);
+  in let printWarn msg  = print_string (warning_header ^ msg ^ warning_footer)
+  in
+    List.iter printWarn (!warnings);
     warnings := []
-  end
-
 
 let noEqPropWarning prp1 prp2 context_expr =
   tyGenericWarning 
@@ -42,15 +53,19 @@ let noEqPropWarning prp1 prp2 context_expr =
 	L.string_of_prop prp2 ^ " are equivalent in " ^ 
 	string_of_expr context_expr)
 
-exception TypeError
+(********************)
+(** {2 Type Errors} *)
+(********************)
 
+(* raised by all type errors *)
+exception TypeError
 
 
 let tyGenericError msg = 
   let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
   in let error_footer = "\n-------------------------------\n\n"
   in 
-       (printWarnings();
+       (printAndResetWarnings();
 	print_string (error_header ^ msg ^ error_footer);
 	raise TypeError)
 
@@ -238,7 +253,7 @@ let unBound cntxt nm =
 (* These functions ought to detect and complain about shadowing.
    In most cases, the system will already have renamed bound variables
    before this point.  For module labels we can't rename, and so we
-   may have to just give up here with an error.
+   have to just give up here with an error.
 *)
 let makeInsertChecker validator insertFn idString cntxt nm =
     if validator nm then

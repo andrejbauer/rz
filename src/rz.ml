@@ -105,10 +105,10 @@ let rec process = function
 	      print_endline "After Inference:";
 	      print_endline "----------------";
 	      List.iter print_item lthy;
-	      print_endline "----------------")
+	      print_string "\n\n\n";
+	      Newinfer.printAndResetWarnings())
 	else ()) in
 
-      let _ = Newinfer.printWarnings() in
 
       let (spec,translate_state') = 
 	Translate.translateToplevel translate_state lthy in
@@ -137,8 +137,10 @@ let rec process = function
 	       send_to_formatter Format.std_formatter spec2
               else ()  in
 
-      (** We put this message after any displayed code so that
-          it is more likely to be seen. *)
+      (** We put these messages after any displayed code so that
+          they are more likely to be seen. *)
+
+      let _ = Newinfer.printAndResetWarnings() in
       let _ = if (!Flags.do_save) then
                  print_string ("[Output saved in " ^ outfile ^ "]\n") 
               else () 

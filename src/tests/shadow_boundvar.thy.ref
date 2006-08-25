@@ -1,10 +1,4 @@
 [Processing shadow_boundvar.thy]
-
--------------------------------
-WARNNG:
-Shadowing of x detected.
--------------------------------
-
 module type T = 
 sig
   type s
@@ -16,4 +10,10 @@ sig
          all (x:||s||).  shadow x : ||s|| and shadow x =s= shadow x
   *)
 end
+
+
+-------------------------------
+WARNING:
+Shadowing of x detected.
+-------------------------------
 

@@ -114,7 +114,7 @@ let rec process = function
 	      print_endline "----------------");
 	else ()) in
 
-      let _ = Newinfer.printWarnings() in
+      let _ = Newinfer.printAndResetWarnings() in
 (*
 
       let (spec,translate_state') = 
