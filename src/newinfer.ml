@@ -25,7 +25,7 @@ let tyGenericWarning msg =
   warnings := msg :: (!warnings)
 
 let printWarning msg = 
-  let    warning_header = "\n-------------------------------\nWARNNG:\n"
+  let    warning_header = "\n-------------------------------\nWARNING:\n"
   in let warning_footer = "\n-------------------------------\n\n"
   in print_string (warning_header ^ msg ^ warning_footer)
 
@@ -306,41 +306,57 @@ let rec searchElems cntxt nm' mdl =
   let rec loop subst = function
     [] -> None
     | L.Set (nm, knd) :: rest -> 
-	if (nm = nm') then
-	  Some (CtxSet(None, (* or Some mdl.nm? *)
-		       L.substSetkind subst knd))  
-	else 
-	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
+	let knd' = L.substSetkind subst knd
+	in if (nm = nm') then
+	    Some (CtxSet(None, (* or Some mdl.nm? *)
+			knd'))
+	  else 
+	    loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm), knd')))
+	      rest
     | L.Let_set (nm, knd, st) :: rest -> 
-	if (nm = nm') then
-	  Some (CtxSet(Some (L.substSet subst st), L.substKind subst knd))
-	else 
-	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
+	let knd' = L.substSetkind subst knd
+	in let st' = L.substSet subst st
+	in if (nm = nm') then
+	    Some (CtxSet(Some st', knd'))
+	  else 
+	    loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm), knd')))
+	      rest
     | L.Predicate (nm, pt) :: rest -> 
-	if (nm = nm') then
-	  Some (CtxProp(None, L.substProptype subst pt))
-	else 
-	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm)))) rest
+	let pt' = L.substProptype subst pt
+	in if (nm = nm') then
+	    Some (CtxProp(None, pt'))
+	  else 
+	    loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm), pt')))
+	      rest
     | L.Let_predicate (nm, pt, prp) :: rest -> 
-	if (nm = nm') then
-	  Some (CtxProp(Some (L.substProp subst prp), L.substProptype subst pt))
+	let pt' = L.substProptype subst pt
+	in let prp' = L.substProp subst prp
+	in if (nm = nm') then
+	    Some (CtxProp(Some prp', pt'))
 	else 
-	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm)))) rest
+	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm), pt')))
+	    rest
     | L.Value (nm, ty) :: rest -> 
-	if (nm = nm') then
-	  Some( CtxTerm (None, L.substSet subst ty) )
+	let ty' = L.substSet subst ty
+	in if (nm = nm') then
+	    Some( CtxTerm (None, ty') )
 	else 
-	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
+	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm))))
+	    rest
     | L.Let_term (nm, ty, trm) :: rest -> 
-	if (nm = nm') then
-	  Some( CtxTerm (Some (L.subst subst trm), L.substSet subst ty) )
-	else 
-	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
+	let ty' = L.substSet subst ty
+	in let trm' = L.subst subst trm
+	in if (nm = nm') then
+	    Some( CtxTerm (Some trm', ty') )
+	  else 
+	    loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
     | L.Model (nm, thry) :: rest ->
-	if (nm = nm') then
-	  Some( CtxModel (L.substTheory subst thry) )
-	else 
-	  loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) rest
+	let thry' = L.substTheory subst thry
+	in
+	  if (nm = nm') then
+	    Some( CtxModel thry' )
+	  else 
+	    loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) rest
     | L.Sentence _ :: rest -> loop subst rest
     | L.Comment _  :: rest -> loop subst rest
   in
@@ -443,7 +459,7 @@ let rec modelToTheory cntxt = function
     applications for a (well-formed) set 
   *)
 let rec hnfSet cntxt = function
-    L.Basic (L.SLN ( None, stnm )) as orig_set ->
+    L.Basic (L.SLN ( None, stnm ), _) as orig_set ->
       begin
 	match (lookupId cntxt stnm) with
             CtxSet(Some st, _) -> hnfSet cntxt st
@@ -451,7 +467,7 @@ let rec hnfSet cntxt = function
 	  | _ -> raise Impossible
       end
 
-  | L.Basic (L.SLN ( Some mdl, nm)) as orig_set -> 
+  | L.Basic (L.SLN ( Some mdl, nm), _) as orig_set -> 
       begin
       let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
       in
@@ -537,8 +553,8 @@ let rec eqSet' do_subset cntxt =
 
                | ( L.Unit, L.Unit )   -> true       (** Redundant *) 
 
-               | ( L.Basic (L.SLN(mdlopt1, nm1)),
-		   L.Basic (L.SLN(mdlopt2, nm2)) ) -> 
+               | ( L.Basic (L.SLN(mdlopt1, nm1), _),
+		   L.Basic (L.SLN(mdlopt2, nm2), _) ) -> 
                     (** Neither has a definition *)
                     eqModelOpt cntxt mdlopt1 mdlopt2 
                     && (nm1 = nm2) 
@@ -674,8 +690,8 @@ and eqKind' do_subset cntxt =
          match (k1, k2) with
              ( L.KindArrow( nm1, st1, kk1 ), L.KindArrow ( nm2, st2, kk2 ) ) ->
 	       let (_, sub1, sub2) = freshNameSubsts nm1 nm2
-	       in let kk1' = L.substKind sub1 kk1
-	       in let kk2' = L.substKind sub2 kk2
+	       in let kk1' = L.substSetkind sub1 kk1
+	       in let kk2' = L.substSetkind sub2 kk2
 	           in 
 		    (* Domains are now compared contravariantly. *)
                     subSet cntxt st2 st1 
@@ -887,9 +903,6 @@ let rec coerceProp cntxt prp pt1 pt2 =
 (*********************)
 
 
-(*** XXX Does not check that names are of the right form,
-     e.g., that set names are lowercased non-infix. *)
-
 let rec annotateExpr cntxt = function 
     Ident nm -> 
       begin
@@ -897,9 +910,9 @@ let rec annotateExpr cntxt = function
 	in
 	  match lookupId cntxt nm' with
               CtxProp (_, pty) -> 
-		ResProp(L.Atomic(L.longname_of_name nm'), pty)
+		ResProp(L.Atomic(L.longname_of_name nm', pty), pty)
 	    | CtxSet  (_, knd) -> 
-		ResSet(L.Basic(L.set_longname_of_name nm'), knd)
+		ResSet(L.Basic(L.set_longname_of_name nm', knd), knd)
 	    | CtxTerm (_, ty)  -> 
 		ResTerm(L.Var(L.longname_of_name nm'), ty)
 	    | CtxModel  thry -> 
@@ -917,9 +930,9 @@ let rec annotateExpr cntxt = function
 	      begin
 		match searchElems cntxt nm2 mdl elems with
 		    Some (CtxSet (_,knd)) -> 
-		      ResSet(L.Basic(L.SLN(Some mdl, nm2)), knd)
+		      ResSet(L.Basic(L.SLN(Some mdl, nm2), knd), knd)
 		  | Some (CtxProp (_,pt)) -> 
-		      ResProp(L.Atomic(L.LN(Some mdl, nm2)), pt)
+		      ResProp(L.Atomic(L.LN(Some mdl, nm2), pt), pt)
 		  | Some (CtxTerm (_,ty)) -> 
 		      ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
 		  | Some (CtxModel thry) -> 
@@ -995,7 +1008,7 @@ let rec annotateExpr cntxt = function
 			    Some trm2' ->
 			      let sub = L.insertTermvar L.emptysubst nm trm2'
 			      in ResSet( L.SApp(st1, trm2'),
-				         L.substKind sub codknd )
+				         L.substSetkind sub codknd )
 			  | None -> tyMismatchError expr2 domty ty2 orig_expr
 		      end
 		  | _ -> wrongKindError expr1 knd1 "arrow" orig_expr 
@@ -1411,7 +1424,7 @@ let rec annotateExpr cntxt = function
 			   let (arms, pts) = process rest
 			   in ( (lbl,None,prp3) :: arms, pt3 :: pts )
 		       | (lbl, (Some (nm,_) as bopt), ResProp(prp3,pt3), expr3) :: rest ->
-			   if (NameSet.mem nm (L.fnPropType pt3)) then
+			   if (NameSet.mem nm (L.fnProptype pt3)) then
 			     cantElimError expr3
 			   else
 			     let (arms, pts) = process rest
@@ -2094,8 +2107,8 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 
     | (L.Theory elems1, L.Theory elems2) ->
 	let projAsTerm  nm = L.Var(L.LN(Some mdl1, nm))
-	in let projAsSet   nm = L.Basic(L.SLN(Some mdl1, nm))
-	in let projAsProp  nm = L.Atomic(L.LN(Some mdl1, nm))
+	in let projAsSet   nm knd = L.Basic(L.SLN(Some mdl1, nm), knd)
+	in let projAsProp  nm pt = L.Atomic(L.LN(Some mdl1, nm), pt)
 	in let projAsModel nm = L.ModelProj(mdl1, nm)
 	in let rec loop cntxt = function
 	    [] -> true
@@ -2105,7 +2118,8 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		    Some (CtxSet (_,knd1)) -> 
 		      (subKind cntxt knd1 knd2 &&
 			let cntxt' = 
-			  insertSetVariable cntxt nm knd1 (Some (projAsSet nm))
+			  insertSetVariable cntxt nm knd1 
+			    (Some (projAsSet nm knd1))
 			in loop cntxt' rest)
 		  | _ -> false
 	      end    
@@ -2117,9 +2131,10 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 			(* st2 might be "mdl1.nm", even if mdl1.nm doesn't
 			   have a definition, so we want to compare it to
 			   mdl1.nm and not to mdl1.nm's definition (if any) *)
-			eqSet cntxt (projAsSet nm) st2 &&
+			eqSet cntxt (projAsSet nm knd1) st2 &&
 			let cntxt' = 
-			  insertSetVariable cntxt nm knd1 (Some (projAsSet nm))
+			  insertSetVariable cntxt nm knd1 
+			    (Some (projAsSet nm knd1))
 			in loop cntxt' rest
 		  | _ -> false
 	      end    
@@ -2131,7 +2146,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		      (subPropType cntxt pt1 pt2 &&
 			  let cntxt' = 
 			    insertPropVariable cntxt nm pt1 
-			      (Some (projAsProp nm))
+			      (Some (projAsProp nm pt1))
 			  in loop cntxt' rest)
 		      | _ -> false
 	      end
@@ -2141,10 +2156,10 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		match searchElems cntxt nm mdl1 elems1 with
 		    Some (CtxProp(_, pt1)) ->
 		      (subPropType cntxt pt1 pt2 &&
-			  eqProp cntxt (projAsProp nm) prp2 &&
+			  eqProp cntxt (projAsProp nm pt1) prp2 &&
 			  let cntxt' = 
 			    insertPropVariable cntxt nm pt1 
-			      (Some (projAsProp nm))
+			      (Some (projAsProp nm pt1))
 			  in loop cntxt' rest)
 		      | _ -> false
 	      end
