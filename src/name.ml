@@ -143,6 +143,11 @@ let rec string_of_name = function
   | N(str,_) -> "(" ^ str ^ ")"
 
 (** [wildName ()] generates a new wildcard (an anonymous name). *)
+let (wildName, wildModelName) =
+  let k = ref 0 in
+    ((fun () -> incr k; N ("__" ^ string_of_int !k, Wild)),
+     (fun () -> incr k; N ("Z__" ^ string_of_int !k, Wild)))
+
 let wildName =
   let k = ref 0 in
     fun () -> incr k; N ("_" ^ string_of_int !k, Wild)
@@ -152,7 +157,8 @@ let isWild = function
   | _ -> false
 
 let validTermName = function
-    N(str, (Word | Wild)) -> (str = String.uncapitalize str) 
+    N(str, Word) -> (str = String.uncapitalize str) 
+  | N(_, Wild) -> true
   | _ -> true
 
 let validSetName = validTermName
@@ -160,7 +166,8 @@ let validSetName = validTermName
 let validPropName = validTermName
 
 let validModelName = function
-    N(str, (Word | Wild)) -> (str = String.capitalize str)
+    N(str, Word) -> (str = String.capitalize str)
+  | N(_, Wild) -> true
   | _ -> false
 
 let validTheoryName = validModelName

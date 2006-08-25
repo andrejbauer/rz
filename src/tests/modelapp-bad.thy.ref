@@ -4,28 +4,11 @@
 TYPE ERROR:
 The model BB was expected to satisfy theory
 
-thy
-set a : KindSet
-const c : a
-model E : thy
-set e : KindSet
-set f : KindSet = e
-end
-end
+A
 
 instead of theory
 
-thy
-set a : KindSet
-set b : KindSet = a
-set b' : KindSet
-const c : a
-const d : b
-model E : thy
-set e : KindSet = a
-set f : KindSet = b'
-end
-end
+B
 
 in FF BB
 -------------------------------

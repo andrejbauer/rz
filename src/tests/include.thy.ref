@@ -27,13 +27,13 @@ sig
   (**  Assertion per_b =  PER(=b=)
   *)
    
-  type d = b * a
+  type d = a * b
   (**  Assertion d_def_total = 
-         all (x:b * a).  x : ||d|| <=> pi0 x : ||b|| and pi1 x : ||a||
+         all (x:a * b).  x : ||d|| <=> pi0 x : ||a|| and pi1 x : ||b||
         
        Assertion d_def_per = 
-         all (y:b * a, z:b * a).  y =d= z <=> pi0 y =b= pi0 y and 
-           pi1 y =a= pi1 y
+         all (y:a * b, z:a * b).  y =d= z <=> pi0 y =a= pi0 z and 
+           pi1 y =b= pi1 z
   *)
 end
 

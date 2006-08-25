@@ -244,13 +244,13 @@ and string_of_toplevel = function
   | TopModel (mdlnm, expr) ->
       "model " ^ string_of_name mdlnm ^ " = " ^ string_of_expr expr
 
-let freshNameString = 
+let (freshNameString, freshModelNameString) = 
   let counter = ref 0
   in
-     function () -> (incr counter;
-	             "]" ^ string_of_int (!counter) ^ "[")
-
-let freshWildName() = N("_" ^ freshNameString(), Wild)
+     ((function () -> (incr counter;
+	               "___" ^ string_of_int (!counter))),
+     (function () -> (incr counter;
+		      "Z__" ^ string_of_int (!counter))))
 
 
 (*************************************

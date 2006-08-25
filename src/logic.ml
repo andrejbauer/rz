@@ -71,6 +71,7 @@ and proposition =
     | PApp    of proposition * term
     | PLambda of binding * proposition
     | EquivCoerce of set * proposition
+    | PCase   of term * (label * binding option * proposition) list
 
 and set =
     Empty
@@ -217,7 +218,12 @@ and substMProp m mdl p =
     | Unique ((n,s),p) -> Unique ((n, substMSet m mdl s), subst p)
     | Not p -> Not (subst p)
     | Equal (s, t, u) -> Equal (substMSet m mdl s, substMTerm m mdl t, substMTerm m mdl u)
-    | EquivCoerce (s, p) -> EquivCoerce (substMSet m mdl s, substMProp m mdl p)    
+    | EquivCoerce (s, p) -> EquivCoerce (substMSet m mdl s, substMProp m mdl p)     | PCase (t, lst) ->
+	let processArm = function
+	    (lbl, None, p)       -> (lbl, None, subst p)
+	  | (lbl, Some (n,s), t) -> (lbl, Some (n, substMSet m mdl s), subst t)
+	in
+	  PCase (substMTerm m mdl t, List.map processArm lst)
   in
     subst p
 
@@ -461,6 +467,15 @@ and string_of_prop prp =
 	"(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
     | EquivCoerce (st, prp) ->
 	"(" ^ toStr prp ^ " : Equiv(" ^ string_of_set st ^ "))"
+    | PCase (trm,arms) -> 
+	let rec doArm = function
+	    (lbl, None, prp) -> lbl ^ " => " ^ toStr prp
+	  | (lbl, Some (n,ty), prp) -> 
+	      lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
+		") => " ^ toStr prp
+	in 
+	  "case " ^ string_of_term trm ^ " of " ^
+	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
   in
     toStr prp)
 
@@ -588,7 +603,7 @@ let model_name_of_name = function
 	   print_string (string_of_name nm);
 	   print_string " as a model name.";
 	   raise Impossible)
-
+let theory_name_of_name = model_name_of_name
 
 
 let joinProperPropType p1 p2 = 
@@ -601,6 +616,8 @@ let joinProperPropType p1 p2 =
 
 let joinProperPropTypes lst = List.fold_left joinProperPropType StableProp lst
 
+let equivToArrow ty =
+  PropArrow(wildName(), ty, PropArrow(wildName(), ty, StableProp))
 
 let rec fnSet = function
     Empty | Unit  -> NameSet.empty
@@ -679,11 +696,25 @@ and fnProp = function
   | Unique((nm, st), prp) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
   | EquivCoerce (st, prp) -> NameSet.union (fnSet st) (fnProp prp)
+  | PCase (trm, arms) ->
+      NameSet.union (fnTerm trm) (unionNameSetList (List.map fnPCaseArm arms))
+
+
+and fnPropType = function
+    Prop | StableProp -> NameSet.empty
+  | EquivProp ty -> fnSet ty
+  | PropArrow (nm, ty, pt) ->
+      NameSet.union (fnSet ty) (NameSet.remove nm (fnPropType pt))
 
 and fnCaseArm = function
     (_, None, trm) -> fnTerm trm
   | (_, Some (nm, st), trm) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
+
+and fnPCaseArm = function
+    (_, None, trm) -> fnProp trm
+  | (_, Some (nm, st), trm) -> 
+      NameSet.union (fnSet st) (NameSet.remove nm (fnProp trm))
    
 	
 and fnModel = function
@@ -875,7 +906,17 @@ and substProp substitution =
 		 substProp sbst' t1)
     | PApp(prp1,trm2) -> PApp(sub prp1, subst substitution trm2)
     | EquivCoerce (st, prp) -> EquivCoerce(substSet substitution st, sub prp)
+    | PCase(t1,arms) -> PCase(t1,psubarms arms)
+
+  and psubarms = function
+      [] -> []
+    | (l,None,p)::rest -> (l,None, sub p)::(psubarms rest)
+    | (l,Some(y,sopt),p)::rest ->
+	let (sbst',y') = updateBoundName substitution y in
+          (l, Some(y', substSet substitution sopt), substProp sbst' p) ::
+	    (psubarms rest)
   in sub
+
     
 
 and substSet substitution =
@@ -957,6 +998,14 @@ let rec substTheory substitution = function
   | TheoryApp (thry, mdl) ->
       TheoryApp (substTheory substitution thry,  
 		substModel substitution mdl)
+
+and substTheoryKind sub = function
+    ModelTheoryKind               -> ModelTheoryKind
+  | TheoryKindArrow((y,thry), tk) ->
+      let(sub', y') = updateBoundName sub y in
+	TheoryKindArrow((y', substTheory sub thry), 
+		        substTheoryKind sub' tk)
+	
 
 (* Can't implement this fully without an outer label / inner variable
    distinction. !

@@ -1,0 +1,29 @@
+[Processing theoryapp.thy]
+module type A = 
+sig
+  type a
+  (**  Assertion per_a =  PER(=a=)
+  *)
+end
+
+module type B = 
+functor (M : A) ->
+ sig
+   type b = M.a
+   (**  Assertion b_def_total =  all (x:M.a).  x : ||b|| <=> x : ||M.a||
+         
+        Assertion b_def_per =  all (y:M.a, z:M.a).  y =b= z <=> y =M.a= z
+   *)
+    
+   type c = M.a
+   (**  Assertion c_def_total =  all (x:M.a).  x : ||c|| <=> x : ||M.a||
+         
+        Assertion c_def_per =  all (y:M.a, z:M.a).  y =c= z <=> y =M.a= z
+   *)
+ end
+
+module X : A
+
+module type C = 
+B(X)
+
