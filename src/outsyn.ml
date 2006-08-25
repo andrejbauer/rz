@@ -56,8 +56,9 @@ and proposition =
   | True                                       (* truth *)
   | False                                      (* falsehood *)
   | IsPer of ty_name * term list               (* the fact that a type is equipped with a per *)
-  | IsPredicate of name * term list * modest   (* [name] is a predicate on modest set *)
-  | IsEquiv of modest * proposition            (* is a stable equivalence relation on a modest set *)
+  | IsPredicate of name * ty option * (name * modest) list
+                                               (* [name] is a (parametrized) predicate  *)
+  | IsEquiv of modest * proposition            (* is a stable equivalence relation *)
   | NamedTotal of ty_longname * term list      (* totality of a term *)
   | NamedPer of ty_longname * term list        (* extensional equality of terms *)
   | NamedProp of longname * term * term list   (* basic proposition with a realizer *)
@@ -150,7 +151,7 @@ and fvProp' flt acc = function
     True -> acc
   | False -> acc
   | IsPer (_, lst) -> fvTermList' flt acc lst
-  | IsPredicate (_, lst, ms) -> fvTermList' flt (fvModest' flt acc ms) lst
+  | IsPredicate (_, _, lst) -> fvModestList' flt acc lst
   | IsEquiv ({tot=p; per=q}, r) -> fvProp' flt (fvProp' flt (fvProp' flt acc p) q) r
   | NamedTotal (_, lst) -> fvTermList' flt acc lst
   | NamedPer (_, lst) -> fvTermList' flt acc lst
@@ -182,6 +183,9 @@ and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 and fvPropList' flt acc = List.fold_left (fun a t -> fvProp' flt a t) acc
 
 and fvTermList' flt acc = List.fold_left (fun a t -> fvTerm' flt a t) acc
+
+and fvModestList' flt acc = List.fold_left (fun a t -> fvModest' flt a (snd t)) acc
+
 
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
@@ -300,7 +304,9 @@ and substProp ?occ sbst = function
     True -> True
   | False -> False
   | IsPer (nm, lst) -> IsPer (nm, substTermList ?occ sbst lst)
-  | IsPredicate (n, lst, ms) -> IsPredicate (n, substTermList ?occ sbst lst, substModest ?occ sbst ms)
+  | IsPredicate (n, ty, lst) ->
+      IsPredicate (n, substTyOption ?occ sbst ty, lst)
+	(* XXX: Broken, because it should substitute also in the binding list lst. *)
   | IsEquiv ({ty=t; tot=p; per=q}, r) ->
       IsEquiv ({ty = substTy ?occ sbst t; tot = substProp ?occ sbst p; per = substProp ?occ sbst q},
 	      substProp ?occ sbst r)
@@ -385,6 +391,8 @@ and substTerm ?occ sbst = function
 and substTermList ?occ sbst = List.map (substTerm ?occ sbst)
 
 and substPropList ?occ sbst = List.map (substProp ?occ sbst)
+
+and substModestList ?occ sbst = List.map (substModest ?occ sbst)
 
 and substTy ?occ sbst = function
     NamedTy (TLN (None, tynm)) -> getTyvar sbst tynm
@@ -568,9 +576,12 @@ and string_of_prop level p =
       True -> (0, "true")
     | False -> (0, "false")
     | IsPer (t, lst) -> (0, "PER(=_" ^ string_of_name_app (string_of_name t) lst ^ ")")
-    | IsPredicate (p, lst, ms) -> (0, "PREDICATE(" ^ string_of_name_app (string_of_name p) lst ^ ", "
-	^ string_of_modest ms ^ ")")
-    | IsEquiv (ms, p) -> (0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest ms ^ ")")
+    | IsPredicate (p, None, _) ->
+	(0, "PREDICATE(" ^ string_of_name p ^ ")")
+    | IsPredicate (p, Some ty, _) ->
+	(0, "PREDICATE(" ^ string_of_name p ^ "," ^ string_of_ty ty ^ ")")
+    | IsEquiv (ms, p) ->
+	(0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest ms ^ ")")
     | NamedTotal (n, []) -> (0, "||" ^ (string_of_tln n) ^ "||")
     | NamedTotal (n, lst) -> (0, "||" ^ string_of_name_app (string_of_tln n) lst ^ "||")
     | NamedPer (n, lst) -> (0, "(=" ^ string_of_name_app (string_of_tln n) lst ^"=)")

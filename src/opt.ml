@@ -13,9 +13,6 @@ open Outsyn
 exception Unimplemented
 exception Impossible of string
 
-(** XXX:  Shouldn't cut-and-paste from infer.ml!!! *)
-
-
 (*************************************)
 (** {2 Lookup Tables (Environments)} *)
 (*************************************)
@@ -204,6 +201,10 @@ let rec optTy ctx ty =
   in
     hnfTy ctx ans
 
+let rec optTyOption ctx = function
+    None -> None
+  | Some ty -> Some (optTy ctx ty)
+
 let rec optBinds ctx = function
     [] -> []
   | (n,ty)::bnds ->
@@ -379,7 +380,8 @@ and optProp ctx = function
     True                    -> True
   | False                   -> False
   | IsPer (nm, lst)         -> IsPer (nm, optTerms' ctx lst)
-  | IsPredicate (nm, lst, ms) -> IsPredicate (nm, optTerms' ctx lst, optModest ctx ms)
+  | IsPredicate (nm, ty, lst) ->
+      IsPredicate (nm, optTyOption ctx ty, List.map (fun (nm, ms) -> (nm, optModest ctx ms)) lst)
   | IsEquiv (ms, p)         -> IsEquiv (optModest ctx ms, optProp ctx p)
   | NamedTotal (n, lst)     -> NamedTotal (n, optTerms' ctx lst)
   | NamedPer (n, lst)       -> NamedPer (n, optTerms' ctx lst)
@@ -489,6 +491,19 @@ and optProp ctx = function
   | PApp (p, t) -> PApp (optProp ctx p, optTerm' ctx t)
 
   | PMApp (p, t) -> PMApp (optProp ctx p, optTerm' ctx t)
+
+  | PCase (e, arms) ->
+     let doArm = function
+	 (lbl, Some (name2, ty2),  p3) ->
+	   let ty2' = optTy ctx ty2
+	   in let ctx' = insertType ctx name2 ty2
+	   in let p3' = optProp ctx' p3
+	   in (lbl, Some (name2, ty2'), p3')
+		(* XXX: could optimize away ty2' if it turns out to be TopTy? *)
+       | (lbl, None,  p3) ->  (lbl, None, optProp ctx p3)
+     in
+       PCase (optTerm' ctx e, List.map doArm arms)
+
 
 and optAssertion ctx (name, prop) = (name, optProp ctx prop)
 

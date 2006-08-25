@@ -324,12 +324,12 @@ and output_prop_0 ppf = function
   | IsPer (stnm, []) -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
   | IsPer (stnm, lst) -> fprintf ppf "PER(=%s %a=)"
       (Name.string_of_name stnm)   output_term_apps lst
-  | IsPredicate (nm, [], ms) ->
-      fprintf ppf "@[PREDICATE(@[<hov>%s, ...@])]"
+  | IsPredicate (nm, None, _) ->
+      fprintf ppf "@[PREDICATE(@[<hov>%s@])]"
         (Name.string_of_name nm)
-  | IsPredicate (nm, lst, ms) ->
-      fprintf ppf "@[PREDICATE(@[<hov>%s %a, ...@])]"
-        (Name.string_of_name nm)   output_term_apps lst
+  | IsPredicate (nm, Some ty, _) ->
+      fprintf ppf "@[PREDICATE(@[<hov>%s, %a@])]"
+        (Name.string_of_name nm)   output_ty ty
   | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_tln ln
   | NamedTotal (ln, lst) ->
       fprintf ppf "||%a %a||"
