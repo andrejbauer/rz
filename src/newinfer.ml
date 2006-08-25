@@ -586,43 +586,6 @@ let rec hnfSet cntxt = function
 (** Expand out any top-level definitions or function
     applications for a (well-formed) proposition or predicate
   *)
-let rec hnfProp cntxt = function
-    L.Atomic (L.LN ( None, nm ), _) as orig_prop ->
-      begin
-	match (lookupId cntxt nm) with
-            CtxProp(Some prp, _) -> hnfProp cntxt prp
-	  | CtxProp(None, _)    -> orig_prop
-	  | _ -> raise Impossible
-      end
-
-  | L.Atomic (L.LN ( Some mdl, nm), _) as orig_prop -> 
-      begin
-	match hnfTheory cntxt (modelToTheory cntxt mdl) with
-	    L.Theory elems -> 
-	      begin
-		match searchElems cntxt nm mdl elems with
-		    Projectable (CtxProp(Some prp, _)) -> hnfProp cntxt prp
-		  | Projectable (CtxProp(None, _))    -> orig_prop
-		  | _ -> raise Impossible
-	      end
-	  | _ -> raise Impossible
-      end
-
-  | L.PApp(prp1,trm2) -> 
-      begin
-	match (hnfProp cntxt prp1) with
-	    L.PLambda((nm,_),prp1body) ->
-	      let sub = L.insertTermvar L.emptysubst nm trm2
-	      in
-		hnfProp cntxt (L.substProp sub prp1body)
-	  | prp1' -> L.PApp(prp1', trm2)
-      end
-
-  | prp -> prp
-
-(** Expand out any top-level definitions or function
-    applications for a (well-formed) proposition or predicate
-  *)
 let rec hnfTerm cntxt = function
     L.Var (L.LN ( None, nm )) as orig_term ->
       begin
@@ -661,7 +624,16 @@ let rec hnfTerm cntxt = function
 	    L.Inj(lbl, None) ->
 	      begin
 		match (List.find (fun (l,_,_) -> l = lbl) arms) with
-		    (_, None, trm1') -> hnfTerm cntxt trm1'
+		    (_, None, trm2) -> hnfTerm cntxt trm2
+		  | _ -> raise Impossible
+	      end
+	  | L.Inj(lbl, Some trm1') ->
+	      begin
+		match (List.find (fun (l,_,_) -> l = lbl) arms) with
+		    (_, Some (nm,_), trm2) -> 
+		      let sub = L.insertTermvar L.emptysubst nm trm1'
+		      in
+			hnfTerm cntxt (L.subst sub trm2)
 		  | _ -> raise Impossible
 	      end
 	  | trm1' -> L.Case(trm1', arms)
@@ -674,7 +646,71 @@ let rec hnfTerm cntxt = function
 	  | trm2' -> L.Proj(n1, trm2')
       end
 	      
+  | L.Let((nm,_),trm1,trm2,_) ->
+      let sub = L.insertTermvar L.emptysubst nm trm1
+      in
+	hnfTerm cntxt (L.subst sub trm2)
+
   | trm -> trm
+
+(** Expand out any top-level definitions or function
+    applications for a (well-formed) proposition or predicate
+  *)
+let rec hnfProp cntxt = function
+    L.Atomic (L.LN ( None, nm ), _) as orig_prop ->
+      begin
+	match (lookupId cntxt nm) with
+            CtxProp(Some prp, _) -> hnfProp cntxt prp
+	  | CtxProp(None, _)    -> orig_prop
+	  | _ -> raise Impossible
+      end
+
+  | L.Atomic (L.LN ( Some mdl, nm), _) as orig_prop -> 
+      begin
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    L.Theory elems -> 
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Projectable (CtxProp(Some prp, _)) -> hnfProp cntxt prp
+		  | Projectable (CtxProp(None, _))    -> orig_prop
+		  | _ -> raise Impossible
+	      end
+	  | _ -> raise Impossible
+      end
+
+  | L.PApp(prp1,trm2) -> 
+      begin
+	match (hnfProp cntxt prp1) with
+	    L.PLambda((nm,_),prp1body) ->
+	      let sub = L.insertTermvar L.emptysubst nm trm2
+	      in
+		hnfProp cntxt (L.substProp sub prp1body)
+	  | prp1' -> L.PApp(prp1', trm2)
+      end
+
+  | L.PCase(trm1, arms) ->
+      begin
+	match (hnfTerm cntxt trm1) with
+	    L.Inj(lbl, None) ->
+	      begin
+		match (List.find (fun (l,_,_) -> l = lbl) arms) with
+		    (_, None, prp1') -> hnfProp cntxt prp1'
+		  | _ -> raise Impossible
+	      end
+	  | L.Inj(lbl, Some trm1') ->
+	      begin
+		match (List.find (fun (l,_,_) -> l = lbl) arms) with
+		    (_, Some (nm,_), prp2) -> 
+		      let sub = L.insertTermvar L.emptysubst nm trm1'
+		      in
+			hnfProp cntxt (L.substProp sub prp2)
+		  | _ -> raise Impossible
+	      end
+	  | trm1' -> L.PCase(trm1', arms)
+      end
+
+  | prp -> prp
+
 
 
 (**********************************************)
@@ -1904,7 +1940,7 @@ let rec annotateExpr cntxt = function
 	  | (lbl, None,_,_)::rest -> (lbl,None) :: createSumtype rest
 	  | (lbl, Some(_,ty),_,_)::rest -> (lbl, Some ty) :: createSumtype rest
 	in let armty = L.Sum (createSumtype arms2')
-	in let _ = if (eqSet cntxt armty ty1) then
+	in let _ = if (subSet cntxt ty1 armty) then
 	              ()
 	            else
 	              tyMismatchError expr1 armty ty1 orig_expr

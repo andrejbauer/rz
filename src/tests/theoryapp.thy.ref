@@ -9,6 +9,10 @@ sig
   (**  Assertion n_total =  n : ||a||
   *)
    
+  val m : a
+  (**  Assertion m_def =  m =a= n
+  *)
+   
   
   (**  Assertion q =  all (x:||a||).  x =a= x
   *)
@@ -20,18 +24,26 @@ sig
   (**  Assertion per_a =  PER(=a=)
   *)
    
-  
-  (**  Assertion q =  all (x:||a||).  x =a= x
-  *)
-   
   val n : a
   (**  Assertion n_total =  n : ||a||
   *)
    
-  val m : a
-  (**  Assertion m_total =  m : ||a||
+  val p : a
+  (**  Assertion p_total =  p : ||a||
   *)
-end
+   
+  
+  (**  Assertion q =  all (x:||a||).  x =a= (let y = x in y)
+  *)
+   
+  val m : a
+  (**  Assertion m_def = 
+         m =a= (match `yes n with
+                  `no -> p 
+                | `yes(z : a) -> z 
+                ])
+       *)
+  end
 
 module type C = 
 functor (M : A) ->
