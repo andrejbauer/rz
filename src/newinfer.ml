@@ -582,6 +582,101 @@ let rec hnfSet cntxt = function
 
   | st -> st
 
+
+(** Expand out any top-level definitions or function
+    applications for a (well-formed) proposition or predicate
+  *)
+let rec hnfProp cntxt = function
+    L.Atomic (L.LN ( None, nm ), _) as orig_prop ->
+      begin
+	match (lookupId cntxt nm) with
+            CtxProp(Some prp, _) -> hnfProp cntxt prp
+	  | CtxProp(None, _)    -> orig_prop
+	  | _ -> raise Impossible
+      end
+
+  | L.Atomic (L.LN ( Some mdl, nm), _) as orig_prop -> 
+      begin
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    L.Theory elems -> 
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Projectable (CtxProp(Some prp, _)) -> hnfProp cntxt prp
+		  | Projectable (CtxProp(None, _))    -> orig_prop
+		  | _ -> raise Impossible
+	      end
+	  | _ -> raise Impossible
+      end
+
+  | L.PApp(prp1,trm2) -> 
+      begin
+	match (hnfProp cntxt prp1) with
+	    L.PLambda((nm,_),prp1body) ->
+	      let sub = L.insertTermvar L.emptysubst nm trm2
+	      in
+		hnfProp cntxt (L.substProp sub prp1body)
+	  | prp1' -> L.PApp(prp1', trm2)
+      end
+
+  | prp -> prp
+
+(** Expand out any top-level definitions or function
+    applications for a (well-formed) proposition or predicate
+  *)
+let rec hnfTerm cntxt = function
+    L.Var (L.LN ( None, nm )) as orig_term ->
+      begin
+	match (lookupId cntxt nm) with
+            CtxTerm(Some trm, _) -> hnfTerm cntxt trm
+	  | CtxTerm(None, _)    -> orig_term
+	  | _ -> raise Impossible
+      end
+
+  | L.Var (L.LN ( Some mdl, nm)) as orig_term -> 
+      begin
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    L.Theory elems -> 
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Projectable (CtxTerm(Some trm, _)) -> hnfTerm cntxt trm
+		  | Projectable (CtxTerm(None, _))    -> orig_term
+		  | _ -> raise Impossible
+	      end
+	  | _ -> raise Impossible
+      end
+
+  | L.App(trm1,trm2) -> 
+      begin
+	match (hnfTerm cntxt trm1) with
+	    L.Lambda((nm,_),trm1body) ->
+	      let sub = L.insertTermvar L.emptysubst nm trm2
+	      in
+		hnfTerm cntxt (L.subst sub trm1body)
+	  | trm1' -> L.App(trm1', trm2)
+      end
+
+  | L.Case(trm1, arms) ->
+      begin
+	match (hnfTerm cntxt trm1) with
+	    L.Inj(lbl, None) ->
+	      begin
+		match (List.find (fun (l,_,_) -> l = lbl) arms) with
+		    (_, None, trm1') -> hnfTerm cntxt trm1'
+		  | _ -> raise Impossible
+	      end
+	  | trm1' -> L.Case(trm1', arms)
+      end
+
+  | L.Proj(n1, trm2) ->
+      begin
+	match (hnfTerm cntxt trm2) with
+	    L.Tuple trms -> hnfTerm cntxt (List.nth trms n1)
+	  | trm2' -> L.Proj(n1, trm2')
+      end
+	      
+  | trm -> trm
+
+
 (**********************************************)
 (** {2 Equivalence, Subtyping, and Coercions} *)
 (**********************************************)
@@ -589,6 +684,32 @@ let rec hnfSet cntxt = function
 (****************************************)
 (** {4 Sets: equivalence and subtyping} *)
 (****************************************)
+
+let eqArms cntxt substFn eqFn eqSetFn arms1 arms2 =
+  let rec loop = function
+      ([], []) -> true
+    | ((lbl1, None, val1)::rest1, (lbl2, None, val2)::rest2) ->
+	lbl1 = lbl2  && 
+          eqFn cntxt val1 val2 && 
+	  loop (rest1, rest2)
+    | ((lbl1, Some (nm1,st1), val1) :: rest1, 
+      (lbl2, Some (nm2,st2), val2) :: rest2 ) ->
+	lbl1 = lbl2 &&
+          eqSetFn cntxt st1 st2 &&
+	  (let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	    in let val1' = substFn sub1 val1
+	    in let val2' = substFn sub2 val2
+	    in let cntxt' = insertTermVariable cntxt nm1 st1 None
+	    in 
+		 eqFn cntxt' val1' val2') &&
+                   loop(rest1, rest2)
+    | _ -> false
+  in let order (lbl1, _, _) (lbl2, _, _) = compare lbl1 lbl2
+  in let arms1' = List.sort order arms1
+  in let arms2' = List.sort order arms2
+  in 
+       loop (arms1', arms2')
+
 
 (* eqSet': bool -> cntxt -> set -> set -> bool *)
 (**
@@ -778,7 +899,8 @@ and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
 (** IMPORTANT: two provably equivalent propositions are NOT
     necessarily interchangeable because they may have realizers
     of different types.  They are interchangeable if:
-      0) They are alpha-equivalent (modulo set and term-equivalence)
+      0) They are identical modulo set and term equivalence.
+      1) They are alpha, beta, and delta equivalent modulo sets/terms
           [current implementation]
       1) Or, they are provably equivalent and stable.
       2) Or, when reduced to normal form (exists r:t, phi)
@@ -787,7 +909,7 @@ and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
 *)
 and eqProp cntxt prp1 prp2 = 
   (prp1 = prp2) (* short-circuiting *) ||
-    match (prp1, prp2) with
+    match (hnfProp cntxt prp1, hnfProp cntxt prp2) with
 	(L.False, L.False) -> true    (* Redundant *)
       | (L.True, L.True) -> true      (* Redundant *)
       | (L.Atomic(L.LN(Some mdl1, nm1), _), L.Atomic(L.LN(Some mdl2, nm2), _)) ->
@@ -825,48 +947,91 @@ and eqProp cntxt prp1 prp2 =
 	  eqSet cntxt st1 st2 &&
 	    eqProp cntxt prp1 prp2
       | (L.PCase(trm1, arms1), L.PCase(trm2, arms2)) ->
-	  let rec eqArms = function
-	      ([], []) -> true
-	    | ((lbl1, None, prp1)::rest1, (lbl2, None, prp2)::rest2) ->
-		lbl1 = lbl2  && 
-	          eqProp cntxt prp1 prp2 && 
-		  eqArms (rest1, rest2)
-	    | ((lbl1, Some (nm1,st1), prp1) :: rest1, 
-	      (lbl2, Some (nm2,st2), prp2) :: rest2 ) ->
-		lbl1 = lbl2 &&
-	          eqSet cntxt st1 st2 &&
-		  (let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
-		    in let prp1' = L.substProp sub1 prp1
-		    in let prp2' = L.substProp sub2 prp2
-		    in let cntxt' = insertTermVariable cntxt nm1 st1 None
-		    in eqProp cntxt' prp1' prp2') &&
-		  eqArms(rest1, rest2)
-	    | _ -> false
-	  in let order (lbl1, _, _) (lbl2, _, _) =
-	    compare lbl1 lbl2
-	  in let arms1' = List.sort order arms1
-	  in let arms2' = List.sort order arms2
-	  in 
-	       eqTerm cntxt trm1 trm2 &&
-		 eqArms (arms1', arms2')
+	  eqTerm cntxt trm1 trm2 &&
+	    eqArms cntxt L.substProp eqProp eqSet arms1 arms2
       | _ -> false
 	    
 and eqProps cntxt prps1 prps2 = 
-  match (prps1, prps2) with
-      ([], []) -> true
-    | (prp1::rest1, prp2::rest2) -> 
-	eqProp cntxt prp1 prp2 & eqProps cntxt rest1 rest2
-    | _ -> false
+  try  List.for_all2 (eqProp cntxt) prps1 prps2  with
+      Invalid_argument _ -> false
 	                             
 
 and eqTerm cntxt trm1 trm2 = 
-  (* XXX: Should allow alpha-equiv and set-equiv, and possibly beta *)
   (trm1 = trm2) ||
-    (tyGenericWarning 
-	("eqProp guessing that " ^
-	    L.string_of_term trm1 ^ " == " ^ 
-	    L.string_of_term trm2);
-     true)
+    match (hnfTerm cntxt trm1, hnfTerm cntxt trm2) with
+	(L.EmptyTuple, L.EmptyTuple) -> true   (* Redundant *)
+      | (L.Var(L.LN(Some mdl1, nm1)), L.Var(L.LN(Some mdl2, nm2))) ->
+	  eqModel cntxt mdl1 mdl2 && nm1 = nm2
+      | (L.Var(L.LN(None, nm1)), L.Var(L.LN(None, nm2))) ->
+	  nm1 = nm2
+      | (L.Tuple trms1, L.Tuple trms2) -> 
+	  eqTerms cntxt trms1 trms2
+      | (L.Proj(n1, trm1), L.Proj(n2, trm2)) ->
+	  n1 = n2 && eqTerm cntxt trm1 trm2
+      | (L.App(trm1a, trm1b), L.App(trm2a, trm2b)) ->
+	  eqTerm cntxt trm1a trm2a &&
+	    eqTerm cntxt trm1b trm2b
+      | (L.Lambda((nm1,ty1),trm1), L.Lambda((nm2,ty2),trm2)) ->
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	    in let trm1' = L.subst sub1 trm1
+	    in let trm2' = L.subst sub2 trm2
+	    in let cntxt' = insertTermVariable cntxt nm1 ty1 None
+	    in 
+		 eqSet cntxt ty1 ty2 &&
+		   eqTerm cntxt' trm1' trm2'
+      | (L.The((nm1,ty1),prp1), L.The((nm2,ty2),prp2)) ->
+	  eqSet cntxt ty1 ty2 &&
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	    in let prp1' = L.substProp sub1 prp1
+	    in let prp2' = L.substProp sub2 prp2
+	    in let cntxt' = insertTermVariable cntxt nm1 ty1 None
+	    in eqProp cntxt' prp1' prp2'
+      | (L.Inj(lbl1, None), L.Inj(lbl2, None)) ->
+	  lbl1 = lbl2
+      | (L.Inj(lbl1, Some trm1), L.Inj(lbl2, Some trm2)) ->
+	  lbl1 = lbl2 && eqTerm cntxt trm1 trm2
+      | (L.Case(trm1, arms1), L.Case(trm2, arms2)) ->
+	  eqTerm cntxt trm1 trm2 &&
+	    eqArms cntxt L.subst eqTerm eqSet arms1 arms2
+      | (L.RzQuot trm1, L.RzQuot trm2) ->
+	  eqTerm cntxt trm1 trm2
+      | (L.RzChoose((nm1,ty1a),trm1a,trm1b,ty1b), 
+	L.RzChoose((nm2,ty2a),trm2a,trm2b,ty2b))
+      | (L.Let((nm1,ty1a),trm1a,trm1b,ty1b), 
+	L.Let((nm2,ty2a),trm2a,trm2b,ty2b)) ->
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	    in let trm1b' = L.subst sub1 trm1b
+	    in let trm2b' = L.subst sub2 trm2b
+	    in let cntxt' = insertTermVariable cntxt nm1 ty1a None
+	    in 
+		 eqSet cntxt ty1a ty2a &&
+		   eqTerm cntxt trm1a trm2a &&
+		   eqTerm cntxt' trm1b' trm2b' &&
+		   eqSet cntxt ty1b ty2b
+      | (L.Quot(trm1,prp1), L.Quot(trm2,prp2)) ->
+	  eqTerm cntxt trm1 trm2 &&
+	    eqProp cntxt prp1 prp2
+      | (L.Choose((nm1,ty1a),prp1,trm1a,trm1b,ty1b),
+	L.Choose((nm2,ty2a),prp2,trm2a,trm2b,ty2b)) ->
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	    in let trm1b' = L.subst sub1 trm1b
+	    in let trm2b' = L.subst sub2 trm2b
+	    in let cntxt' = insertTermVariable cntxt nm1 ty1a None
+	    in 
+		 eqSet cntxt ty1a ty2a &&
+		   eqProp cntxt prp1 prp2 &&
+		   eqTerm cntxt trm1a trm2a &&
+		   eqTerm cntxt' trm1b' trm2b' &&
+		   eqSet cntxt ty1b ty2b
+      | (L.Subin(trm1,st1), L.Subin(trm2,st2))
+      | (L.Subout(trm1,st1), L.Subout(trm2,st2)) ->
+	  eqTerm cntxt trm1 trm2 &&
+	    eqSet cntxt st1 st2
+      | _ -> false
+	 
+and eqTerms cntxt trms1 trms2 = 
+  try  List.for_all2 (eqTerm cntxt) trms1 trms2  with
+      Invalid_argument _ -> false
 
 and eqModel ctx mdl1 mdl2 = (mdl1 = mdl2)
 
