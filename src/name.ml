@@ -172,5 +172,3 @@ let validModelName = function
 
 let validTheoryName = validModelName
     
-    
-	

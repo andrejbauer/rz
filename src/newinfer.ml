@@ -1,10 +1,10 @@
-(*******************************************************************)
-(** {1 Type Reconstruction and Checking}                           *)
-(**                                                                *)
-(** For now we assume that                                         *)
-(** all bound variables are annotated, either when declared        *)
-(** or through a prior "implicit" statement.                       *)
-(*******************************************************************)
+(*****************************************)
+(** {1 Type Reconstruction and Checking} *)                         
+(*****************************************)
+
+(** For now we assume that all bound variables are annotated, either
+    when declared or through a prior "implicit" statement.
+*)
 
 module S = Syntax
 module L = Logic
@@ -22,8 +22,7 @@ exception Impossible
 (** {3 Warnings} *)
 (*****************)
 
-(** 
-    Warnings are collected rather than being displayed immediately,
+(** Warnings are collected rather than being displayed immediately,
     because often the output runs for more than a page and
     the warnings would just scroll off the screen.
 
@@ -54,10 +53,11 @@ let noEqPropWarning prp1 prp2 context_expr =
 	string_of_expr context_expr)
 
 (********************)
-(** {2 Type Errors} *)
+(** {3 Type Errors} *)
 (********************)
 
-(* raised by all type errors *)
+(** The TypeError exception is raised by all type errors 
+ *)
 exception TypeError
 
 
@@ -75,30 +75,26 @@ let tyUnboundError nm =
 
 let notWhatsExpectedError expr expected =
   tyGenericError
-    (S.string_of_expr expr ^ " found where a "
+    (string_of_expr expr ^ " found where a "
       ^ expected ^ " was expected")
 
 let notWhatsExpectedInError expr expected context_expr =
   tyGenericError
-    (S.string_of_expr expr ^ " found where a "
-      ^ expected ^ " was expected, in " ^ S.string_of_expr context_expr)
+    (string_of_expr expr ^ " found where a "
+      ^ expected ^ " was expected, in " ^ string_of_expr context_expr)
 
 let noHigherOrderLogicError expr =
    tyGenericError
-     ("The input " ^ S.string_of_expr expr ^ " requires higher-order-logic")
+     ("The input " ^ string_of_expr expr ^ " requires higher-order-logic")
 
 let noPolymorphismError expr =
    tyGenericError
-     ("The input " ^ S.string_of_expr expr ^ " requires polymorphism")
-
-let noPropositionsAsTypesError expr = 
-   tyGenericError
-     ("The input " ^ S.string_of_expr expr ^ " requires polymorphism")
+     ("The input " ^ string_of_expr expr ^ " requires polymorphism")
 
 let noTypeInferenceInError nm expr =
   tyGenericError
      ("The bound variable " ^ string_of_name nm ^ " in " ^
-      S.string_of_expr expr ^ " is not annotated explicitly or implicitly.")
+      string_of_expr expr ^ " is not annotated explicitly or implicitly.")
 
 let wrongTypeError expr hastype expectedsort context_expr =
   tyGenericError
@@ -170,9 +166,10 @@ let tyPTJoinError pt1 pt2 =
      ("the types " ^ L.string_of_proptype pt1 ^ " and " ^
 	 L.string_of_proptype pt2 ^ " are incompatible")
 	
-let componentNotFoundError nm expr =
+let badModelProjectionError nm expr why =
   tyGenericError
-    ("Cannot project " ^ string_of_name nm ^ " in " ^ string_of_expr expr)
+    ("Cannot project " ^ string_of_name nm ^ " in " ^ string_of_expr expr
+      ^ "\n" ^ why )
 
 let innerModelBindingError context_expr =
   tyGenericError
@@ -196,24 +193,13 @@ let shadowingError nm =
 	" appears twice in the same context," ^ 
         "\nand automatic renaming is not possible.")
      
-(*****************************************)
-(** {2 Typechecking/Type Reconstruction} *)
-(*****************************************)
+(*****************)
+(** {2 Contexts} *)
+(*****************)
 
-
-(******************)
-(** { 3 Contexts} *)
-(******************)
-
-
-type inferResult =
-    ResPropType of L.proptype
-  | ResKind     of L.setkind
-  | ResSet      of L.set         * L.setkind
-  | ResTerm     of L.term        * L.set
-  | ResProp     of L.proposition * L.proptype
-  | ResModel    of L.model       * L.theory 
-  | ResTheory   of L.theory      * L.theorykind
+(*******************)
+(** {3 Definition} *)
+(*******************)
 
 type ctx_member =
     CtxProp   of L.proposition option * L.proptype
@@ -223,41 +209,52 @@ type ctx_member =
   | CtxTheory of L.theory             * L.theorykind
   | CtxUnbound
 
-type implicit_info = ctx_member
-
 type context = {bindings : (name * ctx_member) list;
-		implicits : (name * implicit_info) list;
+		implicits : (name * ctx_member) list;
 	        renaming : name NameMap.t}
 
 let emptyContext = {bindings = []; implicits = [];
 		    renaming = NameMap.empty}
 
+(**************)
+(* {3 Lookup} *)
+(**************)
+
 let lookupImplicit cntxt nm = 
   try Some (List.assoc nm cntxt.implicits) with
       Not_found -> None
+
+let lookupId cntxt nm =
+  try (List.assoc nm cntxt.bindings) with
+      Not_found -> CtxUnbound
+
+let isUnbound cntxt nm =
+  try (ignore (List.assoc nm cntxt.bindings); false) with
+      Not_found -> true
+
+
+(******************)
+(* {3 Insertion } *)
+(******************)
 
 let rec insertImplicits cntxt names info = 
   {cntxt with
     implicits = ( List.map (fun nm -> (nm, info)) names )
                   @ cntxt.implicits}
 
-let lookupId cntxt nm =
-  try (List.assoc nm cntxt.bindings) with
-      Not_found -> CtxUnbound
 
-let unBound cntxt nm =
-  try (ignore (List.assoc nm cntxt.bindings); false) with
-      Not_found -> true
-  
-
-(* These functions ought to detect and complain about shadowing.
+(** The remaining insert functions need to detect and complain about shadowing.
    In most cases, the system will already have renamed bound variables
    before this point.  For module labels we can't rename, and so we
    have to just give up here with an error.
 *)
+
+(** Wrapper for the non-checking (primed) insert functions to check for
+    shadowing and for proper variable names (e.g., capitalization)
+*)
 let makeInsertChecker validator insertFn idString cntxt nm =
     if validator nm then
-      if unBound cntxt nm then
+      if isUnbound cntxt nm then
 	insertFn cntxt nm
       else
 	shadowingError nm
@@ -295,6 +292,26 @@ let insertTheoryVariable' cntxt nm thry tknd =
 let insertTheoryVariable = 
   makeInsertChecker validTheoryName insertTheoryVariable' "theory"
 
+
+(************************************)
+(** {3 Renaming of Bound Variables} *)
+(************************************)
+
+(** To avoid shadowing, we rename bound variables as soon as we encounter
+    them in a context where the same name is already bound in the typing
+    context.  Instead of eagerly/immediately replacing all uses of the
+    inner bound variable via a substitution, we take the slightly more
+    efficient route of maintaining a renaming substitution (in the context)
+    as we traverse the term; whenever we see a name used, we first apply
+    this renaming substitution before examining it further.
+*)
+
+
+(** Given a context and a name, return the a variant of the name (preferably
+    the name unchanged) which is not bound in the context, and extend
+    the renaming substitution to map the provided name to the returned
+    unbound name.
+*)
 let renameBoundVar cntxt nm =
   let rec findUnusedName nm =
     match (lookupId cntxt nm) with
@@ -311,20 +328,89 @@ let renameBoundVar cntxt nm =
 	   ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
 	 end
 
+(** Apply the context's renaming substitution to the given name.
+*)
 let applyContextSubst cntxt nm = 
   try  NameMap.find nm cntxt.renaming  with
       Not_found -> nm
 
 
+    
+(** When comparing two expressions with bound variables for alpha-equivalence,
+    we first replace the two bound variables with a common fresh
+    name, and then compare the bodies.
+*)
+	
+(** Given two names of the same "sort" (wildness, capitalization), 
+    find a name suitable for replacing them both.
+*)
+let jointName nm1 nm2 =
+  if (nm1 = nm2) then 
+    (* We assume the inputs are well-formed without shadowing, so
+       if they both use exactly the same bound variable there's no
+       point in replacing this bound variable by a fresh one. *)
+    nm1
+  else
+    begin
+      (* nm1 and nm2 should be the same "sort", so if nm1 is a model name
+	 we know that nm2 is too.
+      *)
+      match (isWild nm1 && isWild nm2, validModelName nm1) with
+	  (true, false)  -> wildName()
+	| (true, true)   -> wildModelName()
+	| (false, false) -> N(Syntax.freshNameString(), Word)
+	| (false, true)  -> N(Syntax.freshModelNameString(), Word)
+    end
+
+
+(** Given two names, return a third joint name and substitutions respectively
+    mapping each given name to the joint name as a term. *)
+let rec jointNameSubsts nm1 nm2 = 
+  jointNameSubsts' nm1 nm2 L.emptysubst L.emptysubst
+
+(** Given two names, return a third joint name and substitutions respectively
+    mapping each given name to the joint name as a model. *)
+and jointModelNameSubsts nm1 nm2 =
+    jointModelNameSubsts' nm1 nm2 L.emptysubst L.emptysubst
+
+
+(** The primed forms jointNameSubsts and jointModelNameSubsts work as above
+    but extend two given substitutions rather than returning new
+    substitutions.
+*)
+and jointNameSubsts' nm1 nm2 subst1 subst2 = 
+  let freshname = jointName nm1 nm2
+  in let trm = L.Var(L.LN(None, freshname))
+  in let sub1 = L.insertTermvar subst1 nm1 trm
+  in let sub2 = L.insertTermvar subst2 nm2 trm
+  in (freshname, sub1, sub2)
+
+and jointModelNameSubsts' nm1 nm2 subst1 subst2 = 
+  let freshname = jointName nm1 nm2
+  in let trm = L.ModelName freshname
+  in let sub1 = L.insertModelvar subst1 nm1 trm
+  in let sub2 = L.insertModelvar subst2 nm2 trm
+  in (freshname, sub1, sub2)
+
+(**********************)
+(* {2 Theory Lookup } *)
+(**********************)
+
+(** *)
+
+type searchResult =
+    Projectable of ctx_member
+    | SearchOther of L.theory_element
+    | SearchFailed
 
 let rec searchElems cntxt nm' mdl = 
   let rec loop subst = function
-    [] -> None
+    [] -> SearchFailed
     | L.Set (nm, knd) :: rest -> 
 	let knd' = L.substSetkind subst knd
 	in if (nm = nm') then
-	    Some (CtxSet(None, (* or Some mdl.nm? *)
-			knd'))
+	    Projectable (CtxSet(None, (* or Some mdl.nm? *)
+			       knd'))
 	  else 
 	    loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm), knd')))
 	      rest
@@ -332,14 +418,14 @@ let rec searchElems cntxt nm' mdl =
 	let knd' = L.substSetkind subst knd
 	in let st' = L.substSet subst st
 	in if (nm = nm') then
-	    Some (CtxSet(Some st', knd'))
+	    Projectable (CtxSet(Some st', knd'))
 	  else 
 	    loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm), knd')))
 	      rest
     | L.Predicate (nm, pt) :: rest -> 
 	let pt' = L.substProptype subst pt
 	in if (nm = nm') then
-	    Some (CtxProp(None, pt'))
+	    Projectable (CtxProp(None, pt'))
 	  else 
 	    loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm), pt')))
 	      rest
@@ -347,14 +433,14 @@ let rec searchElems cntxt nm' mdl =
 	let pt' = L.substProptype subst pt
 	in let prp' = L.substProp subst prp
 	in if (nm = nm') then
-	    Some (CtxProp(Some prp', pt'))
+	    Projectable (CtxProp(Some prp', pt'))
 	else 
 	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm), pt')))
 	    rest
     | L.Value (nm, ty) :: rest -> 
 	let ty' = L.substSet subst ty
 	in if (nm = nm') then
-	    Some( CtxTerm (None, ty') )
+	    Projectable( CtxTerm (None, ty') )
 	else 
 	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm))))
 	    rest
@@ -362,58 +448,37 @@ let rec searchElems cntxt nm' mdl =
 	let ty' = L.substSet subst ty
 	in let trm' = L.subst subst trm
 	in if (nm = nm') then
-	    Some( CtxTerm (Some trm', ty') )
+	    Projectable( CtxTerm (Some trm', ty') )
 	  else 
 	    loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
     | L.Model (nm, thry) :: rest ->
 	let thry' = L.substTheory subst thry
 	in
 	  if (nm = nm') then
-	    Some( CtxModel thry' )
+	    Projectable( CtxModel thry' )
 	  else 
 	    loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) rest
-    | L.Sentence _ :: rest -> loop subst rest
-    | L.Comment _  :: rest -> loop subst rest
+    | L.Sentence (nm,_,_) as elem :: rest -> 
+	if (nm = nm') then
+	  SearchOther (L.substTheoryElt subst elem)
+	else 
+	  loop subst rest
+    | L.Comment _ :: rest -> 
+	(** Comments cannot be searched for, currently *)
+	  loop subst rest
   in
     loop L.emptysubst 
 
-(**  
-    The key idea for lookup of long-names/module projections
-    is to maintain two values as we go along:  
-    (1) where we are in reference to the top level (a model path)
-    (2) a substitution mapping all theory-component names in scope to the
-        paths that would be used to access these values from
-        the top-level.  So, e.g., if we had
+(**************************************)
+(** {3 Type and Theory Normalization} *)
+(**************************************)
 
-    thy
-      set s
-      model M : thy
-                  set t
-                  model N : thy
-                               set u
-                               const x : u
-                            end
-                end
-    end
+(** Head-normalization of a theory: replacing theory names by
+    definitions, and reducing top-level lambda applications.
 
-    and assuming we're looking for M.N.x, by the time we
-    get to x the substitution (2) contains
-      s -> s
-      t -> M.t
-      u -> M.N.u
-    and the "where am I" (1) would be M.N.
-
-    The naming convention is that the primed functions take a list of
-    (theory_summary) items (and in some cases an initial
-    substitution), while the unprimed functions take the whole
-    context and no substitution, and so should only be invoked on
-    the "top-level" context.
+    Postcondition:  The returned theory is neither a variable nor
+    an application (since we don't have abstract theory variables).
 *)
-
-(*******************)
-(** {3: Coercions} *)
-(*******************)
-
 let rec hnfTheory cntxt = function
     L.TheoryName nm ->
       begin
@@ -431,20 +496,9 @@ let rec hnfTheory cntxt = function
       end
   | thry -> thry
 
-let rec theoryToElems cntxt = function
-    L.Theory elems -> elems
-  | L.TheoryName thrynm' -> 
-      begin
-	match lookupId cntxt thrynm' with
-	    CtxTheory (thry',L.ModelTheoryKind) -> theoryToElems cntxt thry'
-	  | _ -> raise Impossible
-      end
-  | L.TheoryApp _ as thry -> theoryToElems cntxt (hnfTheory cntxt thry)
-  | L.TheoryLambda _ -> raise Impossible
-  | L.TheoryArrow _ -> raise Impossible
-
-
-(* cntxt -> L.model -> L.theory list *)
+(* cntxt -> L.model -> L.theory *)
+(** Assumes that the given model is well-formed.
+*)
 let rec modelToTheory cntxt = function
     L.ModelName nm ->
       begin
@@ -454,11 +508,14 @@ let rec modelToTheory cntxt = function
       end
   | L.ModelProj (mdl, nm) -> 
       begin
-	let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
-	in
-	  match searchElems cntxt nm mdl elems with
-	      Some (CtxModel thry) -> thry
-	    | _ -> raise Impossible
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    L.Theory elems ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Projectable (CtxModel thry) -> thry
+		  | _ -> raise Impossible
+	      end
+	  | _ -> raise Impossible
       end
   | L.ModelApp (mdl1, mdl2) ->
       begin
@@ -484,11 +541,14 @@ let rec hnfSet cntxt = function
 
   | L.Basic (L.SLN ( Some mdl, nm), _) as orig_set -> 
       begin
-      let elems = theoryToElems cntxt (modelToTheory cntxt mdl)
-      in
-	match searchElems cntxt nm mdl elems with
-            Some (CtxSet(Some st, _)) -> hnfSet cntxt st
-	  | Some (CtxSet(None, _))    -> orig_set
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    L.Theory elems -> 
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Projectable (CtxSet(Some st, _)) -> hnfSet cntxt st
+		  | Projectable (CtxSet(None, _))    -> orig_set
+		  | _ -> raise Impossible
+	      end
 	  | _ -> raise Impossible
       end
 
@@ -504,55 +564,33 @@ let rec hnfSet cntxt = function
 
   | st -> st
 
-let joinName nm1 nm2 =
-  if (nm1 = nm2) then 
-    nm1
-  else
-    begin
-      (* nm1 and nm2 should be the same "sort", so if nm1 is a model name
-	 we know that nm2 is too.
-      *)
-      match (isWild nm1 && isWild nm2, validModelName nm1) with
-	  (true, false)  -> wildName()
-	| (true, true)   -> wildModelName()
-	| (false, false) -> N(Syntax.freshNameString(), Word)
-	| (false, true)  -> N(Syntax.freshModelNameString(), Word)
-    end
-    
+(**********************************************)
+(** {2 Equivalence, Subtyping, and Coercions} *)
+(**********************************************)
 
-let rec freshNameSubsts' nm1 nm2 subst1 subst2 = 
-  let freshname = joinName nm1 nm2
-  in let trm = L.Var(L.LN(None, freshname))
-  in let sub1 = L.insertTermvar subst1 nm1 trm
-  in let sub2 = L.insertTermvar subst2 nm2 trm
-  in (freshname, sub1, sub2)
-    
-let freshNameSubsts nm1 nm2 = 
-  freshNameSubsts' nm1 nm2 L.emptysubst L.emptysubst
+(****************************************)
+(** {4 Sets: equivalence and subtyping} *)
+(****************************************)
 
-let rec freshModelNameSubsts' nm1 nm2 subst1 subst2 = 
-  let freshname = joinName nm1 nm2
-  in let trm = L.ModelName freshname
-  in let sub1 = L.insertModelvar subst1 nm1 trm
-  in let sub2 = L.insertModelvar subst2 nm2 trm
-  in (freshname, sub1, sub2)
-
-let freshModelNameSubsts nm1 nm2 =
-    freshModelNameSubsts' nm1 nm2 L.emptysubst L.emptysubst
-
-(** eqSet': bool -> cntxt -> set -> set -> bool
+(* eqSet': bool -> cntxt -> set -> set -> bool *)
+(**
       Precondition:  The two sets are fully-annotated
-                     and proper (first-order) sets.
+                     and proper (first-order, i.e., KindSet) sets.
+
       Postcondition:  Whether the two sets are equal (or implicitly-
                       convertible, if the boolean is true) in the 
                       given context.  Equality defined as alpha-equivalence,
                       commutivity of sums, and definition expansion.
 
-                      Implicit convertability just involves subtyping
-                      on sum types in positive positions.  It is here
-                      merely to address defects in type inference, since
+                      Implicit convertability is especially important
+                      as a way of addressing defects in type inference, since
                       we don't want to have to annotate each injection
                       with the corresponding sum type.
+                      
+                      Implicit conversion used to just be generated
+                      by conversion of sum types in strictly positive
+                      positions.   Now it does more, but this might
+                      be a bug. XXX
   *)
 let rec eqSet' do_subset cntxt = 
    let rec cmp (s1 : L.set) (s2 : L.set) = 
@@ -575,7 +613,7 @@ let rec eqSet' do_subset cntxt =
                     && (nm1 = nm2) 
 
  	       | ( L.Product ss1, L.Product ss2 ) -> 
-                    cmpProducts (ss1,ss2)
+                    cmpProducts cntxt (ss1,ss2)
 
                | ( L.Sum lsos1, L.Sum lsos2 )     -> 
 	            subSum do_subset cntxt (lsos1, lsos2) 
@@ -583,24 +621,26 @@ let rec eqSet' do_subset cntxt =
 
 
                | ( L.Exp( nm1, st3, st4 ), L.Exp ( nm2, st5, st6 ) ) ->
-		   let (_, sub1, sub2) = freshNameSubsts nm1 nm2
-	           in let st4' = L.substSet sub1 st4
-	           in let st6' = L.substSet sub2 st6
-	           in 
-		    (* Domains are now compared contravariantly. *)
-                    subSet cntxt st5 st3 
-                    && cmp st4' st6'
+		   (** Domains are now compared contravariantly. *)
+		   cmp st5 st3 &&
+		     let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	             in let st4' = L.substSet sub1 st4
+	             in let st6' = L.substSet sub2 st6
+		     in let cntxt' = insertTermVariable cntxt nm st5 None
+	             in 
+			  eqSet' do_subset cntxt' st4' st6'
 
-	       | ( L.Subset( (nm1,_) as b1, p1 ), 
-		   L.Subset( (nm2,_) as b2, p2 ) )->
-                    cmpbnd(b1,b2)
+	       | ( L.Subset( (nm1,st1),  p1 ), 
+		   L.Subset( (nm2,st2), p2 ) )->
+		   cmp st1 st2 &&
 	            (** Alpha-vary the propositions so that they're using the
                         same (fresh) variable name *)
-                    && let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+                       let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
 	               in let p1' = L.substProp sub1 p1
 	               in let p2' = L.substProp sub2 p2
+		       in let cntxt' = insertTermVariable cntxt nm st1 None
 	               in 
-                          eqProp cntxt p1' p2'  
+                          eqProp cntxt' p1' p2'  
 
                | ( L.Quotient ( st3, eqvlnce3 ), 
 		   L.Quotient ( st4, eqvlnce4 ) ) -> 
@@ -619,43 +659,47 @@ let rec eqSet' do_subset cntxt =
 
                | (_,_) -> false )
 
-     and cmpbnd = function
-	 (* Since we're not verifying equivalence of propositions,
-	    we don't have to worry about the bound variable *)
-         ((_, s1), (_, s2)) -> cmp s1 s2
-
-      and cmpProducts' subst1 subst2 = function
+      and cmpProducts' cntxt subst1 subst2 = function
           ( [] , [] ) -> true
 
 	| ( (nm1, s1) :: s1s, (nm2, s2) :: s2s) -> 
-	    let (_, subst1', subst2') = freshNameSubsts' nm1 nm2 subst1 subst2
-	    in let s1' = L.substSet subst1 s1
-	    in let s2' = L.substSet subst2 s2
-	    in  (cmp s1' s2' && cmpProducts' subst1' subst2' (s1s,s2s) )
+	    begin
+	      let s1' = L.substSet subst1 s1
+	      in let s2' = L.substSet subst2 s2
+	      in 
+		   eqSet' do_subset cntxt s1' s2'
+	    end &&
+	      begin
+		let (nm, subst1', subst2') = 
+		  jointNameSubsts' nm1 nm2 subst1 subst2
+		in let cntxt' = insertTermVariable cntxt nm s1 None
+		in 
+		     cmpProducts' cntxt' subst1' subst2' (s1s,s2s)
+	      end
 
         | (_,_) -> false
 
-   and cmpProducts lst = cmpProducts' L.emptysubst L.emptysubst lst
-
-     and subSum do_subset cntxt = function
-          ( [], _ ) -> true
-       | ((l1,None   )::s1s, s2s) ->
-	   (try
-	       match (List.assoc l1 s2s) with
-		   None -> subSum do_subset cntxt (s1s, s2s)
-		 | _ -> false 
-	     with 
-		 Not_found -> false)
-       | ((l1,Some s1)::s1s, s2s) -> 
-	   (try
-	       match (List.assoc l1 s2s) with
-		   Some s2 -> eqSet' do_subset cntxt s1 s2  && 
-                              subSum do_subset cntxt (s1s,s2s)
-		 |  _ -> false 
-	     with
-		 Not_found -> false)
-
-      in cmp
+   and cmpProducts cntxt lst = cmpProducts' cntxt L.emptysubst L.emptysubst lst
+     
+   and subSum do_subset cntxt = function
+       ( [], _ ) -> true
+     | ((l1,None   )::s1s, s2s) ->
+	 (try
+	     match (List.assoc l1 s2s) with
+		 None -> subSum do_subset cntxt (s1s, s2s)
+	       | _ -> false 
+	   with 
+	       Not_found -> false)
+     | ((l1,Some s1)::s1s, s2s) -> 
+	 (try
+	     match (List.assoc l1 s2s) with
+		 Some s2 -> eqSet' do_subset cntxt s1 s2  && 
+                   subSum do_subset cntxt (s1s,s2s)
+	       |  _ -> false 
+	   with
+	       Not_found -> false)
+	   
+   in cmp
 
 
 and eqPropType' do_subset cntxt = 
@@ -681,7 +725,7 @@ and eqPropType' do_subset cntxt =
 	       end
 		 
            | ( L.PropArrow( nm1, st1, pt1 ), L.PropArrow ( nm2, st2, pt2 ) ) ->
-	       let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+	       let (_, sub1, sub2) = jointNameSubsts nm1 nm2
 	       in let pt1' = L.substProptype sub1 pt1
 	       in let pt2' = L.substProptype sub2 pt2
 	           in 
@@ -704,7 +748,7 @@ and eqKind' do_subset cntxt =
        (k1 = k2) ||
          match (k1, k2) with
              ( L.KindArrow( nm1, st1, kk1 ), L.KindArrow ( nm2, st2, kk2 ) ) ->
-	       let (_, sub1, sub2) = freshNameSubsts nm1 nm2
+	       let (_, sub1, sub2) = jointNameSubsts nm1 nm2
 	       in let kk1' = L.substSetkind sub1 kk1
 	       in let kk2' = L.substSetkind sub2 kk2
 	           in 
@@ -807,7 +851,7 @@ let rec joinPropType cntxt pt1 pt2 =
       | (_, L.EquivProp ty2) -> 
 	  joinPropType cntxt pt1 (L.equivToArrow ty2)
       | (L.PropArrow(nm3, st3, pt3), L.PropArrow(nm4, st4, pt4)) ->
-	  let (nm, sub3, sub4) = freshNameSubsts nm3 nm4
+	  let (nm, sub3, sub4) = jointNameSubsts nm3 nm4
 	  in let pt3' = L.substProptype sub3 pt3
 	  in let pt4' = L.substProptype sub4 pt4
 	  in let cntxt' = insertTermVariable cntxt nm st3 None
@@ -824,7 +868,16 @@ let joinPropTypes cntxt = function
     pt::pts -> List.fold_left (joinPropType cntxt) pt pts
   | [] -> failwith "joinPropTypes applied to empty list"
 
-(* coerce: cntxt -> term -> set -> set -> trm option
+
+let eqMbnds cntxt mbnds1 mbnds2 =
+  if (mbnds1 = mbnds2) then
+    Some cntxt
+  else
+    (tyGenericWarning "eqMBnds not fully implemented";
+     Some cntxt)
+
+(* coerce: cntxt -> term -> set -> set -> trm option *)
+(**
      coerce trm st1 st2 coerces trm from the set st1 to the set st2
        using subin and subout.
      Preconditions: trm is in st1 and all arguments are fully-annotated.
@@ -902,6 +955,8 @@ let noDuplicates strngs =
     List.length strngs = StringSet.cardinal sset
 
 (*
+ Never mind.  We're not doing automatic EquivCoerce insertion...yet.
+
 let rec coerceProp cntxt prp pt1 pt2 =
    if (subPropType cntxt pt1 pt2) then
       (** Short circuting, since the identity coercion is (we hope)
@@ -910,12 +965,20 @@ let rec coerceProp cntxt prp pt1 pt2 =
    else
      match (prp, pt1, pt2) with
 	 (_, L.PropArrow(s1a, L.PropArrow(s1b, StableProp), L.EquivProp s2))
- Never mind.  We're not doing automatic EquivCoerce insertion...yet.
 *)
 
-(*********************)
-(** Inference proper *)
-(*********************)
+(*************************)
+(** {3 Inference proper} *)
+(*************************)
+
+type inferResult =
+    ResPropType of L.proptype
+  | ResKind     of L.setkind
+  | ResSet      of L.set         * L.setkind
+  | ResTerm     of L.term        * L.set
+  | ResProp     of L.proposition * L.proptype
+  | ResModel    of L.model       * L.theory 
+  | ResTheory   of L.theory      * L.theorykind
 
 
 let rec annotateExpr cntxt = function 
@@ -944,35 +1007,22 @@ let rec annotateExpr cntxt = function
 	    L.Theory elems ->
 	      begin
 		match searchElems cntxt nm2 mdl elems with
-		    Some (CtxSet (_,knd)) -> 
+		    Projectable (CtxSet (_,knd)) -> 
 		      ResSet(L.Basic(L.SLN(Some mdl, nm2), knd), knd)
-		  | Some (CtxProp (_,pt)) -> 
+		  | Projectable (CtxProp (_,pt)) -> 
 		      ResProp(L.Atomic(L.LN(Some mdl, nm2), pt), pt)
-		  | Some (CtxTerm (_,ty)) -> 
+		  | Projectable (CtxTerm (_,ty)) -> 
 		      ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
-		  | Some (CtxModel thry) -> 
+		  | Projectable (CtxModel thry) -> 
 		      ResModel(L.ModelProj(mdl,nm2), thry)
-		  | _ -> componentNotFoundError nm2 orig_expr
+		  | SearchFailed -> 
+		      badModelProjectionError nm2 orig_expr "Name not found"
+		  | _ -> 
+		      badModelProjectionError nm2 orig_expr "Name not projectable"
 	      end
 	  | _ -> notWhatsExpectedInError expr1 "theory of a model" orig_expr
       end
 
-
-(*
-      let (mdl' as whereami, summary, subst) = annotateModel cntxt orig_expr mdl
-      in
-*)
-(*
-      in ( match summary with
-            Summary_Struct ( _ , items) ->
-              (match (peekTypeof' subst items (Some whereami) nm) with
-		  None -> tyGenericError ("Unknown component " ^
-					     string_of_term orig_trm)
-		| Some st -> ( Var ( Some mdl', nm ), st ) )
-          | _ -> tyGenericError 
-              ( "Term projection from parameterized model in:\n  " ^ 
-		  string_of_term orig_trm ) )
-*)
   | App(Label label, expr2) as orig_expr ->
       let (trm2', ty2') = annotateTerm cntxt orig_expr expr2
       in 
@@ -1080,7 +1130,7 @@ let rec annotateExpr cntxt = function
 
 
 	  | _ -> tyGenericError ("Invalid application " ^ 
-				    S.string_of_expr orig_expr) 
+				    string_of_expr orig_expr) 
       end
 
   | Lambda (binding1, expr2) as orig_expr ->
@@ -1708,7 +1758,7 @@ and annotateModelTheory cntxt surrounding_expr expr =
     | _ -> notWhatsExpectedInError expr "theory of a model" surrounding_expr)
 
 
-(* annotateBinding: context -> S.expr -> S.binding -> L.binding list
+(* annotateBinding: context -> expr -> binding -> L.binding list
 *)
 and annotateBinding cntxt surrounding_expr binders =
   (* Loop over variable-list/type pairs *)
@@ -1787,7 +1837,7 @@ and annotateInnerBinding cntxt surrounding_expr binders =
     | _ -> innerModelBindingError surrounding_expr
 
 (*
-   annotateSimpleBinding : context -> S.expr -> S.binding1 -> L.binding
+   annotateSimpleBinding : context -> expr -> binding1 -> L.binding
 *)
 and annotateSimpleBinding cntxt surrounding_expr (nm, expropt) =
   begin
@@ -2109,7 +2159,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
   match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
       (L.TheoryArrow ((nm1, thry1a), thry1b), 
        L.TheoryArrow ((nm2, thry2a), thry2b)) ->
-	let (nm, sub1, subs) = freshModelNameSubsts nm1 nm2
+	let (nm, sub1, subs) = jointModelNameSubsts nm1 nm2
 	in let thry1b' = L.substTheory sub1 thry1b
 	in let thry2b' = L.substTheory sub1 thry1b
 	in let cntxt' = insertModelVariable cntxt nm thry2a
@@ -2130,7 +2180,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	  | (L.Set(nm,knd2)) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxSet (_,knd1)) -> 
+		    Projectable (CtxSet (_,knd1)) -> 
 		      (subKind cntxt knd1 knd2 &&
 			let cntxt' = 
 			  insertSetVariable cntxt nm knd1 
@@ -2141,7 +2191,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	  | L.Let_set(nm,knd2,st2) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxSet (_,knd1)) -> 
+		    Projectable (CtxSet (_,knd1)) -> 
 		      subKind cntxt knd1 knd2 &&
 			(* st2 might be "mdl1.nm", even if mdl1.nm doesn't
 			   have a definition, so we want to compare it to
@@ -2157,7 +2207,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	  | L.Predicate(nm,pt2) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxProp(_, pt1)) ->
+		    Projectable (CtxProp(_, pt1)) ->
 		      (subPropType cntxt pt1 pt2 &&
 			  let cntxt' = 
 			    insertPropVariable cntxt nm pt1 
@@ -2169,7 +2219,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	  | L.Let_predicate(nm,pt2,prp2) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxProp(_, pt1)) ->
+		    Projectable (CtxProp(_, pt1)) ->
 		      (subPropType cntxt pt1 pt2 &&
 			  eqProp cntxt (projAsProp nm pt1) prp2 &&
 			  let cntxt' = 
@@ -2182,7 +2232,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	  | L.Value(nm,st2) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxTerm(_, st1)) ->
+		    Projectable (CtxTerm(_, st1)) ->
 		      (subSet cntxt st1 st2 &&
 			  let cntxt' = 
 			    insertTermVariable cntxt nm st1 
@@ -2194,7 +2244,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	  | L.Let_term(nm,st2,trm2) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxTerm(_, st1)) ->
+		    Projectable (CtxTerm(_, st1)) ->
 		      (subSet cntxt st1 st2 &&
 			  eqTerm cntxt (projAsTerm nm) trm2 &&
 			  let cntxt' = 
@@ -2207,36 +2257,32 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
           | L.Model(nm, thry2) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Some (CtxModel thry1) ->
+		    Projectable (CtxModel thry1) ->
 		      (checkModelConstraint cntxt (projAsModel nm) 
 			  thry1 thry2 &&
 			  let cntxt' = 
 			    insertModelVariable cntxt nm thry1
 			  in loop cntxt' rest)
-		      | _ -> false
+		  | _ -> false
 	      end
 
 	  | L.Comment _ :: rest -> loop cntxt rest
 
-          | L.Sentence (nm, mbnds, prp) :: rest ->
-	      (tyGenericWarning 
-		  "L.Sentence case of checkModelConstraint unfinished";
-	       loop cntxt rest)
-	      (* XXX!
-		 searchElems can't find sentences :(
-
+          | L.Sentence (nm, mbnds2, prp2) :: rest ->
 	      begin
-		match searchElems cntxt nm mdl elems with
-		    Some (CtxModel thry') ->
-		      (checkModelConstraint cntxt (projAsModel nm) thry' thry &&
-			  let cntxt' = 
-			    insertModelVariable cntxt nm thry'
-			  in loop cntxt' rest)
-		      | _ -> false
+		match searchElems cntxt nm mdl1 elems1 with
+		    SearchOther(L.Sentence(_, mbnds1, prp1)) ->
+		      begin
+			match eqMbnds cntxt mbnds1 mbnds2 with
+			    Some cntxt'' -> 
+			      eqProp cntxt'' prp1 prp2 && loop cntxt rest
+			  | _ -> false
+		      end
+		  | _ -> false
 	      end
-	      *)	      
-           
+
 	in loop cntxt elems2
 
     | _ -> false (* No abstract Theory variables *)
+
 

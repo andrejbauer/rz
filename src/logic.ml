@@ -1067,6 +1067,10 @@ and substTheoryElts sub = function
        let rest' = substTheoryElts sub rest
        in this' :: rest'
 
+and substTheoryElt sub elem =
+  match substTheoryElts sub [elem] with
+      [elem'] -> elem'
+    | _ -> raise Impossible
 (*
 and substBnd sub (nm, stopt) = 
     ((nm, substSetOption sub stopt), 
