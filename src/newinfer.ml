@@ -714,15 +714,8 @@ and eqPropType' do_subset cntxt =
 	       eqSet' do_subset cntxt st2 st1
 	       
            | ( L.EquivProp st1, _ ) ->
-	       begin
 		 do_subset &&
-		   let pt1' =
-		     L.PropArrow(wildName(), st1,
-				L.PropArrow(wildName(), st1, 
-				           L.StableProp))
-		   in
-		     eqPropType' true cntxt pt1' pt2
-	       end
+		   eqPropType' true cntxt (L.equivToArrow st1) pt2
 		 
            | ( L.PropArrow( nm1, st1, pt1 ), L.PropArrow ( nm2, st2, pt2 ) ) ->
 	       let (_, sub1, sub2) = jointNameSubsts nm1 nm2
