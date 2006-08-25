@@ -188,7 +188,6 @@ and output_totalbinds ppf lst =
       in
 	output_loop ppf lst
 
-
 and output_term_0 ppf = function
     Id ln -> output_ln ppf ln
   | EmptyTuple -> fprintf ppf "()"
@@ -199,6 +198,8 @@ and output_term_0 ppf = function
 	fprintf ppf "@[(%a)@]"   (output_term_components output_term_9 ",") lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
 	    fprintf ppf "@[(%a)@]"   output_term trm)
+
+and output_term_apps ppf lst = output_term_components output_term_4 " " ppf lst
 
 and output_name ppf nm = 
   fprintf ppf "%s" (Name.string_of_name nm)
@@ -280,21 +281,30 @@ and output_prop_10 ppf = function
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
-    PApp (PApp (NamedPer ln, t), u) -> 
+    PApp (PApp (NamedPer (ln, []), t), u) -> 
       fprintf ppf "%a =%a= %a" 
         output_term_4 t   output_tln ln   output_term_4 u
-  | PApp (NamedTotal ln, t) ->
+  | PApp (PApp (NamedPer (ln, lst), t), u) -> 
+      fprintf ppf "%a =(%a %a)= %a" 
+        output_term_4 t   output_tln ln   output_term_apps lst   output_term_4 u
+  | PApp (NamedTotal (ln, []), t) ->
       fprintf ppf "%a : ||%a||"
 	output_term_9 t   output_tln ln
+  | PApp (NamedTotal (ln, lst), t) ->
+      fprintf ppf "%a : ||%a %a||"
+	output_term_9 t   output_tln ln   output_term_apps lst
   | PApp (p, t) ->
       fprintf ppf "%a %a"
 	output_prop_9 p   output_term_4 t
   | PMApp (p, t) ->
       fprintf ppf "(%a %a)"
 	output_prop_9 p   output_term_4 t
-  | NamedProp (ln, Dagger) -> output_ln ppf ln
-  | NamedProp (ln, t) ->
-      fprintf ppf "%a |= %a"   output_term_4 t   output_ln ln
+  | NamedProp (ln, Dagger, lst) ->
+      fprintf ppf "%a %a"
+        output_ln ln   output_term_apps lst
+  | NamedProp (ln, t, lst) ->
+      fprintf ppf "%a |= %a %a"
+	output_term_4 t   output_ln ln   output_term_apps lst
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
@@ -307,14 +317,23 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
-  | NamedPer ln -> fprintf ppf "=%a=" output_tln ln
-  | IsPer stnm -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
-  | IsPredicate (nm, ms) ->
+  | NamedPer (ln, []) -> fprintf ppf "=%a=" output_tln ln
+  | NamedPer (ln, lst) ->
+      fprintf ppf "=(%a %a)="
+	output_tln ln   output_term_apps lst
+  | IsPer (stnm, []) -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
+  | IsPer (stnm, lst) -> fprintf ppf "PER(=%s %a=)"
+      (Name.string_of_name stnm)   output_term_apps lst
+  | IsPredicate (nm, [], ms) ->
       fprintf ppf "@[PREDICATE(@[<hov>%s, ...@])]"
         (Name.string_of_name nm)
-  | NamedTotal ln -> 
-      fprintf ppf "||%a||"  
-	output_tln ln
+  | IsPredicate (nm, lst, ms) ->
+      fprintf ppf "@[PREDICATE(@[<hov>%s %a, ...@])]"
+        (Name.string_of_name nm)   output_term_apps lst
+  | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_tln ln
+  | NamedTotal (ln, lst) ->
+      fprintf ppf "||%a %a||"
+	output_tln ln   output_term_apps lst
   | And [] -> fprintf ppf "true"
   | Cor [] -> fprintf ppf "false"
   | prp ->

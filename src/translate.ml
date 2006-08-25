@@ -269,14 +269,14 @@ let rec translateSet (ctx : ctxElement list) = function
 		    Forall ((z', u),
 			   Imply (
 			       pApp ctx (pApp ctx p (id z)) (id z'),
-			       pApp ctx (pApp ctx (pMApp ctx q (id z)) (App (id f, id z))) (App (id f, id z'))
+			       pApp ctx (pApp ctx (sbp ctx [(nm, id z)] q) (App (id f, id z))) (App (id f, id z'))
 			   ))));
 	  per = makePer (f, g, w)
 	    (Forall ((z, u),
 		    Forall ((z', u),
 			   Imply (
 			       pApp ctx (pApp ctx p (id z)) (id z'),
-			       pApp ctx (pApp ctx (pMApp ctx q (id z)) (App (id f, id z))) (App (id g, id z'))
+			       pApp ctx (pApp ctx (sbp ctx [(nm, id z)] q) (App (id f, id z))) (App (id g, id z'))
 			   ))))
 	}
 
@@ -667,9 +667,9 @@ and translateTheoryElements ctx = function
 	     nest_forall binds
 	       (Forall ((r, ty),
 		  Iff (
-		      (List.fold_left (fun p (y,_) -> PApp (p, id y))
+		      (List.fold_left (fun p (y,_) -> PMApp (p, id y))
 			(NamedProp (ln_of_name n, id r)) binds),
-		      pApp ctx (List.fold_left (fun p (y,_) -> pApp ctx p (id y)) p' binds) (id r)
+		      pApp ctx (List.fold_left (fun p (y,_) -> pMApp ctx p (id y)) p' binds) (id r)
 		  )))
 	    )])
 	) :: sgnt,

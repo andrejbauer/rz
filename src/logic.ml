@@ -29,9 +29,9 @@ module S = Syntax
 type model_name = name
 
 type model = 
-    ModelName of model_name
-  | ModelProj of model * model_name
-  | ModelApp of model * model
+    | ModelName of model_name
+    | ModelProj of model * model_name
+    | ModelApp of model * model
 
 (** names of components inside models *)
 type longname = LN of model option * name
@@ -53,12 +53,12 @@ type binding = name * set
 
 (** a binding in a parameterized theory *)
 and model_binding = model_name * theory
-
+    
 (** first-order proposition *)
 and proposition =
-    False
+    | False
     | True
-    | Atomic  of longname
+    | Atomic  of longname * proptype
     | And     of proposition list
     | Imply   of proposition * proposition
     | Iff     of proposition * proposition
@@ -72,11 +72,11 @@ and proposition =
     | PLambda of binding * proposition
     | EquivCoerce of set * proposition
     | PCase   of term * (label * binding option * proposition) list
-
+	
 and set =
-    Empty
+    | Empty
     | Unit  (* Unit is the singleton containing EmptyTuple *)
-    | Basic    of set_longname
+    | Basic    of set_longname * setkind
     | Product  of binding list
     | Exp      of name * set * set
     | Sum      of (label * set option) list
@@ -87,17 +87,17 @@ and set =
     | SLambda  of binding * set
 
 and proptype =
-    Prop
+    | Prop
     | StableProp
     | EquivProp of set
     | PropArrow of name * set * proptype
 
 and setkind =
-    KindSet
+    | KindSet
     | KindArrow of name * set * setkind
 
 and term =
-    EmptyTuple
+    | EmptyTuple
     | Var      of longname
     | Tuple    of term list
     | Proj     of int * term
@@ -115,7 +115,7 @@ and term =
     | Subout   of term * set
 
 and theory_element =
-    Set of set_name * setkind
+    | Set of set_name * setkind
     | Let_set of set_name * setkind * set
     | Predicate of name * proptype
     | Let_predicate of name * proptype * proposition
@@ -126,16 +126,16 @@ and theory_element =
     | Comment of string
 
 and theory = 
-    Theory of theory_element list
+    | Theory of theory_element list
     | TheoryName of theory_name
     | TheoryLambda of model_binding * theory   (* Family of theories *)
     | TheoryArrow of model_binding * theory    (* Theory of a family of models *)
     | TheoryApp of theory * model
 	
 and theorykind =
-    ModelTheoryKind    (* Kind of theories that classify models,
+    | ModelTheoryKind    (* Kind of theories that classify models,
 		          including classifiersfor families of models. *)
-  | TheoryKindArrow of model_binding * theorykind (* Classifies TheoryLambdas *)
+    | TheoryKindArrow of model_binding * theorykind (* Classifies TheoryLambdas *)
 
 and toplevel =
     Theorydef of theory_name * theory
@@ -206,7 +206,7 @@ and substMProp m mdl p =
   let rec subst = function
       False -> False
     | True -> True
-    | Atomic lnm -> Atomic (substMLN m mdl lnm)
+    | Atomic (lnm, pt) -> Atomic (substMLN m mdl lnm, substMProptype m mdl pt)
     | PApp (p,t) -> PApp (subst p, substMTerm m mdl t)
     | PLambda ((n,s),p) -> PLambda ((n, substMSet m mdl s), subst p)
     | And lst -> And (List.map subst lst)
@@ -259,7 +259,7 @@ and substMSet m mdl s =
   let rec subst = function
       Empty -> Empty
     | Unit -> Unit
-    | Basic ln -> Basic (substMSLN m mdl ln)
+    | Basic (ln, knd) -> Basic (substMSLN m mdl ln, substMSetkind m mdl knd)
     | Product lst -> Product (List.map (fun (n,s) -> (n, subst s)) lst)
     | Exp (n, s, t) -> Exp (n, subst s, subst t)
     | Sum lst -> Sum (List.map
@@ -280,6 +280,12 @@ and substMSetOption m mdl = function
 and substMSetkind m mdl = function
     KindSet -> KindSet
   | KindArrow (n, s, k) -> KindArrow (n, substMSet m mdl s, substMSetkind m mdl k)
+
+and substMProptype m mdl = function
+    Prop -> Prop
+  | StableProp -> StableProp
+  | EquivProp s -> EquivProp (substMSet m mdl s)
+  | PropArrow (nm, s, pt) -> PropArrow (nm, substMSet m mdl s, substMProptype m mdl pt)
 
 (*
   substProp:  name -> term -> proposition -> proposition
@@ -371,7 +377,7 @@ let rec string_of_sln = function
 let rec string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
-  | Basic lname -> string_of_sln lname
+  | Basic (lname, _) -> string_of_sln lname
   | Product lst ->
       "(" ^ (String.concat " * "
 	       (List.map (
@@ -446,8 +452,8 @@ and string_of_term trm =
 
 and string_of_prop prp =
   (let rec toStr = function
-      Atomic(LN(None, nm))  -> string_of_name nm
-    | Atomic(LN(Some mdl, nm)) -> string_of_model mdl ^ "." ^ string_of_name nm
+      Atomic(LN(None, nm), _)  -> string_of_name nm
+    | Atomic(LN(Some mdl, nm), _) -> string_of_model mdl ^ "." ^ string_of_name nm
     | False -> "False"
     | True -> "True"
     | PApp (prp1, trm2) -> "(" ^ toStr prp1 ^ " " ^ string_of_term trm2 ^ ")"
@@ -621,8 +627,8 @@ let equivToArrow ty =
 
 let rec fnSet = function
     Empty | Unit  -> NameSet.empty
-  | Basic (SLN(None, nm)) -> NameSet.singleton nm
-  | Basic (SLN(Some mdl, _)) -> fnModel mdl
+  | Basic (SLN(None, nm), knd) -> NameSet.union (NameSet.singleton nm) (fnSetkind knd)
+  | Basic (SLN(Some mdl, _), knd) -> NameSet.union (fnModel mdl) (fnSetkind knd)
   | Product noss -> fnProduct noss
   | Sum lsos     -> fnSum lsos
   | Exp (nm, st1, st2) ->
@@ -648,9 +654,9 @@ and fnSum = function
     [] -> NameSet.empty
   | (_, stOpt)::rest -> NameSet.union (fnSetOpt stOpt) (fnSum rest)
 
-and fnKind = function
+and fnSetkind = function
     KindSet -> NameSet.empty
-  | KindArrow(nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnKind knd))
+  | KindArrow(nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnSetkind knd))
       
 and fnTerm = function
     EmptyTuple | Inj(_, None)-> NameSet.empty
@@ -680,8 +686,8 @@ and fnTerm = function
 
 and fnProp = function
     False | True -> NameSet.empty
-  | Atomic(LN(None, nm)) -> NameSet.singleton nm
-  | Atomic(LN(Some mdl, nm)) -> fnModel mdl
+  | Atomic(LN(None, nm), pt) -> NameSet.union (NameSet.singleton nm) (fnProptype pt)
+  | Atomic(LN(Some mdl, nm), pt) -> NameSet.union (fnModel mdl) (fnProptype pt)
   | And prps
   | Or prps -> unionNameSetList (List.map fnProp prps)
   | Not prp -> fnProp prp
@@ -699,23 +705,20 @@ and fnProp = function
   | PCase (trm, arms) ->
       NameSet.union (fnTerm trm) (unionNameSetList (List.map fnPCaseArm arms))
 
-
-and fnPropType = function
-    Prop | StableProp -> NameSet.empty
-  | EquivProp ty -> fnSet ty
-  | PropArrow (nm, ty, pt) ->
-      NameSet.union (fnSet ty) (NameSet.remove nm (fnPropType pt))
-
 and fnCaseArm = function
     (_, None, trm) -> fnTerm trm
   | (_, Some (nm, st), trm) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
 
+and fnProptype = function
+    Prop | StableProp -> NameSet.empty
+  | EquivProp s -> fnSet s
+  | PropArrow (nm, st, pt) -> NameSet.union (fnSet st) (NameSet.remove nm (fnProptype pt))
+
 and fnPCaseArm = function
     (_, None, trm) -> fnProp trm
   | (_, Some (nm, st), trm) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp trm))
-   
 	
 and fnModel = function
     ModelName nm -> NameSet.singleton nm
@@ -764,13 +767,13 @@ let getTermvar sbst nm =
    try (NameMap.find nm sbst.terms) with
        Not_found -> Var (LN (None, nm))
 
-let getPropvar sbst nm =
+let getPropvar sbst nm pt =
    try (NameMap.find nm sbst.props) with
-       Not_found -> Atomic (LN (None, nm))
+       Not_found -> Atomic (LN (None, nm), pt)
 
-let getSetvar sbst stnm =
+let getSetvar sbst stnm knd =
    try (NameMap.find stnm sbst.sets) with 
-       Not_found -> Basic (SLN(None, stnm))
+       Not_found -> Basic (SLN(None, stnm), knd)
 
 let getModelvar sbst mdlnm =
    try (NameMap.find mdlnm sbst.models) with 
@@ -817,50 +820,50 @@ let checkNoCapture sbst nm =
   else
     ()
 
-let rec subst (substitution : subst) =
+let rec subst sbst =
   
   let rec sub = function
       EmptyTuple -> EmptyTuple
-    | Var (LN (None, nm)) -> getTermvar substitution nm
+    | Var (LN (None, nm)) -> getTermvar sbst nm
     | Var (LN (Some mdl, nm)) -> 
-	Var( LN(Some(substModel substitution mdl), nm) )
+	Var( LN(Some(substModel sbst mdl), nm) )
     | Tuple ts      -> Tuple(List.map sub ts)
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
-    | Inj(l,termopt) -> Inj(l, substTermOption substitution termopt)
+    | Inj(l,termopt) -> Inj(l, substTermOption sbst termopt)
     | Case(t1,arms) -> Case(t1,subarms arms)
     | RzQuot t -> RzQuot (sub t)
     | RzChoose ((y,sopt),t1,t2,ty) ->
-	let (sbst', y') = updateBoundName substitution y in
-	  RzChoose ((y', substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in
+	  RzChoose ((y', substSet sbst sopt),
 		   sub t1,
 		   subst sbst' t2,
-		   substSet substitution ty)
-    | Quot(trm1,prp2) -> Quot(sub trm1, substProp substitution prp2)
+		   substSet sbst ty)
+    | Quot(trm1,prp2) -> Quot(sub trm1, substProp sbst prp2)
     | Choose((y,sopt),p,t1,t2,stopt2) ->
-	let (sbst', y') = updateBoundName substitution y in
-          Choose((y',substSet substitution sopt),
-                substProp substitution p,
+	let (sbst', y') = updateBoundName sbst y in
+          Choose((y',substSet sbst sopt),
+                substProp sbst p,
                 sub t1, 
                 subst sbst' t2,
-		substSet substitution stopt2)
-    | Subin(trm,st) -> Subin(sub trm, substSet substitution st)
-    | Subout(trm,st) -> Subout(sub trm, substSet substitution st)
+		substSet sbst stopt2)
+    | Subin(trm,st) -> Subin(sub trm, substSet sbst st)
+    | Subout(trm,st) -> Subout(sub trm, substSet sbst st)
     | Let((y,stopt),t1,t2,stopt2) ->
-	let (sbst', y') = updateBoundName substitution y in
-          Let((y',substSet substitution stopt),
+	let (sbst', y') = updateBoundName sbst y in
+          Let((y',substSet sbst stopt),
              sub t1, 
 	     subst sbst' t2,
-	     substSet substitution stopt2)
+	     substSet sbst stopt2)
 	    
 
     | Lambda((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName substitution y in 
-	  Lambda((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+	  Lambda((y',substSet sbst sopt),
 		subst sbst' t1)
     | The((y,sopt), prp) ->
-	let (sbst', y') = updateBoundName substitution y in 
-	  The((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+	  The((y',substSet sbst sopt),
 	     substProp sbst' prp)
             
 
@@ -868,83 +871,81 @@ let rec subst (substitution : subst) =
       [] -> []
     | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
     | (l,Some(y,sopt),u)::rest ->
-	let (sbst',y') = updateBoundName substitution y in
-          (l, Some(y', substSet substitution sopt), subst sbst' u) ::
+	let (sbst',y') = updateBoundName sbst y in
+          (l, Some(y', substSet sbst sopt), subst sbst' u) ::
 	    (subarms rest)
   in sub
 
-and substProp substitution = 
+and substProp sbst = 
   let rec sub = function
       True -> True
     | False -> False
-    | Atomic (LN (None, nm)) -> getPropvar substitution nm
-    | Atomic (LN (Some mdl, nm)) -> 
-	Atomic( LN(Some(substModel substitution mdl), nm) )
+    | Atomic (LN (None, nm), pt) -> getPropvar sbst nm (substProptype sbst pt)
+    | Atomic (LN (Some mdl, nm), pt) -> 
+	Atomic( LN(Some(substModel sbst mdl), nm), substProptype sbst pt)
     | And ts        -> And(List.map sub ts)
     | Imply(t1,t2)  -> Imply(sub t1, sub t2)
     | Iff(t1,t2)    -> Iff(sub t1, sub t2)
     | Or ts         -> Or(List.map sub ts)
     | Not t         -> Not(sub t)
-    | Equal(ty,t1,t2) -> Equal(substSet substitution ty,
-                              subst substitution t1,
-			      subst substitution t2)
+    | Equal(ty,t1,t2) -> Equal(substSet sbst ty,
+                              subst sbst t1,
+			      subst sbst t2)
     | Forall((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName substitution y in 
-          Forall((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+          Forall((y',substSet sbst sopt),
 		substProp sbst' t1)
     | Exists((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName substitution y in 
-	  Exists((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+	  Exists((y',substSet sbst sopt),
 		substProp sbst' t1)
     | Unique((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName substitution y in 
-	  Unique((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+	  Unique((y',substSet sbst sopt),
 		substProp sbst' t1)
     | PLambda((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName substitution y in 
-	  PLambda((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+	  PLambda((y',substSet sbst sopt),
 		 substProp sbst' t1)
-    | PApp(prp1,trm2) -> PApp(sub prp1, subst substitution trm2)
-    | EquivCoerce (st, prp) -> EquivCoerce(substSet substitution st, sub prp)
+    | PApp(prp1,trm2) -> PApp(sub prp1, subst sbst trm2)
+    | EquivCoerce (st, prp) -> EquivCoerce(substSet sbst st, sub prp)
     | PCase(t1,arms) -> PCase(t1,psubarms arms)
 
   and psubarms = function
       [] -> []
     | (l,None,p)::rest -> (l,None, sub p)::(psubarms rest)
     | (l,Some(y,sopt),p)::rest ->
-	let (sbst',y') = updateBoundName substitution y in
-          (l, Some(y', substSet substitution sopt), substProp sbst' p) ::
+	let (sbst',y') = updateBoundName sbst y in
+          (l, Some(y', substSet sbst sopt), substProp sbst' p) ::
 	    (psubarms rest)
   in sub
 
-    
-
-and substSet substitution =
+and substSet sbst =
   let rec sub = function
       Unit -> Unit
     | Empty -> Empty
-    | Basic (SLN (None, stnm)) -> 
-	getSetvar substitution stnm
-    | Basic (SLN (Some mdl, stnm)) -> 
-	Basic (SLN (Some (substModel substitution mdl), stnm))
-    | Product ss -> Product (substProd substitution ss)
+    | Basic (SLN (None, stnm), knd) ->
+	getSetvar sbst stnm (substSetkind sbst knd)
+    | Basic (SLN (Some mdl, stnm), knd) -> 
+	Basic (SLN (Some (substModel sbst mdl), stnm), substSetkind sbst knd)
+    | Product ss -> Product (substProd sbst ss)
     | Exp(y, s1, s2) ->
-	let (sbst', y') = updateBoundName substitution y in 
+	let (sbst', y') = updateBoundName sbst y in 
           Exp(y', sub s1, substSet sbst' s2)
     | Subset((y,sopt),u) ->
-	let (sbst', y') = updateBoundName substitution y in 
-          Subset((y',substSet substitution sopt),
+	let (sbst', y') = updateBoundName sbst y in 
+          Subset((y',substSet sbst sopt),
   	        substProp sbst' u)
     | Quotient(st,prp)   -> 
-        Quotient(sub st, substProp substitution prp)
+        Quotient(sub st, substProp sbst prp)
     | Rz st -> Rz (sub st)
-    | SApp(st1,trm2) -> SApp(sub st1, subst substitution trm2)
+    | SApp(st1,trm2) -> SApp(sub st1, subst sbst trm2)
     | Sum lsos ->
-	let f (l, so) = (l, substSetOption substitution so)
+	let f (l, so) = (l, substSetOption sbst so)
 	in Sum (List.map f lsos)
     | SLambda((y,st),u) ->
-	let (sbst', y') = updateBoundName substitution y in 
-          SLambda((y',substSet substitution st),
+	let (sbst', y') = updateBoundName sbst y in 
+          SLambda((y',substSet sbst st),
   	         substSet sbst' u)
 
   and substProd sbst = function
@@ -956,48 +957,48 @@ and substSet substitution =
 
   in sub
 
-and substSetOption substitution = function
+and substSetOption sbst = function
     None    -> None
-  | Some st -> Some (substSet substitution st)
+  | Some st -> Some (substSet sbst st)
 
-and substTermOption substitution = function
+and substTermOption sbst = function
     None     -> None
-  | Some trm -> Some (subst substitution trm)
+  | Some trm -> Some (subst sbst trm)
 
-and substModel substitution = function
-    ModelName strng -> getModelvar substitution strng
-  | ModelProj (mdl, lbl) -> ModelProj(substModel substitution mdl, lbl)
-  | ModelApp (mdl1, mdl2) -> ModelApp(substModel substitution mdl1,
-				     substModel substitution mdl2)
+and substModel sbst = function
+    ModelName strng -> getModelvar sbst strng
+  | ModelProj (mdl, lbl) -> ModelProj(substModel sbst mdl, lbl)
+  | ModelApp (mdl1, mdl2) -> ModelApp(substModel sbst mdl1,
+				     substModel sbst mdl2)
 
-and substKind substitution = function
+and substSetkind sbst = function
     KindArrow(y, st, k) -> 
-      let (sbst', y') = updateBoundName substitution y in
-	KindArrow(y', substSet substitution st, substKind sbst' k)
+      let (sbst', y') = updateBoundName sbst y in
+	KindArrow(y', substSet sbst st, substSetkind sbst' k)
   | KindSet -> KindSet
 
-and substProptype substitution = function
+and substProptype sbst = function
     Prop -> Prop
   | StableProp -> StableProp
-  | EquivProp ty -> EquivProp (substSet substitution ty)
+  | EquivProp ty -> EquivProp (substSet sbst ty)
   | PropArrow(y,st,prpty) ->
-      let (sbst', y') = updateBoundName substitution y in
-	PropArrow(y', substSet substitution st, substProptype sbst' prpty)
+      let (sbst', y') = updateBoundName sbst y in
+	PropArrow(y', substSet sbst st, substProptype sbst' prpty)
 	  
-let rec substTheory substitution = function 
-    Theory elts       -> Theory (substTheoryElts substitution elts)
+let rec substTheory sbst = function 
+    Theory elts       -> Theory (substTheoryElts sbst elts)
   | TheoryName thrynm -> TheoryName thrynm
   | TheoryArrow ((y, thry1), thry2) ->
-      let (sbst',y') = updateBoundName substitution y in
-	TheoryArrow((y, substTheory substitution thry1),
+      let (sbst',y') = updateBoundName sbst y in
+	TheoryArrow((y, substTheory sbst thry1),
 		   substTheory sbst' thry2)
   | TheoryLambda ((y, thry1), thry2) ->
-      let (sbst',y') = updateBoundName substitution y in
-	TheoryLambda((y, substTheory substitution thry1),
+      let (sbst',y') = updateBoundName sbst y in
+	TheoryLambda((y, substTheory sbst thry1),
 		    substTheory sbst' thry2)
   | TheoryApp (thry, mdl) ->
-      TheoryApp (substTheory substitution thry,  
-		substModel substitution mdl)
+      TheoryApp (substTheory sbst thry,  
+		substModel sbst mdl)
 
 and substTheoryKind sub = function
     ModelTheoryKind               -> ModelTheoryKind
@@ -1016,11 +1017,11 @@ and substTheoryElts sub = function
       let _ = checkNoCapture sub nm
       in let sub' = removeName sub nm
       in
-	(Set (nm, substKind sub knd)) :: (substTheoryElts sub' rest)
+	(Set (nm, substSetkind sub knd)) :: (substTheoryElts sub' rest)
   | Let_set (nm, knd, st) :: rest ->
       let _ = checkNoCapture sub nm
       in let sub' = removeName sub nm
-      in (Let_set (nm, substKind sub knd, substSet sub st)) :: 
+      in (Let_set (nm, substSetkind sub knd, substSet sub st)) :: 
 	(substTheoryElts sub' rest)
   | Predicate (nm, pt) :: rest -> 
       let _ = checkNoCapture sub nm

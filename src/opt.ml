@@ -372,15 +372,18 @@ and optTerm' ctx e =
    let (_,e',_) = optTerm ctx e 
    in e'      
 
+and optTerms' ctx lst =
+  let (_, es, _) = optTerms ctx lst in es
+
 and optProp ctx = function
     True                    -> True
   | False                   -> False
-  | IsPer nm                -> IsPer nm
-  | IsPredicate (nm, ms)    -> IsPredicate (nm, optModest ctx ms)
+  | IsPer (nm, lst)         -> IsPer (nm, optTerms' ctx lst)
+  | IsPredicate (nm, lst, ms) -> IsPredicate (nm, optTerms' ctx lst, optModest ctx ms)
   | IsEquiv (ms, p)         -> IsEquiv (optModest ctx ms, optProp ctx p)
-  | NamedTotal n            -> NamedTotal n
-  | NamedPer n              -> NamedPer n
-  | NamedProp (n, t)        -> NamedProp (n, optTerm' ctx t)
+  | NamedTotal (n, lst)     -> NamedTotal (n, optTerms' ctx lst)
+  | NamedPer (n, lst)       -> NamedPer (n, optTerms' ctx lst)
+  | NamedProp (n, t, lst)   -> NamedProp (n, optTerm' ctx t, optTerms' ctx lst)
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2
@@ -450,7 +453,7 @@ and optProp ctx = function
       in (match (optTy ctx ty, p') with
         (_, True) -> True
       | (TopTy,_) -> p'
-      | (NamedTy n1, Imply (PApp (NamedTotal n2, Id n3), p'')) ->
+      | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
 	  if (LN(None,n) = n3) && (n1 = n2) then
 	    ForallTotal((n,NamedTy n1), p'')
 	  else

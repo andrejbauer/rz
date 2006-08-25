@@ -308,7 +308,7 @@ let rec searchElems cntxt nm' mdl =
     | L.Set (nm, knd) :: rest -> 
 	if (nm = nm') then
 	  Some (CtxSet(None, (* or Some mdl.nm? *)
-		       L.substKind subst knd))  
+		       L.substSetkind subst knd))  
 	else 
 	  loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm)))) rest
     | L.Let_set (nm, knd, st) :: rest -> 
