@@ -293,6 +293,23 @@ let insertTheoryVariable =
   makeInsertChecker validTheoryName insertTheoryVariable' "theory"
 
 
+
+let rec updateContextForElem cntxt = function
+  | L.Set           (nm, knd)     -> insertSetVariable  cntxt nm knd None
+  | L.Let_set       (nm, knd, st) -> insertSetVariable  cntxt nm knd (Some st)
+  | L.Predicate     (nm, pt)      -> insertPropVariable cntxt nm pt None
+  | L.Let_predicate (nm, pt, prp) -> insertPropVariable cntxt nm pt (Some prp)
+  | L.Value         (nm, st)      -> insertTermVariable cntxt nm st None
+  | L.Let_term      (nm, st, trm) -> insertTermVariable cntxt nm st (Some trm)
+  | L.Model         (nm, thry)    -> insertModelVariable cntxt nm thry
+  | L.Sentence      (nm, _, _)    -> 
+      (* Check for bound variables and appropriate name capitalization *)
+      insertPropVariable cntxt nm L.Prop None
+  | L.Comment _   -> cntxt
+
+and updateContextForElems cntxt elems = 
+  List.fold_left updateContextForElem cntxt elems
+
 (************************************)
 (** {3 Renaming of Bound Variables} *)
 (************************************)
@@ -392,6 +409,7 @@ and jointModelNameSubsts' nm1 nm2 subst1 subst2 =
   in let sub2 = L.insertModelvar subst2 nm2 trm
   in (freshname, sub1, sub2)
 
+
 (**********************)
 (* {2 Theory Lookup } *)
 (**********************)
@@ -404,68 +422,68 @@ type searchResult =
     | SearchFailed
 
 let rec searchElems cntxt nm' mdl = 
-  let rec loop subst = function
-    [] -> SearchFailed
-    | L.Set (nm, knd) :: rest -> 
-	let knd' = L.substSetkind subst knd
-	in if (nm = nm') then
-	    Projectable (CtxSet(None, (* or Some mdl.nm? *)
-			       knd'))
-	  else 
-	    loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm), knd')))
-	      rest
-    | L.Let_set (nm, knd, st) :: rest -> 
-	let knd' = L.substSetkind subst knd
-	in let st' = L.substSet subst st
-	in if (nm = nm') then
-	    Projectable (CtxSet(Some st', knd'))
-	  else 
-	    loop (L.insertSetvar subst nm (L.Basic(L.SLN(Some mdl, nm), knd')))
-	      rest
-    | L.Predicate (nm, pt) :: rest -> 
-	let pt' = L.substProptype subst pt
-	in if (nm = nm') then
-	    Projectable (CtxProp(None, pt'))
-	  else 
-	    loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm), pt')))
-	      rest
-    | L.Let_predicate (nm, pt, prp) :: rest -> 
-	let pt' = L.substProptype subst pt
-	in let prp' = L.substProp subst prp
-	in if (nm = nm') then
-	    Projectable (CtxProp(Some prp', pt'))
-	else 
-	  loop (L.insertPropvar subst nm (L.Atomic(L.LN(Some mdl, nm), pt')))
-	    rest
-    | L.Value (nm, ty) :: rest -> 
-	let ty' = L.substSet subst ty
-	in if (nm = nm') then
-	    Projectable( CtxTerm (None, ty') )
-	else 
-	  loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm))))
-	    rest
-    | L.Let_term (nm, ty, trm) :: rest -> 
-	let ty' = L.substSet subst ty
-	in let trm' = L.subst subst trm
-	in if (nm = nm') then
-	    Projectable( CtxTerm (Some trm', ty') )
-	  else 
-	    loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm)))) rest
-    | L.Model (nm, thry) :: rest ->
-	let thry' = L.substTheory subst thry
-	in
-	  if (nm = nm') then
-	    Projectable( CtxModel thry' )
-	  else 
-	    loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) rest
-    | L.Sentence (nm,_,_) as elem :: rest -> 
-	if (nm = nm') then
-	  SearchOther (L.substTheoryElt subst elem)
-	else 
-	  loop subst rest
-    | L.Comment _ :: rest -> 
-	(** Comments cannot be searched for, currently *)
-	  loop subst rest
+  let rec loop subst = function 
+      [] -> SearchFailed
+    | elem :: rest ->
+	match L.substTheoryElt subst elem with
+	  | L.Set (nm, knd) -> 
+	      if (nm = nm') then
+		Projectable (CtxSet(None, (* or Some mdl.nm? *)
+				   knd))
+	      else 
+		loop (L.insertSetvar subst nm 
+			 (L.Basic(L.SLN(Some mdl, nm), knd)))
+		  rest
+	  | L.Let_set (nm, knd, st)  -> 
+	      if (nm = nm') then
+		Projectable (CtxSet(Some st, knd))
+	      else 
+		loop (L.insertSetvar subst nm 
+			 (L.Basic(L.SLN(Some mdl, nm), knd)))
+		  rest
+	  | L.Predicate (nm, pt)  -> 
+	      if (nm = nm') then
+		Projectable (CtxProp(None, pt))
+	      else 
+		loop (L.insertPropvar subst nm 
+			 (L.Atomic(L.LN(Some mdl, nm), pt)))
+		  rest
+	  | L.Let_predicate (nm, pt, prp)  -> 
+	      if (nm = nm') then
+		Projectable (CtxProp(Some prp, pt))
+	      else 
+		loop (L.insertPropvar subst nm 
+			 (L.Atomic(L.LN(Some mdl, nm), pt)))
+		  rest
+	  | L.Value (nm, ty)  -> 
+	      if (nm = nm') then
+		Projectable( CtxTerm (None, ty) )
+	      else 
+		loop (L.insertTermvar subst nm 
+			 (L.Var(L.LN(Some mdl, nm))))
+		  rest
+	  | L.Let_term (nm, ty, trm)  -> 
+	      if (nm = nm') then
+		Projectable( CtxTerm (Some trm, ty) )
+	      else 
+		loop (L.insertTermvar subst nm 
+			 (L.Var(L.LN(Some mdl, nm)))) 
+		  rest
+	  | L.Model (nm, thry)  ->
+	      if (nm = nm') then
+		Projectable( CtxModel thry )
+	      else 
+		loop (L.insertModelvar subst nm 
+			 (L.ModelProj(mdl, nm))) 
+		  rest
+	  | L.Sentence (nm,mbnds,prp) as elem  -> 
+	      if (nm = nm') then
+		SearchOther (L.substTheoryElt subst elem)
+	      else 
+		loop subst rest
+	  | L.Comment _  -> 
+	      (** Comments cannot be searched for, currently *)
+	      loop subst rest
   in
     loop L.emptysubst 
 
@@ -757,23 +775,100 @@ and subKind cntxt k1 k2 = eqKind' true cntxt k1 k2
 
 and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
 
-and eqProp ctx prp1 prp2 = 
-  (* XXX: Should allow alpha-equiv and set-equiv *)
-  (prp1 = prp2) ||
-    (tyGenericWarning 
-	("eqProp guessing that " ^
-	    L.string_of_prop prp1 ^ " <=> " ^ 
-	    L.string_of_prop prp2);
-     true)
+(** IMPORTANT: two provably equivalent propositions are NOT
+    necessarily interchangeable because they may have realizers
+    of different types.  They are interchangeable if:
+      0) They are alpha-equivalent (modulo set and term-equivalence)
+          [current implementation]
+      1) Or, they are provably equivalent and stable.
+      2) Or, when reduced to normal form (exists r:t, phi)
+         they have the same realizer types t and provably
+         equivalent classical parts (phi's).
+*)
+and eqProp cntxt prp1 prp2 = 
+  (prp1 = prp2) (* short-circuiting *) ||
+    match (prp1, prp2) with
+	(L.False, L.False) -> true    (* Redundant *)
+      | (L.True, L.True) -> true      (* Redundant *)
+      | (L.Atomic(L.LN(Some mdl1, nm1), _), L.Atomic(L.LN(Some mdl2, nm2), _)) ->
+	  eqModel cntxt mdl1 mdl2 && nm1 = nm2
+	    && nm1 = nm2
+      | (L.Atomic(L.LN(None, nm1), _), L.Atomic(L.LN(None, nm2), _) ) -> 
+	  nm1 = nm2
+      | (L.And prps1, L.And prps2) 
+      | (L.Or prps1, L.Or prps2 )->
+	  eqProps cntxt prps1 prps2
+      | (L.Imply(prp1a, prp1b), L.Imply(prp2a, prp2b)) 
+      | (L.Iff(prp1a, prp1b), L.Iff(prp2a, prp2b)) ->
+	  eqProp cntxt prp1a prp2a &&
+	    eqProp cntxt prp1b prp2b
+      | (L.Forall((nm1,st1), prp1), L.Forall((nm2,st2), prp2)) 
+      | (L.Exists((nm1,st1), prp1), L.Exists((nm2,st2), prp2)) 
+      | (L.Unique((nm1,st1), prp1), L.Unique((nm2,st2), prp2)) 
+      | (L.PLambda((nm1,st1), prp1), L.PLambda((nm2,st2), prp2)) ->
+	  eqSet cntxt st1 st2 &&
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	    in let prp1' = L.substProp sub1 prp1
+	    in let prp2' = L.substProp sub2 prp2
+	    in let cntxt' = insertTermVariable cntxt nm1 st1 None
+	    in eqProp cntxt' prp1' prp2'
+      | (L.Not prp1, L.Not prp2) ->
+	  eqProp cntxt prp1 prp2
+      | (L.Equal(ty1, trm1a, trm1b), L.Equal(ty2, trm2a, trm2b)) ->
+	  eqSet cntxt ty1 ty2 &&
+	    eqTerm cntxt trm1a trm2a &&
+	    eqTerm cntxt trm1b trm2b
+      | (L.PApp(prp1, trm1), L.PApp(prp2, trm2)) ->
+	  eqProp cntxt prp1 prp2 &&
+	    eqTerm cntxt trm1 trm2
+      | (L.EquivCoerce(st1,prp1), L.EquivCoerce(st2,prp2)) ->
+	  eqSet cntxt st1 st2 &&
+	    eqProp cntxt prp1 prp2
+      | (L.PCase(trm1, arms1), L.PCase(trm2, arms2)) ->
+	  let rec eqArms = function
+	      ([], []) -> true
+	    | ((lbl1, None, prp1)::rest1, (lbl2, None, prp2)::rest2) ->
+		lbl1 = lbl2  && 
+	          eqProp cntxt prp1 prp2 && 
+		  eqArms (rest1, rest2)
+	    | ((lbl1, Some (nm1,st1), prp1) :: rest1, 
+	      (lbl2, Some (nm2,st2), prp2) :: rest2 ) ->
+		lbl1 = lbl2 &&
+	          eqSet cntxt st1 st2 &&
+		  (let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+		    in let prp1' = L.substProp sub1 prp1
+		    in let prp2' = L.substProp sub2 prp2
+		    in let cntxt' = insertTermVariable cntxt nm1 st1 None
+		    in eqProp cntxt' prp1' prp2') &&
+		  eqArms(rest1, rest2)
+	    | _ -> false
+	  in let order (lbl1, _, _) (lbl2, _, _) =
+	    compare lbl1 lbl2
+	  in let arms1' = List.sort order arms1
+	  in let arms2' = List.sort order arms2
+	  in 
+	       eqTerm cntxt trm1 trm2 &&
+		 eqArms (arms1', arms2')
+      | _ -> false
+	    
+and eqProps cntxt prps1 prps2 = 
+  match (prps1, prps2) with
+      ([], []) -> true
+    | (prp1::rest1, prp2::rest2) -> 
+	eqProp cntxt prp1 prp2 & eqProps cntxt rest1 rest2
+    | _ -> false
+	                             
 
-and eqTerm ctx trm1 trm2 = 
-  (* XXX: Should allow alpha-equiv and set-equiv and beta *)
+and eqTerm cntxt trm1 trm2 = 
+  (* XXX: Should allow alpha-equiv and set-equiv, and possibly beta *)
   (trm1 = trm2) ||
     (tyGenericWarning 
 	("eqProp guessing that " ^
 	    L.string_of_term trm1 ^ " == " ^ 
 	    L.string_of_term trm2);
      true)
+
+and eqModel ctx mdl1 mdl2 = (mdl1 = mdl2)
 
 and eqModelOpt ctx mdlopt1 mdlopt2 = (mdlopt1 = mdlopt2)
 
@@ -862,12 +957,200 @@ let joinPropTypes cntxt = function
   | [] -> failwith "joinPropTypes applied to empty list"
 
 
-let eqMbnds cntxt mbnds1 mbnds2 =
-  if (mbnds1 = mbnds2) then
-    Some cntxt
-  else
-    (tyGenericWarning "eqMBnds not fully implemented";
-     Some cntxt)
+let rec eqMbnd cntxt subst1 subst2 (nm1, thry1) (nm2, thry2) =
+  let (nm, subst1', subst2') = jointModelNameSubsts' nm1 nm2 subst1 subst2
+  in let thry1' = L.substTheory subst1 thry1
+  in let thry2' = L.substTheory subst2 thry2
+  in let cntxt' = insertModelVariable cntxt nm thry1'
+  in 
+       if (eqTheory cntxt thry1' thry2') then
+	 Some (cntxt', subst1', subst2')
+       else
+	 None
+
+and eqMbnds' cntxt subst1 subst2 mbnds1 mbnds2 =
+  match (mbnds1, mbnds2) with
+      ([], []) -> Some (cntxt, subst1, subst2)
+    | (mbnd1::rest1, mbnd2::rest2) ->
+	begin
+	  match eqMbnd cntxt subst1 subst2 mbnd1 mbnd2 with
+	      Some (cntxt', subst1', subst2') -> 
+		eqMbnds' cntxt' subst1' subst2' rest1 rest2
+	    | None -> None
+	end
+    | _ -> None
+
+and eqMbnds cntxt mbnds1 mbnds2 =
+  eqMbnds' cntxt L.emptysubst L.emptysubst mbnds1 mbnds2
+
+and eqTheory cntxt thry1 thry2 =
+  (thry1 = thry2) || 
+    begin
+      match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
+	  (L.TheoryLambda(mbnd1, thry1b), 
+	   L.TheoryLambda(mbnd2, thry2b)) ->
+	    begin
+	      match eqMbnd cntxt L.emptysubst L.emptysubst mbnd1 mbnd2 with
+		  Some (cntxt', subst1, subst2) ->
+		    let    thry1b' = L.substTheory subst1 thry1b
+		    in let thry2b' = L.substTheory subst2 thry2b
+		    in  eqTheory cntxt' thry1b' thry2b'
+		| None -> false
+	    end
+		      
+	| (L.TheoryLambda _, _ ) -> false
+	| (_, L.TheoryLambda _) -> false
+
+	| (thry1', thry2') ->
+	    (* If we get this far, the two theories must have
+	       theorykind ModelTheoryKind, so we can use
+	       checkModelConstraint.
+
+	       T1 == T2 iff  ( X:T1 |- X : T2  &&  X:T2 |- X : T1 )
+	    *)
+	    let nm = wildModelName()
+	    in let cntxt1 = insertModelVariable cntxt nm thry1'
+	    in let cntxt2 = insertModelVariable cntxt nm thry1'
+	    in let mdl = L.ModelName nm
+	    in checkModelConstraint cntxt1 mdl thry1' thry2' &&
+	      checkModelConstraint cntxt2 mdl thry2' thry1'
+    end
+
+(* Inputs must be a well-formed logical model, its inferred theory, and
+   some other theory *)
+and checkModelConstraint cntxt mdl1 thry1 thry2 = 
+  match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
+      (L.TheoryArrow ((nm1, thry1a), thry1b), 
+       L.TheoryArrow ((nm2, thry2a), thry2b)) ->
+	let (nm, sub1, subs) = jointModelNameSubsts nm1 nm2
+	in let thry1b' = L.substTheory sub1 thry1b
+	in let thry2b' = L.substTheory sub1 thry1b
+	in let cntxt' = insertModelVariable cntxt nm thry2a
+	in 
+	     (* contravariant domain *)
+	     checkModelConstraint cntxt (L.ModelName nm) thry2a thry1a &&
+	       (* covariant codomain *)
+	       checkModelConstraint cntxt' (L.ModelApp(mdl1, L.ModelName nm)) 
+	          thry1b' thry2b'
+
+    | (L.Theory elems1, L.Theory elems2) ->
+	let projAsTerm  nm = L.Var(L.LN(Some mdl1, nm))
+	in let projAsSet   nm knd = L.Basic(L.SLN(Some mdl1, nm), knd)
+	in let projAsProp  nm pt = L.Atomic(L.LN(Some mdl1, nm), pt)
+	in let projAsModel nm = L.ModelProj(mdl1, nm)
+	in let rec loop cntxt = function
+	    [] -> true
+	  | (L.Set(nm,knd2)) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxSet (_,knd1)) -> 
+		      (subKind cntxt knd1 knd2 &&
+			let cntxt' = 
+			  insertSetVariable cntxt nm knd1 
+			    (Some (projAsSet nm knd1))
+			in loop cntxt' rest)
+		  | _ -> false
+	      end    
+	  | L.Let_set(nm,knd2,st2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxSet (_,knd1)) -> 
+		      subKind cntxt knd1 knd2 &&
+			(* st2 might be "mdl1.nm", even if mdl1.nm doesn't
+			   have a definition, so we want to compare it to
+			   mdl1.nm and not to mdl1.nm's definition (if any) *)
+			eqSet cntxt (projAsSet nm knd1) st2 &&
+			let cntxt' = 
+			  insertSetVariable cntxt nm knd1 
+			    (Some (projAsSet nm knd1))
+			in loop cntxt' rest
+		  | _ -> false
+	      end    
+
+	  | L.Predicate(nm,pt2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxProp(_, pt1)) ->
+		      (subPropType cntxt pt1 pt2 &&
+			  let cntxt' = 
+			    insertPropVariable cntxt nm pt1 
+			      (Some (projAsProp nm pt1))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Let_predicate(nm,pt2,prp2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxProp(_, pt1)) ->
+		      (subPropType cntxt pt1 pt2 &&
+			  eqProp cntxt (projAsProp nm pt1) prp2 &&
+			  let cntxt' = 
+			    insertPropVariable cntxt nm pt1 
+			      (Some (projAsProp nm pt1))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Value(nm,st2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxTerm(_, st1)) ->
+		      (subSet cntxt st1 st2 &&
+			  let cntxt' = 
+			    insertTermVariable cntxt nm st1 
+			      (Some (projAsTerm nm))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+	  | L.Let_term(nm,st2,trm2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxTerm(_, st1)) ->
+		      (subSet cntxt st1 st2 &&
+			  eqTerm cntxt (projAsTerm nm) trm2 &&
+			  let cntxt' = 
+			    insertTermVariable cntxt nm st1 
+			      (Some (projAsTerm nm))
+			  in loop cntxt' rest)
+		      | _ -> false
+	      end
+
+          | L.Model(nm, thry2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Projectable (CtxModel thry1) ->
+		      (checkModelConstraint cntxt (projAsModel nm) 
+			  thry1 thry2 &&
+			  let cntxt' = 
+			    insertModelVariable cntxt nm thry1
+			  in loop cntxt' rest)
+		  | _ -> false
+	      end
+
+	  | L.Comment _ :: rest -> loop cntxt rest
+
+          | L.Sentence (nm, mbnds2, prp2) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    SearchOther(L.Sentence(_, mbnds1, prp1)) ->
+		      begin
+			match eqMbnds cntxt mbnds1 mbnds2 with
+			    Some (cntxt'', subst1, subst2) -> 
+			      let prp1' = L.substProp subst1 prp1
+			      in let prp2' = L.substProp subst2 prp2
+			      in
+				   eqProp cntxt'' prp1' prp2' && 
+				     loop cntxt rest
+			  | _ -> false
+		      end
+		  | _ -> false
+	      end
+
+	in loop cntxt elems2
+
+    | _ -> false (* No abstract Theory variables *)
 
 (* coerce: cntxt -> term -> set -> set -> trm option *)
 (**
@@ -1017,6 +1300,8 @@ let rec annotateExpr cntxt = function
       end
 
   | App(Label label, expr2) as orig_expr ->
+      (** Special case:  a label applied to an expression is the parser's
+	  way of writing an injection into a sum type *)
       let (trm2', ty2') = annotateTerm cntxt orig_expr expr2
       in 
 	ResTerm ( L.Inj(label, Some trm2'),
@@ -1121,6 +1406,16 @@ let rec annotateExpr cntxt = function
 		      "parameterized theory" orig_expr
 	      end
 
+	  | (ResTheory(thry1, _), ResModel _) ->
+	      begin
+		match hnfTheory cntxt thry1 with
+		    L.TheoryArrow _ ->
+		      tyGenericError 
+			("Application of theory *arrow* to an argument; " ^ 
+			    "was a function intended?")
+		  | _ -> tyGenericError ("Invalid application " ^
+					    string_of_expr orig_expr)
+	      end
 
 	  | _ -> tyGenericError ("Invalid application " ^ 
 				    string_of_expr orig_expr) 
@@ -2083,20 +2378,6 @@ and annotateTheoryElem cntxt = function
       in 
 	   loop values
 
-and updateContextForElem cntxt = function
-  | L.Set           (nm, knd)     -> insertSetVariable  cntxt nm knd None
-  | L.Let_set       (nm, knd, st) -> insertSetVariable  cntxt nm knd (Some st)
-  | L.Predicate     (nm, pt)      -> insertPropVariable cntxt nm pt None
-  | L.Let_predicate (nm, pt, prp) -> insertPropVariable cntxt nm pt (Some prp)
-  | L.Value         (nm, st)      -> insertTermVariable cntxt nm st None
-  | L.Let_term      (nm, st, trm) -> insertTermVariable cntxt nm st (Some trm)
-  | L.Model         (nm, thry)    -> insertModelVariable cntxt nm thry
-  | L.Sentence _  -> cntxt
-  | L.Comment _   -> cntxt
-
-and updateContextForElems cntxt elems = 
-  List.fold_left updateContextForElem cntxt elems
-
 and annotateTheoryElems cntxt = function
     [] -> (cntxt, [])
 
@@ -2146,136 +2427,5 @@ and annotateToplevels cntxt = function
       in let (cntxt'', tls') = annotateToplevels cntxt' tls
       in (cntxt'', tl'::tls')
 
-(* Inputs must be a well-formed logical model, its inferred theory, and
-   some other theory *)
-and checkModelConstraint cntxt mdl1 thry1 thry2 = 
-  match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
-      (L.TheoryArrow ((nm1, thry1a), thry1b), 
-       L.TheoryArrow ((nm2, thry2a), thry2b)) ->
-	let (nm, sub1, subs) = jointModelNameSubsts nm1 nm2
-	in let thry1b' = L.substTheory sub1 thry1b
-	in let thry2b' = L.substTheory sub1 thry1b
-	in let cntxt' = insertModelVariable cntxt nm thry2a
-	in 
-	     (* contravariant domain *)
-	     checkModelConstraint cntxt (L.ModelName nm) thry2a thry1a &&
-	       (* covariant codomain *)
-	       checkModelConstraint cntxt' (L.ModelApp(mdl1, L.ModelName nm)) 
-	          thry1b' thry2b'
-
-    | (L.Theory elems1, L.Theory elems2) ->
-	let projAsTerm  nm = L.Var(L.LN(Some mdl1, nm))
-	in let projAsSet   nm knd = L.Basic(L.SLN(Some mdl1, nm), knd)
-	in let projAsProp  nm pt = L.Atomic(L.LN(Some mdl1, nm), pt)
-	in let projAsModel nm = L.ModelProj(mdl1, nm)
-	in let rec loop cntxt = function
-	    [] -> true
-	  | (L.Set(nm,knd2)) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxSet (_,knd1)) -> 
-		      (subKind cntxt knd1 knd2 &&
-			let cntxt' = 
-			  insertSetVariable cntxt nm knd1 
-			    (Some (projAsSet nm knd1))
-			in loop cntxt' rest)
-		  | _ -> false
-	      end    
-	  | L.Let_set(nm,knd2,st2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxSet (_,knd1)) -> 
-		      subKind cntxt knd1 knd2 &&
-			(* st2 might be "mdl1.nm", even if mdl1.nm doesn't
-			   have a definition, so we want to compare it to
-			   mdl1.nm and not to mdl1.nm's definition (if any) *)
-			eqSet cntxt (projAsSet nm knd1) st2 &&
-			let cntxt' = 
-			  insertSetVariable cntxt nm knd1 
-			    (Some (projAsSet nm knd1))
-			in loop cntxt' rest
-		  | _ -> false
-	      end    
-
-	  | L.Predicate(nm,pt2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxProp(_, pt1)) ->
-		      (subPropType cntxt pt1 pt2 &&
-			  let cntxt' = 
-			    insertPropVariable cntxt nm pt1 
-			      (Some (projAsProp nm pt1))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-	  | L.Let_predicate(nm,pt2,prp2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxProp(_, pt1)) ->
-		      (subPropType cntxt pt1 pt2 &&
-			  eqProp cntxt (projAsProp nm pt1) prp2 &&
-			  let cntxt' = 
-			    insertPropVariable cntxt nm pt1 
-			      (Some (projAsProp nm pt1))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-	  | L.Value(nm,st2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxTerm(_, st1)) ->
-		      (subSet cntxt st1 st2 &&
-			  let cntxt' = 
-			    insertTermVariable cntxt nm st1 
-			      (Some (projAsTerm nm))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-	  | L.Let_term(nm,st2,trm2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxTerm(_, st1)) ->
-		      (subSet cntxt st1 st2 &&
-			  eqTerm cntxt (projAsTerm nm) trm2 &&
-			  let cntxt' = 
-			    insertTermVariable cntxt nm st1 
-			      (Some (projAsTerm nm))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-          | L.Model(nm, thry2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxModel thry1) ->
-		      (checkModelConstraint cntxt (projAsModel nm) 
-			  thry1 thry2 &&
-			  let cntxt' = 
-			    insertModelVariable cntxt nm thry1
-			  in loop cntxt' rest)
-		  | _ -> false
-	      end
-
-	  | L.Comment _ :: rest -> loop cntxt rest
-
-          | L.Sentence (nm, mbnds2, prp2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    SearchOther(L.Sentence(_, mbnds1, prp1)) ->
-		      begin
-			match eqMbnds cntxt mbnds1 mbnds2 with
-			    Some cntxt'' -> 
-			      eqProp cntxt'' prp1 prp2 && loop cntxt rest
-			  | _ -> false
-		      end
-		  | _ -> false
-	      end
-
-	in loop cntxt elems2
-
-    | _ -> false (* No abstract Theory variables *)
 
 

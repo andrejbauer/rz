@@ -1091,3 +1091,4 @@ and substMBnds sub = function
        let (rest', sub'') = substMBnds sub' rest in
          ((mdlnm, substTheory sub thry) :: rest', sub'')
 
+      

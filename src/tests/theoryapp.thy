@@ -1,16 +1,25 @@
 theory A :=
 thy
         Parameter a : Set.
+	Parameter n : a. 
+	Axiom q : forall (x:a), x=x. 
 end
 
-theory B :=  
-       fun M : A => 
-           thy 
-               Definition b := M.a.  
-               Definition c := M.a.
-           end
+theory B :=
+thy
+        Parameter a : Set.
+	Axiom q : forall (x:a), x=x.
+	Parameter n m : a.
+end
 
-model X : A
+theory C := 
+       fun (M : A) => 
+       	   thy 
+	       Definition b := M.a.
+	       Definition c := M.a.
+      	   end
 
-theory C := B X
+model X : B
+
+theory D := C X
 

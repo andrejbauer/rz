@@ -4,9 +4,36 @@ sig
   type a
   (**  Assertion per_a =  PER(=a=)
   *)
+   
+  val n : a
+  (**  Assertion n_total =  n : ||a||
+  *)
+   
+  
+  (**  Assertion q =  all (x:||a||).  x =a= x
+  *)
 end
 
 module type B = 
+sig
+  type a
+  (**  Assertion per_a =  PER(=a=)
+  *)
+   
+  
+  (**  Assertion q =  all (x:||a||).  x =a= x
+  *)
+   
+  val n : a
+  (**  Assertion n_total =  n : ||a||
+  *)
+   
+  val m : a
+  (**  Assertion m_total =  m : ||a||
+  *)
+end
+
+module type C = 
 functor (M : A) ->
  sig
    type b = M.a
@@ -22,8 +49,8 @@ functor (M : A) ->
    *)
  end
 
-module X : A
+module X : B
 
-module type C = 
-B(X)
+module type D = 
+C(X)
 
