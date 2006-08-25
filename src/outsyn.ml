@@ -74,7 +74,8 @@ and proposition =
   | PMApp of proposition * term                (* application of propositional function to a total element *)
   | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
   | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
-  | PObligation of proposition * proposition   (* Obligation *)
+  | PObligation of proposition * proposition   (* obligation *)
+  | PCase of term * (label * binding option * proposition) list (* propositional case *)
 
 type assertion = string * proposition
 
@@ -171,6 +172,10 @@ and fvProp' flt acc = function
   | PLambda ((n, _), p) -> fvProp' (n::flt) acc p
   | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
   | PObligation (p, q) -> fvProp' flt (fvProp' flt acc p) q
+  | PCase (t, lst) ->
+      List.fold_left
+	(fun a (_, bnd, t) -> fvProp' (match bnd with None -> flt | Some (n, _) -> n::flt) a t)
+	(fvTerm' flt acc t) lst
 
 and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
@@ -327,6 +332,19 @@ and substProp ?occ sbst = function
 	PMLambda ((n', {ty=substTy ?occ sbst t; tot=substProp ?occ sbst p; per=substProp ?occ sbst q}),
 		 substProp ?occ (insertTermvar sbst n (id n')) r)
   | PObligation (p, q) -> PObligation (substProp ?occ sbst p, substProp ?occ sbst q)
+  | PCase (t, lst) -> 
+      PCase (substTerm ?occ sbst t,
+	    List.map (function
+			  (lb, None, p) -> (lb, None, substProp ?occ sbst p)
+			| (lb, Some (n, ty), p) ->
+			    let sbst' = insertTermvar sbst n (id n) in
+			    let n' = freshVar [n] ?occ sbst in
+			      (lb,
+			       Some (n', substTy ?occ sbst ty),
+			       substProp ?occ (insertTermvar sbst' n (id n')) p)
+		     )
+	      lst)
+
 
 and substTerm ?occ sbst = function
     Id (LN (None, nm)) -> getTermvar sbst nm
@@ -589,6 +607,15 @@ and string_of_prop level p =
     | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ " " ^ (string_of_term' 9 t))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
+    | PCase (t, lst) ->
+	(14, "match " ^ (string_of_term' 13 t) ^ " with " ^
+	   (String.concat " | "
+	      (List.map (function
+		  (lb, None, p) -> "`" ^ lb ^ " -> " ^  (string_of_prop 14 p)
+		| (lb, Some (n,ty), p) -> 
+		    "`" ^ lb ^ " (" ^ (string_of_name n) ^ " : " ^
+		      (string_of_ty ty) ^ ") -> " ^
+		      (string_of_prop 14 p)) lst)))
   in
     if level' > level then "(" ^ str ^ ")" else str
 
