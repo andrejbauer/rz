@@ -201,19 +201,37 @@ let shadowingError nm =
 (** {3 Definition} *)
 (*******************)
 
+(* A context contains three components:
+     1) The traditional typing context, containing mappings from bound
+        variables to their sorts (and, optionally a value for this variable.)
+     2) Implicit type (or, more generally, kind/theory/etc.) information
+        declared by the user.  If a bound variable is introduced without
+        an explicit classifier or definition, we look here to see if the
+        variable name was previously declared to range over a certain sort.
+        (For convenience, we use the same ctx_member datatype, but in
+        these we know there will never be a value specified for the variable.)
+     3) A renaming mapping variables to variables.  The typechecker removes
+        shadowing whenever possible by renaming bound variables, and this
+        mapping keeps track of what renamings are currently are being done.
+        If a bound variable is not in the domain of this mapping, it is not
+        being renamed.
+*)
+
 type ctx_member =
     CtxProp   of L.proposition option * L.proptype
   | CtxSet    of L.set option         * L.setkind
   | CtxTerm   of L.term option        * L.set
   | CtxModel  of L.theory
   | CtxTheory of L.theory             * L.theorykind
-  | CtxUnbound
+  | CtxUnbound  (** Never appears in a context; used so we can avoid
+                    "ctx_member option" in some places. *)
 
-type context = {bindings : (name * ctx_member) list;
-		implicits : (name * ctx_member) list;
-	        renaming : name NameMap.t}
+type context = {bindings : ctx_member NameMap.t;
+		implicits : ctx_member NameMap.t;
+	        renaming  : name NameMap.t}
 
-let emptyContext = {bindings = []; implicits = [];
+let emptyContext = {bindings = NameMap.empty; 
+		    implicits = NameMap.empty;
 		    renaming = NameMap.empty}
 
 (**************)
@@ -221,16 +239,15 @@ let emptyContext = {bindings = []; implicits = [];
 (**************)
 
 let lookupImplicit cntxt nm = 
-  try Some (List.assoc nm cntxt.implicits) with
-      Not_found -> None
+  try NameMap.find nm cntxt.implicits with
+      Not_found -> CtxUnbound
 
 let lookupId cntxt nm =
-  try (List.assoc nm cntxt.bindings) with
+  try (NameMap.find nm cntxt.bindings) with
       Not_found -> CtxUnbound
 
 let isUnbound cntxt nm =
-  try (ignore (List.assoc nm cntxt.bindings); false) with
-      Not_found -> true
+  not (NameMap.mem nm cntxt.bindings)
 
 
 (******************)
@@ -238,9 +255,10 @@ let isUnbound cntxt nm =
 (******************)
 
 let rec insertImplicits cntxt names info = 
-  {cntxt with
-    implicits = ( List.map (fun nm -> (nm, info)) names )
-                  @ cntxt.implicits}
+  let infos = List.map (fun _ -> info) names
+  in 
+    {cntxt with
+      implicits = List.fold_right2 NameMap.add names infos cntxt.implicits}
 
 
 (** The remaining insert functions need to detect and complain about shadowing.
@@ -249,48 +267,33 @@ let rec insertImplicits cntxt names info =
    have to just give up here with an error.
 *)
 
+
 (** Wrapper for the non-checking (primed) insert functions to check for
     shadowing and for proper variable names (e.g., capitalization)
 *)
-let makeInsertChecker validator insertFn idString cntxt nm =
+let doInsert validator idString cntxt nm info =
     if validator nm then
       if isUnbound cntxt nm then
-	insertFn cntxt nm
+	{cntxt with bindings = NameMap.add nm info cntxt.bindings }
       else
 	shadowingError nm
     else
       illegalNameError nm idString
 
+let insertTermVariable cntxt nm ty trmopt = 
+  doInsert validTermName "term" cntxt nm (CtxTerm (trmopt,ty))
 
-let insertTermVariable' cntxt nm ty trmopt =
-  { cntxt with bindings =  (nm, CtxTerm (trmopt, ty)) :: cntxt.bindings }
+let insertSetVariable cntxt nm knd stopt = 
+  doInsert validSetName "set" cntxt nm (CtxSet (stopt,knd)) 
 
-let insertTermVariable = 
-  makeInsertChecker validTermName insertTermVariable' "term"
+let insertPropVariable cntxt nm pt prpopt = 
+  doInsert validPropName "proposition" cntxt nm (CtxProp (prpopt,pt))
 
-let insertSetVariable' cntxt nm knd stopt =
-  { cntxt with bindings =  (nm, CtxSet (stopt,knd)) :: cntxt.bindings }
+let insertModelVariable cntxt nm thry =
+  doInsert validModelName "model" cntxt nm (CtxModel thry)
 
-let insertSetVariable = 
-  makeInsertChecker validSetName insertSetVariable' "set"
-
-let insertPropVariable' cntxt nm pt prpopt =
-  { cntxt with bindings =  (nm, CtxProp (prpopt,pt)) :: cntxt.bindings }
-
-let insertPropVariable = 
-  makeInsertChecker validPropName insertPropVariable' "predicate/proposition"
-
-let insertModelVariable' cntxt nm thry =
-  { cntxt with bindings =  (nm, CtxModel thry) :: cntxt.bindings }
-
-let insertModelVariable = 
-  makeInsertChecker validModelName insertModelVariable' "model"
-
-let insertTheoryVariable' cntxt nm thry tknd =
-  { cntxt with bindings =  (nm, CtxTheory (thry,tknd)) :: cntxt.bindings }
-
-let insertTheoryVariable = 
-  makeInsertChecker validTheoryName insertTheoryVariable' "theory"
+let insertTheoryVariable cntxt nm thry tknd = 
+  doInsert validTheoryName "theory" cntxt nm (CtxTheory (thry,tknd))
 
 
 
@@ -303,14 +306,22 @@ let rec updateContextForElem cntxt = function
   | L.Let_term      (nm, st, trm) -> insertTermVariable cntxt nm st (Some trm)
   | L.Model         (nm, thry)    -> insertModelVariable cntxt nm thry
   | L.Sentence      (nm, _, _)    -> 
-      (* Check for bound variables and appropriate name capitalization *)
-      insertPropVariable cntxt nm L.Prop None
+      begin
+	(* We need to check for bound variable shadowing and appropriate
+	   capitalization (because axiom names appear in the final
+	   program code). *)
+	ignore (insertPropVariable cntxt nm L.Prop None); 
+	(* But the input langauge isn't allowed to refer to the
+	   names of axioms, so the axiom-name isn't bound in the
+	   context we return. *)
+	cntxt 
+      end 
   | L.Comment _   -> cntxt
 
-and updateContextForElems cntxt elems = 
-  List.fold_left updateContextForElem cntxt elems
+      and updateContextForElems cntxt elems = 
+	  List.fold_left updateContextForElem cntxt elems
 
-(************************************)
+      (************************************)
 (** {3 Renaming of Bound Variables} *)
 (************************************)
 
@@ -824,6 +835,8 @@ let rec eqSet' do_subset cntxt =
                     && eqProp cntxt eqvlnce3 eqvlnce4
 
                | ( L.SApp (st3, trm3), L.SApp (st4, trm4) ) ->
+		   (* XXX: this is a place where we would presumably
+		      emit an obligation *)
 		    eqSet cntxt st3 st4
 		    && eqTerm cntxt trm3 trm4
 
@@ -938,8 +951,8 @@ and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
       0) They are identical modulo set and term equivalence.
       1) They are alpha, beta, and delta equivalent modulo sets/terms
           [current implementation]
-      1) Or, they are provably equivalent and stable.
-      2) Or, when reduced to normal form (exists r:t, phi)
+      2) Or, they are provably equivalent and stable.
+      3) Or, when reduced to normal form (exists r:t, phi)
          they have the same realizer types t and provably
          equivalent classical parts (phi's).
 *)
@@ -948,7 +961,8 @@ and eqProp cntxt prp1 prp2 =
     match (hnfProp cntxt prp1, hnfProp cntxt prp2) with
 	(L.False, L.False) -> true    (* Redundant *)
       | (L.True, L.True) -> true      (* Redundant *)
-      | (L.Atomic(L.LN(Some mdl1, nm1), _), L.Atomic(L.LN(Some mdl2, nm2), _)) ->
+      | (L.Atomic(L.LN(Some mdl1, nm1), _), 
+	 L.Atomic(L.LN(Some mdl2, nm2), _)) ->
 	  eqModel cntxt mdl1 mdl2 && nm1 = nm2
 	    && nm1 = nm2
       | (L.Atomic(L.LN(None, nm1), _), L.Atomic(L.LN(None, nm2), _) ) -> 
@@ -1004,9 +1018,11 @@ and eqTerm cntxt trm1 trm2 =
 	  eqTerms cntxt trms1 trms2
       | (L.Proj(n1, trm1), L.Proj(n2, trm2)) ->
 	  n1 = n2 && eqTerm cntxt trm1 trm2
+
       | (L.App(trm1a, trm1b), L.App(trm2a, trm2b)) ->
 	  eqTerm cntxt trm1a trm2a &&
 	    eqTerm cntxt trm1b trm2b
+
       | (L.Lambda((nm1,ty1),trm1), L.Lambda((nm2,ty2),trm2)) ->
 	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	    in let trm1' = L.subst sub1 trm1
@@ -1015,6 +1031,7 @@ and eqTerm cntxt trm1 trm2 =
 	    in 
 		 eqSet cntxt ty1 ty2 &&
 		   eqTerm cntxt' trm1' trm2'
+
       | (L.The((nm1,ty1),prp1), L.The((nm2,ty2),prp2)) ->
 	  eqSet cntxt ty1 ty2 &&
 	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
@@ -1022,19 +1039,23 @@ and eqTerm cntxt trm1 trm2 =
 	    in let prp2' = L.substProp sub2 prp2
 	    in let cntxt' = insertTermVariable cntxt nm1 ty1 None
 	    in eqProp cntxt' prp1' prp2'
+
       | (L.Inj(lbl1, None), L.Inj(lbl2, None)) ->
 	  lbl1 = lbl2
       | (L.Inj(lbl1, Some trm1), L.Inj(lbl2, Some trm2)) ->
 	  lbl1 = lbl2 && eqTerm cntxt trm1 trm2
+
       | (L.Case(trm1, arms1), L.Case(trm2, arms2)) ->
 	  eqTerm cntxt trm1 trm2 &&
 	    eqArms cntxt L.subst eqTerm eqSet arms1 arms2
+
       | (L.RzQuot trm1, L.RzQuot trm2) ->
 	  eqTerm cntxt trm1 trm2
-      | (L.RzChoose((nm1,ty1a),trm1a,trm1b,ty1b), 
-	L.RzChoose((nm2,ty2a),trm2a,trm2b,ty2b))
-      | (L.Let((nm1,ty1a),trm1a,trm1b,ty1b), 
-	L.Let((nm2,ty2a),trm2a,trm2b,ty2b)) ->
+
+      | (L.RzChoose((nm1, ty1a), trm1a, trm1b, ty1b), 
+	 L.RzChoose((nm2, ty2a), trm2a, trm2b, ty2b))
+      | (L.Let     ((nm1, ty1a), trm1a, trm1b, ty1b), 
+	 L.Let     ((nm2, ty2a), trm2a, trm2b, ty2b)) ->
 	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	    in let trm1b' = L.subst sub1 trm1b
 	    in let trm2b' = L.subst sub2 trm2b
@@ -1044,11 +1065,13 @@ and eqTerm cntxt trm1 trm2 =
 		   eqTerm cntxt trm1a trm2a &&
 		   eqTerm cntxt' trm1b' trm2b' &&
 		   eqSet cntxt ty1b ty2b
+
       | (L.Quot(trm1,prp1), L.Quot(trm2,prp2)) ->
 	  eqTerm cntxt trm1 trm2 &&
 	    eqProp cntxt prp1 prp2
+
       | (L.Choose((nm1,ty1a),prp1,trm1a,trm1b,ty1b),
-	L.Choose((nm2,ty2a),prp2,trm2a,trm2b,ty2b)) ->
+	 L.Choose((nm2,ty2a),prp2,trm2a,trm2b,ty2b)) ->
 	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	    in let trm1b' = L.subst sub1 trm1b
 	    in let trm2b' = L.subst sub2 trm2b
@@ -1059,10 +1082,12 @@ and eqTerm cntxt trm1 trm2 =
 		   eqTerm cntxt trm1a trm2a &&
 		   eqTerm cntxt' trm1b' trm2b' &&
 		   eqSet cntxt ty1b ty2b
-      | (L.Subin(trm1,st1), L.Subin(trm2,st2))
+
+      | (L.Subin (trm1,st1), L.Subin (trm2,st2))
       | (L.Subout(trm1,st1), L.Subout(trm2,st2)) ->
 	  eqTerm cntxt trm1 trm2 &&
 	    eqSet cntxt st1 st2
+
       | _ -> false
 	 
 and eqTerms cntxt trms1 trms2 = 
@@ -1203,9 +1228,9 @@ and eqTheory cntxt thry1 thry2 =
 	| (_, L.TheoryLambda _) -> false
 
 	| (thry1', thry2') ->
-	    (* If we get this far, the two theories must have
-	       theorykind ModelTheoryKind, so we can use
-	       checkModelConstraint.
+	    (* If we get this far, the two theories have
+	       theorykind ModelTheoryKind, so we can reduce the
+	       question to uses of checkModelConstraint.
 
 	       T1 == T2 iff  ( X:T1 |- X : T2  &&  X:T2 |- X : T1 )
 	    *)
@@ -2282,14 +2307,19 @@ and annotateBinding cntxt surrounding_expr binders =
 			   (* No type annotation; hope the variable was
 			      declared in an Implicit *)
 			   match lookupImplicit cntxt n with
-			       Some ( CtxTerm(_, ty) ) ->
+			       CtxTerm(_, ty)  ->
 				 doTypeBinding ty
-			     | Some ( CtxModel thry ) ->
+			     | CtxModel thry ->
 				 doTheoryBinding thry
-			     | Some _ -> 
-				 illegalBindingError n "implicit" 
-				   surrounding_expr
-			     | None -> noTypeInferenceInError n surrounding_expr
+			     | CtxUnbound -> 
+		                 noTypeInferenceInError n surrounding_expr
+			     | CtxSet _ ->
+				 noPolymorphismError surrounding_expr
+			     | CtxTheory _ -> 
+				 (* Can't implicitly declare a theory name *)
+				 raise Impossible
+			     | CtxProp _ -> 
+				 noHigherOrderLogicError surrounding_expr
 			 end
 		     | Some expr ->
 			 begin
@@ -2346,15 +2376,15 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
   function
       (nm, None) -> 
 	begin
-	  (* There's a reasonable argument to say that the default_ty
-             should always be used, since it's most likely to get the
-             imput to typecheck.  On the other hand, if you say that n
-             ranges over integers unless otherwise specified, and you
-             bind it to a boolean, an error seems likely... *)
+	  (** There's a reasonable argument to say that the default_ty
+              should always be used, since it's most likely to get the
+              input to typecheck.  On the other hand, if you say that n
+              ranges over integers unless otherwise specified, and you
+              bind it to a boolean, an error seems likely... *)
 	  let ty = 
 	    match (lookupImplicit cntxt nm) with
-		Some (CtxTerm(_, implicit_ty)) -> implicit_ty
-	      | _                              -> default_ty
+		CtxTerm(_, implicit_ty) -> implicit_ty
+	      | _                       -> default_ty
 	  in let (cntxt, nm) = renameBoundVar cntxt nm
 	  in let cntxt' = insertTermVariable cntxt nm ty None
 	  in 
@@ -2365,7 +2395,7 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
 	let ty = annotateType cntxt surrounding_expr expr
 	in let (cntxt, nm) = renameBoundVar cntxt nm
 	in 
-	  (* NB:  No checking of binding annotation vs default! *)
+	     (* NB:  No checking of binding annotation vs default! *)
 	  (insertTermVariable cntxt nm ty None,  (nm, ty) )
 
 (* Top-level propositions in sentences are permitted to contain
