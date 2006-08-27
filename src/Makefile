@@ -19,6 +19,8 @@ BYTE_OBJS = name.cmo \
 	coq_lexer.cmo \
 	flags.cmo \
 	logic.cmo \
+	error.cmo \
+	logicrules.cmo \
         newinfer.cmo \
         outsyn.cmo \
 	pp.cmo \
@@ -75,6 +77,8 @@ rzinfer: name.cmo \
 	coq_lexer.cmo \
 	flags.cmo \
 	logic.cmo \
+	error.cmo \
+	logicrules.cmo \
         newinfer.cmo \
 	rzinfer.cmo	
 	$(OCAMLC) -o rzinfer $(OCAMLFLAGS) unix.cma $+ 

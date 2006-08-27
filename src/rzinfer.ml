@@ -114,7 +114,7 @@ let rec process = function
 	      print_endline "----------------");
 	else ()) in
 
-      let _ = Newinfer.printAndResetWarnings() in
+      let _ = Error.printAndResetWarnings() in
 (*
 
       let (spec,translate_state') = 
@@ -174,7 +174,7 @@ try
     stored).
   *)
   process (List.rev !filenames, 
-	   Newinfer.emptyContext, 
+	   Logicrules.emptyContext, 
 	   (), ())
 with
     Arg.Bad s

@@ -171,4 +171,34 @@ let validModelName = function
   | _ -> false
 
 let validTheoryName = validModelName
-    
+
+let (freshNameString, freshModelNameString) = 
+  let counter = ref 0
+  in
+     ((function () -> (incr counter;
+	               "___" ^ string_of_int (!counter))),
+     (function () -> (incr counter;
+		      "Z__" ^ string_of_int (!counter))))
+
+
+(** Given two names of the same "sort" (wildness, capitalization), 
+    find a name suitable for replacing them both.
+*)
+let jointName nm1 nm2 =
+  if (nm1 = nm2) then 
+    (* We assume the inputs are well-formed without shadowing, so
+       if they both use exactly the same bound variable there's no
+       point in replacing this bound variable by a fresh one. *)
+    nm1
+  else
+    begin
+      (* nm1 and nm2 should be the same "sort", so if nm1 is a model name
+	 we know that nm2 is too.
+      *)
+      match (isWild nm1 && isWild nm2, validModelName nm1) with
+	  (true, false)  -> wildName()
+	| (true, true)   -> wildModelName()
+	| (false, false) -> N(freshNameString(), Word)
+	| (false, true)  -> N(freshModelNameString(), Word)
+    end
+

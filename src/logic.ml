@@ -620,19 +620,6 @@ let model_name_of_name = function
 let theory_name_of_name = model_name_of_name
 
 
-let joinProperPropType p1 p2 = 
-  begin
-    match (p1,p2) with
-	(StableProp, StableProp) -> StableProp
-      | ((Prop | StableProp), (Prop | StableProp)) -> Prop
-      | _ -> failwith "joinProperPropType only allows Prop and StableProp!"
-  end
-
-let joinProperPropTypes lst = List.fold_left joinProperPropType StableProp lst
-
-let equivToArrow ty =
-  PropArrow(wildName(), ty, PropArrow(wildName(), ty, StableProp))
-
 let rec fnSet = function
     Empty | Unit  -> NameSet.empty
   | Basic (SLN(None, nm), knd) -> NameSet.union (NameSet.singleton nm) (fnSetkind knd)

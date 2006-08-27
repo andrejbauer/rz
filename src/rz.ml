@@ -106,7 +106,7 @@ let rec process = function
 	      print_endline "----------------";
 	      List.iter print_item lthy;
 	      print_string "\n\n\n";
-	      Newinfer.printAndResetWarnings())
+	      Error.printAndResetWarnings())
 	else ()) in
 
 
@@ -140,7 +140,7 @@ let rec process = function
       (** We put these messages after any displayed code so that
           they are more likely to be seen. *)
 
-      let _ = Newinfer.printAndResetWarnings() in
+      let _ = Error.printAndResetWarnings() in
       let _ = if (!Flags.do_save) then
                  print_string ("[Output saved in " ^ outfile ^ "]\n") 
               else () 
@@ -169,7 +169,7 @@ try
     stored).
   *)
   process (List.rev !filenames, 
-	   Newinfer.emptyContext, 
+	   Logicrules.emptyContext, 
 	   Translate.emptyCtx, 
 	   Opt.emptyCtx)
 with
