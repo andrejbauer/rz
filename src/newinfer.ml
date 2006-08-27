@@ -91,6 +91,11 @@ let noPolymorphismError expr =
    tyGenericError
      ("The input " ^ string_of_expr expr ^ " requires polymorphism")
 
+let noNestedTheoriesError nm =
+   tyGenericError
+     ("Bad theory definition (" ^ string_of_name nm ^ 
+	 "); theory definitions cannot be nested.")
+
 let noTypeInferenceInError nm expr =
   tyGenericError
      ("The bound variable " ^ string_of_name nm ^ " in " ^
@@ -208,7 +213,7 @@ let shadowingError nm =
         declared by the user.  If a bound variable is introduced without
         an explicit classifier or definition, we look here to see if the
         variable name was previously declared to range over a certain sort.
-        (For convenience, we use the same ctx_member datatype, but in
+        (For convenience, we use the same datatype, but in
         these we know there will never be a value specified for the variable.)
      3) A renaming mapping variables to variables.  The typechecker removes
         shadowing whenever possible by renaming bound variables, and this
@@ -217,17 +222,8 @@ let shadowingError nm =
         being renamed.
 *)
 
-type ctx_member =
-    CtxProp   of L.proposition option * L.proptype
-  | CtxSet    of L.set option         * L.setkind
-  | CtxTerm   of L.term option        * L.set
-  | CtxModel  of L.theory
-  | CtxTheory of L.theory             * L.theorykind
-  | CtxUnbound  (** Never appears in a context; used so we can avoid
-                    "ctx_member option" in some places. *)
-
-type context = {bindings : ctx_member NameMap.t;
-		implicits : ctx_member NameMap.t;
+type context = {bindings : L.declaration NameMap.t;
+		implicits : L.declaration NameMap.t;
 	        renaming  : name NameMap.t}
 
 let emptyContext = {bindings = NameMap.empty; 
@@ -239,12 +235,12 @@ let emptyContext = {bindings = NameMap.empty;
 (**************)
 
 let lookupImplicit cntxt nm = 
-  try NameMap.find nm cntxt.implicits with
-      Not_found -> CtxUnbound
+  try Some (NameMap.find nm cntxt.implicits) with
+      Not_found -> None
 
 let lookupId cntxt nm =
-  try (NameMap.find nm cntxt.bindings) with
-      Not_found -> CtxUnbound
+  try Some (NameMap.find nm cntxt.bindings) with
+      Not_found -> None
 
 let isUnbound cntxt nm =
   not (NameMap.mem nm cntxt.bindings)
@@ -281,31 +277,32 @@ let doInsert validator idString cntxt nm info =
       illegalNameError nm idString
 
 let insertTermVariable cntxt nm ty trmopt = 
-  doInsert validTermName "term" cntxt nm (CtxTerm (trmopt,ty))
+  doInsert validTermName "term" cntxt nm (L.DeclTerm (trmopt,ty))
 
 let insertSetVariable cntxt nm knd stopt = 
-  doInsert validSetName "set" cntxt nm (CtxSet (stopt,knd)) 
+  doInsert validSetName "set" cntxt nm (L.DeclSet (stopt,knd)) 
 
 let insertPropVariable cntxt nm pt prpopt = 
-  doInsert validPropName "proposition" cntxt nm (CtxProp (prpopt,pt))
+  doInsert validPropName "proposition" cntxt nm (L.DeclProp (prpopt,pt))
 
 let insertModelVariable cntxt nm thry =
-  doInsert validModelName "model" cntxt nm (CtxModel thry)
+  doInsert validModelName "model" cntxt nm (L.DeclModel thry)
 
 let insertTheoryVariable cntxt nm thry tknd = 
-  doInsert validTheoryName "theory" cntxt nm (CtxTheory (thry,tknd))
+  doInsert validTheoryName "theory" cntxt nm (L.DeclTheory (thry,tknd))
 
 
 
 let rec updateContextForElem cntxt = function
-  | L.Set           (nm, knd)     -> insertSetVariable  cntxt nm knd None
-  | L.Let_set       (nm, knd, st) -> insertSetVariable  cntxt nm knd (Some st)
-  | L.Predicate     (nm, pt)      -> insertPropVariable cntxt nm pt None
-  | L.Let_predicate (nm, pt, prp) -> insertPropVariable cntxt nm pt (Some prp)
-  | L.Value         (nm, st)      -> insertTermVariable cntxt nm st None
-  | L.Let_term      (nm, st, trm) -> insertTermVariable cntxt nm st (Some trm)
-  | L.Model         (nm, thry)    -> insertModelVariable cntxt nm thry
-  | L.Sentence      (nm, _, _)    -> 
+    L.Declaration(nm, L.DeclSet(stopt, knd)) -> 
+      insertSetVariable  cntxt nm knd stopt
+  | L.Declaration(nm, L.DeclProp(prpopt, pt)) -> 
+      insertPropVariable cntxt nm pt prpopt
+  | L.Declaration(nm, L.DeclTerm(trmopt, ty)) -> 
+      insertTermVariable cntxt nm ty trmopt
+  | L.Declaration(nm, L.DeclModel(thry)) -> 
+      insertModelVariable cntxt nm thry
+  | L.Declaration(nm, L.DeclSentence _) ->
       begin
 	(* We need to check for bound variable shadowing and appropriate
 	   capitalization (because axiom names appear in the final
@@ -317,11 +314,13 @@ let rec updateContextForElem cntxt = function
 	cntxt 
       end 
   | L.Comment _   -> cntxt
+  | L.Declaration(_, L.DeclTheory _) -> 
+      failwith "updateContextForElem : DeclTheory"
 
-      and updateContextForElems cntxt elems = 
-	  List.fold_left updateContextForElem cntxt elems
-
-      (************************************)
+and updateContextForElems cntxt elems = 
+  List.fold_left updateContextForElem cntxt elems
+    
+(************************************)
 (** {3 Renaming of Bound Variables} *)
 (************************************)
 
@@ -342,9 +341,10 @@ let rec updateContextForElem cntxt = function
 *)
 let renameBoundVar cntxt nm =
   let rec findUnusedName nm =
-    match (lookupId cntxt nm) with
-	CtxUnbound -> nm
-      | _ -> findUnusedName (nextName nm)
+    if (isUnbound cntxt nm) then 
+      nm
+    else 
+      findUnusedName (nextName nm)
   in let nm' = findUnusedName nm
   in 
        if (nm = nm') then
@@ -427,74 +427,47 @@ and jointModelNameSubsts' nm1 nm2 subst1 subst2 =
 
 (** *)
 
-type searchResult =
-    Projectable of ctx_member
-    | SearchOther of L.theory_element
-    | SearchFailed
-
 let rec searchElems cntxt nm' mdl = 
   let rec loop subst = function 
-      [] -> SearchFailed
+      [] -> None
     | elem :: rest ->
 	match L.substTheoryElt subst elem with
-	  | L.Set (nm, knd) -> 
+	  | L.Declaration(nm, (L.DeclSet(_,knd) as decl)) ->
 	      if (nm = nm') then
-		Projectable (CtxSet(None, (* or Some mdl.nm? *)
-				   knd))
+		Some decl (** XXX Or selfify? *)
 	      else 
 		loop (L.insertSetvar subst nm 
 			 (L.Basic(L.SLN(Some mdl, nm), knd)))
 		  rest
-	  | L.Let_set (nm, knd, st)  -> 
+	  | L.Declaration(nm, (L.DeclProp(_,pt) as decl)) ->
 	      if (nm = nm') then
-		Projectable (CtxSet(Some st, knd))
-	      else 
-		loop (L.insertSetvar subst nm 
-			 (L.Basic(L.SLN(Some mdl, nm), knd)))
-		  rest
-	  | L.Predicate (nm, pt)  -> 
-	      if (nm = nm') then
-		Projectable (CtxProp(None, pt))
+		Some decl
 	      else 
 		loop (L.insertPropvar subst nm 
 			 (L.Atomic(L.LN(Some mdl, nm), pt)))
 		  rest
-	  | L.Let_predicate (nm, pt, prp)  -> 
+	  | L.Declaration(nm, (L.DeclTerm _ as decl))  -> 
 	      if (nm = nm') then
-		Projectable (CtxProp(Some prp, pt))
+		Some decl
 	      else 
-		loop (L.insertPropvar subst nm 
-			 (L.Atomic(L.LN(Some mdl, nm), pt)))
+		loop (L.insertTermvar subst nm (L.Var(L.LN(Some mdl, nm))))
 		  rest
-	  | L.Value (nm, ty)  -> 
+	  | L.Declaration(nm, (L.DeclModel _ as decl) ) ->
 	      if (nm = nm') then
-		Projectable( CtxTerm (None, ty) )
+		Some decl
 	      else 
-		loop (L.insertTermvar subst nm 
-			 (L.Var(L.LN(Some mdl, nm))))
+		loop (L.insertModelvar subst nm (L.ModelProj(mdl, nm))) 
 		  rest
-	  | L.Let_term (nm, ty, trm)  -> 
+	  | L.Declaration(nm, (L.DeclSentence _ as decl)) ->
 	      if (nm = nm') then
-		Projectable( CtxTerm (Some trm, ty) )
-	      else 
-		loop (L.insertTermvar subst nm 
-			 (L.Var(L.LN(Some mdl, nm)))) 
-		  rest
-	  | L.Model (nm, thry)  ->
-	      if (nm = nm') then
-		Projectable( CtxModel thry )
-	      else 
-		loop (L.insertModelvar subst nm 
-			 (L.ModelProj(mdl, nm))) 
-		  rest
-	  | L.Sentence (nm,mbnds,prp) as elem  -> 
-	      if (nm = nm') then
-		SearchOther (L.substTheoryElt subst elem)
+		Some decl
 	      else 
 		loop subst rest
 	  | L.Comment _  -> 
 	      (** Comments cannot be searched for, currently *)
 	      loop subst rest
+	  | L.Declaration(_, (L.DeclTheory _)) ->
+	      failwith "SearchElems : DeclTheory"
   in
     loop L.emptysubst 
 
@@ -512,7 +485,7 @@ let rec hnfTheory cntxt = function
     L.TheoryName nm ->
       begin
 	match lookupId cntxt nm with
-	    CtxTheory (thry, _) -> hnfTheory cntxt thry
+	    Some(L.DeclTheory (thry, _)) -> hnfTheory cntxt thry
 	  | _ -> raise Impossible
       end
   | L.TheoryApp (thry, mdl) ->
@@ -532,7 +505,7 @@ let rec modelToTheory cntxt = function
     L.ModelName nm ->
       begin
 	match (lookupId cntxt nm) with
-	    CtxModel thry -> thry
+	    Some(L.DeclModel thry) -> thry
 	  | _ -> raise Impossible
       end
   | L.ModelProj (mdl, nm) -> 
@@ -541,7 +514,7 @@ let rec modelToTheory cntxt = function
 	    L.Theory elems ->
 	      begin
 		match searchElems cntxt nm mdl elems with
-		    Projectable (CtxModel thry) -> thry
+		    Some (L.DeclModel thry) -> thry
 		  | _ -> raise Impossible
 	      end
 	  | _ -> raise Impossible
@@ -563,8 +536,8 @@ let rec hnfSet cntxt = function
     L.Basic (L.SLN ( None, stnm ), _) as orig_set ->
       begin
 	match (lookupId cntxt stnm) with
-            CtxSet(Some st, _) -> hnfSet cntxt st
-	  | CtxSet(None, _)    -> orig_set
+            Some(L.DeclSet(Some st, _)) -> hnfSet cntxt st
+	  | Some(L.DeclSet(None, _))    -> orig_set
 	  | _ -> raise Impossible
       end
 
@@ -574,8 +547,8 @@ let rec hnfSet cntxt = function
 	    L.Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
-		    Projectable (CtxSet(Some st, _)) -> hnfSet cntxt st
-		  | Projectable (CtxSet(None, _))    -> orig_set
+		    Some (L.DeclSet(Some st, _)) -> hnfSet cntxt st
+		  | Some (L.DeclSet(None, _))    -> orig_set
 		  | _ -> raise Impossible
 	      end
 	  | _ -> raise Impossible
@@ -601,8 +574,8 @@ let rec hnfTerm cntxt = function
     L.Var (L.LN ( None, nm )) as orig_term ->
       begin
 	match (lookupId cntxt nm) with
-            CtxTerm(Some trm, _) -> hnfTerm cntxt trm
-	  | CtxTerm(None, _)    -> orig_term
+            Some(L.DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
+	  | Some(L.DeclTerm(None, _))    -> orig_term
 	  | _ -> raise Impossible
       end
 
@@ -612,8 +585,8 @@ let rec hnfTerm cntxt = function
 	    L.Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
-		    Projectable (CtxTerm(Some trm, _)) -> hnfTerm cntxt trm
-		  | Projectable (CtxTerm(None, _))    -> orig_term
+		    Some (L.DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
+		  | Some (L.DeclTerm(None, _))    -> orig_term
 		  | _ -> raise Impossible
 	      end
 	  | _ -> raise Impossible
@@ -671,8 +644,8 @@ let rec hnfProp cntxt = function
     L.Atomic (L.LN ( None, nm ), _) as orig_prop ->
       begin
 	match (lookupId cntxt nm) with
-            CtxProp(Some prp, _) -> hnfProp cntxt prp
-	  | CtxProp(None, _)    -> orig_prop
+            Some (L.DeclProp(Some prp, _)) -> hnfProp cntxt prp
+	  | Some (L.DeclProp(None, _))    -> orig_prop
 	  | _ -> raise Impossible
       end
 
@@ -682,8 +655,8 @@ let rec hnfProp cntxt = function
 	    L.Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
-		    Projectable (CtxProp(Some prp, _)) -> hnfProp cntxt prp
-		  | Projectable (CtxProp(None, _))    -> orig_prop
+		    Some (L.DeclProp(Some prp, _)) -> hnfProp cntxt prp
+		  | Some (L.DeclProp(None, _))    -> orig_prop
 		  | _ -> raise Impossible
 	      end
 	  | _ -> raise Impossible
@@ -1194,6 +1167,7 @@ let rec eqMbnd cntxt subst1 subst2 (nm1, thry1) (nm2, thry2) =
        else
 	 None
 
+
 and eqMbnds' cntxt subst1 subst2 mbnds1 mbnds2 =
   match (mbnds1, mbnds2) with
       ([], []) -> Some (cntxt, subst1, subst2)
@@ -1260,107 +1234,75 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	          thry1b' thry2b'
 
     | (L.Theory elems1, L.Theory elems2) ->
-	let projAsTerm  nm = L.Var(L.LN(Some mdl1, nm))
-	in let projAsSet   nm knd = L.Basic(L.SLN(Some mdl1, nm), knd)
-	in let projAsProp  nm pt = L.Atomic(L.LN(Some mdl1, nm), pt)
-	in let projAsModel nm = L.ModelProj(mdl1, nm)
+	let weakEq eqFun left = function
+	    (** Checks for equality iff an optional value is given *)
+	    None -> true
+	  | Some right -> eqFun left right
 	in let rec loop cntxt = function
 	    [] -> true
-	  | (L.Set(nm,knd2)) :: rest ->
+	  | L.Declaration(nm, L.DeclSet(st2opt, knd2)) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxSet (_,knd1)) -> 
-		      (subKind cntxt knd1 knd2 &&
-			let cntxt' = 
-			  insertSetVariable cntxt nm knd1 
-			    (Some (projAsSet nm knd1))
-			in loop cntxt' rest)
+		    Some (L.DeclSet (_,knd1)) -> 
+		      let projAsSet = L.Basic(L.SLN(Some mdl1, nm), knd1)
+		      in
+			subKind cntxt knd1 knd2 &&
+			  (* st2 might be "mdl1.nm", even if mdl1.nm doesn't
+			     have a definition, so we want to compare it to
+			     mdl1.nm and not to mdl1.nm's definition (if any) *)
+			  weakEq (eqSet cntxt) projAsSet st2opt &&
+			  let cntxt' = 
+			    insertSetVariable cntxt nm knd1 (Some projAsSet)
+			  in loop cntxt' rest
 		  | _ -> false
 	      end    
-	  | L.Let_set(nm,knd2,st2) :: rest ->
+	  | L.Declaration(nm, L.DeclProp(prpopt2, pt2)) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxSet (_,knd1)) -> 
-		      subKind cntxt knd1 knd2 &&
-			(* st2 might be "mdl1.nm", even if mdl1.nm doesn't
-			   have a definition, so we want to compare it to
-			   mdl1.nm and not to mdl1.nm's definition (if any) *)
-			eqSet cntxt (projAsSet nm knd1) st2 &&
-			let cntxt' = 
-			  insertSetVariable cntxt nm knd1 
-			    (Some (projAsSet nm knd1))
-			in loop cntxt' rest
-		  | _ -> false
-	      end    
-
-	  | L.Predicate(nm,pt2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxProp(_, pt1)) ->
-		      (subPropType cntxt pt1 pt2 &&
+		    Some (L.DeclProp(_, pt1)) ->
+		      let projAsProp = L.Atomic(L.LN(Some mdl1, nm), pt1)
+		      in
+			subPropType cntxt pt1 pt2 &&
+			  weakEq (eqProp cntxt) projAsProp prpopt2 &&
 			  let cntxt' = 
-			    insertPropVariable cntxt nm pt1 
-			      (Some (projAsProp nm pt1))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-	  | L.Let_predicate(nm,pt2,prp2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxProp(_, pt1)) ->
-		      (subPropType cntxt pt1 pt2 &&
-			  eqProp cntxt (projAsProp nm pt1) prp2 &&
-			  let cntxt' = 
-			    insertPropVariable cntxt nm pt1 
-			      (Some (projAsProp nm pt1))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-	  | L.Value(nm,st2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxTerm(_, st1)) ->
-		      (subSet cntxt st1 st2 &&
-			  let cntxt' = 
-			    insertTermVariable cntxt nm st1 
-			      (Some (projAsTerm nm))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-	  | L.Let_term(nm,st2,trm2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxTerm(_, st1)) ->
-		      (subSet cntxt st1 st2 &&
-			  eqTerm cntxt (projAsTerm nm) trm2 &&
-			  let cntxt' = 
-			    insertTermVariable cntxt nm st1 
-			      (Some (projAsTerm nm))
-			  in loop cntxt' rest)
-		      | _ -> false
-	      end
-
-          | L.Model(nm, thry2) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Projectable (CtxModel thry1) ->
-		      (checkModelConstraint cntxt (projAsModel nm) 
-			  thry1 thry2 &&
-			  let cntxt' = 
-			    insertModelVariable cntxt nm thry1
-			  in loop cntxt' rest)
+			    insertPropVariable cntxt nm pt1 (Some projAsProp)
+			  in loop cntxt' rest
 		  | _ -> false
 	      end
 
+	  | L.Declaration(nm, L.DeclTerm(trmopt2, st2)) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Some (L.DeclTerm(_, st1)) ->
+		      let projAsTerm = L.Var(L.LN(Some mdl1, nm))
+		      in
+			subSet cntxt st1 st2 &&
+			  weakEq (eqTerm cntxt) projAsTerm trmopt2 &&
+			  let cntxt' = 
+			    insertTermVariable cntxt nm st1 (Some projAsTerm)
+			  in loop cntxt' rest
+		  | _ -> false
+	      end
+
+          | L.Declaration(nm, L.DeclModel(thry2)) :: rest ->
+	      begin
+		match searchElems cntxt nm mdl1 elems1 with
+		    Some (L.DeclModel thry1) ->
+		      let projAsModel = L.ModelProj(mdl1, nm)
+		      in
+			(checkModelConstraint cntxt projAsModel thry1 thry2 &&
+			    let cntxt' = 
+			      insertModelVariable cntxt nm thry1
+			    in loop cntxt' rest)
+		  | _ -> false
+	      end
+		
 	  | L.Comment _ :: rest -> loop cntxt rest
 
-          | L.Sentence (nm, mbnds2, prp2) :: rest ->
+          | L.Declaration(nm, L.DeclSentence (mbnds2, prp2)) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
-		    SearchOther(L.Sentence(_, mbnds1, prp1)) ->
+		    Some (L.DeclSentence(mbnds1, prp1)) ->
 		      begin
 			match eqMbnds cntxt mbnds1 mbnds2 with
 			    Some (cntxt'', subst1, subst2) -> 
@@ -1373,6 +1315,9 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		      end
 		  | _ -> false
 	      end
+
+	  | L.Declaration(nm, L.DeclTheory _) :: rest ->
+	      noNestedTheoriesError nm
 
 	in loop cntxt elems2
 
@@ -1486,20 +1431,21 @@ type inferResult =
 let rec annotateExpr cntxt = function 
     Ident nm -> 
       begin
-	let nm' = applyContextSubst cntxt nm 
+	let nm = applyContextSubst cntxt nm 
 	in
-	  match lookupId cntxt nm' with
-              CtxProp (_, pty) -> 
-		ResProp(L.Atomic(L.longname_of_name nm', pty), pty)
-	    | CtxSet  (_, knd) -> 
-		ResSet(L.Basic(L.set_longname_of_name nm', knd), knd)
-	    | CtxTerm (_, ty)  -> 
-		ResTerm(L.Var(L.longname_of_name nm'), ty)
-	    | CtxModel  thry -> 
+	  match lookupId cntxt nm with
+              Some(L.DeclProp (_, pty)) -> 
+		ResProp(L.Atomic(L.longname_of_name nm, pty), pty)
+	    | Some(L.DeclSet  (_, knd)) -> 
+		ResSet(L.Basic(L.set_longname_of_name nm, knd), knd)
+	    | Some(L.DeclTerm (_, ty))  -> 
+		ResTerm(L.Var(L.longname_of_name nm), ty)
+	    | Some(L.DeclModel  thry) -> 
 		ResModel(L.ModelName(L.model_name_of_name nm), thry )
-	    | CtxTheory (thry, tk) -> 
+	    | Some(L.DeclTheory (thry, tk)) -> 
 		ResTheory (L.TheoryName(L.theory_name_of_name nm), tk)
-	    | CtxUnbound -> tyUnboundError nm
+	    | Some(L.DeclSentence _ ) -> raise Impossible
+            | None -> tyUnboundError nm
       end
 
   | MProj (expr1, nm2) as orig_expr ->
@@ -1509,15 +1455,15 @@ let rec annotateExpr cntxt = function
 	    L.Theory elems ->
 	      begin
 		match searchElems cntxt nm2 mdl elems with
-		    Projectable (CtxSet (_,knd)) -> 
+		    Some (L.DeclSet (_,knd)) -> 
 		      ResSet(L.Basic(L.SLN(Some mdl, nm2), knd), knd)
-		  | Projectable (CtxProp (_,pt)) -> 
+		  | Some (L.DeclProp (_,pt)) -> 
 		      ResProp(L.Atomic(L.LN(Some mdl, nm2), pt), pt)
-		  | Projectable (CtxTerm (_,ty)) -> 
+		  | Some (L.DeclTerm (_,ty)) -> 
 		      ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
-		  | Projectable (CtxModel thry) -> 
+		  | Some (L.DeclModel thry) -> 
 		      ResModel(L.ModelProj(mdl,nm2), thry)
-		  | SearchFailed -> 
+		  | None -> 
 		      badModelProjectionError nm2 orig_expr "Name not found"
 		  | _ -> 
 		      badModelProjectionError nm2 orig_expr "Name not projectable"
@@ -2307,18 +2253,20 @@ and annotateBinding cntxt surrounding_expr binders =
 			   (* No type annotation; hope the variable was
 			      declared in an Implicit *)
 			   match lookupImplicit cntxt n with
-			       CtxTerm(_, ty)  ->
+			       Some(L.DeclTerm(_, ty))  ->
 				 doTypeBinding ty
-			     | CtxModel thry ->
+			     | Some(L.DeclModel thry) ->
 				 doTheoryBinding thry
-			     | CtxUnbound -> 
+			     | None -> 
 		                 noTypeInferenceInError n surrounding_expr
-			     | CtxSet _ ->
+			     | Some(L.DeclSet _) ->
 				 noPolymorphismError surrounding_expr
-			     | CtxTheory _ -> 
-				 (* Can't implicitly declare a theory name *)
+			     | Some(L.DeclTheory _) 
+			     | Some(L.DeclSentence _) ->
+				 (* Can't implicitly declare a theory name
+				    or a sentence *)
 				 raise Impossible
-			     | CtxProp _ -> 
+			     | Some(L.DeclProp _) -> 
 				 noHigherOrderLogicError surrounding_expr
 			 end
 		     | Some expr ->
@@ -2383,8 +2331,8 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
               bind it to a boolean, an error seems likely... *)
 	  let ty = 
 	    match (lookupImplicit cntxt nm) with
-		CtxTerm(_, implicit_ty) -> implicit_ty
-	      | _                       -> default_ty
+		Some(L.DeclTerm(_, implicit_ty)) -> implicit_ty
+	      | _                                -> default_ty
 	  in let (cntxt, nm) = renameBoundVar cntxt nm
 	  in let cntxt' = insertTermVariable cntxt nm ty None
 	  in 
@@ -2498,12 +2446,14 @@ and annotateTheoryElem cntxt = function
 	      begin
 		(* Definition of a term constant *)
 		match expropt2 with
-		    None       -> [ L.Let_term(nm1, ty3, trm3) ] 
+		    None       -> 
+		      [ L.Declaration(nm1, L.DeclTerm(Some trm3, ty3)) ]
 		  | Some expr2 ->
 		      let ty2 = annotateType cntxt (Ident nm1) expr2 
 		      in 
 			match (coerce cntxt trm3 ty3 ty2) with
-			    Some trm3' -> [ L.Let_term(nm1, ty2, trm3') ]
+			    Some trm3' -> [ L.Declaration
+					    (nm1, L.DeclTerm(Some trm3', ty2)) ]
 			  | _ -> tyMismatchError expr3 ty2 ty3 (Ident nm1)
 	      end
 
@@ -2511,12 +2461,13 @@ and annotateTheoryElem cntxt = function
 	      begin
 		(* Definition of a set constant *)
 		match expropt2 with
-		    None       -> [ L.Let_set(nm1, k3, st3) ]
+		    None       ->
+		      [ L.Declaration(nm1, L.DeclSet(Some st3, k3)) ]
 		  | Some expr2 ->
 		      let k2 = annotateKind cntxt (Ident nm1) expr2
 		      in
 			if (subKind cntxt k3 k2) then
-			  [ L.Let_set(nm1, k2, st3) ]
+			  [ L.Declaration(nm1, L.DeclSet(Some st3, k2)) ]
 			else
 			  kindMismatchError expr3 k2 k3 (Ident nm1)
 	      end
@@ -2525,12 +2476,13 @@ and annotateTheoryElem cntxt = function
 	      begin
 		(* Definition of a propositional constant *)
 		match expropt2 with
-		      None       -> [ L.Let_predicate(nm1, pt3, prp3) ]
+		      None       -> 
+			[ L.Declaration(nm1, L.DeclProp(Some prp3, pt3)) ]
 		  | Some expr2 ->
 		      let pt2 = annotateProptype cntxt (Ident nm1) expr2 
 		      in
 			if (subPropType cntxt pt3 pt2) then
-			  [ L.Let_predicate(nm1, pt2, prp3) ]
+			  [ L.Declaration(nm1, L.DeclProp(Some prp3, pt2)) ]
 			else
 			  propTypeMismatchError expr3 pt2 pt3 (Ident nm1)
 	      end
@@ -2564,21 +2516,26 @@ and annotateTheoryElem cntxt = function
   | Value (sentence_type, values) as orig_elem ->
       let process res nm = 
 	begin
-	  match res with
-	      ResSet(ty, L.KindSet) -> L.Value(nm, ty)
-	    | ResPropType pt        -> L.Predicate (nm, pt)
-	    | ResKind k             -> L.Set(nm, k)
-	    | ResTheory (thry, L.ModelTheoryKind) -> L.Model(nm, thry)
-            | ResProp(prp, (L.Prop | L.StableProp)) -> L.Sentence(nm, [], prp)
-            | (ResSet _ | ResTerm _ | ResProp _ | ResModel _ | ResTheory _) -> 
-		tyGenericError 
-		  ("Invalid classifier for " ^ string_of_name nm ^
-		      " in " ^ string_of_theory_element orig_elem)
+	  L.Declaration(nm,
+		       match res with
+			   ResSet(ty, L.KindSet) -> L.DeclTerm(None, ty)
+			 | ResPropType pt        -> L.DeclProp(None, pt)
+			 | ResKind k             -> L.DeclSet (None, k)
+			 | ResTheory (thry, L.ModelTheoryKind) 
+			                         -> L.DeclModel(thry)
+			 | ResProp(prp, (L.Prop | L.StableProp)) 
+			                         -> L.DeclSentence([], prp)
+			 | ResSet _ | ResTerm _ | ResProp _ 
+			 | ResModel _ | ResTheory _ -> 
+	                     tyGenericError 
+			       ("Invalid classifier for " ^ string_of_name nm ^
+				   " in " ^ string_of_theory_element orig_elem))
 	end
       in let processTop mbnds res nm = 
 	begin
 	  match res with
-	      ResProp(prp, (L.Prop | L.StableProp)) -> L.Sentence(nm, mbnds, prp)
+	      ResProp(prp, (L.Prop | L.StableProp)) -> 
+		L.Declaration(nm, L.DeclSentence(mbnds, prp))
 	    | _ ->
 		tyGenericError 
 		  ("Cannot parameterize " ^ string_of_name nm ^ 
@@ -2617,13 +2574,13 @@ and annotateTheoryElems cntxt = function
 	begin
 	  match annotateExpr cntxt expr with
 	      ResSet(ty, L.KindSet) -> 
-		insertImplicits cntxt names (CtxTerm(None, ty))
+		insertImplicits cntxt names (L.DeclTerm(None, ty))
 	    | ResKind knd ->
-		insertImplicits cntxt names (CtxSet(None, knd))
+		insertImplicits cntxt names (L.DeclSet(None, knd))
 	    | ResTheory (thry, L.ModelTheoryKind) ->
-		insertImplicits cntxt names (CtxModel thry)
+		insertImplicits cntxt names (L.DeclModel thry)
 	    | ResPropType pt ->
-		insertImplicits cntxt names (CtxProp(None, pt))
+		insertImplicits cntxt names (L.DeclProp(None, pt))
 	    | _ -> notWhatsExpectedInError expr "classifier" expr
 	end
       in

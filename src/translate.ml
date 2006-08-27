@@ -633,7 +633,7 @@ and bindings_of_setkind ctx = function
 
 and translateTheoryElements ctx = function
     [] -> [], emptyCtx
-  | L.Set (n, knd) :: rest -> 
+  | L.Declaration(n, L.DeclSet (None, knd)) :: rest -> 
       let sgnt, smmry = translateTheoryElements (insertAbstractSetvar n knd ctx) rest in
 	(TySpec (n, None, [("per_" ^ string_of_name n,
 			   (let binds = bindings_of_setkind ctx knd in
@@ -642,7 +642,7 @@ and translateTheoryElements ctx = function
 			   ))])) :: sgnt,
 	(insertAbstractSetvar n knd smmry)
 
-  | L.Let_set (n, knd, s) :: rest ->
+  | L.Declaration(n, L.DeclSet(Some s, knd)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertSetvar n knd s ctx) rest in	
 	(let {ty=t; tot=p; per=q} = translateSet ctx s in
 	let binds = bindings_of_setkind ctx knd in
@@ -664,7 +664,7 @@ and translateTheoryElements ctx = function
 	)) :: sgnt,
 	insertSetvar n knd s smmry
 
-  | L.Predicate (n, pt) :: rest ->
+  | L.Declaration(n, L.DeclProp(None, pt)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertPropvar n pt ctx) rest in
       let binds = bindings_of_proptype ctx pt in
       let tyopt = (if L.is_stable pt then None else Some (NamedTy (tln_of_tyname n))) in
@@ -678,7 +678,7 @@ and translateTheoryElements ctx = function
 	) :: sgnt,
       insertPropvar n pt smmry
 
-  | L.Let_predicate (n, pt, p) :: rest ->
+  | L.Declaration(n, L.DeclProp(Some p, pt)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertPropvar n pt ctx) rest in
 	(let (ty, p') = translateProp ctx p in
 	let binds = bindings_of_proptype ctx pt in
@@ -699,7 +699,7 @@ and translateTheoryElements ctx = function
 	) :: sgnt,
       insertPropvar n pt smmry
 
-  | L.Let_term (n, s, t) :: rest ->
+  | L.Declaration(n, L.DeclTerm(Some t, s)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
 	(let {ty=u; per=q} = translateSet ctx s in
 	 let t' = translateTerm ctx t in
@@ -707,7 +707,7 @@ and translateTheoryElements ctx = function
 	) :: sgnt,
 	insertTermvar n s smmry
 
-  | L.Value (n, s) :: rest ->
+  | L.Declaration(n, L.DeclTerm(None, s)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
        (let {ty=t; tot=p} = translateSet ctx s in
 	  ValSpec (n, t, [((string_of_name n) ^ "_total", pApp ctx p (id n))])
@@ -718,7 +718,7 @@ and translateTheoryElements ctx = function
       let sgnt, smmry = translateTheoryElements ctx rest in
 	(Comment cmmnt) :: sgnt, smmry
 
-  | L.Sentence (nm, mdlbind, prp) :: rest ->
+  | L.Declaration(nm, L.DeclSentence (mdlbind, prp)) :: rest ->
       let sgnt, smmry = translateTheoryElements ctx rest in
 	begin
 	  let strctbind, ctx' = translateModelBinding ctx mdlbind in
@@ -736,11 +736,14 @@ and translateTheoryElements ctx = function
 	end :: sgnt,
 	smmry
 
-  | L.Model (mdlnm, thr) :: rest ->
+  | L.Declaration(mdlnm, L.DeclModel (thr)) :: rest ->
       let sgnt, smmry = translateTheory ctx thr in
       let sgnt', smmry' = translateTheoryElements (insertModelvar mdlnm smmry ctx) rest in
 	ModulSpec (mdlnm, sgnt) :: sgnt',
 	(insertModelvar mdlnm smmry smmry')
+
+  | L.Declaration(_, L.DeclTheory _) :: rest ->
+      failwith "Translate found nested theory"
 
 
 and translateSLN = function

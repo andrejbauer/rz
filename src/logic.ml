@@ -114,15 +114,16 @@ and term =
     | Subin    of term * set
     | Subout   of term * set
 
+and declaration =
+    DeclProp     of proposition option * proptype
+  | DeclSet      of set option         * setkind
+  | DeclTerm     of term option        * set
+  | DeclModel    of                      theory
+  | DeclTheory   of theory             * theorykind
+  | DeclSentence of    model_binding list * proposition
+
 and theory_element =
-    | Set of set_name * setkind
-    | Let_set of set_name * setkind * set
-    | Predicate of name * proptype
-    | Let_predicate of name * proptype * proposition
-    | Let_term of name * set * term
-    | Value of name * set
-    | Sentence of name * model_binding list * proposition
-    | Model of model_name * theory
+    | Declaration of name * declaration
     | Comment of string
 
 and theory = 
@@ -185,6 +186,10 @@ let foldTheoryKindArrow bnds bdy =
 (****************************************)
 (* Substitution functions for Logic.xxx *)
 (****************************************)
+
+let doOpt funct = function
+    None -> None
+  | Some v -> Some (funct v)
 
 (** The function [substMXXX m mdl] substitutes mode name (string) [m]
     for model [mdl] *)
@@ -519,21 +524,24 @@ and string_of_theory = function
       "TArrow " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
 
 and string_of_theory_element = function
-    Set (stnm, knd) -> "set " ^ string_of_name stnm ^ " : " ^ (string_of_kind knd)
-  | Let_set (stnm, knd, st) -> 
+    Declaration(stnm, DeclSet(None, knd)) ->
+      "set " ^ string_of_name stnm ^ " : " ^ (string_of_kind knd)
+  | Declaration(stnm, DeclSet(Some st, knd)) -> 
 	  "set " ^ string_of_name stnm ^ " : " ^ string_of_kind knd ^ " = " ^ string_of_set st
-  | Predicate (nm, pt) -> 
+  | Declaration(nm, DeclProp(None, pt)) ->
       "predicate " ^ string_of_name nm ^ " : " ^ string_of_proptype pt
-  | Let_predicate (nm, pt, prp) ->
+  | Declaration(nm, DeclProp(Some prp, pt)) ->
       "predicate " ^ string_of_name nm ^ " : " ^ string_of_proptype pt ^ "  = " ^ string_of_prop prp
-  | Value (nm, st) ->
+  | Declaration(nm, DeclTerm(None, st)) ->
       "const " ^ string_of_name nm ^ " : " ^ string_of_set st
-  | Let_term (nm, st, trm) -> 
+  | Declaration(nm, DeclTerm(Some trm, st)) ->
       "let " ^ string_of_name nm ^ " : " ^ string_of_set st ^ " = " ^ string_of_term trm
-  | Sentence (nm, mbnds, prp) ->
+  | Declaration(nm, DeclSentence (mbnds, prp)) ->
       "axiom  " ^ string_of_name nm ^ " " ^ string_of_mbnds mbnds ^ " =\n " ^ string_of_prop prp
-  | Model (mdlnm, thry) -> 
-      "model " ^ string_of_name mdlnm ^ " : " ^ string_of_theory thry
+  | Declaration(nm, DeclModel(thry)) -> 
+      "model " ^ string_of_name nm ^ " : " ^ string_of_theory thry
+  | Declaration(nm, DeclTheory(thry, theorykind)) -> 
+      "theory " ^ string_of_name nm ^ " = " ^ string_of_theory thry
   | Comment strng -> 
       "(* " ^ strng ^ " *)"
 
@@ -816,6 +824,9 @@ let updateBoundName sbst nm =
    substitution inside the scope of this bound variable. *)
 let checkNoCapture sbst nm =
   if (NameSet.mem nm sbst.capturablenames) then
+    (* XXX:  Because removing names from a substitution does not update
+       capturablenames, we could do a double-check here to make sure that
+       the name really is going to be captured at this particular moment. *)
     failwith ("Cannote remove shadowing of " ^ string_of_name nm)
   else
     ()
@@ -830,7 +841,7 @@ let rec subst sbst =
     | Tuple ts      -> Tuple(List.map sub ts)
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
-    | Inj(l,termopt) -> Inj(l, substTermOption sbst termopt)
+    | Inj(l,termopt) -> Inj(l, doOpt (subst sbst) termopt)
     | Case(t1,arms) -> Case(t1,subarms arms)
     | RzQuot t -> RzQuot (sub t)
     | RzChoose ((y,sopt),t1,t2,ty) ->
@@ -941,7 +952,7 @@ and substSet sbst =
     | Rz st -> Rz (sub st)
     | SApp(st1,trm2) -> SApp(sub st1, subst sbst trm2)
     | Sum lsos ->
-	let f (l, so) = (l, substSetOption sbst so)
+	let f (l, so) = (l, doOpt (substSet sbst) so)
 	in Sum (List.map f lsos)
     | SLambda((y,st),u) ->
 	let (sbst', y') = updateBoundName sbst y in 
@@ -956,14 +967,6 @@ and substSet sbst =
 
 
   in sub
-
-and substSetOption sbst = function
-    None    -> None
-  | Some st -> Some (substSet sbst st)
-
-and substTermOption sbst = function
-    None     -> None
-  | Some trm -> Some (subst sbst trm)
 
 and substModel sbst = function
     ModelName strng -> getModelvar sbst strng
@@ -1013,53 +1016,52 @@ and substTheoryKind sub = function
 *)
 and substTheoryElts sub = function
     [] -> []
-  | Set (nm, knd) :: rest ->
+  | Declaration(nm, DeclSet(stopt, knd)) :: rest ->
       let _ = checkNoCapture sub nm
       in let sub' = removeName sub nm
-      in
-	(Set (nm, substSetkind sub knd)) :: (substTheoryElts sub' rest)
-  | Let_set (nm, knd, st) :: rest ->
+      in 
+	   Declaration(nm, DeclSet(doOpt (substSet sub) stopt, 
+				  substSetkind sub knd)) ::
+	     (substTheoryElts sub' rest)
+  | Declaration(nm, DeclProp(prpopt, pt)) :: rest ->
       let _ = checkNoCapture sub nm
-      in let sub' = removeName sub nm
-      in (Let_set (nm, substSetkind sub knd, substSet sub st)) :: 
-	(substTheoryElts sub' rest)
-  | Predicate (nm, pt) :: rest -> 
-      let _ = checkNoCapture sub nm
-      in let this' = Predicate (nm, substProptype sub pt)
-      in let sub' = removeName sub nm
-      in let rest' = substTheoryElts sub' rest
-      in this' :: rest'
-  | Let_predicate (nm, pt, prp) :: rest -> 
-      let _ = checkNoCapture sub nm
-      in let this' = Let_predicate(nm, substProptype sub pt, substProp sub prp)
+      in let this' = Declaration(nm, DeclProp(doOpt (substProp sub) prpopt,
+					     substProptype sub pt))
       in let sub'  = removeName sub nm
       in let rest' = substTheoryElts sub' rest
       in this' :: rest'
-  | Let_term (nm, st, trm) :: rest ->
+  | Declaration(nm, DeclTerm(trmopt, ty)) :: rest ->
       let _ = checkNoCapture sub nm
-      in let this' = Let_term(nm, substSet sub st, subst sub trm)
+      in let this' = Declaration(nm, DeclTerm(doOpt (subst sub) trmopt,
+					       substSet sub ty))
       in let sub'  = removeName sub nm
       in let rest' = substTheoryElts sub' rest
       in this' :: rest'
-  | Value (nm, st) :: rest ->
-      let _ = checkNoCapture sub nm
-      in let this'    = Value (nm, substSet sub st)
-      in let sub'  = removeName sub nm
-      in let rest' = substTheoryElts sub' rest
-      in this' :: rest'
-  | Sentence (nm, mbnds, prp) :: rest ->
-      (* What is the binding behavior of a sentence? *)
+  | Declaration(nm, DeclSentence(mbnds, prp)) :: rest ->
+      (* Even though you can't refer to an axiom, it's really confusing
+         to have an axiom a and a term a in the same scope.  Worse, 
+	 both would generate a module value "a" in the final output code.
+         So, we pretend that names of axioms are just like names of 
+         propositions. *)
       let _ = checkNoCapture sub nm 
       in let (mbnds', sub_m) = substMBnds sub mbnds
       in let prp' = substProp sub prp
-      in let this' = Sentence (nm, mbnds', prp')
+      in let this' = Declaration(nm, DeclSentence(mbnds', prp'))
       in let sub'  = removeName sub nm
       in let rest' = substTheoryElts sub' rest
       in this' :: rest'
-  | Model (nm, thry) :: rest ->
+  | Declaration(nm, DeclModel (thry)) :: rest ->
       let _ = checkNoCapture sub nm
       in let thry' = substTheory sub thry 
-      in let this' = Model (nm, thry')
+      in let this' = Declaration(nm, DeclModel (thry'))
+      in let sub' = removeName sub nm
+      in let rest' = substTheoryElts sub' rest
+      in this' :: rest'
+  | Declaration(nm, DeclTheory (thry, thryknd)) :: rest ->
+      let _ = checkNoCapture sub nm
+      in let thry' = substTheory sub thry
+      in let thrykind' = substTheoryKind sub thryknd
+      in let this' = Declaration(nm, DeclTheory(thry', thrykind'))
       in let sub' = removeName sub nm
       in let rest' = substTheoryElts sub' rest
       in this' :: rest'
