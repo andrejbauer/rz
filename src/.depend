@@ -37,14 +37,14 @@ pp-hacked.cmo: outsyn.cmo name.cmo flags.cmo
 pp-hacked.cmx: outsyn.cmx name.cmx flags.cmx 
 pp.cmo: outsyn.cmo name.cmo flags.cmo 
 pp.cmx: outsyn.cmx name.cmx flags.cmx 
-rz.cmo: translate.cmo pp.cmo opt.cmo newinfer.cmo message.cmo logic.cmo \
-    flags.cmo coq_parser.cmi coq_lexer.cmo 
-rz.cmx: translate.cmx pp.cmx opt.cmx newinfer.cmx message.cmx logic.cmx \
-    flags.cmx coq_parser.cmx coq_lexer.cmx 
-rzinfer.cmo: newinfer.cmo message.cmo logic.cmo flags.cmo coq_parser.cmi \
-    coq_lexer.cmo 
-rzinfer.cmx: newinfer.cmx message.cmx logic.cmx flags.cmx coq_parser.cmx \
-    coq_lexer.cmx 
+rz.cmo: translate.cmo pp.cmo opt.cmo newinfer.cmo message.cmo logicrules.cmo \
+    logic.cmo flags.cmo error.cmo coq_parser.cmi coq_lexer.cmo 
+rz.cmx: translate.cmx pp.cmx opt.cmx newinfer.cmx message.cmx logicrules.cmx \
+    logic.cmx flags.cmx error.cmx coq_parser.cmx coq_lexer.cmx 
+rzinfer.cmo: newinfer.cmo message.cmo logicrules.cmo logic.cmo flags.cmo \
+    error.cmo coq_parser.cmi coq_lexer.cmo 
+rzinfer.cmx: newinfer.cmx message.cmx logicrules.cmx logic.cmx flags.cmx \
+    error.cmx coq_parser.cmx coq_lexer.cmx 
 syntax.cmo: name.cmo 
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 
