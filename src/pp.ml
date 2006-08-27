@@ -330,6 +330,9 @@ and output_prop_0 ppf = function
   | IsPredicate (nm, Some ty, _) ->
       fprintf ppf "@[PREDICATE(@[<hov>%s, %a@])]"
         (Name.string_of_name nm)   output_ty ty
+  | IsEquiv ({ty=t}, p) ->
+      fprintf ppf "@[EQUIV(@[<hov>%a, %a@])]"
+	output_prop_11 p    output_ty t
   | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_tln ln
   | NamedTotal (ln, lst) ->
       fprintf ppf "||%a %a||"

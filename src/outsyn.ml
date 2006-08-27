@@ -602,9 +602,9 @@ and string_of_prop level p =
     | Cexists ((n, ty), p) -> (14, "some (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
     | PLambda ((n, ty), p) ->
-	(14, "fun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
+	(14, "Pfun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
     | PMLambda ((n, {ty=ty; tot=p}), q) ->
-	(14, "fun " ^ string_of_name n ^ " : " ^ (string_of_ty ty) ^ " (" ^ string_of_prop 0 p^ ") => " ^
+	(14, "PMfun " ^ string_of_name n ^ " : " ^ (string_of_ty ty) ^ " (" ^ string_of_prop 0 p^ ") => " ^
 	  string_of_prop 14 q)
     | PApp (NamedTotal (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_tln n) lst ^ "||")
     | PApp (PApp (NamedPer (n, []), t), u) ->

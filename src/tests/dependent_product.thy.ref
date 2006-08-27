@@ -6,19 +6,19 @@ sig
   *)
    
   type t
-  (**  Assertion per_t =  all (x:s).  (PER(=t=) x)
+  (**  Assertion per_t =  all (x:||s||).  PER(=t x=)
   *)
    
   val a : s * t
-  (**  Assertion a_total =  pi0 a : ||s|| and (||t|| pi0 a) pi1 a
+  (**  Assertion a_total =  pi0 a : ||s|| and pi1 a : ||t pi0 a||
   *)
    
   val b : s * t
-  (**  Assertion b_total =  pi0 b : ||s|| and (||t|| pi0 b) pi1 b
+  (**  Assertion b_total =  pi0 b : ||s|| and pi1 b : ||t pi0 b||
   *)
    
   
-  (**  Assertion equal =  pi0 a =s= pi0 b and (=t= pi0 a) pi1 a pi1 b
+  (**  Assertion eq =  pi0 a =s= pi0 b and pi1 a =(t pi0 a)= pi1 b
   *)
 end
 

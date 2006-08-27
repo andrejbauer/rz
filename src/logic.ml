@@ -120,7 +120,7 @@ and declaration =
   | DeclTerm     of term option        * set
   | DeclModel    of                      theory
   | DeclTheory   of theory             * theorykind
-  | DeclSentence of    model_binding list * proposition
+  | DeclSentence of model_binding list * proposition
 
 and theory_element =
     | Declaration of name * declaration

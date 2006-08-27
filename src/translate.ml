@@ -177,7 +177,7 @@ let pApp ctx p t = match p with
   | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ -> PApp (p, t)
   | PMLambda _ | True | False | IsPer _ | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
-      failwith "bad propositional application 1"
+      failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let pMApp ctx p t = match p with
     PMLambda ((n,_), q) -> sbp ctx [(n,t)] q
@@ -186,7 +186,7 @@ let pMApp ctx p t = match p with
   | PLambda _ -> failwith ("bad propositional application on " ^ string_of_proposition p)
   | True | False | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _   | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
-      failwith "bad propositional application 2"
+      failwith ("bad propositional application 2 on " ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let nest_forall ctx =
   List.fold_right (fun (y, {ty=t;tot=q}) p -> Forall ((y,t), Imply (pApp ctx q (id y), p)))
@@ -218,8 +218,8 @@ let rec translateSet (ctx : ctxElement list) = function
       let nm = translateSLN sln in
       let binds = bindings_of_setkind ctx knd in
 	{ ty  = NamedTy nm;
-	  tot = nest_forall ctx binds (NamedTotal (nm, List.map (fun (y,_) -> id y) binds));
-	  per = nest_forall ctx binds (NamedPer (nm, List.map (fun (y,_) -> id y) binds));
+	  tot = nest_lambda ctx binds (NamedTotal (nm, List.map (fun (y,_) -> id y) binds));
+	  per = nest_lambda ctx binds (NamedPer (nm, List.map (fun (y,_) -> id y) binds));
 	}
 
   | L.Product lst ->
@@ -590,9 +590,9 @@ and translateProp ctx = function
       let t = translateSet ctx s in
       let (_, r) = translateProp ctx p in
       let x, y = fresh2 [mk "x"; mk "y"] [mk "y"; mk "z"] ctx in
-      let q = PLambda ((x, t.ty),
-		      PLambda ((y, t.ty),
-			      pApp ctx (pApp ctx (pApp ctx r (id x)) (id y)) Dagger))
+      let q = PMLambda ((x, t),
+	      PMLambda ((y, t),
+                pApp ctx (pMApp ctx (pMApp ctx r (id x)) (id y)) Dagger))
       in
 	(TopTy, PObligation (IsEquiv (t, q), r))
 
@@ -655,12 +655,12 @@ and translateTheoryElements ctx = function
 	      nest_forall ctx binds
 		(Forall((x,t),
 			Iff (PApp (NamedTotal (tln_of_tyname n, idys), id x),
-			     pApp ctx p (id x)))));
+			     pApp ctx (List.fold_left (pMApp ctx) p idys) (id x)))));
 	     (string_of_name n ^ "_def_per",
 	      Forall ((y,t),
                 Forall ((y',t),
                   Iff (PApp (PApp (NamedPer (tln_of_tyname n, idys), id y), id y'),
-		       pApp ctx (pApp ctx q (id y)) (id y')))))]
+		       pApp ctx (pApp ctx (List.fold_left (pMApp ctx) q idys) (id y)) (id y')))))]
 	)) :: sgnt,
 	insertSetvar n knd s smmry
 
