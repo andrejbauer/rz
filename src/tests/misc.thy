@@ -126,15 +126,6 @@ thy
 
 end
 
-theory Trivial :=
-thy
- Parameter s : Set.
-
- Parameter f : rz s -> (s -> s).
-
- Axiom foo : forall (x : s), forall (y : s) , (y = let rz u = x in f u y).
-
-end
 
 theory Quotients :=
 thy

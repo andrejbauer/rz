@@ -306,12 +306,12 @@ let rec translateSet (ctx : ctxElement list) = function
 
   | L.Quotient (s, e) ->
       let {ty=t; tot=p; per=q} = translateSet ctx s in
-      let _, r = translateProp ctx e in
+      let ty, r = translateProp ctx e in
 	{ ty = t;
 	  tot = p;
 	  per = (
 	    let x, x' = fresh2 [mk "x"] [mk "y"] ctx in
-	      makePer (x, x', t) (pApp ctx (pApp ctx (pApp ctx r (id x)) (id x')) Dagger)
+	      makePer (x, x', t) (pApp ctx (pMApp ctx (pMApp ctx r (id x)) (id x')) (dagger_of_ty ty))
 	  )
 	}
 
@@ -448,14 +448,14 @@ and translateTerm ctx = function
   | L.Choose ((n, st1), r, t, u, st2) ->
       let {ty=ty1; per=p1} = translateSet ctx st1 in
       let {per=p2} = translateSet ctx st2 in
-      let _, q = translateProp ctx r in
+      let ty2, q = translateProp ctx r in
       let n' = fresh [n] ~bad:[n] ctx in
       let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
 	     Obligation ((any(), TopTy),
 			 Forall ((n', ty1), Imply (
-				   pApp ctx (pApp ctx (pApp ctx q (id n)) (id n')) Dagger,
+				   pApp ctx (pMApp ctx (pMApp ctx q (id n)) (id n')) (dagger_of_ty ty2),
 				   pApp ctx (pApp ctx p2 v) v')),
 			 v))
 
@@ -584,15 +584,15 @@ and translateProp ctx = function
 
   | L.PApp (p, t) -> 
       let (ty, q) = translateProp ctx p in
-	(ty, PApp (q, translateTerm ctx t))
+	(ty, pMApp ctx q (translateTerm ctx t))
 
   | L.EquivCoerce (s, p) ->
       let t = translateSet ctx s in
-      let (_, r) = translateProp ctx p in
+      let (ty, r) = translateProp ctx p in
       let x, y = fresh2 [mk "x"; mk "y"] [mk "y"; mk "z"] ctx in
       let q = PMLambda ((x, t),
 	      PMLambda ((y, t),
-                pApp ctx (pMApp ctx (pMApp ctx r (id x)) (id y)) Dagger))
+                pApp ctx (pMApp ctx (pMApp ctx r (id x)) (id y)) (dagger_of_ty ty)))
       in
 	(TopTy, PObligation (IsEquiv (t, q), r))
 

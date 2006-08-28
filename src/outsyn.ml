@@ -124,6 +124,16 @@ let curried_app head args =
 let nested_lambda args trm =
   List.fold_right (fun b t -> Lambda (b, t)) args trm
 
+let rec dagger_of_ty = function
+    NamedTy _ -> Dagger (* XXX: suspicous, should unfold definition? *)
+  | UnitTy -> failwith "Cannot make a dagger from UnitTy"
+  | VoidTy -> failwith "Cannot make a dagger from VoidTy"
+  | TopTy -> Dagger
+  | SumTy _ -> failwith "Cannot make a dagger from SumTy"
+  | TupleTy lst -> Tuple (List.map dagger_of_ty lst)
+  | ArrowTy (t1, t2) -> Lambda ((wildName(), t1), Dagger)
+
+
 (** ======== FREE VARIABLES ======= *)
 
 let rec fvModest flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q

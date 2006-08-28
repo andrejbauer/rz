@@ -243,7 +243,7 @@ let rec optTerm ctx = function
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
  | EmptyTuple -> (UnitTy, EmptyTuple, UnitTy)
  | Dagger -> (print_string "Is this a Dagger which I see before me?\n";
-	      (UnitTy, Dagger, UnitTy))
+	      (TopTy, Dagger, TopTy))
  | App(e1,e2) -> 
      begin
        match optTerm ctx e1 with
