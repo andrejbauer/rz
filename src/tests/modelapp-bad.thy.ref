@@ -13,4 +13,4 @@ B
 in FF BB
 -------------------------------
 
-Fatal error: exception Newinfer.TypeError
+Fatal error: exception Error.TypeError

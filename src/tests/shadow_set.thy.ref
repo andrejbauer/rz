@@ -6,4 +6,4 @@ Illegal shadowing; the name s appears twice in the same context,
 and automatic renaming is not possible.
 -------------------------------
 
-Fatal error: exception Newinfer.TypeError
+Fatal error: exception Error.TypeError
