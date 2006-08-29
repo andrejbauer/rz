@@ -600,17 +600,21 @@ and translateProp ctx = function
       let tys, arms = List.fold_left
 	(fun (tys, arms) -> function
 	    (lb, Some (n, s), p) ->
-	      let ctx' = insertTermvar n s ctx in
-	      let (ty, q) = translateProp ctx' p in
-		(lb, Some ty)::tys, (lb, Some (n, (translateSet ctx' s).ty), q)::arms
+	      let {ty=ty2; tot=q} = translateSet ctx s in
+	      let (ty1, p') = translateProp (insertTermvar n s ctx) p in
+	      let x = fresh [mk "r"] ~bad:[n] ctx in
+		(lb, Some ty1)::tys, (lb, Some (x, ty1), Some (n, ty2),
+				     And [pApp ctx q (id n); pApp ctx p' (id x)])::arms
           | (lb, None, p) ->
-	      let (ty, q) = translateProp (insertTermvar (any()) L.Unit ctx) p in
-		(lb, Some ty)::tys, (lb, None, q)::arms
+	      let (ty1, p') = translateProp ctx p in
+	      let x = fresh [mk "r"] ctx in
+		(lb, Some ty1)::tys, (lb, Some (x, ty1), None, pApp ctx p' (id x))::arms
 	)
 	([], [])
         lst
       in
-	(SumTy tys, PCase (translateTerm ctx t, arms))
+      let r = fresh [mk "r"; mk "u"] ctx in
+	makeProp (r, SumTy tys) (PCase (id r, translateTerm ctx t, arms))
 
 and translateBinding ctx bind =
   List.map (fun (n, s) -> n, (translateSet ctx s).ty) bind

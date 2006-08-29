@@ -492,17 +492,21 @@ and optProp ctx = function
 
   | PMApp (p, t) -> PMApp (optProp ctx p, optTerm' ctx t)
 
-  | PCase (e, arms) ->
-     let doArm = function
-	 (lbl, Some (name2, ty2),  p3) ->
-	   let ty2' = optTy ctx ty2
-	   in let ctx' = insertType ctx name2 ty2
-	   in let p3' = optProp ctx' p3
-	   in (lbl, Some (name2, ty2'), p3')
-		(* XXX: could optimize away ty2' if it turns out to be TopTy? *)
-       | (lbl, None,  p3) ->  (lbl, None, optProp ctx p3)
-     in
-       PCase (optTerm' ctx e, List.map doArm arms)
+  | PCase (e1, e2, arms) ->
+      let doBind ctx0 = function
+	  None -> None, ctx0
+	| Some (nm, ty) ->
+	    (match optTy ctx ty with
+		TopTy -> None, ctx0
+	      | ty' -> Some (nm, ty'), insertType ctx nm ty)
+      in
+      let doArm (lbl, bnd1, bnd2, p) =
+	let bnd1', ctx1 = doBind ctx  bnd1 in
+	let bnd2', ctx2 = doBind ctx1 bnd2 in
+	let p' = optProp ctx2 p in
+	  (lbl, bnd1, bnd2, p')
+      in
+	PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms)
 
 
 and optAssertion ctx (name, prop) = (name, optProp ctx prop)

@@ -722,9 +722,9 @@ let rec annotateExpr cntxt = function
       end
 
   | Not expr as orig_expr ->
-      let (prp, pt) = annotateProperProp cntxt orig_expr expr
+      let (prp, _) = annotateProperProp cntxt orig_expr expr
       in
-	ResProp ( L.Not prp, pt )
+	ResProp ( L.Not prp, L.StableProp )
 
   | Iff (expr1,expr2) as orig_expr ->
       begin

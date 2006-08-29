@@ -215,7 +215,34 @@ and output_tln ppf ln =
       level <=n without enclosing parentheses, or a proposition of level
       >n with parens. *)
 and output_prop ppf = function
-    prp -> output_prop_14 ppf prp
+    prp -> output_prop_15 ppf prp
+
+and output_prop_15 ppf = function
+    PCase (t1, t2, lst) ->
+      begin
+	let output_bnd ppf = function
+	    None -> fprintf ppf ""
+	  | Some (n, ty) ->
+	      fprintf ppf "(%a : %a)"
+		output_name n  output_ty ty
+	in
+	let output_arm ppf (lb, bnd1, bnd2, u) =
+	  fprintf ppf "`%s %a, `%s %a =>@ @[<hv>%a@]"
+	    lb  output_bnd bnd1  lb  output_bnd bnd2  output_prop_14 u
+	in let rec output_arms' ppf = function
+	    [] -> ()
+          | arm::arms ->
+	      fprintf ppf "@[| %a @]@,%a" 
+		output_arm arm  output_arms' arms
+	in let output_arms ppf = function
+	    [] -> raise Impossible
+	  | arm::arms -> fprintf ppf "@[<hov 5>  %a @]@,%a" 
+	      output_arm arm  output_arms' arms
+	in  
+	     fprintf ppf "@[<v>@[<hv>match %a, %a with@]@,@[<v>%a@]@]" 
+	       output_term_13 t1  output_term_13 t2  output_arms lst
+      end
+  | prp -> output_prop_14 ppf prp
 
 and output_prop_14 ppf = function
     Forall ((n, ty), p) as all_ty -> 

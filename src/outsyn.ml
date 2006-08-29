@@ -76,7 +76,7 @@ and proposition =
   | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
   | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
   | PObligation of proposition * proposition   (* obligation *)
-  | PCase of term * (label * binding option * proposition) list (* propositional case *)
+  | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
 
 type assertion = string * proposition
 
@@ -183,10 +183,13 @@ and fvProp' flt acc = function
   | PLambda ((n, _), p) -> fvProp' (n::flt) acc p
   | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
   | PObligation (p, q) -> fvProp' flt (fvProp' flt acc p) q
-  | PCase (t, lst) ->
+  | PCase (t1, t2, lst) ->
       List.fold_left
-	(fun a (_, bnd, t) -> fvProp' (match bnd with None -> flt | Some (n, _) -> n::flt) a t)
-	(fvTerm' flt acc t) lst
+	(fun a (_, bnd1, bnd2, t) ->
+	  let flt1 = match bnd1 with None -> flt | Some (n, _) -> n::flt in
+	  let flt2 = match bnd2 with None -> flt | Some (n, _) -> n::flt1 in
+	    fvProp' flt2 a t)
+	(fvTerm' flt (fvTerm' flt acc t1) t2) lst
 
 and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
@@ -348,19 +351,19 @@ and substProp ?occ sbst = function
 	PMLambda ((n', {ty=substTy ?occ sbst t; tot=substProp ?occ sbst p; per=substProp ?occ sbst q}),
 		 substProp ?occ (insertTermvar sbst n (id n')) r)
   | PObligation (p, q) -> PObligation (substProp ?occ sbst p, substProp ?occ sbst q)
-  | PCase (t, lst) -> 
-      PCase (substTerm ?occ sbst t,
-	    List.map (function
-			  (lb, None, p) -> (lb, None, substProp ?occ sbst p)
-			| (lb, Some (n, ty), p) ->
-			    let sbst' = insertTermvar sbst n (id n) in
-			    let n' = freshVar [n] ?occ sbst in
-			      (lb,
-			       Some (n', substTy ?occ sbst ty),
-			       substProp ?occ (insertTermvar sbst' n (id n')) p)
-		     )
-	      lst)
-
+  | PCase (t1, t2, lst) -> 
+      let update_subst sbst0 = function
+	  None -> None, sbst0
+	| Some (n, ty) ->
+	    let n' =  freshVar [n] ?occ sbst0 in
+      	      Some (n', substTy ?occ sbst ty), insertTermvar sbst0 n (id n')
+      in
+	PCase (substTerm ?occ sbst t1, substTerm ?occ sbst t2,
+	      List.map (function (lb, bnd1, bnd2, p) ->
+		let bnd1', sbst1 = update_subst sbst  bnd1 in
+		let bnd2', sbst2 = update_subst sbst1 bnd2 in
+		  (lb, bnd1', bnd2', substProp ?occ sbst2 p))
+		lst)
 
 and substTerm ?occ sbst = function
     Id (LN (None, nm)) -> getTermvar sbst nm
@@ -369,13 +372,11 @@ and substTerm ?occ sbst = function
   | Dagger -> Dagger
   | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
   | Lambda ((n, ty), t) ->
-      let sbst' = insertTermvar sbst n (id n) in
       let n' = freshVar [n] ?occ sbst in
-	Lambda ((n', substTy ?occ sbst ty), substTerm ?occ (insertTermvar sbst' n (id n')) t)
+	Lambda ((n', substTy ?occ sbst ty), substTerm ?occ (insertTermvar sbst n (id n')) t)
   | Let (n, t, u) ->
-      let sbst' = insertTermvar sbst n (id n) in
       let n' = freshVar [n] ?occ sbst in
-	Let (n', substTerm ?occ sbst' t, substTerm ?occ (insertTermvar sbst' n (id n')) u)
+	Let (n', substTerm ?occ sbst t, substTerm ?occ (insertTermvar sbst n (id n')) u)
   | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
   | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
   | Inj (k, None) -> Inj (k, None)
@@ -385,18 +386,16 @@ and substTerm ?occ sbst = function
 	    List.map (function
 			  (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
 			| (lb, Some (n, ty), t) ->
-			    let sbst' = insertTermvar sbst n (id n) in
 			    let n' = freshVar [n] ?occ sbst in
 			      (lb,
 			       Some (n', substTy ?occ sbst ty),
-			       substTerm ?occ (insertTermvar sbst' n (id n')) t)
+			       substTerm ?occ (insertTermvar sbst n (id n')) t)
 		     )
 	      lst)
   | Obligation ((n, ty), p, trm) ->
-      let sbst' = insertTermvar sbst n (id n) in
       let n' = freshVar [n] ?occ sbst in
-      let sbst'' = insertTermvar sbst' n (id n') in
-	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst'' p, substTerm ?occ sbst'' trm)
+      let sbst' = insertTermvar sbst n (id n') in
+	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst' p, substTerm ?occ sbst' trm)
 
 and substTermList ?occ sbst = List.map (substTerm ?occ sbst)
 
@@ -628,15 +627,16 @@ and string_of_prop level p =
     | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ " " ^ (string_of_term' 9 t))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
-    | PCase (t, lst) ->
-	(14, "match " ^ (string_of_term' 13 t) ^ " with " ^
-	   (String.concat " | "
-	      (List.map (function
-		  (lb, None, p) -> "`" ^ lb ^ " -> " ^  (string_of_prop 14 p)
-		| (lb, Some (n,ty), p) -> 
-		    "`" ^ lb ^ " (" ^ (string_of_name n) ^ " : " ^
-		      (string_of_ty ty) ^ ") -> " ^
-		      (string_of_prop 14 p)) lst)))
+    | PCase (t1, t2, lst) ->
+	let s_of_b lb = function
+	    None -> "`" ^ lb
+	  | Some (n, ty) -> "`" ^ lb ^ " (" ^ string_of_name n ^ ":" ^ string_of_ty ty ^ ")"
+	in
+	  (14, "match " ^ (string_of_term' 13 t1) ^ ", " ^ (string_of_term' 13 t2) ^ " with " ^
+	    (String.concat " | "
+	      (List.map (fun (lb, bnd1, bnd2, p) ->
+		s_of_b lb bnd1  ^ " " ^ s_of_b lb bnd2 ^ " => " ^ (string_of_prop 14 p)) lst)) ^
+	    " | _, _ -> false")
   in
     if level' > level then "(" ^ str ^ ")" else str
 
