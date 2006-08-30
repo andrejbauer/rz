@@ -70,8 +70,9 @@ and proposition =
     | Equal   of set * term * term
     | PApp    of proposition * term
     | PLambda of binding * proposition
-    | EquivCoerce of set * proposition
+    | IsEquiv of proposition * set                (* [IsEquiv(p,s)] means [p] is an equivalence relation on [s] *)
     | PCase   of term * (label * binding option * proposition) list
+    | PAssure of binding * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
 	
 and set =
     | Empty
@@ -85,6 +86,7 @@ and set =
     | Quotient of set * proposition
     | SApp     of set * term
     | SLambda  of binding * set
+    | SAssure  of binding * proposition * set
 
 and proptype =
     | Prop
@@ -113,6 +115,7 @@ and term =
     | Let      of binding * term * term * set  (* set is type of the whole let *)
     | Subin    of term * set
     | Subout   of term * set
+    | Assure   of binding * proposition * set
 
 and declaration =
     DeclProp     of proposition option * proptype
