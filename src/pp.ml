@@ -98,6 +98,15 @@ and output_term_5 ppf = function
   | trm -> output_term_4 ppf trm
 
 and output_term_4 ppf = function
+  | Proj (k, t) -> 
+      fprintf ppf "pi%d %a" k   output_term_0 t  (* skip applications! *)
+  | Inj (lb, None) -> 
+      fprintf ppf "`%s" lb
+  | Inj (lb, Some t) -> 
+      fprintf ppf "`%s %a" lb   output_term_0 t  (* skip applications! *)
+  | trm -> output_term_3 ppf trm
+
+and output_term_3 ppf = function
     (* Fix for nested binary applications; we don't want the
        inner ones to accidentally use the "default" case for
        ordinary non-infix applications
@@ -109,13 +118,7 @@ and output_term_4 ppf = function
          
   | App (t, u) -> 
       fprintf ppf "@[<hov 2>%a@ %a@]"
-         output_term_4 t   output_term_0 u
-  | Proj (k, t) -> 
-      fprintf ppf "pi%d %a" k   output_term_0 t
-  | Inj (lb, None) -> 
-      fprintf ppf "`%s" lb
-  | Inj (lb, Some t) -> 
-      fprintf ppf "`%s %a" lb   output_term_0 t
+         output_term_3 t   output_term_0 u
   | trm -> output_term_0 ppf trm
 
 and output_term_components outputer separator ppf lst =
@@ -199,7 +202,7 @@ and output_term_0 ppf = function
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
 	    fprintf ppf "@[(%a)@]"   output_term trm)
 
-and output_term_apps ppf lst = output_term_components output_term_4 " " ppf lst
+and output_term_apps ppf lst = output_term_components output_term_3 " " ppf lst
 
 and output_name ppf nm = 
   fprintf ppf "%s" (Name.string_of_name nm)
@@ -322,10 +325,10 @@ and output_prop_9 ppf = function
 	output_term_9 t   output_tln ln   output_term_apps lst
   | PApp (p, t) ->
       fprintf ppf "%a %a"
-	output_prop_9 p   output_term_4 t
+	output_prop_9 p   output_term_3 t
   | PMApp (p, t) ->
       fprintf ppf "(%a %a)"
-	output_prop_9 p   output_term_4 t
+	output_prop_9 p   output_term_3 t
   | NamedProp (ln, Dagger, lst) ->
       fprintf ppf "%a %a"
         output_ln ln   output_term_apps lst
