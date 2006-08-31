@@ -462,7 +462,7 @@ and optProp ctx = function
       | (TopTy,_) -> p'
       | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
 	  if (LN(None,n) = n3) && (n1 = n2) then
-	    ForallTotal((n,NamedTy n1), p'')
+	    ForallTotal((n, NamedTy n1), p'')
 	  else
 	    Forall((n,NamedTy n1),p')
       | (ty',_) -> Forall((n,ty'), p'))

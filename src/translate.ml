@@ -562,14 +562,14 @@ and translateProp ctx = function
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=q} = translateSet ctx s in
       let (u, p') = translateProp (insertTermvar n s ctx) p in
-      let f = fresh [mk "f"; mk "g"; mk "h"; mk "l"] ctx in
+      let f = fresh [mk "f"; mk "g"; mk "h"; mk "l"] ~bad:[n] ctx in
 	makeProp (f, ArrowTy (t, u))
 	  (Forall ((n, t), Imply (pApp ctx q (id n), pApp ctx p' (App (id f, id n)))))
 
   | L.Exists ((n, s), p) -> 
       let {ty=t; tot=q} = translateSet ctx s in
       let (u, p') = translateProp (insertTermvar n s ctx) p in
-      let w = fresh [mk "w"; mk "u"; mk "p"; mk "t"] ctx
+      let w = fresh [mk "w"; mk "u"; mk "p"; mk "t"] ~bad:[n] ctx
       in
 	makeProp (w, TupleTy [t; u])
 	 (And [pApp ctx q (Proj (0, id w));
@@ -578,7 +578,7 @@ and translateProp ctx = function
   | L.Unique ((n, s), p) -> 
       let {ty=t; tot=q; per=pr} = translateSet ctx s in
       let (u, p') = translateProp (insertTermvar n s ctx) p in
-      let w, w' = fresh2 [mk "w"; mk "u"; mk "p"; mk "t"] [mk "u"; mk "p"; mk "t"] ctx in
+      let w, w' = fresh2 [mk "w"; mk "u"; mk "p"; mk "t"] [mk "u"; mk "p"; mk "t"] ~bad:[n] ctx in
 	makeProp (w, TupleTy [t; u])
 	 (And [
 	     pApp ctx q (Proj (0, id w));
@@ -692,10 +692,11 @@ and translateTheoryElements ctx = function
 			Iff (PApp (NamedTotal (tln_of_tyname n, idys), id x),
 			     pApp ctx (List.fold_left (pMApp ctx) p idys) (id x)))));
 	     (string_of_name n ^ "_def_per",
-	      Forall ((y,t),
-                Forall ((y',t),
-                  Iff (PApp (PApp (NamedPer (tln_of_tyname n, idys), id y), id y'),
-		       pApp ctx (pApp ctx (List.fold_left (pMApp ctx) q idys) (id y)) (id y')))))]
+	     nest_forall ctx binds
+	       (Forall ((y,t),
+                       Forall ((y',t),
+			      Iff (PApp (PApp (NamedPer (tln_of_tyname n, idys), id y), id y'),
+				  pApp ctx (pApp ctx (List.fold_left (pMApp ctx) q idys) (id y)) (id y'))))))]
 	)) :: sgnt,
 	insertSetvar n knd s smmry
 
