@@ -869,7 +869,7 @@ let rec annotateExpr cntxt = function
 and annotateTerm cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResTerm(trm, ty) -> (trm, ty)
-    | ResError rsns    -> E.tyGenericErrors rsns
+    | ResError rsns    -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "term" surrounding_expr)
 
 and annotateTerm' cntxt expr yesFn noRsn = 
@@ -883,7 +883,7 @@ and annotateTerm' cntxt expr yesFn noRsn =
 and annotateSet cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResSet(st, knd) -> (st, knd)
-    | ResError rsns -> E.tyGenericErrors rsns
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "set" surrounding_expr)
 
 and annotateSet' cntxt expr yesFn noRsn = 
@@ -897,7 +897,7 @@ and annotateSet' cntxt expr yesFn noRsn =
 and annotateType cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResSet(st, L.KindSet) -> st
-    | ResError rsns -> E.tyGenericErrors rsns
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "proper type" surrounding_expr)
     
 and annotateType' cntxt expr yesFn noRsn =
@@ -912,7 +912,7 @@ and annotateType' cntxt expr yesFn noRsn =
 and annotateProp cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResProp(prp, pt) -> (prp, pt)
-    | ResError rsns -> E.tyGenericErrors rsns
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "proposition" surrounding_expr)
 
 and annotateProp' cntxt expr yesFn noRsn =
@@ -927,7 +927,7 @@ and annotateProp' cntxt expr yesFn noRsn =
 and annotateProperProp cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResProp(prp, ((L.Prop | L.StableProp) as pt)) -> (prp, pt)
-    | ResError rsns -> E.tyGenericErrors rsns
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | ResProp _ -> 
 	E.notWhatsExpectedInError expr "proper proposition" surrounding_expr
     | _ -> 
@@ -945,6 +945,7 @@ and annotateProperProp' cntxt expr yesFn noRsn =
 and annotateKind cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResKind k -> k
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "kind" surrounding_expr)
 
 and annotateKind' cntxt expr yesFn noRsn =
@@ -958,6 +959,7 @@ and annotateKind' cntxt expr yesFn noRsn =
 and annotateProptype cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResPropType pt -> pt
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "proposition-type" surrounding_expr)
 
 and annotateProptype' cntxt expr yesFn noRsn =
@@ -980,12 +982,14 @@ and annotateModel' cntxt expr yesFn noRsn =
 and annotateModel cntxt surrounding_expr expr =
   (match annotateExpr cntxt expr with
       ResModel(mdl, thry) -> (mdl, thry)
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "model" surrounding_expr)
 
 
 and annotateTheory cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResTheory(thry, tknd) -> (thry, tknd)
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "theory" surrounding_expr)
 
 
@@ -1000,6 +1004,7 @@ and annotateTheory' cntxt expr yesFn noRsn =
 and annotateModelTheory cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
       ResTheory(thry, L.ModelTheoryKind) -> thry
+    | ResError rsns -> E.tyGenericErrors (E.inMsg surrounding_expr :: rsns)
     | _ -> E.notWhatsExpectedInError expr "theory of a model" surrounding_expr)
 
 and annotateModelTheory' cntxt expr yesFn noRsn =
