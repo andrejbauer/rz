@@ -29,10 +29,10 @@ sig
    
   type d = a * b
   (**  Assertion d_def_total = 
-         all (x:a * b).  x : ||d|| <=> pi0 x : ||a|| and pi1 x : ||b||
+         forall x:a * b,  x : ||d|| <-> pi0 x : ||a|| and pi1 x : ||b||
         
        Assertion d_def_per = 
-         all (y:a * b, z:a * b).  y =d= z <=> pi0 y =a= pi0 z and 
+         forall y:a * b, z:a * b,  y =d= z <-> pi0 y =a= pi0 z and 
            pi1 y =b= pi1 z
   *)
 end

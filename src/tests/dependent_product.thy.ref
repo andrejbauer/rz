@@ -6,7 +6,7 @@ sig
   *)
    
   type t
-  (**  Assertion per_t =  all (x:||s||).  PER(=t x=)
+  (**  Assertion per_t =  forall (x:||s||),  PER(=t x=)
   *)
    
   val a : s * t

@@ -7,7 +7,7 @@ sig
    
   val shadow : s -> s
   (**  Assertion shadow = 
-         all (x:||s||).  shadow x : ||s|| and shadow x =s= shadow x
+         forall (x:||s||),  shadow x : ||s|| and shadow x =s= shadow x
   *)
 end
 

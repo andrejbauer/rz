@@ -14,7 +14,7 @@ sig
   *)
    
   
-  (**  Assertion q =  all (x:||a||).  x =a= x
+  (**  Assertion q =  forall (x:||a||),  x =a= x
   *)
 end
 
@@ -33,7 +33,7 @@ sig
   *)
    
   
-  (**  Assertion q =  all (x:||a||).  x =a= (let y = x in y)
+  (**  Assertion q =  forall (x:||a||),  x =a= (let y = x in y)
   *)
    
   val m : a
@@ -49,15 +49,15 @@ module type C =
 functor (M : A) ->
  sig
    type b = M.a
-   (**  Assertion b_def_total =  all (x:M.a).  x : ||b|| <=> x : ||M.a||
+   (**  Assertion b_def_total =  forall x:M.a,  x : ||b|| <-> x : ||M.a||
          
-        Assertion b_def_per =  all (y:M.a, z:M.a).  y =b= z <=> y =M.a= z
+        Assertion b_def_per =  forall y:M.a, z:M.a,  y =b= z <-> y =M.a= z
    *)
     
    type c = M.a
-   (**  Assertion c_def_total =  all (x:M.a).  x : ||c|| <=> x : ||M.a||
+   (**  Assertion c_def_total =  forall x:M.a,  x : ||c|| <-> x : ||M.a||
          
-        Assertion c_def_per =  all (y:M.a, z:M.a).  y =c= z <=> y =M.a= z
+        Assertion c_def_per =  forall y:M.a, z:M.a,  y =c= z <-> y =M.a= z
    *)
  end
 

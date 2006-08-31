@@ -16,10 +16,10 @@ sig
                 
                type f = e
                (**  Assertion f_def_total = 
-                      all (x:e).  x : ||f|| <=> x : ||e||
+                      forall x:e,  x : ||f|| <-> x : ||e||
                      
                     Assertion f_def_per = 
-                      all (y:e, z:e).  y =f= z <=> y =e= z
+                      forall y:e, z:e,  y =f= z <-> y =e= z
                *)
              end
 end
@@ -31,9 +31,9 @@ sig
   *)
    
   type b = a
-  (**  Assertion b_def_total =  all (x:a).  x : ||b|| <=> x : ||a||
+  (**  Assertion b_def_total =  forall x:a,  x : ||b|| <-> x : ||a||
         
-       Assertion b_def_per =  all (y:a, z:a).  y =b= z <=> y =a= z
+       Assertion b_def_per =  forall y:a, z:a,  y =b= z <-> y =a= z
   *)
    
   type b'
@@ -51,18 +51,18 @@ sig
   module E : sig
                type e = a
                (**  Assertion e_def_total = 
-                      all (x:a).  x : ||e|| <=> x : ||a||
+                      forall x:a,  x : ||e|| <-> x : ||a||
                      
                     Assertion e_def_per = 
-                      all (y:a, z:a).  y =e= z <=> y =a= z
+                      forall y:a, z:a,  y =e= z <-> y =a= z
                *)
                 
                type f = a
                (**  Assertion f_def_total = 
-                      all (x:a).  x : ||f|| <=> x : ||b||
+                      forall x:a,  x : ||f|| <-> x : ||b||
                      
                     Assertion f_def_per = 
-                      all (y:a, z:a).  y =f= z <=> y =b= z
+                      forall y:a, z:a,  y =f= z <-> y =b= z
                *)
              end
 end
@@ -76,10 +76,10 @@ sig
    
   type a = FF(BB).a
   (**  Assertion a_def_total = 
-         all (x:FF(BB).a).  x : ||a|| <=> x : ||FF(BB).a||
+         forall x:FF(BB).a,  x : ||a|| <-> x : ||FF(BB).a||
         
        Assertion a_def_per = 
-         all (y:FF(BB).a, z:FF(BB).a).  y =a= z <=> y =FF(BB).a= z
+         forall y:FF(BB).a, z:FF(BB).a,  y =a= z <-> y =FF(BB).a= z
   *)
 end
 
