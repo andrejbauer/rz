@@ -301,7 +301,7 @@ and output_prop_14 ppf = function
     
 and output_prop_13 ppf = function
     Iff (p, q) ->
-      fprintf ppf "%a <=>@ %a"  output_prop_11 p   output_prop_11 q
+      fprintf ppf "%a <->@ %a"  output_prop_11 p   output_prop_11 q
   | prp -> output_prop_11 ppf prp
   
 and output_prop_11 ppf = function
