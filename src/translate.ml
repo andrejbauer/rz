@@ -386,7 +386,6 @@ let rec translateSet (ctx : ctxElement list) = function
 	 per = PMLambda ((n, u), q)
        }
 
-
 and translateTerm ctx = function
     L.Var ln -> Id (translateLN ln)
 
@@ -470,6 +469,19 @@ and translateTerm ctx = function
 	Obligation ((y, ty), pApp ctx (pApp ctx p' t') (id y), Tuple [t'; id y])
 
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
+
+  | L.Assure (None, p, t) ->
+      let (ty, p') = translateProp ctx p in
+	Obligation ((wildName(), TopTy), pApp ctx p' (dagger_of_ty ty), translateTerm ctx t)
+
+  | L.Assure (Some (n, s), p, t) ->
+      let {ty=ty2; tot=q} = translateSet ctx s in
+      let ctx' = insertTermvar n s ctx in
+      let (ty1, p') = translateProp ctx' p in
+	Obligation ((n, ty2),
+		   And [pApp ctx q (id n); pApp ctx p' (dagger_of_ty ty1)],
+		   translateTerm ctx' t)
+
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * name * Outsyn.negative *)
 and translateProp ctx = function
@@ -586,15 +598,9 @@ and translateProp ctx = function
       let (ty, q) = translateProp ctx p in
 	(ty, pMApp ctx q (translateTerm ctx t))
 
-  | L.EquivCoerce (s, p) ->
-      let t = translateSet ctx s in
-      let (ty, r) = translateProp ctx p in
-      let x, y = fresh2 [mk "x"; mk "y"] [mk "y"; mk "z"] ctx in
-      let q = PMLambda ((x, t),
-	      PMLambda ((y, t),
-                pApp ctx (pMApp ctx (pMApp ctx r (id x)) (id y)) (dagger_of_ty ty)))
-      in
-	(TopTy, PObligation (IsEquiv (t, q), r))
+  | L.IsEquiv (p, s) ->
+      let (ty, p') = translateProp ctx p in
+	(TopTy, IsEquiv (pApp ctx p' (dagger_of_ty ty) , translateSet ctx s))
 
   | L.PCase (t, lst) ->
       let tys, arms = List.fold_left
@@ -615,6 +621,19 @@ and translateProp ctx = function
       in
       let r = fresh [mk "r"; mk "u"] ctx in
 	makeProp (r, SumTy tys) (PCase (id r, translateTerm ctx t, arms))
+
+  | L.PAssure (None, p, q) ->
+      let (ty1, p') = translateProp ctx p in
+      let (ty2, q') = translateProp ctx q in
+	ty2, PObligation ((wildName(), TopTy), pApp ctx p' (dagger_of_ty ty1), q')
+
+  | L.PAssure (Some (n, s), p, q) ->
+      let {ty=ty2; tot=r} = translateSet ctx s in
+      let ctx' = insertTermvar n s ctx in
+      let (ty1, p') = translateProp ctx' p in
+      let (ty3, q') = translateProp ctx q in
+	ty3, PObligation ((n, ty2), And [pApp ctx r (id n); pApp ctx p' (dagger_of_ty ty1)], q')
+      
 
 and translateBinding ctx bind =
   List.map (fun (n, s) -> n, (translateSet ctx s).ty) bind

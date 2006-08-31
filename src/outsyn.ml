@@ -58,7 +58,7 @@ and proposition =
   | IsPer of ty_name * term list               (* the fact that a type is equipped with a per *)
   | IsPredicate of name * ty option * (name * modest) list
                                                (* [name] is a (parametrized) predicate  *)
-  | IsEquiv of modest * proposition            (* is a stable equivalence relation *)
+  | IsEquiv of proposition * modest            (* is a stable equivalence relation *)
   | NamedTotal of ty_longname * term list      (* totality of a term *)
   | NamedPer of ty_longname * term list        (* extensional equality of terms *)
   | NamedProp of longname * term * term list   (* basic proposition with a realizer *)
@@ -75,7 +75,7 @@ and proposition =
   | PMApp of proposition * term                (* application of propositional function to a total element *)
   | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
   | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
-  | PObligation of proposition * proposition   (* obligation *)
+  | PObligation of binding * proposition * proposition   (* obligation *)
   | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
 
 type proptype = 
@@ -172,7 +172,7 @@ and fvProp' flt acc = function
   | False -> acc
   | IsPer (_, lst) -> fvTermList' flt acc lst
   | IsPredicate (_, _, lst) -> fvModestList' flt acc lst
-  | IsEquiv ({tot=p; per=q}, r) -> fvProp' flt (fvProp' flt (fvProp' flt acc p) q) r
+  | IsEquiv (r, {tot=p; per=q}) -> fvProp' flt (fvProp' flt (fvProp' flt acc p) q) r
   | NamedTotal (_, lst) -> fvTermList' flt acc lst
   | NamedPer (_, lst) -> fvTermList' flt acc lst
   | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -192,7 +192,7 @@ and fvProp' flt acc = function
   | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | PLambda ((n, _), p) -> fvProp' (n::flt) acc p
   | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
-  | PObligation (p, q) -> fvProp' flt (fvProp' flt acc p) q
+  | PObligation ((n, _), p, q) -> fvProp' (n::flt) (fvProp' (n::flt) acc p) q
   | PCase (t1, t2, lst) ->
       List.fold_left
 	(fun a (_, bnd1, bnd2, t) ->
@@ -330,9 +330,9 @@ and substProp ?occ sbst = function
   | IsPredicate (n, ty, lst) ->
       IsPredicate (n, substTyOption ?occ sbst ty, lst)
 	(* XXX: Broken, because it should substitute also in the binding list lst. *)
-  | IsEquiv ({ty=t; tot=p; per=q}, r) ->
-      IsEquiv ({ty = substTy ?occ sbst t; tot = substProp ?occ sbst p; per = substProp ?occ sbst q},
-	      substProp ?occ sbst r)
+  | IsEquiv (r, {ty=t; tot=p; per=q}) ->
+      IsEquiv (substProp ?occ sbst r,
+	      {ty = substTy ?occ sbst t; tot = substProp ?occ sbst p; per = substProp ?occ sbst q})
   | NamedTotal (tln, lst) -> NamedTotal (substTLN ?occ sbst tln, substTermList ?occ sbst lst)
   | NamedPer (tln, lst) -> NamedPer (substTLN ?occ sbst tln, substTermList ?occ sbst lst)
   | NamedProp (ln, t, lst) -> NamedProp (substLN ?occ sbst ln, substTerm ?occ sbst t, substTermList ?occ sbst lst)
@@ -360,7 +360,11 @@ and substProp ?occ sbst = function
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	PMLambda ((n', {ty=substTy ?occ sbst t; tot=substProp ?occ sbst p; per=substProp ?occ sbst q}),
 		 substProp ?occ (insertTermvar sbst n (id n')) r)
-  | PObligation (p, q) -> PObligation (substProp ?occ sbst p, substProp ?occ sbst q)
+  | PObligation ((n, s), p, q) ->
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let sbst' = insertTermvar sbst n (id n') in
+	PObligation ((n', s), substProp ?occ sbst' p, substProp ?occ sbst' q)
+
   | PCase (t1, t2, lst) -> 
       let update_subst sbst0 = function
 	  None -> None, sbst0
@@ -599,10 +603,10 @@ and string_of_prop level p =
     | False -> (0, "false")
     | IsPer (t, lst) -> (0, "PER(=_" ^ string_of_name_app (string_of_name t) lst ^ ")")
     | IsPredicate (p, None, _) ->
-	(0, "PREDICATE(" ^ string_of_name p ^ ")")
+	(0, "PREDICATE(" ^ string_of_name p ^ ", ...)")
     | IsPredicate (p, Some ty, _) ->
-	(0, "PREDICATE(" ^ string_of_name p ^ "," ^ string_of_ty ty ^ ")")
-    | IsEquiv (ms, p) ->
+	(0, "PREDICATE(" ^ string_of_name p ^ "," ^ string_of_ty ty ^ ", ...)")
+    | IsEquiv (p, ms) ->
 	(0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest ms ^ ")")
     | NamedTotal (n, []) -> (0, "||" ^ (string_of_tln n) ^ "||")
     | NamedTotal (n, lst) -> (0, "||" ^ string_of_name_app (string_of_tln n) lst ^ "||")
@@ -639,7 +643,13 @@ and string_of_prop level p =
 	(9, string_of_term r ^ " |= " ^ (string_of_infix (string_of_term u) op (string_of_term t)))
     | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ " " ^ (string_of_term' 9 t))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
-    | PObligation (p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
+    | PObligation ((_, TopTy), p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
+    | PObligation ((n, ty), p, q) ->
+	(14,
+	"assure " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
+	  (string_of_prop 14 p) ^ " in " ^ string_of_prop 14 q)
+
+
     | PCase (t1, t2, lst) ->
 	let s_of_b lb = function
 	    None -> "`" ^ lb
