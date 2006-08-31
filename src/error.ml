@@ -49,24 +49,26 @@ let noEqPropWarning prp1 prp2 context_expr =
  *)
 exception TypeError
 
-let printError msg = 
-  let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
-  in let error_footer = "\n-------------------------------\n\n"
-  in 
-       print_string (error_header ^ msg ^ error_footer)
-
-let tyGenericError msg = 
-  (printAndResetWarnings();
-   printError msg;
-   raise TypeError)
 
 let tyGenericErrors msgs =
-  (printAndResetWarnings();
-   List.iter printError (List.rev msgs);
-   raise TypeError)
+  let    error_header = "\n-------------------------------\nTYPE ERROR:"
+  in let error_footer = "-------------------------------\n\n"
+  in let printError msg = (print_endline ""; print_endline msg)
+  in
+       (printAndResetWarnings();
+	print_string error_header; 
+	List.iter printError (List.rev msgs);
+	print_string error_footer;
+	raise TypeError)
+
+let tyGenericError msg = tyGenericErrors [msg]
+
 
 let inMsg expr =
-  ("...in " ^ S.string_of_expr expr)
+  ("...IN:  " ^ S.string_of_expr expr)
+
+let inElemMsg elem =
+  ("...IN:  " ^ S.string_of_theory_element elem)
 
 let tyUnboundMsg nm =
     ("Unbound name " ^ string_of_name nm)
@@ -74,8 +76,8 @@ let tyUnboundMsg nm =
 let tyUnboundError nm =
   tyGenericError (tyUnboundMsg nm)
 
-let notWhatsExpectedError expr expected =
-  tyGenericError
+
+let notWhatsExpectedMsg expr expected =
     (S.string_of_expr expr ^ " found where a "
       ^ expected ^ " was expected")
 
@@ -86,93 +88,153 @@ let notWhatsExpectedInMsg expr expected context_expr =
 let notWhatsExpectedInError expr expected context_expr =
   tyGenericError (notWhatsExpectedInMsg expr expected context_expr)
 
-let noHigherOrderLogicError expr =
-   tyGenericError
+
+let noHigherOrderLogicMsg expr =
      ("The input " ^ S.string_of_expr expr ^ " requires higher-order-logic")
 
-let noPolymorphismError expr =
-   tyGenericError
+let noHigherOrderLogicError expr =
+   tyGenericError (noHigherOrderLogicMsg expr)
+
+
+let noPolymorphismMsg expr =
      ("The input " ^ S.string_of_expr expr ^ " requires polymorphism")
 
-let noNestedTheoriesError nm =
-   tyGenericError
+let noPolymorphismError expr =
+   tyGenericError (noPolymorphismMsg expr)
+
+
+let noNestedTheoriesMsg nm =
      ("Bad theory definition (" ^ string_of_name nm ^ 
 	 "); theory definitions cannot be nested.")
 
-let noTypeInferenceInError nm expr =
-  tyGenericError
-     ("The bound variable " ^ string_of_name nm ^ " in " ^
-      S.string_of_expr expr ^ " is not annotated explicitly or implicitly.")
+let noNestedTheoriesError nm =
+   tyGenericError (noNestedTheoriesMsg nm)
 
-let wrongTypeError expr hastype expectedsort context_expr =
-  tyGenericError
+
+let noTypeInferenceMsg nm =
+     ("The bound variable " ^ string_of_name nm ^ 
+      " is not annotated explicitly or implicitly.")
+
+let noTypeInferenceInError nm expr =
+  tyGenericError (noTypeInferenceMsg nm)
+
+
+let wrongTypeMsg expr hastype expectedsort =
     ("The term " ^ S.string_of_expr expr ^ " is used as if it were a "
-      ^ expectedsort ^ " in\n " ^ S.string_of_expr context_expr ^ 
+      ^ expectedsort ^ 
       "\nbut it actually has type " ^ L.string_of_set hastype)
 
-let wrongPropTypeError expr hasPT expectedsort context_expr =
-  tyGenericError
+let wrongTypeError expr hastype expectedsort context_expr =
+  tyGenericError (wrongTypeMsg expr hastype expectedsort)
+
+
+let wrongPropTypeMsg expr hasPT expectedsort =
     ("The term " ^ S.string_of_expr expr ^ " is used as if it were a "
-      ^ expectedsort ^ " in\n " ^ S.string_of_expr context_expr ^ 
+      ^ expectedsort ^
       "\nbut it actually has type " ^ L.string_of_proptype hasPT)
 
-let wrongKindError expr hasK expectedsort context_expr =
-  tyGenericError
+let wrongPropTypeError expr hasPT expectedsort context_expr =
+  tyGenericError (wrongPropTypeMsg expr hasPT expectedsort)
+
+
+let wrongKindMsg expr hasK expectedsort =
     ("The set " ^ S.string_of_expr expr ^ "\nis used as if had a "
-      ^ expectedsort ^ " kind in\n " ^ S.string_of_expr context_expr ^ 
+      ^ expectedsort ^ " kind" ^
       "\nbut it actually has kind " ^ L.string_of_kind hasK)
 
-let wrongTheoryError expr hasthry expectedsort context_expr =
-  tyGenericError
+let wrongKindError expr hasK expectedsort context_expr =
+  tyGenericError (wrongKindMsg expr hasK expectedsort)
+
+
+let wrongTheoryMsg expr hasthry expectedsort =
     ("The model " ^ S.string_of_expr expr ^ " is used as if it were a "
-      ^ expectedsort ^ " in\n " ^ S.string_of_expr context_expr ^ 
+      ^ expectedsort ^ 
       "\nbut it actually has the theory " ^ L.string_of_theory hasthry)
 
+let wrongTheoryError expr hasthry expectedsort context_expr =
+  tyGenericError (wrongTheoryMsg expr hasthry expectedsort)
+
+
+let tyMismatchMsg expr expectedTy foundTy =
+  ("The term " ^ S.string_of_expr expr ^ " was expected to have type " ^
+      L.string_of_set expectedTy ^ " instead of type " ^ 
+      L.string_of_set foundTy)
+    
 let tyMismatchError expr expectedTy foundTy context_expr =
-  tyGenericError
-    ("The term " ^ S.string_of_expr expr ^ " was expected to have type " ^
-	L.string_of_set expectedTy ^ " instead of type " ^ 
-	L.string_of_set foundTy ^ " in\n" ^ S.string_of_expr context_expr)
+  tyGenericError (tyMismatchMsg expr expectedTy foundTy)
+
+
+let propTypeMismatchMsg expr expectedTy foundTy =
+  ("The proposition " ^ S.string_of_expr expr ^ " was expected to have type " ^
+	L.string_of_proptype expectedTy ^ " instead of type " ^ 
+	L.string_of_proptype foundTy)
 
 let propTypeMismatchError expr expectedTy foundTy context_expr =
-  tyGenericError
-    ("The proposition " ^ S.string_of_expr expr ^ " was expected to have type " ^
-	L.string_of_proptype expectedTy ^ " instead of type " ^ 
-	L.string_of_proptype foundTy ^ " in\n" ^ S.string_of_expr context_expr)
+  tyGenericError (propTypeMismatchMsg expr expectedTy foundTy)
 
-let kindMismatchError expr expectedK foundK context_expr =
-  tyGenericError
+
+let kindMismatchMsg expr expectedK foundK =
     ("The set " ^ S.string_of_expr expr ^ " was expected to have kind " ^
 	L.string_of_kind expectedK ^ " instead of kind " ^ 
-	L.string_of_kind foundK ^ " in " ^ S.string_of_expr context_expr)
+	L.string_of_kind foundK)
+
+let kindMismatchError expr expectedK foundK context_expr =
+  tyGenericError (kindMismatchMsg expr expectedK foundK)
+
+
+let theoryMismatchMsg expr expectedT foundT =
+  ("The model " ^ S.string_of_expr expr ^ 
+      " was expected to satisfy theory\n\n" ^
+      L.string_of_theory expectedT ^ "\n\ninstead of theory\n\n" ^ 
+      L.string_of_theory foundT)
 
 let theoryMismatchError expr expectedT foundT context_expr =
-  tyGenericError
-    ("The model " ^ S.string_of_expr expr ^ " was expected to satisfy theory\n\n" ^
-	L.string_of_theory expectedT ^ "\n\ninstead of theory\n\n" ^ 
-	L.string_of_theory foundT ^ "\n\nin " ^ S.string_of_expr context_expr)
+  tyGenericError (theoryMismatchMsg expr expectedT foundT)
 
-let notEquivalenceOnError expr expectedDomExpr =
-  tyGenericError
+
+let notEquivalenceOnMsg expr expectedDomExpr =
     ("The relation " ^ S.string_of_expr expr ^ 
 	" is not an equivalence relation on " ^ 
 	S.string_of_expr expectedDomExpr)
 
-let cantElimError context_expr =
-  tyGenericError 
-    ("Inferred type of " ^ S.string_of_expr context_expr ^ 
-	" refers to a locally-bound variable; " ^ 
-	"maybe a constraint on the body would help?")
+let notEquivalenceOnError expr expectedDomExpr =
+  tyGenericError (notEquivalenceOnMsg expr expectedDomExpr)
 
-let tyJoinError ty1 ty2 =
-   tyGenericError
+
+let cantElimMsg nm ty expr =
+    ("Inferred type " ^ L.string_of_set ty ^ " of " ^ S.string_of_expr expr ^ 
+	"\nrefers to the variable " ^ string_of_name nm ^
+	" going out of scope.  (Maybe a constraint would help?)")
+
+let cantElimError nm ty expr =
+  tyGenericError (cantElimMsg nm ty expr)
+
+
+let cantElimPTMsg nm pt expr =
+    ("Inferred type " ^ L.string_of_proptype pt ^ " of " 
+      ^ S.string_of_expr expr ^ 
+	"\nrefers to the variable " ^ string_of_name nm ^
+	" going out of scope.  (Maybe a constraint would help?)")
+
+let cantElimPTError nm pt expr =
+  tyGenericError (cantElimPTMsg nm pt expr)
+
+
+let tyJoinMsg ty1 ty2 =
      ("the types " ^ L.string_of_set ty1 ^ " and " ^
 	 L.string_of_set ty2 ^ " are incompatible")
 
-let tyPTJoinError pt1 pt2 =
-   tyGenericError
+let tyJoinError ty1 ty2 =
+   tyGenericError (tyJoinMsg ty1 ty2)
+
+
+let tyPTJoinMsg pt1 pt2 =
      ("the types " ^ L.string_of_proptype pt1 ^ " and " ^
 	 L.string_of_proptype pt2 ^ " are incompatible")
+
+let tyPTJoinError pt1 pt2 =
+   tyGenericError (tyPTJoinMsg pt1 pt2)
+
 
 let badModelProjMsg nm expr why =
     ("Cannot project " ^ string_of_name nm ^ " in " ^ S.string_of_expr expr
@@ -181,26 +243,37 @@ let badModelProjMsg nm expr why =
 let badModelProjectionError nm expr why =
   tyGenericError (badModelProjMsg nm expr why)
 
-let innerModelBindingError context_expr =
-  tyGenericError
+
+let innerModelBindingMsg context_expr =
     ("A non-top-level binding of a model variable was found:\n"
       ^ S.string_of_expr context_expr)
 
-let illegalBindingError nm where_type_came_from context_expr =
-  tyGenericError
+let innerModelBindingError context_expr =
+  tyGenericError (innerModelBindingMsg context_expr)
+
+
+let illegalBindingMsg nm where_type_came_from =
     ("The " ^ where_type_came_from ^ " type of " ^ string_of_name nm ^
-	" is not suitable for a binding in " ^
-	S.string_of_expr context_expr)
+	" is not suitable for a binding")
+
+let illegalBindingError nm where_type_came_from context_expr =
+  tyGenericError (illegalBindingMsg nm where_type_came_from)
+
  
-let illegalNameError nm what_kind_its_supposed_to_be =
-  tyGenericError
+let illegalNameMsg nm what_kind_its_supposed_to_be =
     ("The name " ^ string_of_name nm ^ " is not legal for a " ^
 	what_kind_its_supposed_to_be)
 
-let shadowingError nm =
-  tyGenericError
+let illegalNameError nm what_kind_its_supposed_to_be =
+  tyGenericError (illegalNameMsg nm what_kind_its_supposed_to_be)
+
+
+let shadowingMsg nm =
     ("Illegal shadowing; the name " ^ string_of_name nm ^ 
 	" appears twice in the same context," ^ 
         "\nand automatic renaming is not possible.")
+
+let shadowingError nm =
+  tyGenericError (shadowingMsg nm)
      
 

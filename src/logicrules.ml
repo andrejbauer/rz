@@ -1,6 +1,8 @@
 open Name
 open Logic
+open Possibility
 module E = Error
+
 
 (*****************)
 (** {2 Contexts} *)
@@ -271,7 +273,7 @@ let rec hnfTheory cntxt = function
       begin
 	match lookupId cntxt nm with
 	    Some(DeclTheory (thry, _)) -> hnfTheory cntxt thry
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.hnfTheory 1"
       end
   | TheoryApp (thry, mdl) ->
       begin
@@ -279,38 +281,38 @@ let rec hnfTheory cntxt = function
 	    TheoryLambda((nm,_), thry2) ->
 	      let subst = insertModelvar emptysubst nm mdl
 	      in hnfTheory cntxt (substTheory subst thry2)
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.hnfTheory 2"
       end
   | thry -> thry
 
 (* cntxt -> model -> theory *)
 (** Assumes that the given model is well-formed.
 *)
-let rec modelToTheory cntxt = function
+let rec theoryOf cntxt = function
     ModelName nm ->
       begin
 	match (lookupId cntxt nm) with
 	    Some(DeclModel thry) -> thry
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.theoryOf 1"
       end
   | ModelProj (mdl, nm) -> 
       begin
-	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	match hnfTheory cntxt (theoryOf cntxt mdl) with
 	    Theory elems ->
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclModel thry) -> thry
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.theoryOf 2"
 	      end
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.theoryOf 3"
       end
   | ModelApp (mdl1, mdl2) ->
       begin
-	match hnfTheory cntxt (modelToTheory cntxt mdl1) with
+	match hnfTheory cntxt (theoryOf cntxt mdl1) with
 	    TheoryArrow((nm, thry1), thry2) ->
 	      let subst = insertModelvar emptysubst nm mdl2
 	      in substTheory subst thry2
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.theoryOf 4"
       end
 	
 
@@ -323,20 +325,20 @@ let rec hnfSet cntxt = function
 	match (lookupId cntxt stnm) with
             Some(DeclSet(Some st, _)) -> hnfSet cntxt st
 	  | Some(DeclSet(None, _))    -> orig_set
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: hnfSet 1"
       end
 
   | Basic (SLN ( Some mdl, nm), _) as orig_set -> 
       begin
-	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	match hnfTheory cntxt (theoryOf cntxt mdl) with
 	    Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclSet(Some st, _)) -> hnfSet cntxt st
 		  | Some (DeclSet(None, _))    -> orig_set
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: hnfSet 2"
 	      end
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: hnfSet 3"
       end
 
   | SApp(st1,trm2) -> 
@@ -361,20 +363,20 @@ let rec hnfTerm cntxt = function
 	match (lookupId cntxt nm) with
             Some(DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
 	  | Some(DeclTerm(None, _))    -> orig_term
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.hnfTerm 1"
       end
 
   | Var (LN ( Some mdl, nm)) as orig_term -> 
       begin
-	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	match hnfTheory cntxt (theoryOf cntxt mdl) with
 	    Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
 		  | Some (DeclTerm(None, _))    -> orig_term
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.hnfTerm 2"
 	      end
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.hnfTerm 3"
       end
 
   | App(trm1,trm2) -> 
@@ -394,7 +396,7 @@ let rec hnfTerm cntxt = function
 	      begin
 		match (List.find (fun (l,_,_) -> l = lbl) arms) with
 		    (_, None, trm2) -> hnfTerm cntxt trm2
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.hnfTerm 4"
 	      end
 	  | Inj(lbl, Some trm1') ->
 	      begin
@@ -403,7 +405,7 @@ let rec hnfTerm cntxt = function
 		      let sub = insertTermvar emptysubst nm trm1'
 		      in
 			hnfTerm cntxt (subst sub trm2)
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.hnfTerm 5"
 	      end
 	  | trm1' -> Case(trm1', arms)
       end
@@ -431,20 +433,20 @@ let rec hnfProp cntxt = function
 	match (lookupId cntxt nm) with
             Some (DeclProp(Some prp, _)) -> hnfProp cntxt prp
 	  | Some (DeclProp(None, _))    -> orig_prop
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.hnfProp 1"
       end
 
   | Atomic (LN ( Some mdl, nm), _) as orig_prop -> 
       begin
-	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	match hnfTheory cntxt (theoryOf cntxt mdl) with
 	    Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclProp(Some prp, _)) -> hnfProp cntxt prp
 		  | Some (DeclProp(None, _))    -> orig_prop
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.hnfProp 2"
 	      end
-	  | _ -> raise Impossible
+	  | _ -> failwith "Impossible: Logicrules.hnfProp 3"
       end
 
   | PApp(prp1,trm2) -> 
@@ -464,7 +466,7 @@ let rec hnfProp cntxt = function
 	      begin
 		match (List.find (fun (l,_,_) -> l = lbl) arms) with
 		    (_, None, prp1') -> hnfProp cntxt prp1'
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.hnfProp 4"
 	      end
 	  | Inj(lbl, Some trm1') ->
 	      begin
@@ -473,7 +475,7 @@ let rec hnfProp cntxt = function
 		      let sub = insertTermvar emptysubst nm trm1'
 		      in
 			hnfProp cntxt (substProp sub prp2)
-		  | _ -> raise Impossible
+		  | _ -> failwith "Impossible: Logicrules.hnfProp 5"
 	      end
 	  | trm1' -> PCase(trm1', arms)
       end
@@ -489,6 +491,8 @@ let rec hnfProp cntxt = function
 (****************************************)
 (** {4 Sets: equivalence and subtyping} *)
 (****************************************)
+
+
 
 let eqArms cntxt substFn eqFn eqSetFn arms1 arms2 =
   let rec loop = function
@@ -759,24 +763,6 @@ and eqProp cntxt prp1 prp2 =
       | (PCase(trm1, arms1), PCase(trm2, arms2)) ->
 	  eqTerm cntxt trm1 trm2 &&
 	    eqArms cntxt substProp eqProp eqSet arms1 arms2
-      | (PAssure(Some (nm1, st1), prp1a, prp1b), 
-	 PAssure(Some (nm2, st2), prp2a, prp2b)) ->
-	  eqSet cntxt st1 st2 &&
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
-	    in let prp1a' = substProp sub1 prp1a
-	    in let prp2a' = substProp sub2 prp2a
-	    in let prp1b' = substProp sub1 prp1b
-	    in let prp2b' = substProp sub2 prp2b
-	    in let cntxt' = insertTermVariable cntxt nm st1 None
-	    in 
-		 eqProp cntxt' prp1a' prp2a' &&
-		   eqProp cntxt' prp1b' prp2b' 
-
-      | (PAssure(None, prp1a, prp1b),
-	PAssure(None, prp2a, prp2b)) ->
-	  eqProp cntxt prp1a prp2a &&
-	    eqProp cntxt prp2a prp2b
-
       | _ -> false
 	    
 and eqProps cntxt prps1 prps2 = 
@@ -866,24 +852,6 @@ and eqTerm cntxt trm1 trm2 =
 	  eqTerm cntxt trm1 trm2 &&
 	    eqSet cntxt st1 st2
 
-      | (Assure(Some(nm1, st1), prp1, trm1), 
-	 Assure(Some(nm2, st2), prp2, trm2)) ->
-	  eqSet cntxt st1 st2 &&
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
-	    in let prp1' = substProp sub1 prp1
-	    in let prp2' = substProp sub2 prp2
-	    in let trm1' = subst sub1 trm1
-	    in let trm2' = subst sub2 trm2
-	    in let cntxt' = insertTermVariable cntxt nm st1 None
-	    in 
-		 eqProp cntxt' prp1' prp2' &&
-		   eqTerm cntxt' trm1' trm2'
-
-      | (Assure(None, prp1, trm1), 
-	 Assure(None, prp2, trm2)) ->
-	  eqProp cntxt prp1 prp2 &&
-	    eqTerm cntxt trm1 trm2
-
       | _ -> false
 	 
 and eqTerms cntxt trms1 trms2 = 
@@ -899,53 +867,87 @@ and eqSet cntxt st1 st2 = eqSet' false cntxt st1 st2
 and subSet cntxt st1 st2 = eqSet' true cntxt st1 st2
 
 
-(** Computes the join of the two sets s1 and s2.
-    Like subtSet (and unlike Coerce), 
-    join does *not* do implicit conversions *)
-let joinType cntxt s1 s2 = 
-   if (s1 = s2) then
-      (* Short circuit *)
-      s1
+(** Computes the join of the two sets s1 and s2.  Like subtSet (and
+    unlike Coerce), join does *not* do/include/permit implicit
+    conversions *)
+let rec joinType cntxt s1 s2 : set possibility = 
+  if (s1 = s2) then
+    (* Short circuit *)
+      definitely s1
    else
       let    s1' = hnfSet cntxt s1
       in let s2' = hnfSet cntxt s2
 
+      (* Assumes arms of the two types are merged and sorted *)
       in let rec joinSums = function 
-	  ([], s2s) -> s2s
-        | ((l1,None)::s1s, s2s) ->
-	    (if (List.mem_assoc l1 s2s) then
-	      (match (List.assoc l1 s2s) with
-	          None -> joinSums(s1s, s2s)
-		| Some _ -> E.tyGenericError ("Disagreement as to whether " ^ l1 ^
-                         " stands alone or tags a value"))
-	    else (l1,None) :: joinSums(s1s, s2s))
-        | ((l1,Some s1)::s1s, s2s) ->
-	    (if (List.mem_assoc l1 s2s) then
-	      (match (List.assoc l1 s2s) with
-		  Some s2 -> 
-		    if eqSet cntxt s1 s2 then
-		      joinSums(s1s, s2s)
-		    else
-		      E.tyGenericError ("Disagreement on what type of value " ^ 
-                                        l1 ^ " should tag")
-		| None -> E.tyGenericError("Disagreement as to whether " ^ l1 ^
-					 " tags a value or stands alone"))
-	    else (l1,Some s1) :: joinSums(s1s, s2s))
+	  ([], sumA, reqA) -> YesIf(Sum sumA, reqA)
 
+	| ([last], sumA, reqA) -> joinSums([], last :: sumA, reqA)
 
-      in match (s1',s2') with
-        | (Sum lsos1, Sum lsos2) -> Sum (joinSums (lsos1, lsos2))
-        | _ -> if eqSet cntxt s1 s2 then
-                  s1
-       	       else
-	          E.tyJoinError s1 s2
- 
+	| ( ((l1,_) as first) :: (((l2,_) :: _) as rest), sumA, reqA) 
+	    when l1 <> l2 ->
+	    (* First two labels in the list are unequal *)
+	    joinSums(rest, first :: sumA, reqA)
+
+	| ( ((l1,None) as first) :: (_,None) :: rest, sumA, reqA) ->
+	    (* If we got this far, the two labels are equal *)
+	    (* Both agree that l1 (== l2) tags no value. *)
+	    joinSums(rest, first :: sumA, reqA)
+
+	| ( (l1,Some ty1) :: (_, Some ty2) :: rest, sumA, reqA ) ->
+	    (* If we got this far, the two labels are equal *)
+	    (* Both agree that l1 (== l2) tags carry a value. *)
+	    begin
+	      match joinType cntxt ty1 ty2 with
+		  YesIf(ty, reqs) -> 
+		    joinSums(rest, (l1, Some ty)::sumA, reqs @ reqA)
+		| NoBecause reasons -> 
+		    NoBecause
+		      (("The label " ^ string_of_label l1 ^ 
+			   "tags inconsistent types " ^ string_of_set ty1 ^
+		           " and " ^ string_of_set ty2) :: reasons)
+	    end
+
+	| ( (l1, _) :: (l2, _) :: _, _, _) ->
+	    definitelyNot
+	      ("Disagreement as to whether " ^ l1 ^
+		  " stands alone or tags a value")
+
+      in let result =
+	match (s1',s2') with
+            (Sum lsos1, Sum lsos2) -> 
+	      let order (lbl1, _) (lbl2, _) = compare lbl1 lbl2
+	      in let lsos' = List.sort order (lsos1 @ lsos2)
+	      in 
+		   joinSums (lsos', [], []) 
+          | _ -> 
+	      begin
+(*
+		match (eqSet cntxt s1 s2) with
+	            YesIf (_,reqs) -> YesIf(s1, reqs)
+		  | NoBecause _ as ans -> ans
+*)
+		if (eqSet cntxt s1 s2) then
+		  YesIf(s1, [])
+		else
+		  NoBecause []
+	      end
+
+      in 
+	   possCase result
+	     (fun yes -> yes)
+	     (fun rsns -> 
+	       ("The types " ^ string_of_set s1 ^ " and " ^ 
+		   string_of_set s2 ^ " have no join") :: rsns)
 
 let joinTypes cntxt =
   let rec loop = function
-      [] -> Unit
-    | [s] -> s
-    | s::ss -> joinType cntxt s (loop ss)
+      [] -> definitely Unit
+    | [s] -> definitely s
+    | s::ss -> 
+	possCase' (loop ss)
+	  (fun (join_ss, reqs) -> addReqs (joinType cntxt s join_ss) reqs)
+	  (fun rsns            -> NoBecause rsns)
   in
     loop
 
@@ -957,17 +959,20 @@ let joinProperPropType p1 p2 =
       | _ -> failwith "joinProperPropType only allows Prop and StableProp!"
   end
 
-let joinProperPropTypes lst = List.fold_left joinProperPropType StableProp lst
+let joinProperPropTypes lst = 
+  List.fold_left joinProperPropType StableProp lst
 
 
 
 let rec joinPropType cntxt pt1 pt2 = 
-  begin
+  let ptposs = 
     match (pt1,pt2) with
-	(StableProp, StableProp) -> StableProp
-      | ((Prop | StableProp), (Prop | StableProp)) -> Prop
+	(StableProp, StableProp) ->
+	  definitely StableProp
+      | ((Prop | StableProp), (Prop | StableProp)) -> 
+	  definitely Prop
       | (EquivProp ty1, EquivProp ty2) -> 
-	  EquivProp (joinType cntxt ty1 ty2)
+	  modifyIfYes fEquivProp (joinType cntxt ty1 ty2)
       | (EquivProp ty1, _ ) -> 
 	  joinPropType cntxt (equivToArrow ty1) pt2
       | (_, EquivProp ty2) -> 
@@ -977,18 +982,33 @@ let rec joinPropType cntxt pt1 pt2 =
 	  in let pt3' = substProptype sub3 pt3
 	  in let pt4' = substProptype sub4 pt4
 	  in let cntxt' = insertTermVariable cntxt nm st3 None
-	  in if (eqSet cntxt st3 st4) then
-	      PropArrow(nm, st3, joinPropType cntxt' pt3' pt4')
-	    else
-	      E.tyPTJoinError pt1 pt2
-      | _ -> E.tyPTJoinError pt1 pt2
-
+	  in 
+	       if (eqSet cntxt st3 st4) then
+		 modifyIfYes (fun pt -> PropArrow(nm, st3, pt))  
+		   (joinPropType cntxt' pt3' pt4') 
+	       else
+		 definitelyNot ("The domain types " ^ string_of_set st3 ^ 
+				   " and " ^ string_of_set st4 ^ 
+				   " have no join")
+		   
+      | _ -> NoBecause []
+  in
+    
+    ifNotWhyNot ptposs 
+      ("The propositional types " ^ string_of_proptype pt1 ^ 
+	  " and " ^ string_of_proptype pt2 ^ " have no join")
       
-  end
 
-let joinPropTypes cntxt = function
-    pt::pts -> List.fold_left (joinPropType cntxt) pt pts
-  | [] -> failwith "joinPropTypes applied to empty list"
+let joinPropTypes cntxt =
+  let rec loop = function
+      []      -> definitelyNot "No join for zero propositional types"
+    | [pt]    -> definitely pt
+    | pt::pts -> 
+	possCase' (loop pts)
+	  (fun (join_pt, reqs) -> addReqs (joinPropType cntxt pt join_pt) reqs)
+	  (fun rsns            -> NoBecause rsns)
+  in
+    loop
 
 
 let rec eqMbnd cntxt subst1 subst2 (nm1, thry1) (nm2, thry2) =
@@ -1218,7 +1238,7 @@ let rec coerce cntxt trm st1 st2 =
 			("coerce: dependent->? case for products arose. " ^
 			    "Maybe it should be implemented after all");
 		     None)
-	      | _ -> raise Impossible
+	      | _ -> failwith "Impossible: Logicrules.coerce 1"
             in (match (loop emptysubst (trms, sts1, sts2)) with
                   Some trms' -> Some (Tuple trms')
                 | None -> None)

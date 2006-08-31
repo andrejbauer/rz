@@ -10,7 +10,11 @@ instead of theory
 
 B
 
-in FF BB
+...IN:  FF BB
+
+...IN:  FF BB.a
+
+...IN:  Definition a := FF BB.a.
 -------------------------------
 
 Fatal error: exception Error.TypeError

@@ -20,6 +20,7 @@ BYTE_OBJS = name.cmo \
 	flags.cmo \
 	logic.cmo \
 	error.cmo \
+	possibility.cmo \
 	logicrules.cmo \
         newinfer.cmo \
         outsyn.cmo \
@@ -79,8 +80,8 @@ rzinfer: name.cmo \
 	logic.cmo \
 	error.cmo \
 	possibility.cmo \
-	new2logicrules.cmo \
-        new2infer.cmo \
+	logicrules.cmo \
+        newinfer.cmo \
 	rzinfer.cmo	
 	$(OCAMLC) -o rzinfer $(OCAMLFLAGS) unix.cma $+ 
 

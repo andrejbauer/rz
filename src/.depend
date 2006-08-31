@@ -19,16 +19,14 @@ load.cmo: coq_parser.cmi coq_lexer.cmo
 load.cmx: coq_parser.cmx coq_lexer.cmx 
 logic.cmo: syntax.cmo name.cmo 
 logic.cmx: syntax.cmx name.cmx 
-logicrules.cmo: name.cmo logic.cmo error.cmo 
-logicrules.cmx: name.cmx logic.cmx error.cmx 
-new2infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
-new2infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
-new2logicrules.cmo: possibility.cmo name.cmo logic.cmo error.cmo 
-new2logicrules.cmx: possibility.cmx name.cmx logic.cmx error.cmx 
+logicrules.cmo: possibility.cmo name.cmo logic.cmo error.cmo 
+logicrules.cmx: possibility.cmx name.cmx logic.cmx error.cmx 
 newinfer-bak.cmo: syntax.cmo name.cmo logic.cmo 
 newinfer-bak.cmx: syntax.cmx name.cmx logic.cmx 
-newinfer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
-newinfer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
+newinfer.cmo: syntax.cmo possibility.cmo name.cmo logicrules.cmo logic.cmo \
+    error.cmo 
+newinfer.cmx: syntax.cmx possibility.cmx name.cmx logicrules.cmx logic.cmx \
+    error.cmx 
 opt.cmo: outsyn.cmo name.cmo flags.cmo 
 opt.cmx: outsyn.cmx name.cmx flags.cmx 
 outsyn.cmo: name.cmo logic.cmo 

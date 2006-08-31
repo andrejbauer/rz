@@ -190,6 +190,11 @@ let doOpt funct = function
     None -> None
   | Some v -> Some (funct v)
 
+let foldAssure reqs bdy =
+  List.fold_right (fun req trm -> Assure(None, req, trm)) reqs bdy
+
+let foldPAssure reqs bdy =
+  List.fold_right (fun req prp -> PAssure(None, req, prp)) reqs bdy
 
 (****************************************)
 (** (Not-Very)-Pretty-Printing Routines *)

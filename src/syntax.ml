@@ -152,7 +152,7 @@ and string_of_expr = function
   | Rz e -> "rz " ^ string_of_expr e
   | Set -> "Set"
   | Prop -> "Prop"
-  | Equiv e -> "Euiv " ^ string_of_expr e
+  | Equiv e -> "Equiv " ^ string_of_expr e
   | Stable -> "Stable"
   | EmptyTuple -> "()"
   | Tuple lst -> embrace (String.concat ", " (List.map string_of_expr lst))
