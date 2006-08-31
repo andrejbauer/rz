@@ -200,7 +200,7 @@ let foldPAssure reqs bdy =
 (** (Not-Very)-Pretty-Printing Routines *)
 (****************************************)
 
-let string_of_label lbl = lbl
+let string_of_label = S.string_of_label
 
 let rec string_of_model = function
     ModelName nm -> string_of_name nm

@@ -108,7 +108,7 @@ and toplevel =
   | TopModel  of model_name * expr
 
 
-let string_of_label l = l
+let string_of_label l = "`" ^ l
 
 let embrace s = "(" ^ s ^ ")"
 
