@@ -186,194 +186,15 @@ let foldTheoryLambda bnds bdy =
 let foldTheoryKindArrow bnds bdy = 
   List.fold_right (fun mbnd thry -> TheoryKindArrow (mbnd, thry)) bnds bdy
 
-(****************************************)
-(* Substitution functions for Logic.xxx *)
-(****************************************)
-
 let doOpt funct = function
     None -> None
   | Some v -> Some (funct v)
 
-(** The function [substMXXX m mdl] substitutes mode name (string) [m]
-    for model [mdl] *)
 
-let rec substMModel m mdl = function
-    (ModelName m') as mdl' -> if m = m' then mdl else mdl'
-  | ModelProj (mdl', n) -> ModelProj (substMModel m mdl mdl', n)
-  | ModelApp (mdl1, mdl2) -> ModelApp (substMModel m mdl mdl1, substMModel m mdl mdl2)
-      
-and substMLN m mdl = function
-    (LN (None, _)) as ln -> ln
-  | LN (Some mdl', nm) -> LN (Some (substMModel m mdl mdl'), nm)
-      
-and substMSLN m mdl = function
-    (SLN (None, _)) as ln -> ln
-  | SLN (Some mdl', nm) -> SLN (Some (substMModel m mdl mdl'), nm)
-      
-and substMProp m mdl p =
-  let rec subst = function
-      False -> False
-    | True -> True
-    | Atomic (lnm, pt) -> Atomic (substMLN m mdl lnm, substMProptype m mdl pt)
-    | PApp (p,t) -> PApp (subst p, substMTerm m mdl t)
-    | PLambda ((n,s),p) -> PLambda ((n, substMSet m mdl s), subst p)
-    | And lst -> And (List.map subst lst)
-    | Imply (p, q) -> Imply (subst p, subst q)
-    | Iff (p, q) -> Iff (subst p, subst q)
-    | Or lst -> Or (List.map subst lst)
-    | Forall ((n,s),p) -> Forall ((n, substMSet m mdl s), subst p)
-    | Exists ((n,s),p) -> Exists ((n, substMSet m mdl s), subst p)
-    | Unique ((n,s),p) -> Unique ((n, substMSet m mdl s), subst p)
-    | Not p -> Not (subst p)
-    | Equal (s, t, u) -> Equal (substMSet m mdl s, substMTerm m mdl t, substMTerm m mdl u)
-    | IsEquiv (p, s) -> IsEquiv (substMProp m mdl p, substMSet m mdl s)
-    | PAssure ((x,s), p, q) ->
-	PAssure ((x, substMSet m mdl s), subst p, subst q)
-    | PCase (t, lst) ->
-	let processArm = function
-	    (lbl, None, p)       -> (lbl, None, subst p)
-	  | (lbl, Some (n,s), t) -> (lbl, Some (n, substMSet m mdl s), subst t)
-	in
-	  PCase (substMTerm m mdl t, List.map processArm lst)
-  in
-    subst p
+(****************************************)
+(** (Not-Very)-Pretty-Printing Routines *)
+(****************************************)
 
-and substMTerm m mdl t =
-  let rec subst = function
-      EmptyTuple -> EmptyTuple
-    | Var ln -> Var (substMLN m mdl ln)
-    | Tuple lst -> Tuple (List.map subst lst)
-    | Proj (i,t) -> Proj (i, subst t)
-    | App (t, u) -> App (subst t, subst u)
-    | Lambda ((n,s), t) -> Lambda ((n, substMSet m mdl s), subst t)
-    | The ((n,s), p) -> The ((n, substMSet m mdl s), substMProp m mdl p)
-    | Inj (_, None) as t -> t
-    | Inj (lbl, Some t) -> Inj (lbl, Some (subst t))
-    | Case (t, lst) -> Case (subst t,
-			     List.map (function
-					   lbl, None, t -> lbl, None, subst t
-					 | lbl, Some (n,s), t -> lbl, Some (n, substMSet m mdl s), subst t)
-			       lst)
-    | RzQuot t -> RzQuot (subst t)
-    | RzChoose ((n,s), t, u, s') ->
-	RzChoose ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
-    | Quot (t, p) -> Quot (subst t, substMProp m mdl p)
-    | Choose ((n,s),r,t,u,s') ->
-	Choose ((n, substMSet m mdl s), substMProp m mdl r, subst t, subst u, substMSet m mdl s')
-    | Let ((n,s), t, u, s') -> Let ((n, substMSet m mdl s), subst t, subst u, substMSet m mdl s')
-    | Subin (t, s) -> Subin (subst t, substMSet m mdl s)
-    | Subout (t, s) -> Subout (subst t, substMSet m mdl s)
-    | Assure ((x,s), p, t) ->
-	Assure ((x, substMSet m mdl s), substMProp m mdl p, subst t)
-  in
-    subst t
-
-and substMSet m mdl s =
-  let rec subst = function
-      Empty -> Empty
-    | Unit -> Unit
-    | Basic (ln, knd) -> Basic (substMSLN m mdl ln, substMSetkind m mdl knd)
-    | Product lst -> Product (List.map (fun (n,s) -> (n, subst s)) lst)
-    | Exp (n, s, t) -> Exp (n, subst s, subst t)
-    | Sum lst -> Sum (List.map
-			(function lbl, None -> lbl, None | lbl, Some s -> lbl, Some (subst s))
-			lst)
-    | Subset ((n,s),p) -> Subset((n, subst s), substMProp m mdl p)
-    | Rz s -> Rz (subst s)
-    | Quotient (s, p) -> Quotient (subst s, substMProp m mdl p)
-    | SApp (s, t) -> SApp (subst s, substMTerm m mdl t)
-    | SLambda ((n,s), t) -> SLambda ((n, subst s), subst t)
-    | SAssure ((x,s), p, t) ->
-	SAssure ((x, subst s), substMProp m mdl p, subst t)
-  in
-    subst s
-
-and substMSetOption m mdl = function
-    None -> None
-  | Some s -> Some (substMSet m mdl s)
-
-and substMSetkind m mdl = function
-    KindSet -> KindSet
-  | KindArrow (n, s, k) -> KindArrow (n, substMSet m mdl s, substMSetkind m mdl k)
-
-and substMProptype m mdl = function
-    Prop -> Prop
-  | StableProp -> StableProp
-  | EquivProp s -> EquivProp (substMSet m mdl s)
-  | PropArrow (nm, s, pt) -> PropArrow (nm, substMSet m mdl s, substMProptype m mdl pt)
-
-(*
-  substProp:  name -> term -> proposition -> proposition
-  substSet :  name -> term -> set -> set
-  subst    :  name -> term -> term -> term
-
-  WARNING:  Not capture-avoiding, so either use this
-  only for closed terms or terms with free variables that
-  are "fresh".
-*)
-
-(* AB: These seem not to be used anywhere?
-let rec substProp x t =
-  (let rec sub = function
-      And ps           -> And  (List.map sub ps)
-    | Imply (p1,p2)    -> Imply (sub p1, sub p2)
-    | Iff (p1,p2)      -> Iff  (sub p1, sub p2)
-    | Or  ps           -> Or   (List.map sub ps)
-    | Forall((y,s),p1) -> Forall ((y,substSet x t s), 
-				    if (x=y) then p1 else sub p1)
-    | Exists((y,s),p1) -> Exists ((y,substSet x t s), 
-				    if (x=y) then p1 else sub p1)
-    | Not p1           -> Not (sub p1)
-    | Equal (s,t1,t2)  -> Equal (substSet x t s, subst x t t1, subst x t t2)
-    | t                -> t (* False, True, Atomic n *)
-  in sub)
-
-and substSet x t =
-     (let rec sub = function
-           Product ss       -> Product (List.map sub ss)
-         | Exp (s1,s2)      -> Exp (sub s1, sub s2)
-         | Sum lss          -> Sum (List.map 
-                                      (function (l,sopt) -> (l, subOpt sopt)) 
-                                    lss)
-         | Subset ((y,s),p) -> Subset ((y,sub s),
-				       if (x=y) then p else substProp x t p )
-         | Rz s             -> Rz (sub s)
-(*         | Quotient(s,u)   -> Quotient(sub s, subst x t u) *)
-         | s                    -> s  (* Empty, Unit, Bool, and Basic *)
-     and subOpt = function
-           None -> None
-         | Some s -> Some (sub s)
-     in sub)
-
-and subst x t = 
-    (let rec sub = function
-          Var y             -> if (x=y) then t else Var y
-        | Tuple ts          -> Tuple (List.map sub ts)
-        | Proj (n,t1)       -> Proj (n, sub t1)
-        | App (t1,t2)       -> App (sub t1, sub t2)
-        | Inj (l,t1)        -> Inj (l, sub t1)
-        | Case (t1,arms)    -> Case (t1, subarms arms)
-        | Let ((y,s),t1,t2,s2) -> Let((y,substSet x t s),
-                                      sub t1, 
-				      if (x=y) then t2 else sub t2,
-                                      substSet x t s2)
-(*
-        | Choose((y,s),t1,t2) ->
-            Choose((y,substSet x t s),
-                     sub t1, 
-                     if (x=y) then t2 else sub t2)
-*)
-        | Star          -> Star
-
-     and subarms = function
-          [] -> []
-        | (l,Some (y,s),u)::rest ->
-              (l, Some (y,substSet x t s),
-               if (x=y) then u else sub u ) :: (subarms rest)
-        | (l,None,u)::rest ->
-              (l, None, sub u) :: (subarms rest)
-     in sub)
-*)
 
 let rec string_of_model = function
     ModelName nm -> string_of_name nm
@@ -640,6 +461,11 @@ let model_name_of_name = function
 let theory_name_of_name = model_name_of_name
 
 
+(***********************************)
+(** Free-variable (name) functions *)
+(***********************************)
+
+
 let rec fnSet = function
     Empty | Unit  -> NameSet.empty
   | Basic (SLN(None, nm), knd) -> NameSet.union (NameSet.singleton nm) (fnSetkind knd)
@@ -749,7 +575,9 @@ and fnModel = function
   | ModelProj (mdl, _) -> fnModel mdl
   | ModelApp (mdl1, mdl2) -> NameSet.union (fnModel mdl1) (fnModel mdl2)
 
-(* Substitution functions. *)
+(***************************)
+(** Substitution functions *)
+(***************************)
 
 type subst = {terms: term NameMap.t;
               sets: set NameMap.t;
@@ -1100,18 +928,7 @@ and substTheoryElt sub elem =
   match substTheoryElts sub [elem] with
       [elem'] -> elem'
     | _ -> raise Impossible
-(*
-and substBnd sub (nm, stopt) = 
-    ((nm, substSetOption sub stopt), 
-      insertTermvar sub nm (Var (None, nm)))
 
-and substBnds sub = function
-     [] -> ([], sub)
-    | bnd :: rest -> 
-       let (bnd',  sub' ) = substBnd sub bnd
-       in let (rest', sub'') = substBnds sub' rest 
-       in (bnd' :: rest', sub'')
-*)
 
 and substMBnds sub = function
      [] -> ([], sub)
@@ -1120,4 +937,14 @@ and substMBnds sub = function
        let (rest', sub'') = substMBnds sub' rest in
          ((mdlnm, substTheory sub thry) :: rest', sub'')
 
-      
+(* Specialized functions just for inserting a model *)
+    
+let modelSubst nm mdl = insertModelvar emptysubst nm mdl
+
+let substMModel nm mdl = substModel (modelSubst nm mdl)
+let substMSet nm mdl = substSet (modelSubst nm mdl)
+let substMSetOption nm mdl = doOpt (substSet (modelSubst nm mdl))
+let substMSetkind nm mdl = substSetkind (modelSubst nm mdl)
+let substMTerm nm mdl = subst (modelSubst nm mdl)
+
+
