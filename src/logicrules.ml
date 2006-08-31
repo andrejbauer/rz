@@ -603,6 +603,19 @@ let rec eqSet' do_subset cntxt =
 		    (** XXX Is it? *)
                     eqSet cntxt st3 st4  
 
+	       | (SAssure((nm1, st1a), prp1, st1b), 
+		  SAssure((nm2, st2a), prp2, st2b)) ->
+		   eqSet cntxt st1a st2a &&
+		     let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	             in let prp1' = substProp sub1 prp1
+	             in let prp2' = substProp sub2 prp2
+		     in let st1b' = substSet sub1 st1b
+	             in let st2b' = substSet sub2 st2b
+		     in let cntxt' = insertTermVariable cntxt nm st1a None
+	             in 
+			  eqProp cntxt' prp1' prp2' &&
+			    eqSet cntxt' st1b' st2b'
+
                | (_,_) -> false )
 
       and cmpProducts' cntxt subst1 subst2 = function
@@ -753,12 +766,24 @@ and eqProp cntxt prp1 prp2 =
       | (PApp(prp1, trm1), PApp(prp2, trm2)) ->
 	  eqProp cntxt prp1 prp2 &&
 	    eqTerm cntxt trm1 trm2
-      | (EquivCoerce(st1,prp1), EquivCoerce(st2,prp2)) ->
-	  eqSet cntxt st1 st2 &&
-	    eqProp cntxt prp1 prp2
+      | (IsEquiv(prp1,st1), IsEquiv(prp2,st2)) ->
+	  eqProp cntxt prp1 prp2 &&
+	    eqSet cntxt st1 st2 
       | (PCase(trm1, arms1), PCase(trm2, arms2)) ->
 	  eqTerm cntxt trm1 trm2 &&
 	    eqArms cntxt substProp eqProp eqSet arms1 arms2
+      | (PAssure((nm1, st1), prp1a, prp1b), 
+	 PAssure((nm2, st2), prp2a, prp2b)) ->
+	  eqSet cntxt st1 st2 &&
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	    in let prp1a' = substProp sub1 prp1a
+	    in let prp2a' = substProp sub2 prp2a
+	    in let prp1b' = substProp sub1 prp1b
+	    in let prp2b' = substProp sub2 prp2b
+	    in let cntxt' = insertTermVariable cntxt nm st1 None
+	    in 
+		 eqProp cntxt' prp1a' prp2a' &&
+		   eqProp cntxt' prp1b' prp2b' 
       | _ -> false
 	    
 and eqProps cntxt prps1 prps2 = 
@@ -847,6 +872,19 @@ and eqTerm cntxt trm1 trm2 =
       | (Subout(trm1,st1), Subout(trm2,st2)) ->
 	  eqTerm cntxt trm1 trm2 &&
 	    eqSet cntxt st1 st2
+
+      | (Assure((nm1, st1), prp1, trm1), 
+	 Assure((nm2, st2), prp2, trm2)) ->
+	  eqSet cntxt st1 st2 &&
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	    in let prp1' = substProp sub1 prp1
+	    in let prp2' = substProp sub2 prp2
+	    in let trm1' = subst sub1 trm1
+	    in let trm2' = subst sub2 trm2
+	    in let cntxt' = insertTermVariable cntxt nm st1 None
+	    in 
+		 eqProp cntxt' prp1' prp2' &&
+		   eqTerm cntxt' trm1' trm2'
 
       | _ -> false
 	 

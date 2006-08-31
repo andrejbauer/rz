@@ -316,7 +316,9 @@ let rec annotateExpr cntxt = function
 		  in
 		       if (LR.subSet cntxt st2 st1a && 
 			      LR.subSet cntxt' st2 st1b) then
-			 ResProp(L.EquivCoerce(st2, prp1), L.EquivProp(st2))
+			 ResProp(L.PAssure((wildName(), L.Unit),
+					   L.IsEquiv(prp1, st2), prp1),
+				L.EquivProp(st2))
 		       else
 			 E.propTypeMismatchError expr1 pt2 pt1 orig_expr
 		end

@@ -33,6 +33,8 @@ parser.cmo: syntax.cmo message.cmo parser.cmi
 parser.cmx: syntax.cmx message.cmx parser.cmi 
 parserc.cmo: syntax.cmo message.cmo parserc.cmi 
 parserc.cmx: syntax.cmx message.cmx parserc.cmi 
+postinfer.cmo: outsyn.cmo name.cmo error.cmo 
+postinfer.cmx: outsyn.cmx name.cmx error.cmx 
 pp-hacked.cmo: outsyn.cmo name.cmo flags.cmo 
 pp-hacked.cmx: outsyn.cmx name.cmx flags.cmx 
 pp.cmo: outsyn.cmo name.cmo flags.cmo 

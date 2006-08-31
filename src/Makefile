@@ -23,6 +23,7 @@ BYTE_OBJS = name.cmo \
 	logicrules.cmo \
         newinfer.cmo \
         outsyn.cmo \
+	postinfer.cmo \
 	pp.cmo \
         opt.cmo \
         translate.cmo

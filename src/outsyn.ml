@@ -78,6 +78,11 @@ and proposition =
   | PObligation of proposition * proposition   (* obligation *)
   | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
 
+type proptype = 
+    | Prop
+    | PropArrow of binding * proptype
+    | PropMArrow of mbinding * proptype 
+
 type assertion = string * proposition
 
 type signat_element =
@@ -92,6 +97,11 @@ and signat =
   | Signat of signat_element list
   | SignatFunctor of modul_binding * signat
   | SignatApp of signat * modul * signat (** SignatApp(f,m,n): n is the result of f(m) *)
+
+and signatkind =
+    | ModulSignatKind    (* Kind of theories that classify modules,
+		            including classifiers for functors *)
+    | SignatKindArrow of modul_binding * signatkind (* Classifies SignatFunctors *)
 
 and modul_binding = modul_name * signat
 
@@ -455,6 +465,9 @@ and substSignatElements ?occ sbst =
 	cmnt :: (subst sbst rest)
   in
     subst sbst
+
+and substSignatElement ?occ sbst elem =
+  List.hd (substSignatElements ?occ sbst [elem])
 
 and substAssertion ?occ sbst (nm, prop) = (nm, substProp ?occ sbst prop)
 
