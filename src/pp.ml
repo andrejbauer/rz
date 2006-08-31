@@ -44,7 +44,7 @@ and output_term_13 ppf = function
 
 and output_term_12 ppf = function
     Lambda ((n, ty), t) ->
-      fprintf ppf "@[fun (%a : %a) ->@ %a@]" 
+      fprintf ppf "@[fun %a : %a =>@ %a@]" 
         output_name n  output_ty ty  output_term_12 t
   | Obligation ((n, TopTy), p, trm) ->
       fprintf ppf "@[assure @[%a@]@ in %a@]" 
@@ -256,7 +256,7 @@ and output_prop_14 ppf = function
 	| prp -> ([],prp)
       in let (alls, prp') = extract_foralls all_ty
       in
-	fprintf ppf "@[<hov 2>all (%a). @ %a@]" 
+	fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
 	  output_binds alls   output_prop_14 prp'
   | ForallTotal ((n, ty), p) as all_ty -> 
       let rec extract_foralls = function
@@ -266,7 +266,7 @@ and output_prop_14 ppf = function
 	| prp -> ([],prp)
       in let (alls, prp') = extract_foralls all_ty
       in
-	fprintf ppf "@[<hov 2>all (%a). @ %a@]" 
+	fprintf ppf "@[<hov 2>forall (%a), @ %a@]" 
 	  output_totalbinds alls   output_prop_14 prp'
   | Cexists ((n, ty), p) as cexists_ty -> 
       let rec extract_somes = function
@@ -276,17 +276,17 @@ and output_prop_14 ppf = function
 	| prp -> ([],prp)
       in let (somes, prp') = extract_somes cexists_ty
       in
-	fprintf ppf "@[<hov 2>some (%a). @ %a@]" 
+	fprintf ppf "@[<hov 2>exists %a, @ %a@]" 
 	  output_binds  somes   output_prop_14 prp'
   | Imply (p, q) -> 
-      fprintf ppf "%a =>@ %a"  output_prop_11 p   output_prop_14 q
+      fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
   | PLambda ((n, ty), p) ->
-      fprintf ppf "@[<hov>Pfun (%a : %a) ->@ %a@]" 
+      fprintf ppf "@[<hov>pfun %a : %a =>@ %a@]" 
         output_name n  output_ty ty  output_prop_14 p
 
   | PMLambda ((n, {ty=ty; tot=p}), q) ->
-      fprintf ppf "@[<hov 2>PMfun (%a : %a(%a)) ->@ %a@]" 
+      fprintf ppf "@[<hov 2>pmfun %a : %a(%a) =>@ %a@]" 
         output_name n  output_ty ty  output_prop_14 p  output_prop_14 q
 
   | PObligation ((_, TopTy), p, q) ->
