@@ -171,6 +171,7 @@ let fThe x y = The(x,y)
 let fExp       (x,y) z = Exp(x,y,z)
 let fPropArrow (x,y) z = PropArrow(x,y,z)
 let fKindArrow (x,y) z = KindArrow(x,y,z)
+let fEquivProp x = EquivProp x
 
 (************************)
 (* Random useful things *)
@@ -194,12 +195,13 @@ let doOpt funct = function
 (** (Not-Very)-Pretty-Printing Routines *)
 (****************************************)
 
+let string_of_label lbl = lbl
 
 let rec string_of_model = function
     ModelName nm -> string_of_name nm
   | ModelApp (mdl1, mdl2) ->
       string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
-  | ModelProj (mdl, lbl) -> string_of_model mdl ^ "." ^ string_of_name lbl
+  | ModelProj (mdl, nm) -> string_of_model mdl ^ "." ^ string_of_name nm
 
 let rec string_of_ln = function
     LN (None, nm) -> string_of_name nm

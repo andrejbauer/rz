@@ -318,9 +318,8 @@ let rec annotateExpr cntxt = function
 			      LR.subSet cntxt' st2 st1b) then
 			 (** Is this enough to make translate happy about
 			     using prp1 as an equivalence relation? *)
-			 ResProp(L.PAssure((wildName(), L.Unit),
-					   L.IsEquiv(prp1, st2), prp1),
-				L.EquivProp(st2))
+			 ResProp(L.PAssure(None, L.IsEquiv(prp1, st2), prp1),
+				 L.EquivProp(st2))
 		       else
 			 E.propTypeMismatchError expr1 pt2 pt1 orig_expr
 		end

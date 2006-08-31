@@ -37,7 +37,7 @@ TARGETS = rz
 
 OPT_TARGETS = $(addsuffix .opt,$(TARGETS))
 
-default: $(TARGETS) rzinfer
+default: $(TARGETS) 
 
 all: $(TARGETS) $(OPT_TARGETS)
 	echo $(OPT_TARGETS); echo $(TARGETS)
@@ -78,8 +78,9 @@ rzinfer: name.cmo \
 	flags.cmo \
 	logic.cmo \
 	error.cmo \
-	logicrules.cmo \
-        newinfer.cmo \
+	possibility.cmo \
+	new2logicrules.cmo \
+        new2infer.cmo \
 	rzinfer.cmo	
 	$(OCAMLC) -o rzinfer $(OCAMLFLAGS) unix.cma $+ 
 

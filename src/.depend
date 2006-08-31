@@ -9,8 +9,8 @@ error.cmo: syntax.cmo name.cmo logic.cmo
 error.cmx: syntax.cmx name.cmx logic.cmx 
 foo.cmo: foo.cmi 
 foo.cmx: foo.cmi 
-infer.cmo: syntax.cmo 
-infer.cmx: syntax.cmx 
+infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
+infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
 inferc.cmo: syntax.cmo logic.cmo 
 inferc.cmx: syntax.cmx logic.cmx 
 lexerc.cmo: parserc.cmi message.cmo 
@@ -21,6 +21,10 @@ logic.cmo: syntax.cmo name.cmo
 logic.cmx: syntax.cmx name.cmx 
 logicrules.cmo: name.cmo logic.cmo error.cmo 
 logicrules.cmx: name.cmx logic.cmx error.cmx 
+new2infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
+new2infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
+new2logicrules.cmo: possibility.cmo name.cmo logic.cmo error.cmo 
+new2logicrules.cmx: possibility.cmx name.cmx logic.cmx error.cmx 
 newinfer-bak.cmo: syntax.cmo name.cmo logic.cmo 
 newinfer-bak.cmx: syntax.cmx name.cmx logic.cmx 
 newinfer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
@@ -33,6 +37,8 @@ parser.cmo: syntax.cmo message.cmo parser.cmi
 parser.cmx: syntax.cmx message.cmx parser.cmi 
 parserc.cmo: syntax.cmo message.cmo parserc.cmi 
 parserc.cmx: syntax.cmx message.cmx parserc.cmi 
+possibility.cmo: logic.cmo 
+possibility.cmx: logic.cmx 
 postinfer.cmo: outsyn.cmo name.cmo error.cmo 
 postinfer.cmx: outsyn.cmx name.cmx error.cmx 
 pp-hacked.cmo: outsyn.cmo name.cmo flags.cmo 

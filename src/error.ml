@@ -49,28 +49,42 @@ let noEqPropWarning prp1 prp2 context_expr =
  *)
 exception TypeError
 
-
-let tyGenericError msg = 
+let printError msg = 
   let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
   in let error_footer = "\n-------------------------------\n\n"
   in 
-       (printAndResetWarnings();
-	print_string (error_header ^ msg ^ error_footer);
-	raise TypeError)
+       print_string (error_header ^ msg ^ error_footer)
+
+let tyGenericError msg = 
+  (printAndResetWarnings();
+   printError msg;
+   raise TypeError)
+
+let tyGenericErrors msgs =
+  (printAndResetWarnings();
+   List.iter printError (List.rev msgs);
+   raise TypeError)
+
+let inMsg expr =
+  ("...in " ^ S.string_of_expr expr)
+
+let tyUnboundMsg nm =
+    ("Unbound name " ^ string_of_name nm)
 
 let tyUnboundError nm =
-  tyGenericError
-    ("Unbound name " ^ string_of_name nm)
+  tyGenericError (tyUnboundMsg nm)
 
 let notWhatsExpectedError expr expected =
   tyGenericError
     (S.string_of_expr expr ^ " found where a "
       ^ expected ^ " was expected")
 
-let notWhatsExpectedInError expr expected context_expr =
-  tyGenericError
+let notWhatsExpectedInMsg expr expected context_expr =
     (S.string_of_expr expr ^ " found where a "
       ^ expected ^ " was expected, in " ^ S.string_of_expr context_expr)
+
+let notWhatsExpectedInError expr expected context_expr =
+  tyGenericError (notWhatsExpectedInMsg expr expected context_expr)
 
 let noHigherOrderLogicError expr =
    tyGenericError
@@ -159,11 +173,13 @@ let tyPTJoinError pt1 pt2 =
    tyGenericError
      ("the types " ^ L.string_of_proptype pt1 ^ " and " ^
 	 L.string_of_proptype pt2 ^ " are incompatible")
-	
-let badModelProjectionError nm expr why =
-  tyGenericError
+
+let badModelProjMsg nm expr why =
     ("Cannot project " ^ string_of_name nm ^ " in " ^ S.string_of_expr expr
       ^ "\n" ^ why )
+	
+let badModelProjectionError nm expr why =
+  tyGenericError (badModelProjMsg nm expr why)
 
 let innerModelBindingError context_expr =
   tyGenericError
