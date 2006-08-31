@@ -72,7 +72,7 @@ and proposition =
     | PLambda of binding * proposition
     | IsEquiv of proposition * set                (* [IsEquiv(p,s)] means [p] is an equivalence relation on [s] *)
     | PCase   of term * (label * binding option * proposition) list
-    | PAssure of binding * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
+    | PAssure of binding option * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
 	
 and set =
     | Empty
@@ -86,7 +86,6 @@ and set =
     | Quotient of set * proposition
     | SApp     of set * term
     | SLambda  of binding * set
-    | SAssure  of binding * proposition * set
 
 and proptype =
     | Prop
@@ -115,7 +114,7 @@ and term =
     | Let      of binding * term * term * set  (* set is type of the whole let *)
     | Subin    of term * set
     | Subout   of term * set
-    | Assure   of binding * proposition * term
+    | Assure   of binding option * proposition * term
 
 and declaration =
     DeclProp     of proposition option * proptype
@@ -241,9 +240,6 @@ let rec string_of_set = function
   | Quotient (s, p) -> (string_of_set s) ^ " % " ^ string_of_prop p
   | SApp (s, t) -> (string_of_set s) ^ " " ^ (string_of_term t)
   | SLambda ((n,s), t) -> "lam " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^ string_of_set t
-  | SAssure((n,s), p, t) ->
-      "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-	string_of_prop p ^ " in " ^ string_of_set t
 
 and string_of_term trm =
   (let rec toStr = function
@@ -286,7 +282,9 @@ and string_of_term trm =
 	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | The(bnd,prp) ->
 	"(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
-    | Assure((n,s), p, t) ->
+    | Assure(None, p, t) ->
+      "assure " ^ string_of_prop p ^ " in " ^ string_of_term t
+    | Assure(Some (n,s), p, t) ->
       "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
 	string_of_prop p ^ " in " ^ string_of_term t
 
@@ -325,11 +323,13 @@ and string_of_prop prp =
 	in 
 	  "case " ^ string_of_term trm ^ " of " ^
 	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
-  | PAssure((n,s), p, q) ->
-      "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-	string_of_prop p ^ " in " ^ string_of_prop q
-  in
-    toStr prp)
+    | PAssure (None, p, q) ->
+	"assure " ^ string_of_prop p ^ " in " ^ string_of_prop q
+    | PAssure (Some (n,s), p, q) ->
+	"assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
+	  string_of_prop p ^ " in " ^ string_of_prop q
+    in
+     toStr prp)
 
 and string_of_proptype = function
     Prop -> "Prop"
@@ -482,9 +482,6 @@ let rec fnSet = function
       NameSet.union (fnSet st) (fnProp prp)
   | SApp(st, trm) -> NameSet.union (fnSet st) (fnTerm trm)
   | Rz st -> fnSet st	
-  | SAssure((nm,st1),prp,st2) ->
-      NameSet.union (fnSet st1) 
-	(NameSet.remove nm (NameSet.union (fnProp prp) (fnSet st2)))
       
 and fnSetOpt = function
 	  None -> NameSet.empty
@@ -527,7 +524,8 @@ and fnTerm = function
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
   | Case (trm, arms) ->
       NameSet.union (fnTerm trm) (unionNameSetList (List.map fnCaseArm arms))
-  | Assure((nm,st),prp,trm) ->
+  | Assure(None,prp,trm) -> NameSet.union (fnProp prp) (fnTerm trm)
+  | Assure(Some(nm,st),prp,trm) ->
       NameSet.union (fnSet st) 
 	(NameSet.remove nm (NameSet.union (fnProp prp) (fnTerm trm)))
 
@@ -551,7 +549,8 @@ and fnProp = function
   | IsEquiv (prp, st) -> NameSet.union (fnProp prp) (fnSet st) 
   | PCase (trm, arms) ->
       NameSet.union (fnTerm trm) (unionNameSetList (List.map fnPCaseArm arms))
-  | PAssure((nm,st),prp1,prp2) ->
+  | PAssure(None,prp1,prp2) -> NameSet.union (fnProp prp1) (fnProp prp2)
+  | PAssure(Some(nm,st),prp1,prp2) ->
       NameSet.union (fnSet st) 
 	(NameSet.remove nm (NameSet.union (fnProp prp1) (fnProp prp2)))
 
@@ -711,18 +710,22 @@ let rec subst sbst =
 	     subst sbst' t2,
 	     substSet sbst st2)
 	    
-
     | Lambda((y,st),t1) ->
 	let (sbst', y') = updateBoundName sbst y in 
 	  Lambda((y',substSet sbst st),
 		subst sbst' t1)
+
     | The((y,st), prp) ->
 	let (sbst', y') = updateBoundName sbst y in 
 	  The((y',substSet sbst st),
 	     substProp sbst' prp)
-    | Assure((y, st), prp, trm) ->
+
+    | Assure(None, prp, trm) ->
+	Assure(None, substProp sbst prp, sub trm)
+
+    | Assure(Some (y, st), prp, trm) ->
 	let (sbst', y') = updateBoundName sbst y in
-	  Assure((y, substSet sbst st), 
+	  Assure(Some (y, substSet sbst st), 
 		substProp sbst' prp, subst sbst' trm)
 
   and subarms = function
@@ -768,9 +771,10 @@ and substProp sbst =
     | PApp(prp1,trm2) -> PApp(sub prp1, subst sbst trm2)
     | IsEquiv (prp, st) -> IsEquiv(sub prp, substSet sbst st)
     | PCase(t1,arms) -> PCase(t1,psubarms arms)
-    | PAssure((y, st), prp1, prp2) ->
+    | PAssure(None, prp1, prp2) -> PAssure(None, substProp sbst prp1, substProp sbst prp2)
+    | PAssure(Some(y, st), prp1, prp2) ->
 	let (sbst', y') = updateBoundName sbst y in
-	  PAssure((y, substSet sbst st), 
+	  PAssure(Some (y, substSet sbst st), 
 		 substProp sbst' prp1, substProp sbst' prp2)
 
   and psubarms = function
@@ -809,10 +813,6 @@ and substSet sbst =
 	let (sbst', y') = updateBoundName sbst y in 
           SLambda((y',substSet sbst st),
   	         substSet sbst' u)
-    | SAssure((y, st1), prp, st2) ->
-	let (sbst', y') = updateBoundName sbst y in
-	  SAssure((y, substSet sbst st1), 
-		 substProp sbst' prp, substSet sbst' st2)
 
   and substProd sbst = function
       [] -> []
