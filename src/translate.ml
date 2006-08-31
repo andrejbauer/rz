@@ -162,7 +162,7 @@ let any = wildName
 let mk s = N(s, Word)
 
 let fresh good ?(bad=[]) ctx = freshName good bad (occursCtx ctx)
-let fresh2 g1 g2 ?(bad=[]) ctx = freshName2 g2 g2 bad (occursCtx ctx)
+let fresh2 g1 g2 ?(bad=[]) ctx = freshName2 g1 g2 bad (occursCtx ctx)
 let fresh3 g1 g2 g3 ?(bad=[]) ctx = freshName3 g1 g2 g3 bad (occursCtx ctx)
 let fresh4 g1 g2 g3 g4 ?(bad=[]) ctx = freshName4 g1 g2 g3 g4 bad (occursCtx ctx)
 let freshList gs ?(bad=[]) ctx = freshNameList gs bad (occursCtx ctx)
@@ -187,6 +187,17 @@ let pMApp ctx p t = match p with
   | True | False | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _   | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
       failwith ("bad propositional application 2 on " ^ string_of_proposition p ^ " :: " ^ string_of_term t)
+
+let rec deepPApp k ctx p t =
+  if k = 0 then
+    pApp ctx p t
+  else
+    match p with
+	PMLambda ((n, ty), q) ->
+	  let n' = fresh [n] ~bad:(fvTerm t) ctx in
+	    PMLambda ((n, ty), deepPApp (k-1) ctx (sbp ctx [(n, (id n'))] q) t)
+      | _ -> failwith ("invalid deep PApp")
+
 
 let nest_forall ctx =
   List.fold_right (fun (y, {ty=t;tot=q}) p -> Forall ((y,t), Imply (pApp ctx q (id y), p)))
@@ -600,7 +611,8 @@ and translateProp ctx = function
 
   | L.IsEquiv (p, s) ->
       let (ty, p') = translateProp ctx p in
-	(TopTy, IsEquiv (pApp ctx p' (dagger_of_ty ty) , translateSet ctx s))
+	makeProp (any(), TopTy)
+	  (IsEquiv (deepPApp 2 ctx p' (dagger_of_ty ty) , translateSet ctx s))
 
   | L.PCase (t, lst) ->
       let tys, arms = List.fold_left

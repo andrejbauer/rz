@@ -29,10 +29,15 @@ let rec peek = function
       (y,[]) -> None
     | (y,(k,v)::rest) -> if (y=k) then Some v else peek(y,rest)
 
+(* XXX: This does not seem to be used?
+
 let rec lookupName = function
       (y,[]) -> (print_string ("Unbound name: " ^ Name.string_of_name y ^ "\n");
                  raise Not_found)
     | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
+
+*)
+
 
 (*********************************)
 (** {2 The Typechecking Context} *)
@@ -382,7 +387,7 @@ and optProp ctx = function
   | IsPer (nm, lst)         -> IsPer (nm, optTerms' ctx lst)
   | IsPredicate (nm, ty, lst) ->
       IsPredicate (nm, optTyOption ctx ty, List.map (fun (nm, ms) -> (nm, optModest ctx ms)) lst)
-  | IsEquiv (ms, p)         -> IsEquiv (optModest ctx ms, optProp ctx p)
+  | IsEquiv (p, ms)         -> IsEquiv (optProp ctx p, optModest ctx ms)
   | NamedTotal (n, lst)     -> NamedTotal (n, optTerms' ctx lst)
   | NamedPer (n, lst)       -> NamedPer (n, optTerms' ctx lst)
   | NamedProp (n, t, lst)   -> NamedProp (n, optTerm' ctx t, optTerms' ctx lst)
@@ -473,11 +478,12 @@ and optProp ctx = function
 	   | (TopTy, _) -> p'
 	   | (ty', _) -> Cexists((n, ty'), p'))
 
-  | PObligation (p, q) ->
-      let q' = optProp ctx q in
-	(match optProp ctx p with
+  | PObligation ((n, ty), p, q) ->
+      let ctx' = insertType ctx n ty in
+      let q' = optProp ctx' q in
+	(match optProp ctx' p with
 	    True -> q'
-	  | p' -> PObligation (p', q'))
+	  | p' -> PObligation ((n, optTy ctx ty), p', q'))
 
   | PMLambda ((n, ms), p) ->
       let ms' = optModest ctx ms in
@@ -498,13 +504,13 @@ and optProp ctx = function
 	| Some (nm, ty) ->
 	    (match optTy ctx ty with
 		TopTy -> None, ctx0
-	      | ty' -> Some (nm, ty'), insertType ctx nm ty)
+	      | ty' -> Some (nm, ty'), insertType ctx0 nm ty)
       in
       let doArm (lbl, bnd1, bnd2, p) =
 	let bnd1', ctx1 = doBind ctx  bnd1 in
 	let bnd2', ctx2 = doBind ctx1 bnd2 in
 	let p' = optProp ctx2 p in
-	  (lbl, bnd1, bnd2, p')
+	  (lbl, bnd1', bnd2', p')
       in
 	PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms)
 
