@@ -1,0 +1,132 @@
+[Processing terms.thy]
+Is this a Dagger which I see before me?
+Is this a Dagger which I see before me?
+Is this a Dagger which I see before me?
+Is this a Dagger which I see before me?
+module type Terms = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  val a : s
+  (**  Assertion a_total =  a : ||s||
+  *)
+   
+  val b : s
+  (**  Assertion b_total =  b : ||s||
+  *)
+   
+  val c : s
+  (**  Assertion c_total =  c : ||s||
+  *)
+   
+  type p
+  (**  Assertion predicate_p =  PREDICATE(p, p)
+  *)
+   
+  val emptyTuple : unit
+  (**  Assertion emptyTuple_def =  emptyTuple = ()
+  *)
+   
+  val var : s
+  (**  Assertion var_def =  var =s= a
+  *)
+   
+  val tuple : s * s * s
+  (**  Assertion tuple_def =  pi0 tuple =s= a and pi1 tuple =s= b and 
+         pi2 tuple =s= c
+  *)
+   
+  val proj : s
+  (**  Assertion proj_def =  proj =s= b
+  *)
+   
+  val g : (s -> s) -> s -> s
+  (**  Assertion g_def = 
+         forall x:s -> s, x':s -> s, 
+           (forall x'':s, x_1:s,  x'' =s= x_1 -> x x'' =s= x' x_1) ->
+           forall x'':s, x_1:s,  x'' =s= x_1 -> g x x'' =s= x' x_1
+  *)
+   
+  val application : s -> s
+  (**  Assertion application_def = 
+         forall x:s, x':s,  x =s= x' ->
+           application x =s= g (fun x : s => a) x'
+  *)
+   
+  val description : s * p
+  (**  Assertion description_def = 
+         pi1 description |= p (pi0 description) and 
+         pi1 (assure x : s . x : ||s|| in assure z : p . z |= p x and 
+             (forall (x':||s||),  forall z':p,  z' |= p x' -> x =s= x') in 
+             (x,z)) |= p (pi0 (assure x : s . x : ||s|| in assure z : p . z |= p x and 
+                              (forall (x':||s||), 
+                                 forall z':p,  z' |= p x' -> x =s= x') in 
+                              (x,z))) and 
+         pi0 description =s= pi0 (assure x : s . x : ||s|| in assure z : p . z |= p x and 
+                                 (forall (x':||s||), 
+                                    forall z':p,  z' |= p x' -> x =s= x') in 
+                                 (x,z))
+  *)
+   
+  val cases : s
+  (**  Assertion cases_def = 
+         cases =s= (match `foo a with
+                      `foo(x : s) -> b 
+                    | `bar -> c 
+                    ])
+       *)
+   
+  val r : s
+  (**  Assertion r_total =  r : ||s||
+  *)
+   
+  val rzquot : s
+  (**  Assertion rzquot_def =  rzquot =s= r
+  *)
+   
+  val rzchoose : s
+  (**  Assertion rzchoose_def = 
+         rzchoose =s= (let x = a
+                       in assure (forall x':s,  x = x' -> x =s= x') in x)
+  *)
+   
+  
+  (**  Assertion predicate_eq =  PREDICATE(eq)
+  *)
+   
+  val quot : s
+  (**  Assertion quot_def =  eq quot a
+  *)
+   
+  val choose_term : s
+  (**  Assertion choose_term_def = 
+         eq choose_term (let x = quot
+                         in assure (forall x':s,  eq x x' -> eq x x') in x)
+  *)
+   
+  val let_term : s * s
+  (**  Assertion let_term_def = 
+         pi0 let_term =s= pi0 (let x = a in (x,x)) and 
+         pi1 let_term =s= pi1 (let x = a in (x,x))
+  *)
+   
+  val subin : s * p
+  (**  Assertion subin_def =  pi1 subin |= p (pi0 subin) and 
+         pi1 (assure x : p . x |= p a in (a,x)) |= p (pi0 (assure x : p . x |= p a in 
+                                                          (a,x))) and 
+         pi0 subin =s= pi0 (assure x : p . x |= p a in (a,x))
+  *)
+   
+  (** fishy *)
+   
+  val d : s * p
+  (**  Assertion d_total =  pi0 d : ||s|| and pi1 d |= p (pi0 d)
+  *)
+   
+  val subout : s
+  (**  Assertion subout_def =  subout =s= pi0 d
+  *)
+  end
+

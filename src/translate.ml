@@ -219,10 +219,10 @@ let rec translateSet (ctx : ctxElement list) = function
       }
 
   | L.Unit ->
-      let x = fresh [mk "x"] ctx in
+      let x, y = fresh2 [mk "x"; mk "y"] [mk "y"; mk "z"] ctx in
       { ty  = UnitTy;
 	tot = makeTot (x, UnitTy) (Equal (id x, EmptyTuple));
-	per = makePer (any(), any(), UnitTy) True;
+	per = makePer (x, y, UnitTy) (Equal (id x, id y));
       }
 
   | L.Basic (sln, knd) ->
@@ -308,11 +308,16 @@ let rec translateSet (ctx : ctxElement list) = function
 	    let k = fresh [mk "k"; mk "j"; mk "x"] ctx in
 	      makeTot (k,w)
 	      (And [pApp ctx p (Proj (0, id k));
-		    pApp ctx (sbp ctx [(n, Proj (0, id k))] r) (id k)]
+		    pApp ctx (sbp ctx [(n, Proj (0, id k))] r) (Proj (1, id k))]
 	      ));
 	  per = (
 	    let y, y'  = fresh2 [mk "x"; mk "y"; mk "w"] [mk "x'"; mk "y'"; mk "w'"] ctx in
-	      makePer (y, y', w) (pApp ctx (pApp ctx q (Proj (0, id y))) (Proj (0, id y'))))
+	      makePer (y, y', w) (And [
+		  pApp ctx (sbp ctx [(n, Proj (0, id y ))] r) (Proj (1, id y ));
+		  pApp ctx (sbp ctx [(n, Proj (0, id y'))] r) (Proj (1, id y'));
+		  pApp ctx (pApp ctx q (Proj (0, id y))) (Proj (0, id y'))
+	      ])
+	  )
 	}
 
   | L.Quotient (s, e) ->
@@ -411,16 +416,18 @@ and translateTerm ctx = function
   | L.Lambda ((n, s), t) -> Lambda ((n, (translateSet ctx s).ty), translateTerm ctx t)
 
   | L.The ((n, s), phi) ->
-      let {per=p; ty=t} = translateSet ctx s in
+      let {ty=t; tot=p1; per=p2} = translateSet ctx s in
       let (v,q) = translateProp (insertTermvar n s ctx) phi in
-      let n', z = fresh2 [n] [mk "z"] ~bad:[n] ctx in
-	Obligation ((n, t), True,
+      let n', z, z' = fresh3 [n] [mk "z"] [mk "z"] ~bad:[n] ctx in
+	Obligation ((n, t), pApp ctx p1 (id n),
 		   Obligation ((z,v),
 			      And [pApp ctx q (id z);
 				   Forall ((n',t),
-					  Imply (pApp ctx (sbp ctx [(n, id n')] q) (id z),
-						pApp ctx (pApp ctx p (id n)) (id n')))],
-			      id n
+					  Imply (pApp ctx p1 (id n'),
+						Forall ((z',v),
+						       Imply (pApp ctx (sbp ctx [(n, id n')] q) (id z'),
+							     pApp ctx (pApp ctx p2 (id n)) (id n')))))],
+			      Tuple [id n; id z]
 		    ))
 
   | L.Inj (lb, None) -> Inj (lb, None)
@@ -476,8 +483,8 @@ and translateTerm ctx = function
       let ((x, s), p) = toSubset ctx sb in
       let (ty, p') = translateProp (insertTermvar x s ctx) p in
       let t' = translateTerm ctx t in
-      let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ctx in
-	Obligation ((y, ty), pApp ctx (pApp ctx p' t') (id y), Tuple [t'; id y])
+      let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ~bad:((fvTerm t')) ctx in
+	Obligation ((y, ty), pApp ctx (sbp ctx [(x,t')] p') (id y), Tuple [t'; id y])
 
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
