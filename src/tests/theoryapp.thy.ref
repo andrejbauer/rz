@@ -33,17 +33,13 @@ sig
   *)
    
   
-  (**  Assertion q =  forall (x:||a||),  x =a= (let y = x in y)
+  (**  Assertion q =  forall (x:||a||),  x =a= x
   *)
    
   val m : a
-  (**  Assertion m_def = 
-         m =a= (match `yes n with
-                  `no -> p 
-                | `yes(z : a) -> z 
-                ])
-       *)
-  end
+  (**  Assertion m_def =  m =a= n
+  *)
+end
 
 module type C = 
 functor (M : A) ->

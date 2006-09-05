@@ -229,10 +229,48 @@ let rec betaReduce = function
          betaReduce (substTerm (insertTermvar emptysubst nm trm2) trm1)
       else
          trm
-  | Proj(n, Tuple(trms)) ->
-      betaReduce (List.nth trms n)
+  | Let (nm1, trm2, trm3) as trm ->
+      if (simpleTerm trm2) then
+	betaReduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
+      else
+	trm
+  | Proj(n, trm) ->
+      begin
+	match betaReduce trm with
+	    Tuple trms -> betaReduce (List.nth trms n)
+	  | Let (nm1, trm2, trm3) -> 
+	      Let (nm1, trm2, betaReduce (Proj (n, trm3)))
+	  | Obligation (bnd1, prp2, trm3) ->
+	      Obligation (bnd1, prp2, betaReduce (Proj (n, trm3)))
+          | trm' -> Proj(n, trm')
+      end
+  | Case(trm1, arms) as trm ->
+      begin
+	let rec findArmNone lbl = function
+	    (l,None,t)::rest -> 
+	      if (lbl = l) then t else findArmNone lbl rest
+	  | (_,Some _, _)::rest -> findArmNone lbl rest
+	  | _ ->
+	      failwith "Impossible:  Opt.betaReduce Case/findArmNone"
+		
+	in let rec findArmSome lbl = function
+	    (l,Some(v,_),t)::rest -> 
+	      if (lbl = l) then (v, t) else findArmSome lbl rest
+	  | (_,None, _)::rest -> findArmSome lbl rest
+	  | _ ->
+	      failwith "Impossible:  Opt.betaReduce Case/findArmSome"
+
+	in
+	     match betaReduce trm1 with
+		 Inj(lbl,None) -> betaReduce (findArmNone lbl arms)
+	       | Inj(lbl,Some trm1') -> 
+		   let (nm,trm2) = findArmSome lbl arms
+		   in betaReduce 
+		     (substTerm (insertTermvar emptysubst nm trm1') trm2)
+	       | _ -> trm
+      end
   | trm -> trm
-    
+
 
 (* optTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
@@ -347,13 +385,13 @@ let rec optTerm ctx = function
 			     thinned type never has a toplevel defn. *)
 			  joinTy emptyCtx tyarm' tyarms')
      in let (tyarms, arms', tyarms') = doArms arms
-     in (tyarms, Case(e',arms'), tyarms')
+     in (tyarms, betaReduce (Case(e',arms')), tyarms')
 
  | Let(name1, term1, term2) ->
      let    (ty1, term1', ty1') = optTerm ctx term1
      in let ctx' = insertType ctx name1 ty1
      in let (ty2, term2', ty2') = optTerm ctx' term2
-     in (ty2, Let(name1, term1', term2'), ty2')
+     in (ty2, betaReduce (Let(name1, term1', term2')), ty2')
 
  | Obligation((name,ty), prop, trm) ->
      let    ty'  = optTy ctx ty

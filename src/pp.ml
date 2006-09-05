@@ -47,13 +47,13 @@ and output_term_12 ppf = function
       fprintf ppf "@[fun %a : %a =>@ %a@]" 
         output_name n  output_ty ty  output_term_12 t
   | Obligation ((n, TopTy), p, trm) ->
-      fprintf ppf "@[assure @[%a@]@ in %a@]" 
+      fprintf ppf "@[<hov 2>assure @[%a@]@ in %a@]" 
         output_prop_0 p  output_term_12 trm
   | Obligation ((n, ty), True, trm) ->
-      fprintf ppf "@[assure %a : %a@ in %a@]" 
+      fprintf ppf "@[<hov 2>assure @[%a : %a@]@ in %a@]" 
         output_name n  output_ty ty  output_term_12 trm
   | Obligation ((n, ty), p, trm) ->
-      fprintf ppf "assure %a : %a . %a in %a" 
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a : %a .@ @[%a@]@]@ in %a@]" 
         output_name n  output_ty ty  output_prop p  output_term_12 trm
   | trm -> output_term_9 ppf trm
       
