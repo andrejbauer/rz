@@ -1,0 +1,309 @@
+\documentclass[12pt]{article}
+\usepackage{fullpage,mathpartir}
+
+\title{RZ Logic Intermediate Language}
+\date{\today}
+\author{Andrej Bauer and Chris Stone}
+
+\newcommand{\M}{M}
+\newcommand{\e}{e}
+\newcommand{\s}{s}
+\newcommand{\X}{X} % model variable 
+\newcommand{\n}{x} % name
+\newcommand{\p}{\psi} % propositions
+\newcommand{\pt}{\sigma} % proptypes
+\newcommand{\x}{\n} % term variable
+\renewcommand{\k}{\kappa} % set kind
+\renewcommand{\l}{{\ell}}
+\newcommand{\T}{\ensuremath{\mathcal T}}
+\renewcommand{\t}{T}
+\newcommand{\elem}{\mathit{elem}}
+\newcommand{\tk}{\ensuremath{\mathcal K}}
+
+\newcommand{\pFalse}{\bot}
+\newcommand{\pTrue}{\top}
+\newcommand{\pNot}[1]{\lnot #1}
+\newcommand{\pAnd}[2]{#1_1\wedge\cdots\wedge #1_{#2}}
+\newcommand{\pOr}[2]{#1_1\vee\cdots\vee #1_{#2}}
+\newcommand{\pImply}[2]{#1 \Rightarrow #2}
+\newcommand{\pEquiv}[2]{#1 \Leftrightarrow #2}
+\newcommand{\pForall}[3]{\forall\, #1{:}#2.\,#3}
+\newcommand{\pExists}[3]{\exists\, #1{:}#2.\,#3}
+\newcommand{\pUnique}[3]{\exists!\, #1{:}#2\,.#3}
+
+\newcommand{\ptProp}{\mathsf{Prop}}
+\newcommand{\ptStable}{\mathsf{Stable}}
+\newcommand{\ptEquiv}[1]{\mathop{\mathsf{Equiv}} #1}
+\newcommand{\ptArrow}[3]{(#1{:}#2)\to #3}
+
+\newcommand{\kSet}{\mathsf{Set}}
+\newcommand{\kArrow}[3]{(#1{:}#2)\to #3}
+
+\newcommand{\sArrow}[3]{(#1{:}#2)\to #3}
+\newcommand{\sApp}[2]{#1\,#2}
+
+
+\begin{document}
+\maketitle
+\section{Grammar}
+
+\subsection{Models}
+\[
+\begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
+ \M ::= & \X & \texttt{ModelVar($\n$)} & \mbox{variable}\\
+|&\M.\n&\texttt{ModelProj($\M,\n$)}&\mbox{projection}\\
+|&\M_1\,\M_2&\texttt{ModelApp($\M_1,\M_2$)}&\mbox{application}\\
+\end{array}
+\]
+
+\subsection{Propositions}
+\[
+\begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
+\p ::= & \pFalse & \texttt{False} & \mbox{falsehood}\\
+ |&\pTrue & \texttt{True} & \mbox{truth} \\
+ |&\langle\M.\rangle\n & \texttt{Atomic(LN($\langle$Some $\M\rangle,\n$),$\pt$)} & \mbox{atomic (tagged with its type)}\\
+ |&\pNot{\p}&\texttt{Not($\p$)}&\mbox{negation}\\
+ |&\pAnd{\p}{n}&\texttt{And[$\p_1$;\ldots;$\p_n$]} & \mbox{conjunction ($n\geq 0$)}\\
+ |&\pOr{\p}{\n}& \texttt{Or[$\p_1$;\ldots;$\p_n$]} & \mbox{disjunction ($n\geq 0$)}\\
+ |&\pImply{\p_1}{\p_2}& \texttt{Imply($\p_1$,$\p_2$)} & \mbox{implication}\\
+ |&\pEquiv{\p_1}{\p_2}& \texttt{Iff($\p_1$,$\p_2$)} & \mbox{equivalence}\\
+ |&\pForall{\x}{\s}{\p}&\texttt{Forall(($\x$,$\s$),$\p$)} & \mbox{universal quantification}\\
+ |&\pExists{\x}{\s}{\p}&\texttt{Exists(($\x$,$\s$),$\p$)} & \mbox{existential quantification}\\
+ |&\pUnique{\x}{\s}{\p}&\texttt{Unique(($\x$,$\s$),$\p$)} & \mbox{unique existential}\\
+ |&\e_1=_{\s} \e_2& \texttt{Equal($\s$,$\e_1$,$\e_2$)} & \mbox{term equality (in a set)}\\
+ |&\mathsf{match}\,\e\,\mathsf{with}\,\cdots & 
+ \texttt{PCase($\e$,$\cdots$)} & \mbox{propositional case construct for sums}\\
+ |&\lambda\x{:}\s.\p&\texttt{Lambda(($\x$,$\s$),$\p$)} & \mbox{prop. abstraction}\\
+ |&\p\,\e&\texttt{PApp($\p$,$\e$)} & \mbox{prop. application}\\
+ |&\mathsf{Equiv}(\p) & \texttt{IsEquiv($\p$)} & \mbox{test for equivalence relation}\\
+ |&?\p_1\,\mathsf{in}\,\p_2&\texttt{Assure(None,$\p_1$,$\p_2$)} & \mbox{obligation}\\
+\end{array}
+\]
+
+\subsection{Proposition Types}
+\[
+\begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
+\pt ::= & \ptProp & \texttt{Prop} & \mbox{arbitrary proposition}\\
+   |& \ptStable & \texttt{StableProp} & \mbox{$\lnot\lnot$-stable proposition}\\
+  |& \ptEquiv{\s} & \texttt{Equiv($\s$)} &\mbox{(stable, curried) equivalence on $\s$}\\
+ |& \ptArrow{\x}{\s}{\pt} & \texttt{PropArrow($\x$,$\s$,$\pt$)} & \mbox{(dependent) type of a predicate}\\
+\end{array}
+\]
+
+\subsection{Sets}
+\[
+\begin{array}{rl@{\hspace{0.6cm}}l@{\hspace{0.6cm}}l}
+\s ::= & \emptyset & \texttt{Empty} & \mbox{empty set}\\
+|& 1 & \texttt{Unit} & \mbox{empty product}\\
+|&\langle\M.\rangle\n & \texttt{Basic(SLN($\langle$Some $\M\rangle$,$\n$),$\k$)} & \mbox{basic set (tagged with its kind)}\\
+|& (\x_1{:}\s_1){\times}\cdots{\times}(\x_n{:}\s_n) & 
+    \texttt{Product[($\x_1$,$\s_1$);\ldots;($\x_n$,$\s_n$)]}&\mbox{(dependent) tuple type; $n\ge 1$}\\
+|& \sArrow{\x}{\s_1}{\s_2} & \texttt{Exp($\x$,$\s_1$,$\s_2$)} & \mbox{(dependent) function type}\\
+|& \l_1\langle{:}\s_1\rangle+\cdots+\l_n\langle{:}\s_n\rangle & \texttt{Sum[($\l_1$,$\langle$Some $\s_1$$\rangle$),\ldots] }& \mbox{(labeled) sum type; $n\ge 1$}\\
+|&\{\ \x:\s\ |\ \p\ \} & \texttt{Subset(($\x,\s$),$\p$)} & \mbox{subset type}\\
+|&\mathop{\mathsf{Rz}}\s & \texttt{Rz($\s$)} & \mbox{type of realizers for the set}\\
+|&\s\bigm/\p & \texttt{Quotient($\s,\p$)} & \mbox{quotient type}\\
+|&\lambda\x{:}\s_1.\s_2&\texttt{SLambda(($\x,\s_1$),$\s_2$)}&\texttt{set abstraction}\\
+|&\sApp{\s}{\e}&\texttt{SApp($\s,\e$)}&\mbox{set application}\\
+\end{array}
+\]
+
+\subsection{Kinds}
+\[
+\begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
+\k ::= & \kSet & \texttt{KindSet} & \mbox{kind of (proper) sets}\\
+ |& kArrow{\x}{\s}{\k} & \texttt{KindArrow($\x$,$\s$,$\k$)} & \mbox{(dependent) kind of a family of sets}
+\end{array}
+\]
+
+\subsection{Terms}
+
+\[
+\begin{array}{rl@{\hspace{0.3cm}}l@{\hspace{0.5cm}}l}
+\e ::= & \mathsf{*} & \texttt{EmptyTuple} & \mbox{the value of type $1$}\\
+|&\langle\M.\rangle\x & \texttt{Var(LN($\langle$Some $\M\rangle$,$\x$))} & \mbox{path}\\
+|&(\e_1,\ldots,\e_n)&\texttt{Tuple[$\e_1$;\ldots;$\e_n$]}&\mbox{tuple}\\
+|&\pi_i\,\e&\texttt{Proj($i$,$\e$)}&\mbox{projection; $i\geq 0$}\\
+|&\lambda\x{:}\s.\e&\texttt{Lambda(($\x,\s$),$\e$)}&\mbox{abstraction}\\
+|&\e_1\,\e_2&\texttt{App($\e_1$,$\e_2$)}&\mbox{application}\\
+|&\l\,\langle\e\rangle&\texttt{Inj($\l$,$\langle$Some $\e$$\rangle$)}&\mbox{injection}\\
+ |&\mathsf{match}\,\e\,\mathsf{with}\,\cdots
+     & \texttt{PCase($\e$,$\cdots$)} & \mbox{case construct for sums}\\
+|&\iota\x{:}\s.\e&\texttt{The(($\x,\s$),$\e$)}&\mbox{definite description}\\
+|&\mathop{\mathsf{rz}}\e&\texttt{RzQuot($\e$)}&\mbox{convert realizer$\to$realizee }\\
+|&\mathsf{let}\ \mathop{\mathsf{rz}}(\x{:}\s_1) = \e_1\ \mathsf{in}\ \e_2 : \s_2
+     &\texttt{RzChoose(($\x,\s_1$),$\e_1$,$\e_2$,$\s_2$)} &
+     \mbox{realizer of a term}\\
+|&[\e]_\p & \texttt{Quot($\e$,$\p$)} & \mbox{equivalence class}\\
+|&\mathsf{let}\ [\x{:}\s_1] = \e_1\ \mathsf{in}\ \e_2 : \s_2
+     &\texttt{RzChoose(($\x,\s_1$),$\p$,$\e_1$,$\e_2$,$\s_2$)} &
+     \mbox{equivalence-class representative}\\
+|&\e :> \s& \texttt{Subin($\e,\s$)} & \mbox{injection into a subset $\s$}\\
+|&\e <: \s& \texttt{Subout($\e,\s$)} & \mbox{projection from a subset into $\s$}\\
+ |&?\p\,\mathsf{in}\,\e&\texttt{Assure(None,$\p$,$\e$)} & \mbox{obligation}\\
+\end{array}
+\]
+
+\subsection{Theories}
+
+\[
+\begin{array}{rl@{\hspace{0.3cm}}l@{\hspace{0.5cm}}l}
+\T ::= & \t & \texttt{TheoryName($\t$)} & \mbox{named theory}\\
+ |&\mathsf{thy}\ \elem_1 \cdots \elem_n\ \mathsf{end} &
+     \texttt{Theory[$\elem_1$;\ldots;$\elem_n$]}& \mbox{theory of a proper model}\\
+|&(\X{:}\T_1)\to\T_2&\texttt{TheoryArrow(($\X,\T_1$),$\T_2$)}&\mbox{theory of a family of models}\\
+|&\lambda\X{:}\T_1.\T_2&\texttt{TheoryLambda(($\X,\T_1$),$\T_2$)}&\mbox{theory abstraction}\\
+|&\T\,\M&\texttt{TheoryApp($\T,\M$)}&\mbox{theory instantiation}
+\end{array}
+\]
+
+\subsection{Theory Elements}
+
+\[
+\begin{array}{rl@{\hspace{0.3cm}}l@{\hspace{0.3cm}}l}
+\elem ::= &\x : \s \langle = \e\rangle & \texttt{Declaration($\x$,DeclTerm($\langle$Some $\e$$\rangle$,$\s$))} & \mbox{declare/define a term}\\
+| &\n : \k \langle = \s\rangle & \texttt{Declaration($\n$,DeclSet($\langle$Some $\s$$\rangle$,$\k$))} & \mbox{declare/define a set}\\
+| &\n : \pt \langle = \p\rangle & \texttt{Declaration($\n$,DeclProp($\langle$Some $\p$$\rangle$,$\pt$))} & \mbox{declare/define a proposition}\\
+| &\n : \T& \texttt{Declaration($\n$,DeclModel($\T$))}&\mbox{declare a model}\\
+| &\mathsf{Ax}\,\n{:}\, \forall \X_1{:}\T_1,\ldots.\p&
+    \texttt{Declaration($\n$,DeclSentence([($\X_1,\T_1$);$\cdots$]))} &
+    \mbox{declare an axiom}.
+\end{array}
+\]
+
+\subsection{Theory Kinds}
+\[
+\begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
+\tk ::= & \mathsf{Model} & \texttt{ModelTheoryKind} & \mbox{kind of (proper) theory}\\
+ |& (\X{:}\T_1)\to \T_2 & \texttt{TheoryKindArrow($\X$,$\T_1$,$\T_2$)} & \mbox{(dependent) kind of a family of theories}
+\end{array}
+\]
+
+\subsection{Top-level elements}
+
+\[
+\begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
+\mathit{topelem} ::= & \t = \T & \texttt{Theorydef($\t$,$\T$)} & \mbox{theory definition}\\
+|&\X : \T& \texttt{TopModel($\X$,$\T$)}&\mbox{model declaration}\\
+\end{array}
+\]
+\section{Well-Formedness}
+
+\subsection{Propositions}
+
+\newcommand{\G}{\Gamma}
+\newcommand{\wf}[3]{#1 \vdash #2 : #3}
+\newcommand{\st}[3]{#1 \vdash #2 \leq #3}
+\newcommand{\kpt}{\mathsf{PropType}}
+\newcommand{\eqv}[4]{#1 \vdash #2 = #3 : #4}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \wf{\G}{\pFalse}{\ptStable} }
+
+\inferrule
+  { }
+  { \wf{\G}{\pTrue}{\ptStable} }
+
+\inferrule
+  { }
+  { }
+
+\inferrule
+  { \wf{\G}{\p}{\ptProp} }
+  { \wf{\G}{\pNot{\p}}{\ptStable} }
+
+\inferrule
+  { n \geq 0\\\\
+    \wf{\G}{\p_1}{\pt_1} \\ \cdots \\
+    \wf{\G}{\p_n}{\pt_n} \\\\
+    \st{\G}{\pt_1}{\ptProp} \\ \cdots \\
+    \st{\G}{\pt_n}{\ptProp} }
+  { \wf{\G}{\pAnd{\p}{n}}{(\pt_1{\vee}\cdots{\vee}\pt_n)} }
+
+\inferrule
+  { n \geq 0\\\\
+    \wf{\G}{\p_1}{\ptProp} \\ \cdots \\
+    \wf{\G}{\p_n}{\ptProp} }
+  { \wf{\G}{\pOr{\p}{n}}{\ptProp} }
+
+\inferrule
+  { \wf{\G}{\p_1}{\ptProp} \\\\
+    \wf{\G}{\p_2}{\pt_2} \\ \st{\G}{\pt_2}{\ptProp} }
+  { \wf{\G}{\pImply{\p_1}{\p_2}}{\pt_2}}
+
+\inferrule
+  { \wf{\G}{\p_1}{\pt_1} \\ \st{\G}{\pt_1}{\ptProp} \\\\
+    \wf{\G}{\p_2}{\pt_2} \\ \st{\G}{\pt_2}{\ptProp} }
+  { \wf{\G}{\pEquiv{\p_1}{\p_2}}{\pt_1{\vee}\pt_2} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \wf{\G,\x{:}\s}{\p}{\pt} \\ 
+    \st{\G,\x{:}\s}{\pt}{\ptProp} }
+  { \wf{\G}{\pForall{\x}{\s}{\p}}{\pt} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \wf{\G,\x{:}\s}{\p}{\ptProp} }
+  { \wf{\G}{\pExists{\x}{\s}{\p}}{\ptProp} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \wf{\G,\x{:}\s}{\p}{\ptProp} }
+  { \wf{\G}{\pUnique{\x}{\s}{\p}}{\ptProp} }
+\end{mathpar}
+
+\subsection{Subtyping for Propostion Types}
+
+\begin{mathpar}
+\inferrule
+  { \wf{\G}{\pt}{\kpt} }
+  { \st{\G}{\pt}{\pt} }
+
+\inferrule
+  { \st{\G}{\pt_1}{\pt_2} \\ \cdots \\ \st{\G}{\pt_2}{\pt_3} }
+  { \st{\G}{\pt_1}{\pt_3} }
+
+\inferrule
+  { }
+  { \st{\G}{\ptStable}{\ptProp} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} }
+  { \st{\G}{\ptEquiv{\s}} {\ptArrow{\x_1}{\s}{\ptArrow{\x_2}{\s}{\ptStable}}} }
+
+\inferrule
+  { \st{\G}{\s_2}{\s_1}\\
+    \st{\G,x{:}\s_1}{\pt_1}{\pt_2} }
+  { \st{\G}{\ptArrow{\x}{\s_1}{\pt_1}}{\ptArrow{\x}{\s_2}{\pt_2}} }
+\end{mathpar}
+
+\subsection{Subtyping for Sets}
+
+\begin{mathpar}
+\inferrule
+  { \wf{\G}{\s}{\k} }
+  { \st{\G}{\s}{\s} }
+
+\inferrule
+  { \st{\G}{\s_1}{\s_2} \\ \cdots \\ \st{\G}{\s_2}{\s_3} }
+  { \st{\G}{\s_1}{\s_3} }
+
+\inferrule
+  { \wf{\G}{\s}{\kArrow{\x}{\s_1}{\k_2}} \\
+    \eqv{\G}{\e_1}{\e_2}{\s_1} }
+  { \st{\G}{\sApp{\s}{\e_1}}{\sApp{\s}{\e_2}} %{\k[\x{\mapsto}\t_1]} 
+  }
+
+
+\end{mathpar}
+
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
