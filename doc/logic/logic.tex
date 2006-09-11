@@ -1,14 +1,17 @@
 \documentclass[12pt]{article}
-\usepackage{fullpage,mathpartir}
+\usepackage{fullpage,mathpartir,color,latexsym,theorem,amsmath}
 
 \title{RZ Logic Intermediate Language}
 \date{\today}
 \author{Andrej Bauer and Chris Stone}
 
+
+\newcommand{\rulesec}[2]{\subsection*{{\bf#1}\hfill\fbox{$#2$}}}
+
 \newcommand{\M}{M}
 \newcommand{\e}{e}
 \newcommand{\s}{s}
-\newcommand{\X}{X} % model variable 
+\newcommand{\X}{\x} % model variable 
 \newcommand{\n}{x} % name
 \newcommand{\p}{\psi} % propositions
 \newcommand{\pt}{\sigma} % proptypes
@@ -17,19 +20,25 @@
 \renewcommand{\l}{{\ell}}
 \newcommand{\T}{\ensuremath{\mathcal T}}
 \renewcommand{\t}{T}
-\newcommand{\elem}{\mathit{elem}}
+\newcommand{\elem}{E}
 \newcommand{\tk}{\ensuremath{\mathcal K}}
 
 \newcommand{\pFalse}{\bot}
 \newcommand{\pTrue}{\top}
 \newcommand{\pNot}[1]{\lnot #1}
-\newcommand{\pAnd}[2]{#1_1\wedge\cdots\wedge #1_{#2}}
-\newcommand{\pOr}[2]{#1_1\vee\cdots\vee #1_{#2}}
+\newcommand{\pAnd}[2]{#1_0\wedge\cdots\wedge #1_{#2}}
+\newcommand{\pOr}[2]{#1_0\vee\cdots\vee #1_{#2}}
 \newcommand{\pImply}[2]{#1 \Rightarrow #2}
 \newcommand{\pEquiv}[2]{#1 \Leftrightarrow #2}
 \newcommand{\pForall}[3]{\forall\, #1{:}#2.\,#3}
 \newcommand{\pExists}[3]{\exists\, #1{:}#2.\,#3}
 \newcommand{\pUnique}[3]{\exists!\, #1{:}#2\,.#3}
+\newcommand{\pAssure}[2]{\mathsf{assure}\ #1\ \mathsf{in}\ #2}
+\newcommand{\pEqual}[3]{#1 =_{#3} #2}
+\newcommand{\pLambda}[3]{\lambda #1{:}#2.\,#3}
+\newcommand{\pApp}[2]{#1\,#2}
+\newcommand{\pIsEquiv}[2]{\mathsf{IsEquiv}_{#2}(#1)}
+\newcommand{\pMproj}[2]{#1.#2}
 
 \newcommand{\ptProp}{\mathsf{Prop}}
 \newcommand{\ptStable}{\mathsf{Stable}}
@@ -40,19 +49,74 @@
 \newcommand{\kArrow}[3]{(#1{:}#2)\to #3}
 
 \newcommand{\sArrow}[3]{(#1{:}#2)\to #3}
+\newcommand{\sLambda}[3]{\lambda #1{:}#2.\,#3}
 \newcommand{\sApp}[2]{#1\,#2}
+\newcommand{\sSubset}[3]{\{\,#1:#2\ |\ #3\,\}}
+\newcommand{\sQuotient}[2]{#1 {\bigm/} #2}
+\newcommand{\sEmpty}{\emptyset}
+\newcommand{\sUnit}{1}
+\newcommand{\sProduct}[3]{(#1_0{:}#2_0){\times}\cdots{\times}(#1_{#3}{:}#2_{#3})} 
+\newcommand{\sRz}[1]{\mathop{\mathsf{Rz}} #1}
+\newcommand{\sSum}[3]{#1_0\langle{:}#2_0\rangle+\cdots+#1_{#3}\langle{:}#2_{#3}\rangle}
+\newcommand{\sSummid}[5]{\cdots+#1_{#4}\langle{:}#2_{#4}\rangle+#1_{#5}\langle{:}#2_{#5}\rangle+\cdots}
+\newcommand{\sMproj}[2]{#1.#2}
 
+
+\newcommand{\eThe}[3]{\iota\, #1{:}#2.\,#3}
+\newcommand{\eChoose}[5]{\mathsf{let}\ [#1{:}#2] = #3\ \mathsf{in}\ #4\,{:}\,#5}
+\newcommand{\eUnit}{\mathsf{*}}
+\newcommand{\eTuple}[2]{(#1_0,\ldots,#1_{#2})}
+\newcommand{\eProj}[2]{\mathop{\pi_{#1}} #2 }
+\newcommand{\eLambda}[3]{\lambda #1{:}#2.\,#3}
+\newcommand{\eApp}[2]{#1\,#2}
+\newcommand{\eInj}[2]{\mathop{#1} \langle #2 \rangle}
+\newcommand{\eRz}[1]{\mathop{\mathsf{rz}} #1}
+\newcommand{\eQuotient}[2]{[#1]_{#2}}
+\newcommand{\eSubin}[2]{#1 :> #2}
+\newcommand{\eSubout}[2]{#1 <: #2}
+\newcommand{\eAssure}[2]{\mathsf{assure}\ #1\ \mathsf{in}\ #2}
+\newcommand{\eRzChoose}[5]{\mathsf{let}\ \mathop{\mathsf{rz}}(#1{:}#2) = #3\ \mathsf{in}\ #4\,{:}\,#5}
+\newcommand{\eLet}[5]{\mathsf{let}\ (\x{:}\s_1) = \e_1\ \mathsf{in}\ \e_2\,{:}\,\s_2}
+\newcommand{\eMproj}[2]{#1.#2}
+
+\newcommand{\mMproj}[2]{#1.#2}
+\newcommand{\mApp}[2]{#1\,#2}
+
+
+\newcommand{\tkModel}{\mathsf{ModelTheory}}
+\newcommand{\tkArrow}[3]{(#1{:}#2)\to #3}
+
+\newcommand{\subst}[3]{#1[#2{\mapsto}#3]}
+\newcommand{\maybesubst}[3]{#1\langle[#2{\mapsto}#3]\rangle}
+
+
+\newcommand{\G}{\Gamma}
+\newcommand{\wf}[3]{#1 \vdash #2\ :\ #3}
+\newcommand{\wfk}[2]{#1 \vdash #2 }
+\newcommand{\wfpt}[2]{#1 \vdash #2 }
+\newcommand{\wfelem}[2]{#1 \vdash #2}
+\newcommand{\st}[3]{#1 \vdash #2 \preceq #3}
+\newcommand{\eqv}[4]{#1 \vdash #2 \equiv #3 : #4}
+\newcommand{\eqvk}[3]{#1 \vdash #2 \equiv #3 }
+\newcommand{\pf}[2]{{\color{red} #1 \vdash #2}}
+\newcommand{\eeq}[3]{#1 \vdash #2 \equiv #3}
+
+\newcommand{\deqv}[3]{#1 \vdash #2 \equiv #3}
+
+
+\newtheorem{lemma}{Lemma}
 
 \begin{document}
 \maketitle
 \section{Grammar}
 
+
 \subsection{Models}
 \[
 \begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
  \M ::= & \X & \texttt{ModelVar($\n$)} & \mbox{variable}\\
-|&\M.\n&\texttt{ModelProj($\M,\n$)}&\mbox{projection}\\
-|&\M_1\,\M_2&\texttt{ModelApp($\M_1,\M_2$)}&\mbox{application}\\
+|&\mMproj{\M}{\n}&\texttt{ModelProj($\M,\n$)}&\mbox{projection}\\
+|&\mApp{\M_1}{\M_2}&\texttt{ModelApp($\M_1,\M_2$)}&\mbox{application}\\
 \end{array}
 \]
 
@@ -63,20 +127,20 @@
  |&\pTrue & \texttt{True} & \mbox{truth} \\
  |&\langle\M.\rangle\n & \texttt{Atomic(LN($\langle$Some $\M\rangle,\n$),$\pt$)} & \mbox{atomic (tagged with its type)}\\
  |&\pNot{\p}&\texttt{Not($\p$)}&\mbox{negation}\\
- |&\pAnd{\p}{n}&\texttt{And[$\p_1$;\ldots;$\p_n$]} & \mbox{conjunction ($n\geq 0$)}\\
- |&\pOr{\p}{\n}& \texttt{Or[$\p_1$;\ldots;$\p_n$]} & \mbox{disjunction ($n\geq 0$)}\\
+ |&\pAnd{\p}{n-1}&\texttt{And[$\p_0$;\ldots;$\p_{n-1}$]} & \mbox{conjunction ($n\geq 0$)}\\
+ |&\pOr{\p}{n-1}& \texttt{Or[$\p_0$;\ldots;$\p_{n-1}$]} & \mbox{disjunction ($n\geq 0$)}\\
  |&\pImply{\p_1}{\p_2}& \texttt{Imply($\p_1$,$\p_2$)} & \mbox{implication}\\
  |&\pEquiv{\p_1}{\p_2}& \texttt{Iff($\p_1$,$\p_2$)} & \mbox{equivalence}\\
  |&\pForall{\x}{\s}{\p}&\texttt{Forall(($\x$,$\s$),$\p$)} & \mbox{universal quantification}\\
  |&\pExists{\x}{\s}{\p}&\texttt{Exists(($\x$,$\s$),$\p$)} & \mbox{existential quantification}\\
  |&\pUnique{\x}{\s}{\p}&\texttt{Unique(($\x$,$\s$),$\p$)} & \mbox{unique existential}\\
- |&\e_1=_{\s} \e_2& \texttt{Equal($\s$,$\e_1$,$\e_2$)} & \mbox{term equality (in a set)}\\
+ |&\pEqual{\e_1}{\e_2}{\s}& \texttt{Equal($\s$,$\e_1$,$\e_2$)} & \mbox{term equality (in a set)}\\
  |&\mathsf{match}\,\e\,\mathsf{with}\,\cdots & 
  \texttt{PCase($\e$,$\cdots$)} & \mbox{propositional case construct for sums}\\
- |&\lambda\x{:}\s.\p&\texttt{Lambda(($\x$,$\s$),$\p$)} & \mbox{prop. abstraction}\\
- |&\p\,\e&\texttt{PApp($\p$,$\e$)} & \mbox{prop. application}\\
- |&\mathsf{Equiv}(\p) & \texttt{IsEquiv($\p$)} & \mbox{test for equivalence relation}\\
- |&?\p_1\,\mathsf{in}\,\p_2&\texttt{Assure(None,$\p_1$,$\p_2$)} & \mbox{obligation}\\
+ |&\pLambda{\x}{\s}{\p}&\texttt{Lambda(($\x$,$\s$),$\p$)} & \mbox{prop. abstraction}\\
+ |&\pApp{\p}{\e}&\texttt{PApp($\p$,$\e$)} & \mbox{prop. application}\\
+ |&\pIsEquiv{\p}{\s}& \texttt{IsEquiv($\p$,$\s$)} & \mbox{test for equivalence relation}\\
+ |&\pAssure{\p_1}{\p_2}&\texttt{Assure(None,$\p_1$,$\p_2$)} & \mbox{obligation}\\
 \end{array}
 \]
 
@@ -93,17 +157,17 @@
 \subsection{Sets}
 \[
 \begin{array}{rl@{\hspace{0.6cm}}l@{\hspace{0.6cm}}l}
-\s ::= & \emptyset & \texttt{Empty} & \mbox{empty set}\\
-|& 1 & \texttt{Unit} & \mbox{empty product}\\
+\s ::= & \sEmpty & \texttt{Empty} & \mbox{empty set}\\
+|& \sUnit & \texttt{Unit} & \mbox{empty product}\\
 |&\langle\M.\rangle\n & \texttt{Basic(SLN($\langle$Some $\M\rangle$,$\n$),$\k$)} & \mbox{basic set (tagged with its kind)}\\
-|& (\x_1{:}\s_1){\times}\cdots{\times}(\x_n{:}\s_n) & 
-    \texttt{Product[($\x_1$,$\s_1$);\ldots;($\x_n$,$\s_n$)]}&\mbox{(dependent) tuple type; $n\ge 1$}\\
+|& \sProduct{\x}{\s}{n} & 
+    \texttt{Product[($\x_0$,$\s_0$);\ldots;($\x_{n-1}$,$\s_{n-1}$)]}&\mbox{(dependent) tuple type; $n\ge 1$}\\
 |& \sArrow{\x}{\s_1}{\s_2} & \texttt{Exp($\x$,$\s_1$,$\s_2$)} & \mbox{(dependent) function type}\\
-|& \l_1\langle{:}\s_1\rangle+\cdots+\l_n\langle{:}\s_n\rangle & \texttt{Sum[($\l_1$,$\langle$Some $\s_1$$\rangle$),\ldots] }& \mbox{(labeled) sum type; $n\ge 1$}\\
-|&\{\ \x:\s\ |\ \p\ \} & \texttt{Subset(($\x,\s$),$\p$)} & \mbox{subset type}\\
-|&\mathop{\mathsf{Rz}}\s & \texttt{Rz($\s$)} & \mbox{type of realizers for the set}\\
-|&\s\bigm/\p & \texttt{Quotient($\s,\p$)} & \mbox{quotient type}\\
-|&\lambda\x{:}\s_1.\s_2&\texttt{SLambda(($\x,\s_1$),$\s_2$)}&\texttt{set abstraction}\\
+|& \sSum{\l}{\s}{n} & \texttt{Sum[($\l_1$,$\langle$Some $\s_1$$\rangle$),\ldots] }& \mbox{(labeled) sum type; $n\ge 1$}\\
+|&\sSubset{\x}{\s}{\p} & \texttt{Subset(($\x,\s$),$\p$)} & \mbox{subset type}\\
+|&\sRz{\s} & \texttt{Rz($\s$)} & \mbox{type of realizers for the set}\\
+|&\sQuotient{\s}{\p} & \texttt{Quotient($\s,\p$)} & \mbox{quotient type}\\
+|&\sLambda{\x}{\s_1}{\s_2}&\texttt{SLambda(($\x,\s_1$),$\s_2$)}&\texttt{set abstraction}\\
 |&\sApp{\s}{\e}&\texttt{SApp($\s,\e$)}&\mbox{set application}\\
 \end{array}
 \]
@@ -112,70 +176,85 @@
 \[
 \begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
 \k ::= & \kSet & \texttt{KindSet} & \mbox{kind of (proper) sets}\\
- |& kArrow{\x}{\s}{\k} & \texttt{KindArrow($\x$,$\s$,$\k$)} & \mbox{(dependent) kind of a family of sets}
+ |& \kArrow{\x}{\s}{\k} & \texttt{KindArrow($\x$,$\s$,$\k$)} & \mbox{(dependent) kind of a family of sets}
 \end{array}
 \]
 
 \subsection{Terms}
 
 \[
+\hspace{-1.5cm}
 \begin{array}{rl@{\hspace{0.3cm}}l@{\hspace{0.5cm}}l}
-\e ::= & \mathsf{*} & \texttt{EmptyTuple} & \mbox{the value of type $1$}\\
+\e ::= & \eUnit & \texttt{EmptyTuple} & \mbox{the value of type $1$}\\
 |&\langle\M.\rangle\x & \texttt{Var(LN($\langle$Some $\M\rangle$,$\x$))} & \mbox{path}\\
-|&(\e_1,\ldots,\e_n)&\texttt{Tuple[$\e_1$;\ldots;$\e_n$]}&\mbox{tuple}\\
-|&\pi_i\,\e&\texttt{Proj($i$,$\e$)}&\mbox{projection; $i\geq 0$}\\
-|&\lambda\x{:}\s.\e&\texttt{Lambda(($\x,\s$),$\e$)}&\mbox{abstraction}\\
-|&\e_1\,\e_2&\texttt{App($\e_1$,$\e_2$)}&\mbox{application}\\
-|&\l\,\langle\e\rangle&\texttt{Inj($\l$,$\langle$Some $\e$$\rangle$)}&\mbox{injection}\\
- |&\mathsf{match}\,\e\,\mathsf{with}\,\cdots
-     & \texttt{PCase($\e$,$\cdots$)} & \mbox{case construct for sums}\\
-|&\iota\x{:}\s.\e&\texttt{The(($\x,\s$),$\e$)}&\mbox{definite description}\\
-|&\mathop{\mathsf{rz}}\e&\texttt{RzQuot($\e$)}&\mbox{convert realizer$\to$realizee }\\
-|&\mathsf{let}\ \mathop{\mathsf{rz}}(\x{:}\s_1) = \e_1\ \mathsf{in}\ \e_2 : \s_2
+|&\eTuple{\e}{n}&\texttt{Tuple[$\e_1$;\ldots;$\e_n$]}&\mbox{tuple}\\
+|&\eProj{i}{\e}&\texttt{Proj($i$,$\e$)}&\mbox{projection; $i\geq 0$}\\
+|&\eLambda{\x}{\s}{\e}&\texttt{Lambda(($\x,\s$),$\e$)}&\mbox{abstraction}\\
+|&\eApp{\e_1}{\e_2}&\texttt{App($\e_1$,$\e_2$)}&\mbox{application}\\
+|&\eInj{\l}{\e}&\texttt{Inj($\l$,$\langle$Some $\e$$\rangle$)}&\mbox{injection}\\
+ |&{\mathsf{match}\,\e\,\mathsf{with}\,
+      \overline{\l_i\,\langle{\x_i{:}\s_i}\rangle{\leadsto} \e_i}\,{:}\,\s}
+     & \texttt{\small PCase($\e$,[($l_0$,($\langle$Some$(\x_0,\s_0)$$\rangle$,$\e_0$);$\cdots$],$\s$)} & \mbox{case construct for sums}\\
+|&\eThe{\x}{\s}{\e}&\texttt{The(($\x,\s$),$\e$)}&\mbox{definite description}\\
+|&\eRz{\e}&\texttt{RzQuot($\e$)}&\mbox{convert realizer$\to$realizee }\\
+|&\eRzChoose{\x}{\s_1}{\e_1}{\e_2}{\s_2}
      &\texttt{RzChoose(($\x,\s_1$),$\e_1$,$\e_2$,$\s_2$)} &
      \mbox{realizer of a term}\\
-|&[\e]_\p & \texttt{Quot($\e$,$\p$)} & \mbox{equivalence class}\\
-|&\mathsf{let}\ [\x{:}\s_1] = \e_1\ \mathsf{in}\ \e_2 : \s_2
+|&\eQuotient{\e}{\p} & \texttt{Quot($\e$,$\p$)} & \mbox{equivalence class}\\
+|&\eChoose{\x}{\s_1}{\e_1}{\e_2}{\s_2}
      &\texttt{RzChoose(($\x,\s_1$),$\p$,$\e_1$,$\e_2$,$\s_2$)} &
      \mbox{equivalence-class representative}\\
-|&\e :> \s& \texttt{Subin($\e,\s$)} & \mbox{injection into a subset $\s$}\\
-|&\e <: \s& \texttt{Subout($\e,\s$)} & \mbox{projection from a subset into $\s$}\\
- |&?\p\,\mathsf{in}\,\e&\texttt{Assure(None,$\p$,$\e$)} & \mbox{obligation}\\
+|&\eLet{\x}{\s_1}{\e_1}{\e_}{\s_2}
+     &\texttt{Let(($\x,\s_1$),$\e_1$,$\e_2$,$\s_2$)} &
+     \mbox{local definition}\\
+|&\eSubin{\e}{\s}& \texttt{Subin($\e,\s$)} & \mbox{injection into a subset $\s$}\\
+|&\eSubout{\e}{\s}& \texttt{Subout($\e,\s$)} & \mbox{projection from a subset into $\s$}\\
+ |&\eAssure{\p}{\e}&\texttt{Assure(None,$\p$,$\e$)} & \mbox{obligation}\\
 \end{array}
 \]
 
 \subsection{Theories}
 
+\newcommand{\tTheory}[1]{\mathsf{thy}\ #1 \ \mathsf{end}}
+\newcommand{\tArrow}[3]{(#1{:}#2)\to #3}
+\newcommand{\tLambda}[3]{\lambda #1{:}#2.\,#3}
+\newcommand{\tApp}[2]{#1\,#2}
+
+
 \[
 \begin{array}{rl@{\hspace{0.3cm}}l@{\hspace{0.5cm}}l}
 \T ::= & \t & \texttt{TheoryName($\t$)} & \mbox{named theory}\\
- |&\mathsf{thy}\ \elem_1 \cdots \elem_n\ \mathsf{end} &
+ |&\tTheory{\elem_1 \cdots \elem_n} &
      \texttt{Theory[$\elem_1$;\ldots;$\elem_n$]}& \mbox{theory of a proper model}\\
-|&(\X{:}\T_1)\to\T_2&\texttt{TheoryArrow(($\X,\T_1$),$\T_2$)}&\mbox{theory of a family of models}\\
-|&\lambda\X{:}\T_1.\T_2&\texttt{TheoryLambda(($\X,\T_1$),$\T_2$)}&\mbox{theory abstraction}\\
-|&\T\,\M&\texttt{TheoryApp($\T,\M$)}&\mbox{theory instantiation}
+|&\tArrow{\X}{\T_1}{\T_2}&\texttt{TheoryArrow(($\X,\T_1$),$\T_2$)}&\mbox{theory of a family of models}\\
+|&\tLambda{\X}{\T_1}{\T_2}&\texttt{TheoryLambda(($\X,\T_1$),$\T_2$)}&\mbox{theory abstraction}\\
+|&\tApp{\T}{\M}&\texttt{TheoryApp($\T,\M$)}&\mbox{theory instantiation}
 \end{array}
 \]
 
 \subsection{Theory Elements}
 
+\newcommand{\decl}{\mathit{decl}}
 \[
 \begin{array}{rl@{\hspace{0.3cm}}l@{\hspace{0.3cm}}l}
-\elem ::= &\x : \s \langle = \e\rangle & \texttt{Declaration($\x$,DeclTerm($\langle$Some $\e$$\rangle$,$\s$))} & \mbox{declare/define a term}\\
-| &\n : \k \langle = \s\rangle & \texttt{Declaration($\n$,DeclSet($\langle$Some $\s$$\rangle$,$\k$))} & \mbox{declare/define a set}\\
-| &\n : \pt \langle = \p\rangle & \texttt{Declaration($\n$,DeclProp($\langle$Some $\p$$\rangle$,$\pt$))} & \mbox{declare/define a proposition}\\
-| &\n : \T& \texttt{Declaration($\n$,DeclModel($\T$))}&\mbox{declare a model}\\
-| &\mathsf{Ax}\,\n{:}\, \forall \X_1{:}\T_1,\ldots.\p&
-    \texttt{Declaration($\n$,DeclSentence([($\X_1,\T_1$);$\cdots$]))} &
+\elem ::= &\x : \decl& \texttt{Declaration($\x$, $\decl$)}\\[12pt]
+
+\decl ::= &\s \langle = \e\rangle & \texttt{DeclTerm($\langle$Some $\e$$\rangle$,$\s$)} & \mbox{declare/define a term}\\
+| &\k \langle = \s\rangle & \texttt{DeclSet($\langle$Some $\s$$\rangle$,$\k$)} & \mbox{declare/define a set}\\
+| &\pt \langle = \p\rangle & \texttt{DeclProp($\langle$Some $\p$$\rangle$,$\pt$)} & \mbox{declare/define a proposition}\\
+| &\T& \texttt{DeclModel($\T$)}&\mbox{declare a model}\\
+| &\forall \X_1{:}\T_1,\ldots.\p&
+    \texttt{DeclSentence([($\X_1,\T_1$);$\cdots$],$\p$)} &
     \mbox{declare an axiom}.
 \end{array}
 \]
 
+
 \subsection{Theory Kinds}
 \[
 \begin{array}{rl@{\hspace{1cm}}l@{\hspace{1cm}}l}
-\tk ::= & \mathsf{Model} & \texttt{ModelTheoryKind} & \mbox{kind of (proper) theory}\\
- |& (\X{:}\T_1)\to \T_2 & \texttt{TheoryKindArrow($\X$,$\T_1$,$\T_2$)} & \mbox{(dependent) kind of a family of theories}
+\tk ::= & \tkModel & \texttt{ModelTheoryKind} & \mbox{kind of (proper) theory}\\
+ |& \tkArrow{\X}{\T_1}{\T_2} & \texttt{TheoryKindArrow($\X$,$\T_1$,$\T_2$)} & \mbox{(dependent) kind of a family of theories}
 \end{array}
 \]
 
@@ -187,15 +266,10 @@
 |&\X : \T& \texttt{TopModel($\X$,$\T$)}&\mbox{model declaration}\\
 \end{array}
 \]
-\section{Well-Formedness}
 
-\subsection{Propositions}
+\section{Judgments}
 
-\newcommand{\G}{\Gamma}
-\newcommand{\wf}[3]{#1 \vdash #2 : #3}
-\newcommand{\st}[3]{#1 \vdash #2 \leq #3}
-\newcommand{\kpt}{\mathsf{PropType}}
-\newcommand{\eqv}[4]{#1 \vdash #2 = #3 : #4}
+\rulesec{Propositions}{\wf{\G}{\p}{\pt}}
 
 \begin{mathpar}
 \inferrule
@@ -207,8 +281,12 @@
   { \wf{\G}{\pTrue}{\ptStable} }
 
 \inferrule
-  { }
-  { }
+  { \G(\x) = \pt }
+  { \wf{\G}{\x}{\pt} }
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\ldots,\x_i{:}\pt_i\langle{{=}\p_i}\rangle,\ldots}} }
+  { \wf{\G}{\pMproj{\M}{\x_i}}{\pt_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}]}}
 
 \inferrule
   { \wf{\G}{\p}{\ptProp} }
@@ -220,7 +298,7 @@
     \wf{\G}{\p_n}{\pt_n} \\\\
     \st{\G}{\pt_1}{\ptProp} \\ \cdots \\
     \st{\G}{\pt_n}{\ptProp} }
-  { \wf{\G}{\pAnd{\p}{n}}{(\pt_1{\vee}\cdots{\vee}\pt_n)} }
+  { \wf{\G}{\pAnd{\p}{n}}{(\pt_1{\cup}\cdots{\cup}\pt_n)} }
 
 \inferrule
   { n \geq 0\\\\
@@ -230,13 +308,13 @@
 
 \inferrule
   { \wf{\G}{\p_1}{\ptProp} \\\\
-    \wf{\G}{\p_2}{\pt_2} \\ \st{\G}{\pt_2}{\ptProp} }
+    \wf{\G{,\color{red}\p_1}}{\p_2}{\pt_2} \\ \st{\G}{\pt_2}{\ptProp} }
   { \wf{\G}{\pImply{\p_1}{\p_2}}{\pt_2}}
 
 \inferrule
   { \wf{\G}{\p_1}{\pt_1} \\ \st{\G}{\pt_1}{\ptProp} \\\\
     \wf{\G}{\p_2}{\pt_2} \\ \st{\G}{\pt_2}{\ptProp} }
-  { \wf{\G}{\pEquiv{\p_1}{\p_2}}{\pt_1{\vee}\pt_2} }
+  { \wf{\G}{\pEquiv{\p_1}{\p_2}}{\pt_1{\cup}\pt_2} }
 
 \inferrule
   { \wf{\G}{\s}{\kSet} \\
@@ -253,17 +331,114 @@
   { \wf{\G}{\s}{\kSet} \\
     \wf{\G,\x{:}\s}{\p}{\ptProp} }
   { \wf{\G}{\pUnique{\x}{\s}{\p}}{\ptProp} }
+
+\inferrule
+  { \wf{\G}{\e_1}{\s} \\ 
+    \wf{\G}{\e_2}{\s} }
+  { \wf{\G}{\pEqual{\e_1}{\e_2}{\s}}{\ptStable} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \wf{\G,\x{:}\s}{\p}{\pt} }
+  { \wf{\G}{\pLambda{\x}{\s}{\p}}{\ptArrow{\x}{\s}{\pt}} }
+
+\inferrule
+  { \wf{\G}{\p}{\ptArrow{\x}{\s}{\pt}} \\
+    \wf{\G}{\e}{\s} }
+  { \wf{\G}{\pApp{\p}{\e}}{\pt[\x{\mapsto}\e]} }
+
 \end{mathpar}
 
-\subsection{Subtyping for Propostion Types}
+\noindent{\textit{Continued\ldots}}
+
+\clearpage
+
+\begin{mathpar}
+
+\newcommand{\pCase}[8] {
+\mathsf{match}\,#1\,{:}#2\,\mathsf{with}\,
+      #3_0\,\langle{#4_0{:}#5_0}\rangle{\leadsto} #6_0\ |\
+       \cdots\ |\ 
+      #3_{n-1}\,\langle{#4_{#7-1}{:}#5_{n-}}\rangle{\leadsto} #6_{n-1}
+      \,{:}\,#8
+}
+\inferrule
+  { n \ge 0 \\ 
+    \l_0,\ldots,\l_{n-1} \mathrm{\ distinct} \\\\
+    \wf{\G}{\e'}{\s'}\\
+    \st{\G}{\e'}{\s'}{\sSum{\x}{\s'}{n-1}}\\\\
+    \langle\wf{\G}{\s_0}{\kSet}\rangle \\ 
+    \wf{\G\langle,\x_0{:}\s'_0\rangle%
+          {\color{red}, \pEqual{\e}{\eInj{\l_0}{\x_0}}{\s}}}
+          {\p_0}{\pt} \\ 
+    \langle \x_0\not\in\mathop{\mathrm{FV}}\pt \rangle \\\\
+    \vdots\\\\
+    \langle\wf{\G}{\s_{n-1}}{\kSet}\rangle \\ 
+    \wf{\G\langle,\x_{n-1}{:}\s'_{n-1}\rangle%
+          {\color{red}, \pEqual{\e}{\eInj{\l_{n-1}}{\x_{n-1}}}{\s}}}
+           {\p_{n-1}}{\pt}\\
+       \langle \x_{n-1}\not\in\mathop{\mathrm{FV}}\pt \rangle }
+  { \wf{\G}{\pCase{\e'}{\s'}{\l}{\x}{\s}{\p}{n}{\pt}}{\pt}
+  }
+   
+
+\inferrule
+  { \wf{\G}{\p}{\ptArrow{\cdot}{\s}{\ptArrow{\cdot}{\s}{\ptStable}}}}
+  { \wf{\G}{\pIsEquiv{\p}{\s}}{\ptStable}}
+
+\inferrule
+  { \wf{\G}{\p_1}{\ptStable} \\
+    \pf{\G}{\p_1} \\
+    \wf{\G{,\color{red}\p_1}}{\p_2}{\pt} \\ \st{\G,\p_1}{\pt}{\ptProp} }
+  { \wf{\G}{\pAssure{\p_1}{\p_2}}{\pt} }
+
+\inferrule
+  { \wf{\G}{\p}{\ptArrow{\cdot}{\s}{\ptArrow{\cdot}{\s}{\ptStable}}} \\
+    \pf{\G}{\pIsEquiv{\p}{\s}} }
+  { \wf{\G}{\p}{\ptEquiv{\s}} }
+
+\inferrule
+  { \wf{\G}{\p}{\pt_1} \\
+    \st{\G}{\pt_1}{\pt_2} }
+  { \wf{\G}{\p}{\pt_2} }
+
+\end{mathpar}
+
+\begin{lemma}
+  If $\wf{\G}{\p}{\pt}$ then $\wfpt{\G}{\pt}$.
+\end{lemma}
+
+\rulesec{Well-Formedness of Proposition Types}{\wfpt{\G}{\pt}}
 
 \begin{mathpar}
 \inferrule
-  { \wf{\G}{\pt}{\kpt} }
+  { }
+  { \wfpt{\G}{\ptProp} }
+
+\inferrule
+  { }
+  { \wfpt{\G}{\ptStable} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} }
+  { \wfpt{\G}{\ptEquiv{\s}} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \wfpt{\G,\x{:}\s}{\pt} }
+  { \wfpt{\G}{\ptArrow{\x}{\s}{\pt}} }
+
+\end{mathpar}
+
+\rulesec{Subtyping for Proposition Types}{\st{\G}{\pt_1}{\pt_2}}
+
+\begin{mathpar}
+\inferrule
+  { \wfpt{\G}{\pt} }
   { \st{\G}{\pt}{\pt} }
 
 \inferrule
-  { \st{\G}{\pt_1}{\pt_2} \\ \cdots \\ \st{\G}{\pt_2}{\pt_3} }
+  { \st{\G}{\pt_1}{\pt_2} \\ \st{\G}{\pt_2}{\pt_3} }
   { \st{\G}{\pt_1}{\pt_3} }
 
 \inferrule
@@ -271,16 +446,199 @@
   { \st{\G}{\ptStable}{\ptProp} }
 
 \inferrule
+  { \st{\G}{\s_1}{\s_2} }
+  { \st{\G}{\ptEquiv{\s_2}}{\ptEquiv{\s_1}} }
+
+\inferrule
   { \wf{\G}{\s}{\kSet} }
   { \st{\G}{\ptEquiv{\s}} {\ptArrow{\x_1}{\s}{\ptArrow{\x_2}{\s}{\ptStable}}} }
 
 \inferrule
   { \st{\G}{\s_2}{\s_1}\\
-    \st{\G,x{:}\s_1}{\pt_1}{\pt_2} }
+    \st{\G,x{:}\s_2}{\pt_1}{\pt_2} }
   { \st{\G}{\ptArrow{\x}{\s_1}{\pt_1}}{\ptArrow{\x}{\s_2}{\pt_2}} }
 \end{mathpar}
 
-\subsection{Subtyping for Sets}
+\begin{lemma}
+  If $\st{\G}{\pt_1}{\pt_2}$ then $\wfpt{\G}{\pt_1}$ and $\wfpt{\G}{\pt_2}$.
+\end{lemma}
+
+\rulesec{Equivalence for Proposition Types}{\eeq{\G}{\pt_1}{\pt_2}}
+
+
+\begin{mathpar}
+\inferrule
+  { \wfpt{\G}{\pt} }
+  { \eeq{\G}{\pt}{\pt} }
+
+\inferrule
+  { \eeq{\G}{\pt_1}{\pt_2} \\ \cdots \\ \eeq{\G}{\pt_2}{\pt_3} }
+  { \eeq{\G}{\pt_1}{\pt_3} }
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s_2}{\kSet} }
+  { \eeq{\G}{\ptEquiv{\s_2}}{\ptEquiv{\s_1}} }
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s_2}{\kSet}\\
+    \eeq{\G,x{:}\s_1}{\pt_1}{\pt_2} }
+  { \eeq{\G}{\ptArrow{\x}{\s_1}{\pt_1}}{\ptArrow{\x}{\s_2}{\pt_2}} }
+\end{mathpar}
+
+
+\begin{lemma}
+  If $\eeq{\G}{\pt_1}{\pt_2}$ then $\wfpt{\G}{\pt_1}$ and $\wfpt{\G}{\pt_2}$.
+\end{lemma}
+
+\rulesec{Set Well-Formedness}{\wf{\G}{\s}{\k}}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \wf{\G}{\sEmpty}{\kSet}}
+
+\inferrule
+  { }
+  { \wf{\G}{\sUnit}{\kSet} }
+
+\inferrule
+  { \G(\x) = \k }
+  { \wf{\G}{\x}{\k} }
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\ldots,\x_i{:}\k_i\langle{{=}\s_i}\rangle,\ldots}} }
+  { \wf{\G}{\sMproj{\M}{\x_i}}{\k_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}]}}
+
+\inferrule
+  { \wf{\G}{\s_1}{\kSet} \\ 
+    \wf{\G,\x{:}\s_1}{\s_2}{\kSet} }
+  { \wf{\G}{\sArrow{\x}{\s_1}{\s_2}}{\kSet} }
+
+\inferrule
+  { n\ge 1\\\\
+    \wf{\G}{\s_1}{\kSet}\\ \cdots \\
+    \wf{\G,\x_1{:}\s_1,\ldots,\x_{n-1}{:}\s_{n-1}}{\s_n}{\kSet} }
+  { \wf{\G}{\sProduct{\x}{\s}{n-1}}{\kSet} }
+
+\inferrule
+  { n \geq 1\\
+    \l_0,\ldots,\l_{n-1}\ \mbox{distinct}\\\\
+    \langle \wf{\G}{\s_0}{\kSet} \rangle\\ \cdots \\
+    \langle \wf{\G}{\s_{n-1}}{\kSet} \rangle}
+  { \wf{\G}{\sSum{\l}{\s}{n-1}}{\kSet} } 
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\ 
+    \wf{\G,\x{:}\s}{\p}{\ptProp} }
+  { \wf{\G}{\sSubset{\x}{\s}{\p}}{\kSet} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} }
+  { \wf{\G}{\sRz{\s}}{\kSet} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\ 
+    \wf{\G}{\p}{\ptEquiv{\s}} }
+  { \wf{\G}{\sQuotient{\s}{\p}}{\kSet} }
+
+\inferrule
+  { \wf{\G}{\s_1}{\kSet} \\
+    \wf{\G,\x{:}\s_1}{\s_2}{\k} }
+  { \wf{\G}{\sLambda{\x}{\s}{\p}}{\kArrow{\x}{\s_1}{\k}} }
+
+\inferrule
+  { \wf{\G}{\s}{\kArrow{\x}{\s_1}{\k_2}} \\
+    \wf{\G}{\e}{\s_1} }
+  { \wf{\G}{\sApp{\s}{\e}}{\subst{\k_2}{\x}{\e}} }
+
+\inferrule
+  { \wf{\G}{\s}{\k_1} \\
+    \st{\G}{\k_1}{\k_2} }
+  { \wf{\G}{\s}{\k_2} }
+
+\end{mathpar}
+
+\begin{lemma}
+  If $\wf{\G}{\s}{\k}$ then $\wfk{\G}{\k}$.
+\end{lemma}
+
+\rulesec{Equivalence for Sets}{\eqv{\G}{\s_1}{\s_2}{\k}}
+
+\begin{mathpar}
+\inferrule
+  { \wf{\G}{\s}{\k} }
+  { \eqv{\G}{\s}{\s}{\k} }
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s_2}{\k} \\ \cdots \\ \st{\G}{\s_2}{\s_3}{\k} }
+  { \eqv{\G}{\s_1}{\s_3}{\k} }
+
+\inferrule
+  { \eqv{\G}{\s_0}{\s'_0}{\kSet} \\\\
+     \vdots\\\\
+    \eqv{\G,\x_0{:}\s_0,\ldots,\x_{n-2}{:}\s_{n-2}}{\s_{n-1}}{\s'_{n-1}}{\kSet}}
+  { \eqv{\G}{\sProduct{\x}{\s}{n-1}}{\sProduct{\x}{\s'}{\n-1}}{\kSet}}
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s'_1}{\kSet} \\
+    \eqv{\G,\x{:}\s_1}{\s_2}{\s'_2}{\kSet} }
+  { \eqv{\G}{\sArrow{\x}{\s_1}{\s_2}}{\sArrow{\x}{\s'_1}{\s'_2}}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s_0}{\s'_0}{\kSet} \\\\
+     \vdots\\\\
+    \eqv{\G}{\s_{n-1}}{\s'_{n-1}}{\kSet}}
+  { \eqv{\G}{\sSum{\l}{\s}{n-1}}{\sSum{\l}{\s'}{n-1}}{\kSet}}
+
+\inferrule
+  { 0 \leq i,j < n \\
+    \wf{\G}{\sSum{\l}{\s}{n-1}}{\kSet} }
+  { \eqv{\G}{\sSummid{\l}{\s}{n-1}{i}{j}}{\sSummid{\l}{\s}{n-1}{j}{i}}{\kSet}}
+
+\inferrule
+  { \eqv{\G}{\s}{\s'}{\kSet} \\
+    {\color{blue} \deqv{\G,\x{:}\s}{\p}{\p'}} }
+  { \eqv{\G}{\sSubset{\x}{\s}{\p}}{\sSubset{\x}{\s'}{\p'}}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s}{\s'}{\kSet} }
+  { \eqv{\G}{\sRz{\s}}{\sRz{\s'}}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s}{\s'}{\kSet} \\
+    {\color{blue} \deqv{\G}{\p}{\p'}} }
+  { \eqv{\G}{\sQuotient{\s}{\p}}{\sQuotient{\s'}{\p'}}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s'_1}{\kSet} \\
+    \eqv{\G,\x{:}\s_1}{\s_2}{\s'_2}{\kSet} }
+  { \eqv{\G}{\sLambda{\x}{\s_1}{\s_2}}{\sLambda{\x}{\s_2}{\s'_2}}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s}{\s'}{\kArrow{\x}{\s_1}{\k_2}} \\\\
+    \wf{\G}{\e}{\s_1} \\ \wf{\G}{\e'}{\s_1} \\
+    \pf{\G}{\pEqual{\e}{\e'}{\s_1}} }
+  { \eqv{\G}{\sApp{\s}{\e}}{\sApp{\s'}{\e'}}{\subst{\k_2}{\x}{\e}} }
+
+\inferrule
+  { \wf{\G,\x{:}\s_2}{\s}{\k} \\
+    \wf{\G}{\e_2}{\s_2} }
+  { \eqv{\G}{\sApp{(\sLambda{\x}{\s_2}{\s})}{\e_2}}
+        {\s[\x{\mapsto}\e_2]} {\k[\x{\mapsto}\e_2]} }
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\ldots,\x_i{:}\k_i{=}\s_i,\ldots}} }
+  { \eqv{\G}{\sMproj{\M}{\x_i}}{\s_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}]}{\k_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}]}}
+
+
+\end{mathpar}
+
+
+\begin{lemma}
+  If $\eqv{\G}{\s_1}{\s_2}{\k}$ then $\wf{\G}{\s_1}{\k}$ and $\wf{\G}{s_2}{\k}$ and $\wfk{\G}{\k}$.
+\end{lemma}
+
+\rulesec{Subtyping for Sets}{\st{\G}{\s_1}{\s_2}}
 
 \begin{mathpar}
 \inferrule
@@ -288,17 +646,423 @@
   { \st{\G}{\s}{\s} }
 
 \inferrule
-  { \st{\G}{\s_1}{\s_2} \\ \cdots \\ \st{\G}{\s_2}{\s_3} }
+  { \st{\G}{\s_1}{\s_2} \\ \st{\G}{\s_2}{\s_3} }
   { \st{\G}{\s_1}{\s_3} }
 
-\inferrule
-  { \wf{\G}{\s}{\kArrow{\x}{\s_1}{\k_2}} \\
-    \eqv{\G}{\e_1}{\e_2}{\s_1} }
-  { \st{\G}{\sApp{\s}{\e_1}}{\sApp{\s}{\e_2}} %{\k[\x{\mapsto}\t_1]} 
-  }
 
+\inferrule
+  { \eqv{\G}{\s}{\s}{\kSet} }
+  { \st{\G}{\s}{\s} }
+
+\inferrule
+  { \st{\G}{\s_0}{\s'_0} \\\\
+     \vdots\\\\
+    \st{\G,\x_0{:}\s_0,\ldots,\x_{n-2}{:}\s_{n-2}}{\s_{n-1}}{\s'_{n-1}}}
+  { \st{\G}{\sProduct{\x}{\s}{n-1}}{\sProduct{\x}{\s'}{\n-1}}}
+
+\inferrule
+  { \st{\G}{\s'_1}{\s_1} \\
+    \st{\G,\x{:}\s'_1}{\s_2}{\s'_2} }
+  { \st{\G}{\sArrow{\x}{\s_1}{\s_2}}{\sArrow{\x}{\s'_1}{\s'_2}} }
+
+\inferrule
+  { 0 < m \leq n \\\\
+    \st{\G}{\s_0}{\s'_0} \\
+     \cdots\\
+    \st{\G}{\s_{m-1}}{\s'_{m-1}} \\\\
+    \wf{\G}{\s_m}{\kSet} \\ \cdots \\ \wf{\G}{\s_{n-1}}{\kSet} }
+  { \st{\G}{\sSum{\l}{\s}{n-1}}{\sSum{\l}{\s'}{m-1}}}
+
+
+\inferrule
+  { \st{\G}{\s}{\s'} \\
+    {\color{blue} \deqv{\G,\x{:}\s}{\p}{\p'}} }
+  { \st{\G}{\sSubset{\x}{\s}{\p}}{\sSubset{\x}{\s'}{\p'}} }
+
+\inferrule
+  { \st{\G}{\s}{\s'}{\kSet} \\
+    {\color{blue} \deqv{\G}{\p}{\p'}} }
+  { \st{\G}{\sQuotient{\s}{\p}}{\sQuotient{\s'}{\p'}} }
 
 \end{mathpar}
+
+\begin{lemma}
+  If $\st{\G}{\s_1}{\s_2}$ then $\wf{\G}{\s_1}{\kSet}$ and $\wf{\G}{s_2}{\kSet}$.
+\end{lemma}
+
+
+\rulesec{Well-Formedness for Kinds}{\wfk{\G}{\k}}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \wfk{\G}{\kSet} }
+
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \wfk{\G,\x{:}\s}{\k} }
+  { \wfk{\G}{\kArrow{\x}{\s}{\k}} }
+  
+\end{mathpar}
+
+\rulesec{Subtyping for Kinds}{\st{\G}{\k_1}{\k_2}}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \st{\G}{\kSet}{\kSet} }
+
+\inferrule
+  { \st{\G}{\s_2}{\s_1} \\
+    \st{\G,\x{:}\s_2}{\k_1}{\k_2} }
+  { \st{\G}{\kArrow{\x}{\s_1}{\k_1}}{\kArrow{\x}{\s_2}{\k_2}} }
+
+\end{mathpar}
+
+\begin{lemma}
+  If $\st{G}{\k_1}{\k_2}$ then $\wfk{\G}{\k_1}$ and $\wfk{\G}{\k_2}$.
+\end{lemma}
+
+\rulesec{Equivalence for Kinds}{\eqvk{\G}{\k_1}{\k_2}}
+
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \eqvk{\G}{\kSet}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s_2}{\kSet} \\
+    \eqvk{\G,\x{:}\s_1}{\k_1}{\k_2} }
+  { \eqvk{\G}{\kArrow{\x}{\s_1}{\k_1}}{\kArrow{\x}{\s_2}{\k_2}} }
+
+\end{mathpar}
+
+\begin{lemma}
+  If $\eqvk{G}{\k_1}{\k_2}$ then $\wfk{\G}{\k_1}$ and $\wfk{\G}{\k_2}$.
+\end{lemma}
+\clearpage
+
+\rulesec{Well-Formedness for Models}{\wf{\G}{\M}{\T}}
+
+\begin{mathpar}
+\inferrule
+  { \G(\x) = \T }
+  { \wf{\G}{\x}{\T} }
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\cdots,\x_i{:}\T_i,\cdots}} }
+  { \wf{\G}{\eMproj{\M}{\x_i}}{\T_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}]}}
+
+\inferrule
+  { \wf{\G}{\M_1}{\tArrow{\x}{\T_2}{\T}} \\
+    \wf{\G}{\M_2}{\T_2} }
+  { \wf{\G}{\sApp{\M_1}{\M_2}}{\subst{\T}{\x}{\M_2}} }
+
+\end{mathpar}
+
+
+\rulesec{Well-Formedness for Theories}{\wf{\G}{\T}{\tk}}
+
+
+\begin{mathpar}
+
+\inferrule
+  { \G(\x) = \tk }
+  { \wf{\G}{\x}{\tk} }
+
+\inferrule
+  { \wfelem{\G}{\elem_0} \\\\
+    \vdots \\\\
+    \wfelem{\G,\elem_0,\cdots,\elem_{n-2}}{\elem_{n-1}}
+  }
+  { \wf{\G}{\tTheory{\elem_0, \cdots, \elem_{n-1}}}{\tkModel} 
+  } 
+
+\inferrule
+  { \wf{\G}{\T_1}{\tkModel} \\ 
+    \wf{\G,\x{:}\T_1}{\T_2}{\tkModel} }
+  { \wf{\G}{\tArrow{\x}{\T_1}{\T_2}}{\tkModel} }
+
+\inferrule
+  { \wf{\G}{\T_1}{\tkModel} \\ 
+    \wf{\G,\x{:}\T_1}{\T_2}{\tk} }
+  { \wf{\G}{\tLambda{\x}{\T_1}{\T_2}}{\tk} }
+
+\inferrule
+  { \wf{\G}{\T}{\tkArrow{\x}{\T_1}{\tk}} \\
+    \wf{\G}{\M}{\T_1} }
+  { \wf{\G}{\tApp{\T}{\M}}{\subst{\tk}{\x}{\M}} }
+  
+\end{mathpar}
+
+\iffalse
+\subsection{Well-Formedness for Theory Kinds}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \eqvk{\G}{\kSet}{\kSet} }
+
+\inferrule
+  { \eqv{\G}{\s_1}{\s_2}{\kSet} \\
+    \eqvk{\G,\x{:}\s_1}{\k_1}{\k_2} }
+  { \eqvk{\G}{\kArrow{\x}{\s_1}{\k_1}}{\kArrow{\x}{\s_2}{\k_2}} }
+
+\end{mathpar}
+\fi
+
+\rulesec{Well-Formedness for Theory Elements}{\wfelem{\G}{\elem}}
+
+\begin{mathpar}
+\inferrule
+  { \wf{\G}{\s}{\kSet} \\
+    \langle \wf{\G}{\e}{\s} \rangle }
+  { \wfelem{\G}{\x : \s \langle = \e\rangle} }
+
+\inferrule
+  { \wfk{\G}{\k} \\
+    \langle \wf{\G}{\s}{\k} \rangle }
+  { \wfelem{\G}{\x : \k \langle = \s\rangle} }
+
+\inferrule
+  { \wfpt{\G}{\pt} \\
+    \langle \wf{\G}{\p}{\pt} \rangle }
+  { \wfelem{\G}{\x : \pt \langle = \p\rangle} }
+
+\inferrule
+  { \wf{\G}{\T}{\tkModel} }
+  { \wfelem{\G}{\x : \T } }
+
+\inferrule
+  { \wf{\G}{\T_1}{\tkModel}\\\\ \vdots \\\\
+    \wf{\G,\X_1{:}\T_1,\ldots,\X_{n-2}{:}\T_{n-2}}{\T_{n-1}}{\tkModel}\\\\
+    \wf{\G,\X_1{:}\T_1,\ldots,\X_{n-1}{:}\T_{n-1}}{\p}{\ptProp}  }
+  { \wfelem{\G}{\x : \forall \X_1{:}\T_1,\ldots,\X_{n-1}{:}\T_{n-1}.\, \p} }
+\end{mathpar}
+
+\rulesec{Well-Formedness for Terms}{\wf{\G}{\e}{\s}}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \wf{\G}{\eUnit}{\sUnit} }
+
+\inferrule
+  { \G(\x) = \s }
+  { \wf{\G}{\x}{\s} }
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\cdots,\x_i{:}\s_i\langle{{=}\e_i}\rangle,\cdots}} }
+  { \wf{\G}{\eMproj{\M}{\x_i}}{\s_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}]}}
+
+\inferrule
+  {\wf{\G}{\e_1}{\s_1}\\ \cdots \\ \wf{\G}{\e_n}{\s_n} }
+  {\wf{\G}{\eTuple{\e}{n}}{\sProduct{\cdot}{\s}{n}}}
+
+\inferrule
+  {0 \leq i < n\\\\
+   \wf{\G}{\e}{\sProduct{\x}{\s}{n-1}} }
+  {\wf{\G}{\eProj{i}{\e}}
+      {\s_i[\x_0{\mapsto}\eProj{0}{\e}]\cdots[\x_{i-1}{\mapsto}\eProj{i-1}{\e}]}}
+
+\inferrule
+  { \wf{\G}{\s_1}{\kSet} \\
+    \wf{\G,\x{:}\s_1}{\e_2}{\s_2} }
+  { \wf{\G}{\eLambda{\x}{\s_1}{\e_2}}{\sArrow{\x}{\s_1}{\s_2}} }
+
+\inferrule
+  { \wf{\G}{\e_1}{\sArrow{\x}{\s_2}{\s}} \\
+    \wf{\G}{\e_2}{\s_2} }
+  { \wf{\G}{\eApp{\e_1}{\e_2}}{\s[\x{\mapsto}\e_2]} }
+
+\inferrule
+  { \langle \wf{\G}{\e}{\s} \rangle }
+  { \wf{\G}{\eInj{\l}{\e}}{\l\langle{:}\s\rangle}}
+
+\inferrule
+  { n \ge 0 \\ 
+    \l_0,\ldots,\l_{n-1} \mathrm{\ distinct} \\
+    \wf{\G}{\s}{\kSet}\\\\
+    \langle\wf{\G}{\s_0}{\kSet}\rangle \\ 
+       \wf{\G\langle,\x_0{:}\s_0\rangle}{\e_0}{\s} \\ 
+       \langle \x_0\not\in\mathop{\mathrm{FV}}\s \rangle \\\\
+    \vdots\\\\
+    \langle\wf{\G}{\s_{n-1}}{\kSet}\rangle \\ 
+    \wf{\G\langle,\x_{n-1}{:}\s_{n-1}\rangle}{\e_{n-1}}{\s}\\
+       \langle \x_{n-1}\not\in\mathop{\mathrm{FV}}\s \rangle\\\\
+    \wf{\G}{\e}{\sSum{\x}{\s}{n-1}}
+  }
+  { \wf{\G}{\mathsf{match}\,\e\,\mathsf{with}\,
+      \l_0\,\langle{\x_0{:}\s_0}\rangle{\leadsto} \e_0\ |\
+       \cdots\ |\ 
+      \l_{n-1}\,\langle{\x_{n-1}{:}\s_{n-}}\rangle{\leadsto} \e_{n-1}
+      \,{:}\,\s}{\s}
+  }
+
+\inferrule
+  { \pf{\G}{\pUnique{\x}{\s}{\p}} }
+  { \wf{\G}{\eThe{\x}{\s}{\p}}{\sSubset{\x}{\s}{\p}} }
+
+\inferrule
+  { \wf{\G}{\e}{\sRz{\s}} }
+  { \wf{\G}{\eRz{\e}}{\s} }
+
+\inferrule
+  { \wf{\G}{\e_1}{\s'_1} \\
+    \eqv{\G}{\s_1}{\sRz{\s'_1}}{\kSet} \\\\
+    \wf{\G,\x{:}\s_1}{\e_2}{\s_2} \\
+    \x\not\in\mathop{\mathrm{FV}}\s_2\\\\
+    \pf{\G}{\forall \x',\x''{:}\s_1.\ \subst{\e_2}{\x}{\x'} =_{\s_2} \subst{\e_2}{\x}{\x''}} }
+  { \wf{\G}{\eRzChoose{\x}{\s_1}{\e_1}{\e_2}{\s_2}}{\s_2} }
+
+\inferrule
+  { \wf{\G}{\e}{\s} \\
+    \wf{\G}{\p}{\ptEquiv{\s}} }
+  { \wf{\G}{\eQuotient{\e}{\p}}{\sQuotient{\s}{\p}} }
+%%%  Possibly doesn't have a principal type??
+%%% No, it's ok as long as we have subtyping for quotients; just
+%%%  take the type of e to be as specific as possible.
+
+\inferrule
+  { \wf{\G}{\e_1}{\sQuotient{\s_1}{\p}}\\
+    \wf{\G,\x{:}\s_1}{\e_2}{\s_2}\\
+    \x\not\in\mathop{\mathrm{FV}}\s_2\\\\
+    \pf{\G}{\forall \x',\x''{:}\s_1.\ \pApp{\pApp{\p}{\x'}}{\x''} 
+               \Rightarrow
+               \subst{\e_2}{\x}{\x'} =_{s_2} \subst{\e_2}{\x}{\x''} } }
+  { \wf{\G}{\eChoose{\x}{\s_1}{\e_1}{\e_2}{\s_2}}{\s_2} }
+
+\inferrule
+  { \wf{\G}{\e_1}{\s_1} \\
+    \wf{\G,\x{:}\s_1{\color{red}{=}\e_1}}{\e_2}{\s_2} \\
+    \x\not\in\mathop{\mathrm{FV}}\s_2 }
+  { \wf{\G}{\eLet{\x}{\s_1}{\e_1}{\e_2}{\s_2}}{\s_2} }
+
+\inferrule
+  { \wf{\G}{\e}{\s_1}\\
+    \eqv{\G}{\s}{\sSubset{\x}{\s_1}{\p_2}}{\kSet} \\
+    \pf{\G}{\subst{\p_2}{\x}{\e}} }
+  { \wf{\G}{\eSubin{\e}{\s}}{\s} }
+
+\inferrule
+  { \wf{\G}{\e}{\sSubset{\x}{\s_1}{\p}} }
+  { \wf{\G}{\eSubout{\e}{\s_1}}{\s_1} }
+
+\inferrule
+  { \wf{\G}{\p}{\ptStable}\\
+    \pf{\G}{\p_1} \\
+    \wf{\G{,\color{red}\p}}{\e}{\s} }
+  { \wf{\G}{\eAssure{\p}{\e}}{\s} }
+
+\inferrule
+  { \wf{\G}{\e}{\s_1} \\
+    \st{\G}{\s_1}{\s_2} }
+  { \wf{\G}{\e}{\s_2} }
+
+\end{mathpar}
+
+\clearpage
+
+\rulesec{Decidable Term Equivalence}{\deqv{\G}{\e_1}{\e_2}}
+
+
+This section describes the \emph{decidable} term equivalence relation.
+By construction, this is defined \emph{only} for well-formed terms of
+the same type.
+
+In addition to the obvious PER and congruence rules, we have:
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \deqv{\G}{\eApp{(\eLambda{\x}{\s_2}{\e})}{\e_2}}
+        {\e[\x{\mapsto}\e_2]}}
+
+\inferrule
+  { }
+  { \deqv{\G}{(\eLet{\x}{\s_1}{\e_1}{\e_2}{\s_2})}
+        {\e_2[\x{\mapsto}\e_1]} }
+
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\ldots,\x_i{:}\s_i{=}\e_i,\ldots}} }
+  { \deqv{\G}{\eMproj{\M}{\x_i}}{(\e_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}])}  }
+
+\inferrule
+  { 
+  }
+  { \deqv{\G}{\eProj{i}{\eTuple{\e}{n}}}{\e_i}{\s_i} }
+
+\inferrule
+  { 0 \leq i < n \\\\
+    \e = {\mathsf{match}\,\eInj{\l_i}{\e'}\,\mathsf{with}\,
+      \l_0\,\langle{\x_0{:}\s_0}\rangle{\leadsto} \e_0\ |\
+       \cdots\ |\ 
+      \l_{n-1}\,\langle{\x_{n-1}{:}\s_{n-}}\rangle{\leadsto} \e_{n-1}
+      \,{:}\,\s}\\
+  }
+  { \deqv{\G}{\e}{\maybesubst{\e_i}{\x_i}{\e'}}
+  }
+
+\inferrule
+  { }
+  { \deqv{\G}{\eAssure{\p}{\e}}{\e} }
+
+\end{mathpar}
+
+{\color{blue} Question:  is it safe to substitute arbitrary expressions, or do we need a call-by-value restriction?  Same question applies to the substitutions in the typing/equivalence rules.}
+
+
+\begin{lemma}
+  If $\wf{\G}{\e_1}{\s}$ and $\wf{\G}{\e_2}{\s}$ and $\deqv{\G}{\e_1}{\e_2}$
+then $\pf{\G}{\pEqual{\e_1}{\e_2}{\s}}$.
+\end{lemma}
+
+\rulesec{Decidable Proposition Equivalence}{\deqv{\G}{\p_1}{\p_2}}
+
+
+This section describes the \emph{decidable} proposition equivalence relation.
+By construction, this is defined \emph{only} for well-formed propositions of
+the same proposition-type.
+
+In addition to the obvious PER and congruence rules, we have:
+
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \deqv{\G}{\pApp{(\pLambda{\x}{\s_2}{\p})}{\e_2}}
+        {\p[\x{\mapsto}\e_2]}}
+
+
+\inferrule
+  { \wf{\G}{\M}{\tTheory{\x_0{:}\decl_0,\ldots,\x_i{:}\pt_i{=}\p_i,\ldots}} }
+  { \deqv{\G}{\pMproj{\M}{\x_i}}{(\p_i[\x_0{\mapsto}\M.\x_0]\cdots[\x_{i-1}{\mapsto}\M.\x_{i-1}])}  }
+
+\inferrule
+  { 0 \leq i < n \\\\
+    \p = {\mathsf{match}\,\eInj{\l_i}{\e'}\,\mathsf{with}\,
+      \l_0\,\langle{\x_0{:}\s_0}\rangle{\leadsto} \p_0\ |\
+       \cdots\ |\ 
+      \l_{n-1}\,\langle{\x_{n-1}{:}\s_{n-}}\rangle{\leadsto} \p_{n-1}
+      \,{:}\,\s}\\
+  }
+  { \deqv{\G}{\p}{\maybesubst{\p_i}{\x_i}{\e'}}
+  }
+
+\inferrule
+  { }
+  { \deqv{\G}{\eAssure{\p_1}{\p_2}}{\p_2} }
+\end{mathpar}
+
+\begin{lemma}
+  If $\wf{\G}{\p_1}{\pt}$ and $\wf{\G}{\p_2}{\pt}$ and $\deqv{\G}{\p_1}{\p_2}$, then
+\begin{enumerate}
+\item $\pf{\G}{\pEquiv{\p_1}{\p_2}}$
+\item $\p_1$ and $\p_2$ have equal realizers (with equal types).
+\end{enumerate}
+\end{lemma}
 
 
 \end{document}

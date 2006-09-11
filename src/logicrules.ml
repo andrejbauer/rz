@@ -258,6 +258,204 @@ let rec searchElems cntxt nm' mdl =
   in
     loop emptysubst 
 
+(*********************************)
+(** {3 Floating out assumptions} *)
+(*********************************)
+
+(*XXX:  Should we get a list of assurances out, or a single assurance? *)
+
+let floatList floatFn things =
+  let (assrss, things') = 
+    List.split (List.map floatFn things)
+  in let assrs = List.flatten assrss
+  in (assrs, things)
+
+(* If we lift
+     forall x : t ( assure y :u .... )
+   what do we have to do if the type u depends on x !!?? 
+*)
+
+let rec floatAssure univ hyps = function
+    (EmptyTuple | Var _ | Inj(_, None)) as trm -> ([], trm)
+  | Assure (None, prp, trm) ->
+      let    (assrs1, prp') = floatAssureProp univ hyps prp
+      in let (assrs2, trm') = floatAssure univ hyps trm
+      in let assr = (None, foldForall (List.rev univ) 
+	                     (foldImply hyps prp) )
+      in 
+	   ( assrs1 @ [assr] @ assrs2, trm' )
+  | Assure (Some (nm, ty), prp, trm) ->
+      (* Assrs0 and assrs1 can't refer to the variable being assured. *)
+      let    (assrs0, ty') = floatAssureSet univ hyps ty
+      in let    (assrs1, prp') = floatAssureProp univ hyps prp
+	(* Assrs2 can, and these references shouldn't be univ. quantified.
+	   We also don't have to add this assertion as a new hypothesis
+	   for assrs2, since this assertion will appear first. *)
+      in let (assrs2, trm') = floatAssure univ hyps trm
+      in let assr = (Some (nm, ty'), foldForall (List.rev univ)
+ 	                                (foldImply hyps prp) )
+      in 
+	   ( assrs0 @ assrs1 @ [assr] @ assrs2, trm' )
+  | Tuple trms ->
+      let (assrs, trms') = floatList (floatAssure univ hyps) trms
+      in (assrs, Tuple trms')
+  | Proj(n, trm) ->
+      let (assrs, trm') = floatAssure univ hyps trm
+      in ( assrs, Proj(n, trm') )
+  | App(trm1, trm2) ->
+      let    (assrs1, trm1') = floatAssure univ hyps trm1
+      in let (assrs2, trm2') = floatAssure univ hyps trm2
+      in ( assrs1 @ assrs2, App(trm1', trm2') )
+  | Lambda((nm, ty), trm) ->
+      let (assrs1, ty') = floatAssureSet univ hyps ty
+      in let univ' = (nm,ty') :: univ
+      in let (assrs2, trm') = floatAssure univ' hyps trm
+      in (assrs1 @ assrs2, Lambda((nm,ty'), trm'))
+  | The((nm, ty), prp) ->
+      let (assrs1, ty') = floatAssureSet univ hyps ty
+      in let univ' = (nm,ty') :: univ
+      in let (assrs2, prp') = floatAssureProp univ' hyps prp
+      in (assrs1 @ assrs2, The((nm,ty'), prp'))
+  | Inj(lbl, Some trm) ->
+      let (assrs, trm') = floatAssure univ hyps trm
+      in ( assrs, Inj(lbl, Some trm'))
+
+  | Case(trm, ty, arms) ->
+      let (assrs3, trm') = floatAssure univ hyps trm
+      in let (assrs4, ty') = floatAssureSet univ hyps ty
+      in let floatArm = function
+	  (lbl, None, trm) ->
+	    let hyps' = Equal(ty, trm, Inj(lbl, None)) :: hyps
+	    in let (assrs, trm') = floatAssure univ hyps' trm
+	    in (assrs, (lbl, None, trm'))
+	| (lbl, Some (nm,ty), trm) ->
+	    let (assrs1, ty') = floatAssureSet univ hyps ty
+	    in let univ' = (nm, ty') :: univ
+	    in let hyps' = 
+	      Equal( ty, trm, Inj(lbl, Some (Var(longname_of_name nm))) ) :: hyps
+	    in let (assrs2, trm') = floatAssure univ' hyps' trm
+	    in (assrs1 @ assrs2, (lbl, Some (nm, ty'), trm'))
+      in let (assrs5s, arms') = List.split (List.map floatArm arms)
+      in let assrs5 = List.flatten assrs5s
+      in (assrs3 @ assrs4 @ assrs5, Case(trm', ty', arms'))
+
+  | RzQuot trm ->
+      let (assrs, trm') = floatAssure univ hyps trm
+      in ( assrs, RzQuot trm')
+  | RzChoose ((nm1,Rz ty2), trm3, trm4, ty5) ->
+      let    (assrs2, ty2') = floatAssureSet univ hyps ty2
+      in let (assrs3, trm3') = floatAssure univ hyps trm3
+      in let univ' = (nm1,ty2') :: univ
+      in let hyps' = 
+	Equal(ty2, RzQuot (Var(longname_of_name nm1)), trm3) :: hyps
+      in let (assrs4, trm4') = floatAssure univ' hyps' trm4
+      in let (assrs5, ty5') = floatAssureSet univ hyps ty5
+      in (assrs2 @ assrs3 @ assrs4 @ assrs5, 
+	 RzChoose((nm1,ty2'), trm3', trm4', ty5') )
+  | RzChoose _ -> failwith "Impossible: floatAssure"
+  | Quot(trm, prp) ->
+      let    (assrs1, trm') = floatAssure univ hyps trm
+      in let (assrs2, prp') = floatAssureProp univ hyps prp
+      in ( assrs1 @ assrs2, Quot(trm', prp'))
+  | Choose((nm1,ty2), pred3, trm4, trm5, ty6) ->
+      let    (assrs2, ty2' ) = floatAssureSet univ hyps ty2
+      in let (assrs3, pred3') = floatAssureProp univ hyps pred3
+      in let (assrs4, trm4') = floatAssure univ hyps trm4
+      in let univ' = (nm1,ty2') :: univ
+      in let hyps' = 
+	Equal(Quotient(ty2, pred3),
+	      Quot(Var(longname_of_name nm1),pred3'), trm4) :: hyps
+      in let (assrs5, trm5') = floatAssure univ' hyps' trm5
+      in let (assrs6, ty6' ) = floatAssureSet univ hyps ty6
+      in ( assrs2 @ assrs3 @ assrs4 @ assrs5 @ assrs6, 
+	   Choose((nm1,ty2'), pred3', trm4', trm5', ty6') )
+  | Let((nm1,ty2), trm3, trm4, ty5) ->
+      let    (assrs2, ty2' ) = floatAssureSet univ hyps ty2
+      in let (assrs3, trm3') = floatAssure univ hyps trm3
+      in let univ' = (nm1,ty2') :: univ
+      in let hyps' = Equal(ty2, Var(longname_of_name nm1), trm3) :: hyps
+      in let (assrs4, trm4') = floatAssure univ' hyps' trm4
+      in let (assrs5, ty5' ) = floatAssureSet univ hyps ty5
+      in (assrs2 @ assrs3 @ assrs4 @ assrs5, 
+	 RzChoose((nm1,ty2'), trm3', trm4', ty5') )
+  | Subin(trm, ty) ->
+      let    (assums1, trm') = floatAssure univ hyps trm
+      in let (assums2, ty' ) = floatAssureSet univ hyps ty
+      in (assums1 @ assums2, 
+	  Subin(trm', ty') )
+  | Subout(trm, ty) ->
+      let    (assums1, trm') = floatAssure univ hyps trm
+      in let (assums2, ty' ) = floatAssureSet univ hyps ty
+      in (assums1 @ assums2, 
+	  Subout(trm', ty') )
+
+and floatAssureProp univ hyps = function
+    (False | True | Atomic _) as prp -> ([], prp)
+  | PAssure (None, prp1, prp2) ->
+      let    (assrs1, prp1') = floatAssureProp univ hyps prp1
+      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
+      in let assr = (None, foldForall (List.rev univ) 
+	                     (foldImply hyps prp1) )
+      in 
+	   ( assrs1 @ [assr] @ assrs2, prp2' )
+  | PAssure (Some (nm, ty), prp1, prp2) ->
+      (* Assrs0 and assrs1 can't refer to the variable being assured. *)
+      let    (assrs0, ty') = floatAssureSet univ hyps ty
+      in let (assrs1, prp1') = floatAssureProp univ hyps prp1
+	(* Assrs2 can, and these references shouldn't be univ. quantified.
+	   We also don't have to add this assertion as a new hypothesis
+	   for assrs2, since this assertion will appear first. *)
+      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
+      in let assr = (Some (nm, ty'), foldForall (List.rev univ)
+ 	                                (foldImply hyps prp1) )
+      in 
+	   ( assrs0 @ assrs1 @ [assr] @ assrs2, prp2' )
+
+  | And prps ->
+      let (assrs, prps') = floatList (floatAssureProp univ hyps) prps
+      in (assrs, And prps')
+
+  | Or prps ->
+      let (assrs, prps') = floatList (floatAssureProp univ hyps) prps
+      in (assrs, Or prps')
+
+  | Imply(prp1, prp2) ->
+      let    (assrs1, prp1') = floatAssureProp univ hyps prp1
+      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
+      in ( assrs1 @ assrs2, Imply(prp1',prp2') )
+
+  | Iff(prp1, prp2) ->
+      let    (assrs1, prp1') = floatAssureProp univ hyps prp1
+      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
+      in ( assrs1 @ assrs2, Iff(prp1',prp2') )
+
+  | Forall((nm,ty), prp) ->
+      let    (assrs1, ty') = floatAssureSet univ hyps ty
+      in let univ' = (nm,ty') :: univ
+      in let (assrs2, prp') = floatAssureProp univ' hyps prp
+      in ( assrs1 @ assrs2, Forall((nm,ty'), prp') )
+
+  | Exists((nm,ty), prp) ->
+      (** XXX NO ! *)
+      let    (assrs1, ty') = floatAssureSet univ hyps ty
+      in let univ' = (nm,ty') :: univ
+      in let (assrs2, prp') = floatAssureProp univ' hyps prp
+      in ( assrs1 @ assrs2, Exists((nm,ty'), prp') )
+
+      
+  | _ -> failwith "unimplemented"
+
+and floatAssureSet univ hyps = function 
+    (Empty | Unit | Basic _) as st -> ([], st)
+(*
+  | Product bnds ->
+      let rec fun processBnds univ = function
+	  [] -> ([], [])
+	| (nm,st)::rest ->
+	    let (st',
+*)
+  | _ -> failwith "unimplemented"
+
 (**************************************)
 (** {3 Type and Theory Normalization} *)
 (**************************************)
@@ -389,7 +587,7 @@ let rec hnfTerm cntxt = function
 	  | trm1' -> App(trm1', trm2)
       end
 
-  | Case(trm1, arms) ->
+  | Case(trm1, ty, arms) ->
       begin
 	match (hnfTerm cntxt trm1) with
 	    Inj(lbl, None) ->
@@ -407,7 +605,7 @@ let rec hnfTerm cntxt = function
 			hnfTerm cntxt (subst sub trm2)
 		  | _ -> failwith "Impossible: Logicrules.hnfTerm 5"
 	      end
-	  | trm1' -> Case(trm1', arms)
+	  | trm1' -> Case(trm1', ty, arms)
       end
 
   | Proj(n1, trm2) ->
@@ -421,6 +619,15 @@ let rec hnfTerm cntxt = function
       let sub = insertTermvar emptysubst nm trm1
       in
 	hnfTerm cntxt (subst sub trm2)
+
+  | Assure (None, _, trm) ->
+      (** Since hnfTerm is only applied to well-formed terms, the
+          assure must be true. More importantly, since we can't
+          _actually_ check that the proposition is true, hnfTerm is
+          only used in deciding term equivalence, where assures
+          are irrelevant.  [The _optimizer_ on the other hand, 
+          should not be throwing away assures!] *)
+      hnfTerm cntxt trm
 
   | trm -> trm
 
@@ -459,7 +666,7 @@ let rec hnfProp cntxt = function
 	  | prp1' -> PApp(prp1', trm2)
       end
 
-  | PCase(trm1, arms) ->
+  | PCase(trm1, ty, arms) ->
       begin
 	match (hnfTerm cntxt trm1) with
 	    Inj(lbl, None) ->
@@ -477,8 +684,12 @@ let rec hnfProp cntxt = function
 			hnfProp cntxt (substProp sub prp2)
 		  | _ -> failwith "Impossible: Logicrules.hnfProp 5"
 	      end
-	  | trm1' -> PCase(trm1', arms)
+	  | trm1' -> PCase(trm1', ty, arms)
       end
+
+  | PAssure (None, _, prp) ->
+      (** See the Assure comment in hnfTerm above *)
+      hnfProp cntxt prp
 
   | prp -> prp
 
@@ -491,8 +702,6 @@ let rec hnfProp cntxt = function
 (****************************************)
 (** {4 Sets: equivalence and subtyping} *)
 (****************************************)
-
-
 
 let eqArms cntxt substFn eqFn eqSetFn arms1 arms2 =
   let rec loop = function
@@ -592,8 +801,7 @@ let rec eqSet' do_subset cntxt =
 
                | ( Quotient ( st3, eqvlnce3 ), 
 		   Quotient ( st4, eqvlnce4 ) ) -> 
-                    (** Quotient is invariant *)
-                    eqSet cntxt st3 st4  
+                    cmp st3 st4  
                     && eqProp cntxt eqvlnce3 eqvlnce4
 
                | ( SApp (st3, trm3), SApp (st4, trm4) ) ->
@@ -760,8 +968,9 @@ and eqProp cntxt prp1 prp2 =
       | (IsEquiv(prp1,st1), IsEquiv(prp2,st2)) ->
 	  eqProp cntxt prp1 prp2 &&
 	    eqSet cntxt st1 st2 
-      | (PCase(trm1, arms1), PCase(trm2, arms2)) ->
+      | (PCase(trm1, ty1, arms1), PCase(trm2, ty2, arms2)) ->
 	  eqTerm cntxt trm1 trm2 &&
+	    eqSet cntxt ty1 ty2 &&
 	    eqArms cntxt substProp eqProp eqSet arms1 arms2
       | _ -> false
 	    
@@ -809,8 +1018,9 @@ and eqTerm cntxt trm1 trm2 =
       | (Inj(lbl1, Some trm1), Inj(lbl2, Some trm2)) ->
 	  lbl1 = lbl2 && eqTerm cntxt trm1 trm2
 
-      | (Case(trm1, arms1), Case(trm2, arms2)) ->
+      | (Case(trm1, ty1, arms1), Case(trm2, ty2, arms2)) ->
 	  eqTerm cntxt trm1 trm2 &&
+	    eqSet cntxt ty1 ty2 &&
 	    eqArms cntxt subst eqTerm eqSet arms1 arms2
 
       | (RzQuot trm1, RzQuot trm2) ->

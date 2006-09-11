@@ -71,7 +71,7 @@ and proposition =
     | PApp    of proposition * term
     | PLambda of binding * proposition
     | IsEquiv of proposition * set                (* [IsEquiv(p,s)] means [p] is an equivalence relation on [s] *)
-    | PCase   of term * (label * binding option * proposition) list
+    | PCase   of term * set * (label * binding option * proposition) list
     | PAssure of binding option * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
 	
 and set =
@@ -106,7 +106,7 @@ and term =
     | Lambda   of binding  * term
     | The      of binding  * proposition (* description operator *)
     | Inj      of label * term option
-    | Case     of term * (label * binding option * term) list
+    | Case     of term * set * (label * binding option * term) list
     | RzQuot   of term
     | RzChoose of binding * term * term * set
     | Quot     of term * proposition
@@ -165,6 +165,7 @@ let fSubset x y = Subset(x,y)
 let fSLambda x y = SLambda(x,y)
 let fLambda x y = Lambda(x,y)
 let fThe x y = The(x,y)
+let fImply x y = Imply(x,y)
 
   (* Hack because Exp, PropArrow and KindArrow take a binding semantically,
      but not syntactically *)
@@ -195,6 +196,14 @@ let foldAssure reqs bdy =
 
 let foldPAssure reqs bdy =
   List.fold_right (fun req prp -> PAssure(None, req, prp)) reqs bdy
+
+let foldForall =
+  let maybeForall  (nm,ty) prp = 
+    if isWild nm then prp else Forall((nm,ty), prp)
+  in List.fold_right maybeForall
+
+let foldImply = 
+  List.fold_right fImply
 
 (****************************************)
 (** (Not-Very)-Pretty-Printing Routines *)
@@ -258,14 +267,14 @@ and string_of_term trm =
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
     | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
     | Inj (lbl, None) -> "`" ^ lbl 
-    | Case (trm,arms) -> 
+    | Case (trm,ty',arms) -> 
 	let rec doArm = function
 	    (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
 	  | (lbl, Some (n,ty), trm) -> 
 	      lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
 		") => " ^ toStr trm
 	in 
-	  "case " ^ toStr trm ^ " of " ^
+	  "case " ^ toStr trm ^ " : " ^ string_of_set ty' ^ " of " ^
 	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
 
 
@@ -321,14 +330,14 @@ and string_of_prop prp =
 	"(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
     | IsEquiv (prp, st) ->
 	"IsEquiv(" ^ toStr prp ^ " on " ^ string_of_set st ^ ")"
-    | PCase (trm,arms) -> 
+    | PCase (trm, ty', arms) -> 
 	let rec doArm = function
 	    (lbl, None, prp) -> lbl ^ " => " ^ toStr prp
 	  | (lbl, Some (n,ty), prp) -> 
 	      lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
 		") => " ^ toStr prp
 	in 
-	  "case " ^ string_of_term trm ^ " of " ^
+	  "case " ^ string_of_term trm ^ " : " ^ string_of_set ty' ^ " of " ^
 	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
     | PAssure (None, p, q) ->
 	"assure " ^ string_of_prop p ^ " in " ^ string_of_prop q
@@ -529,8 +538,10 @@ and fnTerm = function
       NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
   | The((nm, st), prp) ->
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
-  | Case (trm, arms) ->
-      NameSet.union (fnTerm trm) (unionNameSetList (List.map fnCaseArm arms))
+  | Case (trm, ty, arms) ->
+      NameSet.union (fnTerm trm) 
+	(NameSet.union (fnSet ty)
+	  (unionNameSetList (List.map fnCaseArm arms)))
   | Assure(None,prp,trm) -> NameSet.union (fnProp prp) (fnTerm trm)
   | Assure(Some(nm,st),prp,trm) ->
       NameSet.union (fnSet st) 
@@ -554,8 +565,10 @@ and fnProp = function
   | Unique((nm, st), prp) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
   | IsEquiv (prp, st) -> NameSet.union (fnProp prp) (fnSet st) 
-  | PCase (trm, arms) ->
-      NameSet.union (fnTerm trm) (unionNameSetList (List.map fnPCaseArm arms))
+  | PCase (trm, ty, arms) ->
+      NameSet.union (fnTerm trm) 
+	(NameSet.union (fnSet ty)
+	    (unionNameSetList (List.map fnPCaseArm arms)))
   | PAssure(None,prp1,prp2) -> NameSet.union (fnProp prp1) (fnProp prp2)
   | PAssure(Some(nm,st),prp1,prp2) ->
       NameSet.union (fnSet st) 
@@ -692,7 +705,7 @@ let rec subst sbst =
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
     | Inj(l,termopt) -> Inj(l, doOpt (subst sbst) termopt)
-    | Case(t1,arms) -> Case(t1,subarms arms)
+    | Case(t1,ty,arms) -> Case(t1, substSet sbst ty, subarms arms)
     | RzQuot t -> RzQuot (sub t)
     | RzChoose ((y,sopt),t1,t2,ty) ->
 	let (sbst', y') = updateBoundName sbst y in
@@ -777,7 +790,7 @@ and substProp sbst =
 		 substProp sbst' t1)
     | PApp(prp1,trm2) -> PApp(sub prp1, subst sbst trm2)
     | IsEquiv (prp, st) -> IsEquiv(sub prp, substSet sbst st)
-    | PCase(t1,arms) -> PCase(t1,psubarms arms)
+    | PCase(t1,ty,arms) -> PCase(t1, substSet sbst ty, psubarms arms)
     | PAssure(None, prp1, prp2) -> PAssure(None, substProp sbst prp1, substProp sbst prp2)
     | PAssure(Some(y, st), prp1, prp2) ->
 	let (sbst', y') = updateBoundName sbst y in

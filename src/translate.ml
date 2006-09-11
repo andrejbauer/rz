@@ -434,7 +434,7 @@ and translateTerm ctx = function
 
   | L.Inj (lb, Some t) -> Inj (lb, Some (translateTerm ctx t))
 
-  | L.Case (t1, lst) ->
+  | L.Case (t1, _, lst) ->
       Case (translateTerm ctx t1, List.map
 	       (function
 		    (lb, Some (n, s), t) ->
@@ -621,7 +621,7 @@ and translateProp ctx = function
 	makeProp (any(), TopTy)
 	  (IsEquiv (deepPApp 2 ctx p' (dagger_of_ty ty) , translateSet ctx s))
 
-  | L.PCase (t, lst) ->
+  | L.PCase (t, _, lst) ->
       let tys, arms = List.fold_left
 	(fun (tys, arms) -> function
 	    (lb, Some (n, s), p) ->

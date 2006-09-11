@@ -611,7 +611,7 @@ let rec annotateExpr cntxt = function
 				NoBecause rsns -> 
 				  raise (Oops rsns)
 			      | YesIf(ty, reqs) ->
-				  ResTerm(L.Case (trm1, arms), ty)
+				  ResTerm(L.Case (trm1, armty, arms), ty)
 		     with
 			 Oops rsns -> ResError (E.inMsg orig_expr :: rsns)
 		   end
@@ -640,7 +640,7 @@ let rec annotateExpr cntxt = function
 				NoBecause rsns -> 
 				  ResError (E.inMsg orig_expr :: rsns)
 			      | YesIf(pt, reqs) ->
-				  ResProp(L.foldPAssure reqs (L.PCase(trm1,arms)),
+				  ResProp(L.foldPAssure reqs (L.PCase(trm1,armty,arms)),
 				         pt)
 		     with (Oops rsns) -> ResError (E.inMsg orig_expr :: rsns)
 		   end
