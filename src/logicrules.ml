@@ -1,8 +1,6 @@
 open Name
 open Logic
-open Possibility
 module E = Error
-
 
 (*****************)
 (** {2 Contexts} *)
@@ -258,204 +256,6 @@ let rec searchElems cntxt nm' mdl =
   in
     loop emptysubst 
 
-(*********************************)
-(** {3 Floating out assumptions} *)
-(*********************************)
-
-(*XXX:  Should we get a list of assurances out, or a single assurance? *)
-
-let floatList floatFn things =
-  let (assrss, things') = 
-    List.split (List.map floatFn things)
-  in let assrs = List.flatten assrss
-  in (assrs, things)
-
-(* If we lift
-     forall x : t ( assure y :u .... )
-   what do we have to do if the type u depends on x !!?? 
-*)
-
-let rec floatAssure univ hyps = function
-    (EmptyTuple | Var _ | Inj(_, None)) as trm -> ([], trm)
-  | Assure (None, prp, trm) ->
-      let    (assrs1, prp') = floatAssureProp univ hyps prp
-      in let (assrs2, trm') = floatAssure univ hyps trm
-      in let assr = (None, foldForall (List.rev univ) 
-	                     (foldImply hyps prp) )
-      in 
-	   ( assrs1 @ [assr] @ assrs2, trm' )
-  | Assure (Some (nm, ty), prp, trm) ->
-      (* Assrs0 and assrs1 can't refer to the variable being assured. *)
-      let    (assrs0, ty') = floatAssureSet univ hyps ty
-      in let    (assrs1, prp') = floatAssureProp univ hyps prp
-	(* Assrs2 can, and these references shouldn't be univ. quantified.
-	   We also don't have to add this assertion as a new hypothesis
-	   for assrs2, since this assertion will appear first. *)
-      in let (assrs2, trm') = floatAssure univ hyps trm
-      in let assr = (Some (nm, ty'), foldForall (List.rev univ)
- 	                                (foldImply hyps prp) )
-      in 
-	   ( assrs0 @ assrs1 @ [assr] @ assrs2, trm' )
-  | Tuple trms ->
-      let (assrs, trms') = floatList (floatAssure univ hyps) trms
-      in (assrs, Tuple trms')
-  | Proj(n, trm) ->
-      let (assrs, trm') = floatAssure univ hyps trm
-      in ( assrs, Proj(n, trm') )
-  | App(trm1, trm2) ->
-      let    (assrs1, trm1') = floatAssure univ hyps trm1
-      in let (assrs2, trm2') = floatAssure univ hyps trm2
-      in ( assrs1 @ assrs2, App(trm1', trm2') )
-  | Lambda((nm, ty), trm) ->
-      let (assrs1, ty') = floatAssureSet univ hyps ty
-      in let univ' = (nm,ty') :: univ
-      in let (assrs2, trm') = floatAssure univ' hyps trm
-      in (assrs1 @ assrs2, Lambda((nm,ty'), trm'))
-  | The((nm, ty), prp) ->
-      let (assrs1, ty') = floatAssureSet univ hyps ty
-      in let univ' = (nm,ty') :: univ
-      in let (assrs2, prp') = floatAssureProp univ' hyps prp
-      in (assrs1 @ assrs2, The((nm,ty'), prp'))
-  | Inj(lbl, Some trm) ->
-      let (assrs, trm') = floatAssure univ hyps trm
-      in ( assrs, Inj(lbl, Some trm'))
-
-  | Case(trm, ty, arms) ->
-      let (assrs3, trm') = floatAssure univ hyps trm
-      in let (assrs4, ty') = floatAssureSet univ hyps ty
-      in let floatArm = function
-	  (lbl, None, trm) ->
-	    let hyps' = Equal(ty, trm, Inj(lbl, None)) :: hyps
-	    in let (assrs, trm') = floatAssure univ hyps' trm
-	    in (assrs, (lbl, None, trm'))
-	| (lbl, Some (nm,ty), trm) ->
-	    let (assrs1, ty') = floatAssureSet univ hyps ty
-	    in let univ' = (nm, ty') :: univ
-	    in let hyps' = 
-	      Equal( ty, trm, Inj(lbl, Some (Var(longname_of_name nm))) ) :: hyps
-	    in let (assrs2, trm') = floatAssure univ' hyps' trm
-	    in (assrs1 @ assrs2, (lbl, Some (nm, ty'), trm'))
-      in let (assrs5s, arms') = List.split (List.map floatArm arms)
-      in let assrs5 = List.flatten assrs5s
-      in (assrs3 @ assrs4 @ assrs5, Case(trm', ty', arms'))
-
-  | RzQuot trm ->
-      let (assrs, trm') = floatAssure univ hyps trm
-      in ( assrs, RzQuot trm')
-  | RzChoose ((nm1,Rz ty2), trm3, trm4, ty5) ->
-      let    (assrs2, ty2') = floatAssureSet univ hyps ty2
-      in let (assrs3, trm3') = floatAssure univ hyps trm3
-      in let univ' = (nm1,ty2') :: univ
-      in let hyps' = 
-	Equal(ty2, RzQuot (Var(longname_of_name nm1)), trm3) :: hyps
-      in let (assrs4, trm4') = floatAssure univ' hyps' trm4
-      in let (assrs5, ty5') = floatAssureSet univ hyps ty5
-      in (assrs2 @ assrs3 @ assrs4 @ assrs5, 
-	 RzChoose((nm1,ty2'), trm3', trm4', ty5') )
-  | RzChoose _ -> failwith "Impossible: floatAssure"
-  | Quot(trm, prp) ->
-      let    (assrs1, trm') = floatAssure univ hyps trm
-      in let (assrs2, prp') = floatAssureProp univ hyps prp
-      in ( assrs1 @ assrs2, Quot(trm', prp'))
-  | Choose((nm1,ty2), pred3, trm4, trm5, ty6) ->
-      let    (assrs2, ty2' ) = floatAssureSet univ hyps ty2
-      in let (assrs3, pred3') = floatAssureProp univ hyps pred3
-      in let (assrs4, trm4') = floatAssure univ hyps trm4
-      in let univ' = (nm1,ty2') :: univ
-      in let hyps' = 
-	Equal(Quotient(ty2, pred3),
-	      Quot(Var(longname_of_name nm1),pred3'), trm4) :: hyps
-      in let (assrs5, trm5') = floatAssure univ' hyps' trm5
-      in let (assrs6, ty6' ) = floatAssureSet univ hyps ty6
-      in ( assrs2 @ assrs3 @ assrs4 @ assrs5 @ assrs6, 
-	   Choose((nm1,ty2'), pred3', trm4', trm5', ty6') )
-  | Let((nm1,ty2), trm3, trm4, ty5) ->
-      let    (assrs2, ty2' ) = floatAssureSet univ hyps ty2
-      in let (assrs3, trm3') = floatAssure univ hyps trm3
-      in let univ' = (nm1,ty2') :: univ
-      in let hyps' = Equal(ty2, Var(longname_of_name nm1), trm3) :: hyps
-      in let (assrs4, trm4') = floatAssure univ' hyps' trm4
-      in let (assrs5, ty5' ) = floatAssureSet univ hyps ty5
-      in (assrs2 @ assrs3 @ assrs4 @ assrs5, 
-	 RzChoose((nm1,ty2'), trm3', trm4', ty5') )
-  | Subin(trm, ty) ->
-      let    (assums1, trm') = floatAssure univ hyps trm
-      in let (assums2, ty' ) = floatAssureSet univ hyps ty
-      in (assums1 @ assums2, 
-	  Subin(trm', ty') )
-  | Subout(trm, ty) ->
-      let    (assums1, trm') = floatAssure univ hyps trm
-      in let (assums2, ty' ) = floatAssureSet univ hyps ty
-      in (assums1 @ assums2, 
-	  Subout(trm', ty') )
-
-and floatAssureProp univ hyps = function
-    (False | True | Atomic _) as prp -> ([], prp)
-  | PAssure (None, prp1, prp2) ->
-      let    (assrs1, prp1') = floatAssureProp univ hyps prp1
-      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
-      in let assr = (None, foldForall (List.rev univ) 
-	                     (foldImply hyps prp1) )
-      in 
-	   ( assrs1 @ [assr] @ assrs2, prp2' )
-  | PAssure (Some (nm, ty), prp1, prp2) ->
-      (* Assrs0 and assrs1 can't refer to the variable being assured. *)
-      let    (assrs0, ty') = floatAssureSet univ hyps ty
-      in let (assrs1, prp1') = floatAssureProp univ hyps prp1
-	(* Assrs2 can, and these references shouldn't be univ. quantified.
-	   We also don't have to add this assertion as a new hypothesis
-	   for assrs2, since this assertion will appear first. *)
-      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
-      in let assr = (Some (nm, ty'), foldForall (List.rev univ)
- 	                                (foldImply hyps prp1) )
-      in 
-	   ( assrs0 @ assrs1 @ [assr] @ assrs2, prp2' )
-
-  | And prps ->
-      let (assrs, prps') = floatList (floatAssureProp univ hyps) prps
-      in (assrs, And prps')
-
-  | Or prps ->
-      let (assrs, prps') = floatList (floatAssureProp univ hyps) prps
-      in (assrs, Or prps')
-
-  | Imply(prp1, prp2) ->
-      let    (assrs1, prp1') = floatAssureProp univ hyps prp1
-      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
-      in ( assrs1 @ assrs2, Imply(prp1',prp2') )
-
-  | Iff(prp1, prp2) ->
-      let    (assrs1, prp1') = floatAssureProp univ hyps prp1
-      in let (assrs2, prp2') = floatAssureProp univ hyps prp2
-      in ( assrs1 @ assrs2, Iff(prp1',prp2') )
-
-  | Forall((nm,ty), prp) ->
-      let    (assrs1, ty') = floatAssureSet univ hyps ty
-      in let univ' = (nm,ty') :: univ
-      in let (assrs2, prp') = floatAssureProp univ' hyps prp
-      in ( assrs1 @ assrs2, Forall((nm,ty'), prp') )
-
-  | Exists((nm,ty), prp) ->
-      (** XXX NO ! *)
-      let    (assrs1, ty') = floatAssureSet univ hyps ty
-      in let univ' = (nm,ty') :: univ
-      in let (assrs2, prp') = floatAssureProp univ' hyps prp
-      in ( assrs1 @ assrs2, Exists((nm,ty'), prp') )
-
-      
-  | _ -> failwith "unimplemented"
-
-and floatAssureSet univ hyps = function 
-    (Empty | Unit | Basic _) as st -> ([], st)
-(*
-  | Product bnds ->
-      let rec fun processBnds univ = function
-	  [] -> ([], [])
-	| (nm,st)::rest ->
-	    let (st',
-*)
-  | _ -> failwith "unimplemented"
-
 (**************************************)
 (** {3 Type and Theory Normalization} *)
 (**************************************)
@@ -471,7 +271,7 @@ let rec hnfTheory cntxt = function
       begin
 	match lookupId cntxt nm with
 	    Some(DeclTheory (thry, _)) -> hnfTheory cntxt thry
-	  | _ -> failwith "Impossible: Logicrules.hnfTheory 1"
+	  | _ -> failwith "hnfTheory 1"
       end
   | TheoryApp (thry, mdl) ->
       begin
@@ -479,38 +279,39 @@ let rec hnfTheory cntxt = function
 	    TheoryLambda((nm,_), thry2) ->
 	      let subst = insertModelvar emptysubst nm mdl
 	      in hnfTheory cntxt (substTheory subst thry2)
-	  | _ -> failwith "Impossible: Logicrules.hnfTheory 2"
+	  | _ -> failwith "hnfTheory 2"
       end
   | thry -> thry
 
 (* cntxt -> model -> theory *)
 (** Assumes that the given model is well-formed.
 *)
-let rec theoryOf cntxt = function
+let rec modelToTheory cntxt = function
     ModelName nm ->
       begin
 	match (lookupId cntxt nm) with
 	    Some(DeclModel thry) -> thry
-	  | _ -> failwith "Impossible: Logicrules.theoryOf 1"
+	  | _ -> (*failwith "modelToTheory 1" *) (* XXX *)
+	      E.tyGenericError "oops modelToTheory 1"
       end
   | ModelProj (mdl, nm) -> 
       begin
-	match hnfTheory cntxt (theoryOf cntxt mdl) with
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
 	    Theory elems ->
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclModel thry) -> thry
-		  | _ -> failwith "Impossible: Logicrules.theoryOf 2"
+		  | _ -> failwith "modelToTheory 2"
 	      end
-	  | _ -> failwith "Impossible: Logicrules.theoryOf 3"
+	  | _ -> failwith "modelToTheory 3"
       end
   | ModelApp (mdl1, mdl2) ->
       begin
-	match hnfTheory cntxt (theoryOf cntxt mdl1) with
+	match hnfTheory cntxt (modelToTheory cntxt mdl1) with
 	    TheoryArrow((nm, thry1), thry2) ->
 	      let subst = insertModelvar emptysubst nm mdl2
 	      in substTheory subst thry2
-	  | _ -> failwith "Impossible: Logicrules.theoryOf 4"
+	  | _ -> failwith "modelToTheory 4"
       end
 	
 
@@ -523,20 +324,20 @@ let rec hnfSet cntxt = function
 	match (lookupId cntxt stnm) with
             Some(DeclSet(Some st, _)) -> hnfSet cntxt st
 	  | Some(DeclSet(None, _))    -> orig_set
-	  | _ -> failwith "Impossible: hnfSet 1"
+	  | _ -> failwith "hnfSet 1"
       end
 
   | Basic (SLN ( Some mdl, nm), _) as orig_set -> 
       begin
-	match hnfTheory cntxt (theoryOf cntxt mdl) with
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
 	    Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclSet(Some st, _)) -> hnfSet cntxt st
 		  | Some (DeclSet(None, _))    -> orig_set
-		  | _ -> failwith "Impossible: hnfSet 2"
+		  | _ -> failwith "hnfSet 2"
 	      end
-	  | _ -> failwith "Impossible: hnfSet 3"
+	  | _ -> failwith "hnfSet 3"
       end
 
   | SApp(st1,trm2) -> 
@@ -561,20 +362,20 @@ let rec hnfTerm cntxt = function
 	match (lookupId cntxt nm) with
             Some(DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
 	  | Some(DeclTerm(None, _))    -> orig_term
-	  | _ -> failwith "Impossible: Logicrules.hnfTerm 1"
+	  | _ -> failwith "hnfTerm 1"
       end
 
   | Var (LN ( Some mdl, nm)) as orig_term -> 
       begin
-	match hnfTheory cntxt (theoryOf cntxt mdl) with
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
 	    Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
 		  | Some (DeclTerm(None, _))    -> orig_term
-		  | _ -> failwith "Impossible: Logicrules.hnfTerm 2"
+		  | _ -> failwith "hnfTerm 2"
 	      end
-	  | _ -> failwith "Impossible: Logicrules.hnfTerm 3"
+	  | _ -> failwith "hnfTerm 3"
       end
 
   | App(trm1,trm2) -> 
@@ -587,14 +388,14 @@ let rec hnfTerm cntxt = function
 	  | trm1' -> App(trm1', trm2)
       end
 
-  | Case(trm1, ty, arms) ->
+  | Case(trm1, ty, arms, ty2) ->
       begin
 	match (hnfTerm cntxt trm1) with
 	    Inj(lbl, None) ->
 	      begin
 		match (List.find (fun (l,_,_) -> l = lbl) arms) with
 		    (_, None, trm2) -> hnfTerm cntxt trm2
-		  | _ -> failwith "Impossible: Logicrules.hnfTerm 4"
+		  | _ -> failwith "hnfTerm 4"
 	      end
 	  | Inj(lbl, Some trm1') ->
 	      begin
@@ -603,9 +404,9 @@ let rec hnfTerm cntxt = function
 		      let sub = insertTermvar emptysubst nm trm1'
 		      in
 			hnfTerm cntxt (subst sub trm2)
-		  | _ -> failwith "Impossible: Logicrules.hnfTerm 5"
+		  | _ -> failwith "hnfTerm 5"
 	      end
-	  | trm1' -> Case(trm1', ty, arms)
+	  | trm1' -> Case(trm1', ty, arms, ty2)
       end
 
   | Proj(n1, trm2) ->
@@ -620,14 +421,7 @@ let rec hnfTerm cntxt = function
       in
 	hnfTerm cntxt (subst sub trm2)
 
-  | Assure (None, _, trm) ->
-      (** Since hnfTerm is only applied to well-formed terms, the
-          assure must be true. More importantly, since we can't
-          _actually_ check that the proposition is true, hnfTerm is
-          only used in deciding term equivalence, where assures
-          are irrelevant.  [The _optimizer_ on the other hand, 
-          should not be throwing away assures!] *)
-      hnfTerm cntxt trm
+  | Assure(_,_,trm,_) -> hnfTerm cntxt trm
 
   | trm -> trm
 
@@ -640,20 +434,20 @@ let rec hnfProp cntxt = function
 	match (lookupId cntxt nm) with
             Some (DeclProp(Some prp, _)) -> hnfProp cntxt prp
 	  | Some (DeclProp(None, _))    -> orig_prop
-	  | _ -> failwith "Impossible: Logicrules.hnfProp 1"
+	  | _ -> failwith "hnfProp 1"
       end
 
   | Atomic (LN ( Some mdl, nm), _) as orig_prop -> 
       begin
-	match hnfTheory cntxt (theoryOf cntxt mdl) with
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
 	    Theory elems -> 
 	      begin
 		match searchElems cntxt nm mdl elems with
 		    Some (DeclProp(Some prp, _)) -> hnfProp cntxt prp
 		  | Some (DeclProp(None, _))    -> orig_prop
-		  | _ -> failwith "Impossible: Logicrules.hnfProp 2"
+		  | _ -> failwith "hnfProp 2"
 	      end
-	  | _ -> failwith "Impossible: Logicrules.hnfProp 3"
+	  | _ -> failwith "hnfProp 3"
       end
 
   | PApp(prp1,trm2) -> 
@@ -673,7 +467,7 @@ let rec hnfProp cntxt = function
 	      begin
 		match (List.find (fun (l,_,_) -> l = lbl) arms) with
 		    (_, None, prp1') -> hnfProp cntxt prp1'
-		  | _ -> failwith "Impossible: Logicrules.hnfProp 4"
+		  | _ -> failwith "hnfProp 4"
 	      end
 	  | Inj(lbl, Some trm1') ->
 	      begin
@@ -682,17 +476,112 @@ let rec hnfProp cntxt = function
 		      let sub = insertTermvar emptysubst nm trm1'
 		      in
 			hnfProp cntxt (substProp sub prp2)
-		  | _ -> failwith "Impossible: Logicrules.hnfProp 5"
+		  | _ -> failwith "hnfProp 5"
 	      end
 	  | trm1' -> PCase(trm1', ty, arms)
       end
 
-  | PAssure (None, _, prp) ->
-      (** See the Assure comment in hnfTerm above *)
-      hnfProp cntxt prp
+  | PAssure(_, _, prp) -> hnfProp cntxt prp
 
   | prp -> prp
 
+(***************)
+(** {2 Typeof} *)
+(***************)
+
+(** See also modelToTheory above *)
+
+let typeOfProj cntxt bnds trm n =
+  let rec loop k subst = function
+      [] -> raise Impossible
+    | (nm,ty) :: rest ->
+	if (k = n) then
+	  Some (substSet subst ty)
+	else
+	  loop (k+1) ( insertTermvar subst nm (Proj(k,trm)) ) rest
+  in let len = List.length bnds
+  in 
+       if ( (n < 0) || (n >= len) ) then
+	 None
+       else 
+	 loop 0 emptysubst bnds
+  
+
+let rec typeOf cntxt trm = 
+  match trm with
+      EmptyTuple -> Unit
+	
+    | Var (LN ( None, nm )) ->
+	begin
+	  match (lookupId cntxt nm) with
+	      Some (DeclTerm(_, ty)) -> ty
+	    | _ -> failwith ("typeOf 1: " ^ string_of_name nm)
+	end
+
+    | Var (LN ( Some mdl, nm)) -> 
+      begin
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    Theory elems -> 
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (DeclTerm(_, ty)) -> ty
+		  | _ -> failwith "typeOf 2"
+	      end
+	  | _ -> failwith "typeOf 3"
+      end
+
+    | Tuple trms ->
+	Product (List.map (fun t -> (wildName(), typeOf cntxt t)) trms)
+
+    | Proj (n, trm) ->
+	begin
+	  match hnfSet cntxt (typeOf cntxt trm) with
+	      Product bnds -> 
+		begin
+		  match (typeOfProj cntxt bnds trm n) with
+		      Some ty -> ty
+		    | None -> failwith "typeOf 4"
+		end
+	    | _ -> failwith "typeOf 5"
+	end
+	  
+    | App (trm1, trm2) ->
+	begin
+	  match hnfSet cntxt (typeOf cntxt trm1) with
+	      Exp(nm,_,ty) ->
+		let subst = insertTermvar emptysubst nm trm2
+		in substSet subst ty
+	    | _ -> failwith "typeOf 6"
+	end
+
+    | Lambda((nm1,ty2),trm3) ->
+	let cntxt' = insertTermVariable cntxt nm1 ty2 None
+	in let ty3 = typeOf cntxt' trm3
+	in Exp(nm1, ty2, ty3)
+
+    | The((_,ty),_) -> ty
+
+    | Inj(lbl, None) -> Sum [(lbl,None)]
+
+    | Inj(lbl, Some trm) -> Sum [(lbl, Some (typeOf cntxt trm))]
+
+
+    | RzQuot trm -> 
+	begin
+	  match  hnfSet cntxt (typeOf cntxt trm) with
+	      Rz ty -> ty
+	    | _ -> failwith "typeOf 7"
+	end
+
+    | Quot (trm, prp) -> Quotient(typeOf cntxt trm, prp)
+
+    | Case(_, _, _, ty) -> ty
+    | RzChoose (_, _, _, ty) -> ty
+    | Choose (_, _, _, _, ty) -> ty
+    | Let (_, _, _, ty) -> ty
+    | Subin (_, ty) -> ty
+    | Subout(_, ty) -> ty
+    | Assure(_, _, _, ty) -> ty
 
 
 (**********************************************)
@@ -705,23 +594,25 @@ let rec hnfProp cntxt = function
 
 let eqArms cntxt substFn eqFn eqSetFn arms1 arms2 =
   let rec loop = function
-      ([], []) -> true
-    | ((lbl1, None, val1)::rest1, (lbl2, None, val2)::rest2) ->
-	lbl1 = lbl2  && 
-          eqFn cntxt val1 val2 && 
-	  loop (rest1, rest2)
+      ([], []) -> []
+
+    | ((lbl1, None, val1)::rest1, (lbl2, None, val2)::rest2) when lbl1 = lbl2 ->
+        eqFn cntxt val1 val2 @ loop (rest1, rest2)
+
     | ((lbl1, Some (nm1,st1), val1) :: rest1, 
-      (lbl2, Some (nm2,st2), val2) :: rest2 ) ->
-	lbl1 = lbl2 &&
-          eqSetFn cntxt st1 st2 &&
-	  (let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
-	    in let val1' = substFn sub1 val1
-	    in let val2' = substFn sub2 val2
-	    in let cntxt' = insertTermVariable cntxt nm1 st1 None
-	    in 
-		 eqFn cntxt' val1' val2') &&
-                   loop(rest1, rest2)
-    | _ -> false
+       (lbl2, Some (nm2,st2), val2) :: rest2 ) when lbl1 = lbl2 ->
+        let reqs1 = eqSetFn cntxt st1 st2
+	in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	in let val1' = substFn sub1 val1
+	in let val2' = substFn sub2 val2
+	in let cntxt' = insertTermVariable cntxt nm1 st1 None
+	in let prereqs2 = eqFn cntxt' val1' val2'
+	in let reqs2 = List.map (fForall (nm,st1)) prereqs2
+	in let reqs3 = loop(rest1, rest2)
+	in reqs1 @ reqs2 @ reqs3
+
+    | _ -> raise (E.TypeError ["Different numbers of arms"])
+
   in let order (lbl1, _, _) (lbl2, _, _) = compare lbl1 lbl2
   in let arms1' = List.sort order arms1
   in let arms2' = List.sort order arms2
@@ -729,7 +620,7 @@ let eqArms cntxt substFn eqFn eqSetFn arms1 arms2 =
        loop (arms1', arms2')
 
 
-(* eqSet': bool -> cntxt -> set -> set -> bool *)
+(* eqSet': bool -> cntxt -> set -> set ->  *)
 (**
       Precondition:  The two sets are fully-annotated
                      and proper (first-order, i.e., KindSet) sets.
@@ -751,167 +642,199 @@ let eqArms cntxt substFn eqFn eqSetFn arms1 arms2 =
   *)
 let rec eqSet' do_subset cntxt = 
    let rec cmp (s1 : set) (s2 : set) = 
-      (** Short circuting for (we hope) the common case *)
-      (s1 = s2)
-      (** Head-normalize the two sets *)
-      || let    s1' = hnfSet cntxt s1
+     try
+       (** Short circuting for (we hope) the common case *)
+       if (s1 = s2) then
+	 []
+       else
+	 (** Head-normalize the two sets *)
+	 let    s1' = hnfSet cntxt s1
          in let s2' = hnfSet cntxt s2
-
-         in (s1' = s2') 
-            || (match (s1',s2') with
-                 ( Empty, Empty ) -> true       (** Redundant *)
-
-               | ( Unit, Unit )   -> true       (** Redundant *) 
-
-               | ( Basic (SLN(mdlopt1, nm1), _),
-		   Basic (SLN(mdlopt2, nm2), _) ) -> 
-                    (** Neither has a definition *)
-                    eqModelOpt cntxt mdlopt1 mdlopt2 
-                    && (nm1 = nm2) 
-
+	   
+         in if (s1' = s2')  then
+	     []
+	   else
+             (match (s1',s2') with
+		 ( Basic (SLN(mdlopt1, nm1), _),
+		 Basic (SLN(mdlopt2, nm2), _) ) when (nm1 = nm2) -> 
+                   (** Neither has a definition *)
+		   eqModelOpt cntxt mdlopt1 mdlopt2 
+		     
  	       | ( Product ss1, Product ss2 ) -> 
-                    cmpProducts cntxt (ss1,ss2)
+                   cmpProducts cntxt (ss1,ss2)
+		   
+             | ( Sum lsos1, Sum lsos2 )     -> 
+	         let reqs1 = subSum do_subset cntxt (lsos1, lsos2) 
+		 in let reqs2 = 
+		   if do_subset then [] else subSum false cntxt (lsos2, lsos1)
+		 in reqs1 @ reqs2
+		   
+             | ( Exp( nm1, st3, st4 ), Exp ( nm2, st5, st6 ) ) ->
+		 (** Domains are now compared contravariantly. *)
+		 let reqs1 = cmp st5 st3
+		 in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	         in let st4' = substSet sub1 st4
+	         in let st6' = substSet sub2 st6
+		 in let cntxt' = insertTermVariable cntxt nm st5 None
+	         in let prereqs2 = eqSet' do_subset cntxt' st4' st6'
+		 in let reqs2 = List.map (fForall (nm,st3)) prereqs2
+		 in reqs1 @ reqs2
+			  
+	     | ( Subset( (nm1,st1),  p1 ), 
+	       Subset( (nm2,st2), p2 ) )->
+		 let reqs1 = cmp st1 st2
+	           (** Alpha-vary the propositions so that they're using the
+                       same (fresh) variable name *)
+		 in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	         in let p1' = substProp sub1 p1
+	         in let p2' = substProp sub2 p2
+		 in let cntxt' = insertTermVariable cntxt nm st1 None
+	         in let prereqs2 = eqProp cntxt' p1' p2'  
+		 in let reqs2 = List.map (fForall (nm,st1)) prereqs2
+		 in reqs1 @ reqs2
+			  
+             | ( Quotient ( st3, eqvlnce3 ), 
+	       Quotient ( st4, eqvlnce4 ) ) -> 
+                 (** Quotient is invariant *)
+                 let reqs1 = eqSet cntxt st3 st4  
+		 in let reqs2 = eqProp cntxt eqvlnce3 eqvlnce4
+		 in reqs1 @ reqs2
+		   
+             | ( SApp (st3, trm3), SApp (st4, trm4) ) ->
+		 (* XXX: this is a place where we would presumably
+		    emit an obligation.  The way I'll implement this
+		    is for eqTerm to always succeed, but possibly
+		    return the obligation that trm3 = trm4, if it's
+		    not immediately provable. *)
+		 let reqs1 = eqSet cntxt st3 st4
+		 in let reqs2 = eqTerm cntxt trm3 trm4 
+		 in reqs1 @ reqs2
+		   
+             | ( Rz st3, Rz st4 ) -> 
+                 (** RZ seems like it should be invariant.  *)
+		 (** XXX Is it? *)
+                 eqSet cntxt st3 st4  
+		   
+             | (_,_) -> raise (E.TypeError ["Incompatible sets"]) )
 
-               | ( Sum lsos1, Sum lsos2 )     -> 
-	            subSum do_subset cntxt (lsos1, lsos2) 
-                    && (do_subset || subSum false cntxt (lsos2, lsos1))
-
-
-               | ( Exp( nm1, st3, st4 ), Exp ( nm2, st5, st6 ) ) ->
-		   (** Domains are now compared contravariantly. *)
-		   cmp st5 st3 &&
-		     let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
-	             in let st4' = substSet sub1 st4
-	             in let st6' = substSet sub2 st6
-		     in let cntxt' = insertTermVariable cntxt nm st5 None
-	             in 
-			  eqSet' do_subset cntxt' st4' st6'
-
-	       | ( Subset( (nm1,st1),  p1 ), 
-		   Subset( (nm2,st2), p2 ) )->
-		   cmp st1 st2 &&
-	            (** Alpha-vary the propositions so that they're using the
-                        same (fresh) variable name *)
-                       let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
-	               in let p1' = substProp sub1 p1
-	               in let p2' = substProp sub2 p2
-		       in let cntxt' = insertTermVariable cntxt nm st1 None
-	               in 
-                          eqProp cntxt' p1' p2'  
-
-               | ( Quotient ( st3, eqvlnce3 ), 
-		   Quotient ( st4, eqvlnce4 ) ) -> 
-                    cmp st3 st4  
-                    && eqProp cntxt eqvlnce3 eqvlnce4
-
-               | ( SApp (st3, trm3), SApp (st4, trm4) ) ->
-		   (* XXX: this is a place where we would presumably
-		      emit an obligation *)
-		    eqSet cntxt st3 st4
-		    && eqTerm cntxt trm3 trm4
-
-               | ( Rz st3, Rz st4 ) -> 
-                    (** RZ seems like it should be invariant.  *)
-		    (** XXX Is it? *)
-                    eqSet cntxt st3 st4  
-
-               | (_,_) -> false )
-
+     with
+	 E.TypeError msgs -> 
+	   raise (E.TypeError (("...in comparison of " ^
+				   string_of_set s1 ^ " and " ^
+				   string_of_set s2) :: msgs))
+	     
+	   
       and cmpProducts' cntxt subst1 subst2 = function
-          ( [] , [] ) -> true
-
-	| ( (nm1, s1) :: s1s, (nm2, s2) :: s2s) -> 
-	    begin
-	      let s1' = substSet subst1 s1
-	      in let s2' = substSet subst2 s2
-	      in 
-		   eqSet' do_subset cntxt s1' s2'
-	    end &&
-	      begin
-		let (nm, subst1', subst2') = 
-		  jointNameSubsts' nm1 nm2 subst1 subst2
-		in let cntxt' = insertTermVariable cntxt nm s1 None
-		in 
-		     cmpProducts' cntxt' subst1' subst2' (s1s,s2s)
-	      end
-
-        | (_,_) -> false
-
+       ( [] , [] ) -> []
+	 
+     | ( (nm1, s1) :: s1s, (nm2, s2) :: s2s) -> 
+	 let s1' = substSet subst1 s1
+	 in let s2' = substSet subst2 s2
+	 in let reqs1 = eqSet' do_subset cntxt s1' s2'
+	 in let (nm, subst1', subst2') = 
+	   jointNameSubsts' nm1 nm2 subst1 subst2
+	 in let cntxt' = insertTermVariable cntxt nm s1 None
+	 in let prereqs2 = cmpProducts' cntxt' subst1' subst2' (s1s,s2s)
+	 in let reqs2 = List.map (fForall (nm,s1')) prereqs2
+	 in  reqs1 @ reqs2
+	     
+     | (_,_) -> raise (E.TypeError ["Products have different lengths"])
+	 
    and cmpProducts cntxt lst = cmpProducts' cntxt emptysubst emptysubst lst
      
    and subSum do_subset cntxt = function
-       ( [], _ ) -> true
+       ( [], _ ) -> []
      | ((l1,None   )::s1s, s2s) ->
-	 (try
+	 begin
+	   try
 	     match (List.assoc l1 s2s) with
 		 None -> subSum do_subset cntxt (s1s, s2s)
-	       | _ -> false 
+	       | _ -> raise (E.TypeError ["Disagreement whether " ^ 
+					   string_of_label l1 ^ 
+					   "carries a value."])
+					   
 	   with 
-	       Not_found -> false)
+	       Not_found ->
+		 raise (E.TypeError ["Missing " ^ string_of_label l1 ^
+				      " component of sum"]) 
+	 end
      | ((l1,Some s1)::s1s, s2s) -> 
-	 (try
+	 begin
+	   try
 	     match (List.assoc l1 s2s) with
-		 Some s2 -> eqSet' do_subset cntxt s1 s2  && 
-                   subSum do_subset cntxt (s1s,s2s)
-	       |  _ -> false 
+		 Some s2 -> 
+		   ( eqSet' do_subset cntxt s1 s2 ) 
+                   @ ( subSum do_subset cntxt (s1s,s2s) )
+	       |  _ -> raise (E.TypeError ["Disagreement whether " ^ 
+					    string_of_label l1 ^ 
+					    "carries a value."])
 	   with
-	       Not_found -> false)
-	   
+	       Not_found ->
+		 raise (E.TypeError ["Missing " ^ string_of_label l1 ^
+				      " component of sum"]) 
+	 end
    in cmp
 
 and equivToArrow ty =
   PropArrow(wildName(), ty, PropArrow(wildName(), ty, StableProp))
 
-and eqPropType' do_subset cntxt = 
-   let rec cmp (pt1 : proptype) (pt2 : proptype) = 
-     begin
-       (** Short circuting for (we hope) the common case *)
-       (pt1 = pt2) ||
-         match (pt1, pt2) with
-           | ( StableProp, Prop ) -> true
-	       
-           | ( EquivProp st1, EquivProp st2) -> 
-	       eqSet' do_subset cntxt st2 st1
-	       
-           | ( EquivProp st1, _ ) ->
-		 do_subset &&
-		   eqPropType' true cntxt (equivToArrow st1) pt2
-		 
-           | ( PropArrow( nm1, st1, pt1 ), PropArrow ( nm2, st2, pt2 ) ) ->
-	       let (_, sub1, sub2) = jointNameSubsts nm1 nm2
-	       in let pt1' = substProptype sub1 pt1
-	       in let pt2' = substProptype sub2 pt2
-	           in 
-		    (* Domains are now compared contravariantly. *)
-                    subSet cntxt st2 st1 
-                    && cmp pt1' pt2'
-
-	   | _ -> false
-     end
-   in cmp
+and eqPropType' do_subset cntxt pt1 pt2 = 
+  try
+    (** Short circuting for (we hope) the common case *)
+    if (pt1 = pt2) then
+      []
+    else
+      match (pt1, pt2) with
+        | ( StableProp, Prop ) -> []
+	    
+        | ( EquivProp st1, EquivProp st2) -> 
+	    eqSet' do_subset cntxt st2 st1
+	      
+        | ( EquivProp st1, _ ) when do_subset ->
+	    eqPropType' true cntxt (equivToArrow st1) pt2
+	      
+        | ( PropArrow( nm1, st1, pt1 ), PropArrow ( nm2, st2, pt2 ) ) ->
+	    let reqs1 = eqSet' do_subset cntxt st2 st1
+	    in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	    in let pt1' = substProptype sub1 pt1
+	    in let pt2' = substProptype sub2 pt2
+	    in let cntxt' = insertTermVariable cntxt nm st1 None
+	    in let prereqs2 = eqPropType' do_subset cntxt' pt1' pt2'
+	    in let reqs2 = List.map (fForall (nm,st1)) prereqs2
+	    in reqs1 @ reqs2
+	      
+	| _ -> raise (E.TypeError ["Incompatible proposition types"])
+  with
+      E.TypeError msgs -> 
+	raise (E.TypeError (("...in comparison of " ^
+				string_of_proptype pt1 ^ " and " ^
+				string_of_proptype pt2) :: msgs))
 
 and subPropType cntxt pt1 pt2 = eqPropType' true cntxt pt1 pt2
 
 and eqPropType cntxt pt1 pt2 = eqPropType' false cntxt pt1 pt2
 
-and eqKind' do_subset cntxt = 
-   let rec cmp (k1 : setkind) (k2 : setkind) = 
-     begin
-       (** Short circuting for (we hope) the common case *)
-       (k1 = k2) ||
-         match (k1, k2) with
-             ( KindArrow( nm1, st1, kk1 ), KindArrow ( nm2, st2, kk2 ) ) ->
-	       let (_, sub1, sub2) = jointNameSubsts nm1 nm2
-	       in let kk1' = substSetkind sub1 kk1
-	       in let kk2' = substSetkind sub2 kk2
-	           in 
-		    (* Domains are now compared contravariantly. *)
-                    subSet cntxt st2 st1 
-                    && cmp kk1' kk2'
-
-	   | _ -> false
-     end
-   in cmp
+and eqKind' do_subset cntxt k1 k2 = 
+  try
+    if (k1 = k2) then
+    (** Short circuting for (we hope) the common case *)
+      []
+    else
+      match (k1, k2) with
+          ( KindArrow( nm1, st1, kk1 ), KindArrow ( nm2, st2, kk2 ) ) ->
+	    let reqs1 = eqSet' do_subset cntxt st2 st1 
+	    in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	    in let kk1' = substSetkind sub1 kk1
+	    in let kk2' = substSetkind sub2 kk2
+	    in let prereqs2 = eqKind' do_subset cntxt kk1' kk2'
+	    in let reqs2 = List.map (fForall (nm,st1)) prereqs2
+	    in reqs1 @ reqs2
+		   
+	| _ -> E.tyGenericError "Incompatible kinds"
+  with 
+      E.TypeError msgs -> 
+	E.tyGenericErrors (("...in comparison of " ^ string_of_kind k1 ^
+			      " and " ^ string_of_kind k2) :: msgs)
 
 and subKind cntxt k1 k2 = eqKind' true cntxt k1 k2
 
@@ -929,237 +852,306 @@ and eqKind cntxt k1 k2 = eqKind' false cntxt k1 k2
          equivalent classical parts (phi's).
 *)
 and eqProp cntxt prp1 prp2 = 
-  (prp1 = prp2) (* short-circuiting *) ||
-    match (hnfProp cntxt prp1, hnfProp cntxt prp2) with
-	(False, False) -> true    (* Redundant *)
-      | (True, True) -> true      (* Redundant *)
-      | (Atomic(LN(Some mdl1, nm1), _), 
-	 Atomic(LN(Some mdl2, nm2), _)) ->
-	  eqModel cntxt mdl1 mdl2 && nm1 = nm2
-	    && nm1 = nm2
-      | (Atomic(LN(None, nm1), _), Atomic(LN(None, nm2), _) ) -> 
-	  nm1 = nm2
-      | (And prps1, And prps2) 
-      | (Or prps1, Or prps2 )->
-	  eqProps cntxt prps1 prps2
-      | (Imply(prp1a, prp1b), Imply(prp2a, prp2b)) 
-      | (Iff(prp1a, prp1b), Iff(prp2a, prp2b)) ->
-	  eqProp cntxt prp1a prp2a &&
-	    eqProp cntxt prp1b prp2b
-      | (Forall((nm1,st1), prp1), Forall((nm2,st2), prp2)) 
-      | (Exists((nm1,st1), prp1), Exists((nm2,st2), prp2)) 
-      | (Unique((nm1,st1), prp1), Unique((nm2,st2), prp2)) 
-      | (PLambda((nm1,st1), prp1), PLambda((nm2,st2), prp2)) ->
-	  eqSet cntxt st1 st2 &&
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+  try
+    if (prp1 = prp2) then
+      (* short-circuiting *)
+      []
+    else
+      match (hnfProp cntxt prp1, hnfProp cntxt prp2) with
+	  (False, False) -> []
+	| (True, True) -> []
+	| (Atomic(LN(None, nm1), _), Atomic(LN(None, nm2), _) ) when nm1=nm2 -> 
+	    []
+	| (Atomic(LN(Some mdl1, nm1), _), 
+	  Atomic(LN(Some mdl2, nm2), _)) when nm1 = nm2 ->
+	    eqModel cntxt mdl1 mdl2
+	      
+	| (And prps1, And prps2) 
+	| (Or prps1, Or prps2 )->
+	    eqProps cntxt prps1 prps2
+	      
+	| (Imply(prp1a, prp1b), Imply(prp2a, prp2b)) 
+	| (Iff(prp1a, prp1b), Iff(prp2a, prp2b)) ->
+	    eqProp cntxt prp1a prp2a @ 
+	      eqProp cntxt prp1b prp2b
+	      
+	| (Forall((nm1,st1), prp1), Forall((nm2,st2), prp2)) 
+	| (Exists((nm1,st1), prp1), Exists((nm2,st2), prp2)) 
+	| (Unique((nm1,st1), prp1), Unique((nm2,st2), prp2)) 
+	| (PLambda((nm1,st1), prp1), PLambda((nm2,st2), prp2)) ->
+	    let reqs1 = eqSet cntxt st1 st2
+	    in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	    in let prp1' = substProp sub1 prp1
 	    in let prp2' = substProp sub2 prp2
 	    in let cntxt' = insertTermVariable cntxt nm1 st1 None
-	    in eqProp cntxt' prp1' prp2'
-      | (Not prp1, Not prp2) ->
-	  eqProp cntxt prp1 prp2
-      | (Equal(ty1, trm1a, trm1b), Equal(ty2, trm2a, trm2b)) ->
-	  eqSet cntxt ty1 ty2 &&
-	    eqTerm cntxt trm1a trm2a &&
-	    eqTerm cntxt trm1b trm2b
-      | (PApp(prp1, trm1), PApp(prp2, trm2)) ->
-	  eqProp cntxt prp1 prp2 &&
-	    eqTerm cntxt trm1 trm2
-      | (IsEquiv(prp1,st1), IsEquiv(prp2,st2)) ->
-	  eqProp cntxt prp1 prp2 &&
-	    eqSet cntxt st1 st2 
-      | (PCase(trm1, ty1, arms1), PCase(trm2, ty2, arms2)) ->
-	  eqTerm cntxt trm1 trm2 &&
-	    eqSet cntxt ty1 ty2 &&
-	    eqArms cntxt substProp eqProp eqSet arms1 arms2
-      | _ -> false
-	    
+	    in let prereqs2 = eqProp cntxt' prp1' prp2'
+	    in let reqs2 = List.map (fForall (nm,st1)) prereqs2
+	    in reqs1 @ reqs2
+	      
+	| (Not prp1, Not prp2) ->
+	    eqProp cntxt prp1 prp2
+	      
+	| (Equal(ty1, trm1a, trm1b), Equal(ty2, trm2a, trm2b)) ->
+	    eqSet cntxt ty1 ty2 @
+	      eqTerm cntxt trm1a trm2a @
+	      eqTerm cntxt trm1b trm2b
+
+	| (PApp(prp1, trm1), PApp(prp2, trm2)) ->
+	    eqProp cntxt prp1 prp2 @
+	      eqTerm cntxt trm1 trm2
+
+	| (IsEquiv(prp1,st1), IsEquiv(prp2,st2)) ->
+	    eqProp cntxt prp1 prp2 @
+	      eqSet cntxt st1 st2 
+
+	| (PCase(trm1, ty1, arms1), PCase(trm2, ty2, arms2)) ->
+	    eqTerm cntxt trm1 trm2 @
+	      eqSet cntxt ty1 ty2 @
+	      eqArms cntxt substProp eqProp eqSet arms1 arms2
+	      
+	(* 
+	   hnfProp removes PAssures
+	   
+        | (PAssure(Some (nm1, st1), prp1a, prp1b), 
+	   PAssure(Some (nm2, st2), prp2a, prp2b)) ->
+	  let reqs1 = eqSet cntxt st1 st2
+	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	  in let prp1a' = substProp sub1 prp1a
+	  in let prp2a' = substProp sub2 prp2a
+	  in let prp1b' = substProp sub1 prp1b
+	  in let prp2b' = substProp sub2 prp2b
+	  in let cntxt' = insertTermVariable cntxt nm st1 None
+	  in 
+	       eqProp cntxt' prp1a' prp2a' &&
+		 eqProp cntxt' prp1b' prp2b' 
+
+        | (PAssure(None, prp1a, prp1b),
+  	   PAssure(None, prp2a, prp2b)) ->
+	   eqProp cntxt prp1a prp2a &&
+	   eqProp cntxt prp2a prp2b
+	*)
+
+      | _ -> raise (E.TypeError ["Incompatible propositions"]) 
+  with
+      E.TypeError msgs -> 
+	raise (E.TypeError (("...in comparison of " ^
+				string_of_prop prp1 ^ " and " ^
+				string_of_prop prp2) :: msgs))	    
 and eqProps cntxt prps1 prps2 = 
-  try  List.for_all2 (eqProp cntxt) prps1 prps2  with
-      Invalid_argument _ -> false
+  try  
+    List.flatten (List.map2 (eqProp cntxt) prps1 prps2)  
+  with
+      Invalid_argument _ -> 
+	raise (E.TypeError ["Different numbers of propositions"])
 	                             
 
 and eqTerm cntxt trm1 trm2 = 
-  (trm1 = trm2) ||
+  if (trm1 = trm2) then
+    []
+  else
     match (hnfTerm cntxt trm1, hnfTerm cntxt trm2) with
-	(EmptyTuple, EmptyTuple) -> true   (* Redundant *)
-      | (Var(LN(Some mdl1, nm1)), Var(LN(Some mdl2, nm2))) ->
-	  eqModel cntxt mdl1 mdl2 && nm1 = nm2
-      | (Var(LN(None, nm1)), Var(LN(None, nm2))) ->
-	  nm1 = nm2
+	(EmptyTuple, EmptyTuple) -> []
+      | (Var(LN(None, nm1)), Var(LN(None, nm2))) when nm1 = nm2 -> []
+      | (Inj(lbl1, None), Inj(lbl2, None)) when lbl1 = lbl2  -> []
+      | (Var(LN(Some mdl1, nm1)), Var(LN(Some mdl2, nm2)))  when nm1 = nm2 ->
+	  eqModel cntxt mdl1 mdl2
+	    
       | (Tuple trms1, Tuple trms2) -> 
 	  eqTerms cntxt trms1 trms2
-      | (Proj(n1, trm1), Proj(n2, trm2)) ->
-	  n1 = n2 && eqTerm cntxt trm1 trm2
-
+	    
+      | (Proj(n1, trm1), Proj(n2, trm2)) when n1 = n2 ->
+	  eqTerm cntxt trm1 trm2
+	    
       | (App(trm1a, trm1b), App(trm2a, trm2b)) ->
-	  eqTerm cntxt trm1a trm2a &&
+	  eqTerm cntxt trm1a trm2a @
 	    eqTerm cntxt trm1b trm2b
-
+	    
       | (Lambda((nm1,ty1),trm1), Lambda((nm2,ty2),trm2)) ->
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
-	    in let trm1' = subst sub1 trm1
-	    in let trm2' = subst sub2 trm2
-	    in let cntxt' = insertTermVariable cntxt nm1 ty1 None
-	    in 
-		 eqSet cntxt ty1 ty2 &&
-		   eqTerm cntxt' trm1' trm2'
+	  let reqs1 = eqSet cntxt ty1 ty2 
+	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	  in let trm1' = subst sub1 trm1
+	  in let trm2' = subst sub2 trm2
+	  in let cntxt' = insertTermVariable cntxt nm1 ty1 None
+	  in let prereqs2 = eqTerm cntxt' trm1' trm2'
+	  in let reqs2 = List.map (fForall (nm,ty1)) prereqs2 
+	  in reqs1 @ reqs2
 
       | (The((nm1,ty1),prp1), The((nm2,ty2),prp2)) ->
-	  eqSet cntxt ty1 ty2 &&
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
-	    in let prp1' = substProp sub1 prp1
-	    in let prp2' = substProp sub2 prp2
-	    in let cntxt' = insertTermVariable cntxt nm1 ty1 None
-	    in eqProp cntxt' prp1' prp2'
+	  let reqs1 = eqSet cntxt ty1 ty2
+	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	  in let prp1' = substProp sub1 prp1
+	  in let prp2' = substProp sub2 prp2
+	  in let cntxt' = insertTermVariable cntxt nm1 ty1 None
+	  in let prereqs2 = eqProp cntxt' prp1' prp2'
+	  in let reqs2 = List.map (fForall (nm,ty1)) prereqs2
+	  in reqs1 @ reqs2
 
-      | (Inj(lbl1, None), Inj(lbl2, None)) ->
-	  lbl1 = lbl2
-      | (Inj(lbl1, Some trm1), Inj(lbl2, Some trm2)) ->
-	  lbl1 = lbl2 && eqTerm cntxt trm1 trm2
+      | (Inj(lbl1, Some trm1), Inj(lbl2, Some trm2)) when lbl1 = lbl2 ->
+	  eqTerm cntxt trm1 trm2
 
-      | (Case(trm1, ty1, arms1), Case(trm2, ty2, arms2)) ->
-	  eqTerm cntxt trm1 trm2 &&
-	    eqSet cntxt ty1 ty2 &&
-	    eqArms cntxt subst eqTerm eqSet arms1 arms2
+      | (Case(trm1, ty1, arms1, ty3), Case(trm2, ty2, arms2, ty4)) ->
+	  eqTerm cntxt trm1 trm2 @
+	    eqSet cntxt ty1 ty2 @
+	    eqArms cntxt subst eqTerm eqSet arms1 arms2 @
+	    eqSet cntxt ty3 ty4
 
       | (RzQuot trm1, RzQuot trm2) ->
 	  eqTerm cntxt trm1 trm2
 
-      | (RzChoose((nm1, ty1a), trm1a, trm1b, ty1b), 
-	 RzChoose((nm2, ty2a), trm2a, trm2b, ty2b))
+(* hnfTerm removes lets
       | (Let     ((nm1, ty1a), trm1a, trm1b, ty1b), 
-	 Let     ((nm2, ty2a), trm2a, trm2b, ty2b)) ->
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
-	    in let trm1b' = subst sub1 trm1b
-	    in let trm2b' = subst sub2 trm2b
-	    in let cntxt' = insertTermVariable cntxt nm1 ty1a None
-	    in 
-		 eqSet cntxt ty1a ty2a &&
-		   eqTerm cntxt trm1a trm2a &&
-		   eqTerm cntxt' trm1b' trm2b' &&
-		   eqSet cntxt ty1b ty2b
+	 Let     ((nm2, ty2a), trm2a, trm2b, ty2b))  *)
+      | (RzChoose((nm1, ty1a), trm1a, trm1b, ty1b), 
+	 RzChoose((nm2, ty2a), trm2a, trm2b, ty2b)) ->
+	  let reqs1 = eqSet cntxt ty1a ty2a 
+	  in let reqs2 = eqTerm cntxt trm1a trm2a
+	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	  in let trm1b' = subst sub1 trm1b
+	  in let trm2b' = subst sub2 trm2b
+	  in let cntxt' = insertTermVariable cntxt nm1 ty1a None
+	  in let prereqs3 = eqTerm cntxt' trm1b' trm2b'
+	  in let reqs3 = List.map (fForall (nm, ty1a)) prereqs3
+	  in let reqs4 = eqSet cntxt ty1b ty2b
+	  in reqs1 @ reqs2 @ reqs3 @ reqs4
 
       | (Quot(trm1,prp1), Quot(trm2,prp2)) ->
-	  eqTerm cntxt trm1 trm2 &&
+	  eqTerm cntxt trm1 trm2 @
 	    eqProp cntxt prp1 prp2
 
       | (Choose((nm1,ty1a),prp1,trm1a,trm1b,ty1b),
 	 Choose((nm2,ty2a),prp2,trm2a,trm2b,ty2b)) ->
-	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
-	    in let trm1b' = subst sub1 trm1b
-	    in let trm2b' = subst sub2 trm2b
-	    in let cntxt' = insertTermVariable cntxt nm1 ty1a None
-	    in 
-		 eqSet cntxt ty1a ty2a &&
-		   eqProp cntxt prp1 prp2 &&
-		   eqTerm cntxt trm1a trm2a &&
-		   eqTerm cntxt' trm1b' trm2b' &&
-		   eqSet cntxt ty1b ty2b
+	  let reqs1 = eqSet cntxt ty1a ty2a 
+	  in let reqs2 = eqProp cntxt prp1 prp2
+	  in let reqs3 = eqTerm cntxt trm1a trm2a 
+	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
+	  in let trm1b' = subst sub1 trm1b
+	  in let trm2b' = subst sub2 trm2b
+	  in let cntxt' = insertTermVariable cntxt nm1 ty1a None
+	  in let prereqs4 = eqTerm cntxt' trm1b' trm2b' 
+	  in let reqs4 = List.map (fForall (nm,ty1a)) prereqs4
+	  in let reqs5 = eqSet cntxt ty1b ty2b
+	  in reqs1 @ reqs2 @ reqs3 @ reqs4 @ reqs5
 
       | (Subin (trm1,st1), Subin (trm2,st2))
       | (Subout(trm1,st1), Subout(trm2,st2)) ->
-	  eqTerm cntxt trm1 trm2 &&
+	  eqTerm cntxt trm1 trm2 @
 	    eqSet cntxt st1 st2
 
-      | _ -> false
+(* hnfTerm removes Assures 
+
+      | (Assure(Some(nm1, st1), prp1, trm1), 
+	 Assure(Some(nm2, st2), prp2, trm2)) ->
+	  eqSet cntxt st1 st2 &&
+	    let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	    in let prp1' = substProp sub1 prp1
+	    in let prp2' = substProp sub2 prp2
+	    in let trm1' = subst sub1 trm1
+	    in let trm2' = subst sub2 trm2
+	    in let cntxt' = insertTermVariable cntxt nm st1 None
+	    in 
+		 eqProp cntxt' prp1' prp2' &&
+		   eqTerm cntxt' trm1' trm2'
+
+      | (Assure(None, prp1, trm1), 
+	 Assure(None, prp2, trm2)) ->
+	  eqProp cntxt prp1 prp2 &&
+	    eqTerm cntxt trm1 trm2
+*)
+      | _ -> 
+	  let ty1 = typeOf cntxt trm1
+	  in let ty2 = typeOf cntxt trm2
+	  in let (ty,reqs) = joinType cntxt ty1 ty2
+	  in reqs @ [Equal(ty, trm1, trm2)]
 	 
 and eqTerms cntxt trms1 trms2 = 
-  try  List.for_all2 (eqTerm cntxt) trms1 trms2  with
-      Invalid_argument _ -> false
+  try  
+    List.flatten (List.map2 (eqTerm cntxt) trms1 trms2)  
+  with
+      Invalid_argument _ -> 
+	E.tyGenericError "Different numbers of terms"
 
-and eqModel ctx mdl1 mdl2 = (mdl1 = mdl2)
+and eqModel ctx mdl1 mdl2 = 
+  if (mdl1 = mdl2) then
+    []
+  else
+    E.tyGenericError ("Incompatible models " ^ string_of_model mdl1 ^ " and " ^
+		       string_of_model mdl2)
 
-and eqModelOpt ctx mdlopt1 mdlopt2 = (mdlopt1 = mdlopt2)
+and eqModelOpt ctx mdlopt1 mdlopt2 = 
+  if (mdlopt1 = mdlopt2) then
+    []
+  else
+    raise (E.TypeError[])
 
 and eqSet cntxt st1 st2 = eqSet' false cntxt st1 st2
 
 and subSet cntxt st1 st2 = eqSet' true cntxt st1 st2
 
 
-(** Computes the join of the two sets s1 and s2.  Like subtSet (and
-    unlike Coerce), join does *not* do/include/permit implicit
-    conversions *)
-let rec joinType cntxt s1 s2 : set possibility = 
-  if (s1 = s2) then
-    (* Short circuit *)
-      definitely s1
+(** Computes the join of the two sets s1 and s2.
+    Like subtSet (and unlike Coerce), 
+    join does *not* do implicit conversions *)
+and joinType cntxt s1 s2 = 
+   if (s1 = s2) then
+      (* Short circuit *)
+      (s1, [])
    else
       let    s1' = hnfSet cntxt s1
       in let s2' = hnfSet cntxt s2
 
-      (* Assumes arms of the two types are merged and sorted *)
+(*** XXX if t1 <> t2 have a join, then   a:t1   and   a:t2  
+     ought to have a join as well. *)
+
       in let rec joinSums = function 
-	  ([], sumA, reqA) -> YesIf(Sum sumA, reqA)
+	  ([], s2s) -> (s2s, [])
+        | ((l1,None)::s1s, s2s) ->
+	    if (List.mem_assoc l1 s2s) then
+	      (match (List.assoc l1 s2s) with
+	          None   -> joinSums(s1s, s2s)
+		| Some _ -> 
+		    E.tyGenericError ("Disagreement whether " ^ l1 ^
+					 " stands alone or tags a value"))
+	    else let (arms, reqs) = joinSums(s1s, s2s)
+	         in ((l1,None) :: arms, reqs)
 
-	| ([last], sumA, reqA) -> joinSums([], last :: sumA, reqA)
+        | ((l1,Some s1)::s1s, s2s) ->
+	    if (List.mem_assoc l1 s2s) then
+	      (match (List.assoc l1 s2s) with
+		  Some s2 -> 
+		    let reqs1 = 
+		      (try eqSet cntxt s1 s2 with
+			  E.TypeError _ -> 
+			    E.tyGenericError
+			      ("Disagreement on what type of value " ^ 
+                                  l1 ^ " should tag") )
+		    in let (arms, reqs2) = joinSums(s1s, s2s)
+		    in (arms, reqs1 @ reqs2)
+		| None -> E.tyGenericError("Disagreement whether " ^ l1 ^
+					 " tags a value or stands alone"))
+	    else 
+		let (arms, reqs) = joinSums(s1s, s2s)
+		in ((l1,Some s1) :: arms, reqs)
 
-	| ( ((l1,_) as first) :: (((l2,_) :: _) as rest), sumA, reqA) 
-	    when l1 <> l2 ->
-	    (* First two labels in the list are unequal *)
-	    joinSums(rest, first :: sumA, reqA)
+      in match (s1',s2') with
+        | (Sum lsos1, Sum lsos2) -> 
+	    let (arms, reqs) = joinSums (lsos1, lsos2)
+	    in (Sum arms, reqs)
+        | _ -> 
+	    let reqs = 
+	      try eqSet cntxt s1 s2 with 
+                  E.TypeError _ -> E.tyJoinError s1 s2
+	    in
+	      (s1, reqs)
 
-	| ( ((l1,None) as first) :: (_,None) :: rest, sumA, reqA) ->
-	    (* If we got this far, the two labels are equal *)
-	    (* Both agree that l1 (== l2) tags no value. *)
-	    joinSums(rest, first :: sumA, reqA)
+ 
 
-	| ( (l1,Some ty1) :: (_, Some ty2) :: rest, sumA, reqA ) ->
-	    (* If we got this far, the two labels are equal *)
-	    (* Both agree that l1 (== l2) tags carry a value. *)
-	    begin
-	      match joinType cntxt ty1 ty2 with
-		  YesIf(ty, reqs) -> 
-		    joinSums(rest, (l1, Some ty)::sumA, reqs @ reqA)
-		| NoBecause reasons -> 
-		    NoBecause
-		      (("The label " ^ string_of_label l1 ^ 
-			   "tags inconsistent types " ^ string_of_set ty1 ^
-		           " and " ^ string_of_set ty2) :: reasons)
-	    end
-
-	| ( (l1, _) :: (l2, _) :: _, _, _) ->
-	    definitelyNot
-	      ("Disagreement as to whether " ^ l1 ^
-		  " stands alone or tags a value")
-
-      in let result =
-	match (s1',s2') with
-            (Sum lsos1, Sum lsos2) -> 
-	      let order (lbl1, _) (lbl2, _) = compare lbl1 lbl2
-	      in let lsos' = List.sort order (lsos1 @ lsos2)
-	      in 
-		   joinSums (lsos', [], []) 
-          | _ -> 
-	      begin
-(*
-		match (eqSet cntxt s1 s2) with
-	            YesIf (_,reqs) -> YesIf(s1, reqs)
-		  | NoBecause _ as ans -> ans
-*)
-		if (eqSet cntxt s1 s2) then
-		  YesIf(s1, [])
-		else
-		  NoBecause []
-	      end
-
-      in 
-	   possCase result
-	     (fun yes -> yes)
-	     (fun rsns -> 
-	       ("The types " ^ string_of_set s1 ^ " and " ^ 
-		   string_of_set s2 ^ " have no join") :: rsns)
-
-let joinTypes cntxt =
-  let rec loop = function
-      [] -> definitely Unit
-    | [s] -> definitely s
+let rec joinTypes cntxt = function
+      [] -> (Unit, [])
+    | [s] -> (s, [])
     | s::ss -> 
-	possCase' (loop ss)
-	  (fun (join_ss, reqs) -> addReqs (joinType cntxt s join_ss) reqs)
-	  (fun rsns            -> NoBecause rsns)
-  in
-    loop
+	let (ty1, reqs1) = joinTypes cntxt ss
+	in let (ty2, reqs2) = joinType cntxt s ty1
+	in (ty2, reqs1 @ reqs2)
 
 let joinProperPropType p1 p2 = 
   begin
@@ -1169,20 +1161,18 @@ let joinProperPropType p1 p2 =
       | _ -> failwith "joinProperPropType only allows Prop and StableProp!"
   end
 
-let joinProperPropTypes lst = 
-  List.fold_left joinProperPropType StableProp lst
+let joinProperPropTypes lst = List.fold_left joinProperPropType StableProp lst
 
 
 
 let rec joinPropType cntxt pt1 pt2 = 
-  let ptposs = 
+  begin
     match (pt1,pt2) with
-	(StableProp, StableProp) ->
-	  definitely StableProp
-      | ((Prop | StableProp), (Prop | StableProp)) -> 
-	  definitely Prop
+	(StableProp, StableProp) -> (StableProp, [])
+      | ((Prop | StableProp), (Prop | StableProp)) -> (Prop, [])
       | (EquivProp ty1, EquivProp ty2) -> 
-	  modifyIfYes fEquivProp (joinType cntxt ty1 ty2)
+	  let (ty, reqs) = joinType cntxt ty1 ty2
+	  in (EquivProp ty, reqs)
       | (EquivProp ty1, _ ) -> 
 	  joinPropType cntxt (equivToArrow ty1) pt2
       | (_, EquivProp ty2) -> 
@@ -1192,79 +1182,63 @@ let rec joinPropType cntxt pt1 pt2 =
 	  in let pt3' = substProptype sub3 pt3
 	  in let pt4' = substProptype sub4 pt4
 	  in let cntxt' = insertTermVariable cntxt nm st3 None
+	  in let reqs1 = 
+	    try eqSet cntxt st3 st4 with
+		E.TypeError _ -> E.tyPTJoinError pt1 pt2
+	  in let (pt, reqs2) = joinPropType cntxt' pt3' pt4'
 	  in 
-	       if (eqSet cntxt st3 st4) then
-		 modifyIfYes (fun pt -> PropArrow(nm, st3, pt))  
-		   (joinPropType cntxt' pt3' pt4') 
-	       else
-		 definitelyNot ("The domain types " ^ string_of_set st3 ^ 
-				   " and " ^ string_of_set st4 ^ 
-				   " have no join")
-		   
-      | _ -> NoBecause []
-  in
-    
-    ifNotWhyNot ptposs 
-      ("The propositional types " ^ string_of_proptype pt1 ^ 
-	  " and " ^ string_of_proptype pt2 ^ " have no join")
-      
+	       (PropArrow(nm, st3, pt), reqs1 @ reqs2)
+      | _ -> E.tyPTJoinError pt1 pt2
+  end
 
-let joinPropTypes cntxt =
-  let rec loop = function
-      []      -> definitelyNot "No join for zero propositional types"
-    | [pt]    -> definitely pt
+let rec joinPropTypes cntxt = function
+      [] -> failwith "joinPropTypes"
+    | [pt] -> (pt, [])
     | pt::pts -> 
-	possCase' (loop pts)
-	  (fun (join_pt, reqs) -> addReqs (joinPropType cntxt pt join_pt) reqs)
-	  (fun rsns            -> NoBecause rsns)
-  in
-    loop
-
+	let (pt1, reqs1) = joinPropTypes cntxt pts
+	in let (pt2, reqs2) = joinPropType cntxt pt pt1
+	in (pt2, reqs1 @ reqs2)
 
 let rec eqMbnd cntxt subst1 subst2 (nm1, thry1) (nm2, thry2) =
   let (nm, subst1', subst2') = jointModelNameSubsts' nm1 nm2 subst1 subst2
   in let thry1' = substTheory subst1 thry1
   in let thry2' = substTheory subst2 thry2
   in let cntxt' = insertModelVariable cntxt nm thry1'
-  in 
-       if (eqTheory cntxt thry1' thry2') then
-	 Some (cntxt', subst1', subst2')
-       else
-	 None
+  in let prereqs = eqTheory cntxt thry1' thry2'
+  in if (prereqs <> []) then
+      E.tyGenericError "UNIMPLEMENTED: eqMbnd"
+    else 
+      (cntxt', subst1', subst2')
 
 
 and eqMbnds' cntxt subst1 subst2 mbnds1 mbnds2 =
   match (mbnds1, mbnds2) with
-      ([], []) -> Some (cntxt, subst1, subst2)
+      ([], []) -> (cntxt, subst1, subst2)
     | (mbnd1::rest1, mbnd2::rest2) ->
-	begin
-	  match eqMbnd cntxt subst1 subst2 mbnd1 mbnd2 with
-	      Some (cntxt', subst1', subst2') -> 
-		eqMbnds' cntxt' subst1' subst2' rest1 rest2
-	    | None -> None
-	end
-    | _ -> None
+	let (cntxt', subst1', subst2') =  eqMbnd cntxt subst1 subst2 mbnd1 mbnd2
+	in 
+	  eqMbnds' cntxt' subst1' subst2' rest1 rest2
+    | _ -> E.tyGenericError "Different numbers of model bindings"
 
 and eqMbnds cntxt mbnds1 mbnds2 =
   eqMbnds' cntxt emptysubst emptysubst mbnds1 mbnds2
 
 and eqTheory cntxt thry1 thry2 =
-  (thry1 = thry2) || 
-    begin
+  try
+    if (thry1 = thry2) then
+      []
+    else
       match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
 	  (TheoryLambda(mbnd1, thry1b), 
 	   TheoryLambda(mbnd2, thry2b)) ->
-	    begin
-	      match eqMbnd cntxt emptysubst emptysubst mbnd1 mbnd2 with
-		  Some (cntxt', subst1, subst2) ->
-		    let    thry1b' = substTheory subst1 thry1b
-		    in let thry2b' = substTheory subst2 thry2b
-		    in  eqTheory cntxt' thry1b' thry2b'
-		| None -> false
-	    end
+	    let (cntxt', subst1, subst2) = 
+	      eqMbnd cntxt emptysubst emptysubst mbnd1 mbnd2 
+	    in let    thry1b' = substTheory subst1 thry1b
+	    in let thry2b' = substTheory subst2 thry2b
+	    in  eqTheory cntxt' thry1b' thry2b'
 		      
-	| (TheoryLambda _, _ ) -> false
-	| (_, TheoryLambda _) -> false
+	| (TheoryLambda _, _ ) -> E.tyGenericError "Unequal theories"
+	| (_, TheoryLambda _) -> E.tyGenericError "Unequal theories"
 
 	| (thry1', thry2') ->
 	    (* If we get this far, the two theories have
@@ -1277,62 +1251,85 @@ and eqTheory cntxt thry1 thry2 =
 	    in let cntxt1 = insertModelVariable cntxt nm thry1'
 	    in let cntxt2 = insertModelVariable cntxt nm thry1'
 	    in let mdl = ModelName nm
-	    in checkModelConstraint cntxt1 mdl thry1' thry2' &&
-	      checkModelConstraint cntxt2 mdl thry2' thry1'
-    end
+	    in let prereqs1 = checkModelConstraint cntxt1 mdl thry1' thry2'
+	    in let prereqs2 = checkModelConstraint cntxt2 mdl thry2' thry1'
+	    in if (prereqs1 <> []) || (prereqs2 <> []) then
+		E.tyGenericError "UNIMPLEMENTED: eqTheory 1"
+	      else
+		[]
+  with
+      E.TypeError msgs ->
+	E.tyGenericErrors
+	    (("...in comparing" ^ string_of_theory thry1 ^ "\nand " ^
+		string_of_theory thry2) :: msgs)
 
 (* Inputs must be a well-formed logical model, its inferred theory, and
    some other theory *)
 and checkModelConstraint cntxt mdl1 thry1 thry2 = 
+
   match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
       (TheoryArrow ((nm1, thry1a), thry1b), 
        TheoryArrow ((nm2, thry2a), thry2b)) ->
 	let (nm, sub1, subs) = jointModelNameSubsts nm1 nm2
+	in let cntxt' = insertModelVariable cntxt nm thry2a
+	in let prereqs1 = 
+	  (* contravariant domain *)
+	  checkModelConstraint cntxt' (ModelName nm) thry2a thry1a
 	in let thry1b' = substTheory sub1 thry1b
 	in let thry2b' = substTheory sub1 thry1b
-	in let cntxt' = insertModelVariable cntxt nm thry2a
-	in 
-	     (* contravariant domain *)
-	     checkModelConstraint cntxt (ModelName nm) thry2a thry1a &&
-	       (* covariant codomain *)
-	       checkModelConstraint cntxt' (ModelApp(mdl1, ModelName nm)) 
-	          thry1b' thry2b'
+	in let prereqs2 =  
+	  (* covariant codomain *)
+	  checkModelConstraint cntxt' (ModelApp(mdl1, ModelName nm)) 
+	    thry1b' thry2b'
+	in if (prereqs1 <> []) || (prereqs2 <> []) then
+	    (* We can't say "forall models", so we just give up.
+	       It's unlikely this case will arise in practice.
+	    *)
+	    failwith "Unimplemented: checkModelConstraint1"
+          else
+	    []
+	    
 
     | (Theory elems1, Theory elems2) ->
 	let weakEq eqFun left = function
 	    (** Checks for equality iff an optional value is given *)
-	    None -> true
+	    None -> []
 	  | Some right -> eqFun left right
 	in let rec loop cntxt = function
-	    [] -> true
+	    [] -> []
 	  | Declaration(nm, DeclSet(st2opt, knd2)) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
 		    Some (DeclSet (_,knd1)) -> 
 		      let projAsSet = Basic(SLN(Some mdl1, nm), knd1)
-		      in
-			subKind cntxt knd1 knd2 &&
-			  (* st2 might be "mdl1.nm", even if mdl1.nm doesn't
-			     have a definition, so we want to compare it to
-			     mdl1.nm and not to mdl1.nm's definition (if any) *)
-			  weakEq (eqSet cntxt) projAsSet st2opt &&
-			  let cntxt' = 
-			    insertSetVariable cntxt nm knd1 (Some projAsSet)
-			  in loop cntxt' rest
-		  | _ -> false
+		      in let reqs1 = subKind cntxt knd1 knd2
+		      in let reqs2 = weakEq (eqSet cntxt) projAsSet st2opt
+		      in let cntxt' = 
+			insertSetVariable cntxt nm knd1 (Some projAsSet)
+		      in let prereqs3 = loop cntxt' rest
+		      in let subst = insertSetvar emptysubst nm projAsSet
+		      in let reqs3 = List.map (substProp subst) prereqs3
+		      in reqs1 @ reqs2 @ reqs3
+		  | _ -> 
+		      E.tyGenericError ("Missing set component " ^ 
+					 string_of_name nm)
 	      end    
 	  | Declaration(nm, DeclProp(prpopt2, pt2)) :: rest ->
 	      begin
 		match searchElems cntxt nm mdl1 elems1 with
 		    Some (DeclProp(_, pt1)) ->
 		      let projAsProp = Atomic(LN(Some mdl1, nm), pt1)
-		      in
-			subPropType cntxt pt1 pt2 &&
-			  weakEq (eqProp cntxt) projAsProp prpopt2 &&
-			  let cntxt' = 
-			    insertPropVariable cntxt nm pt1 (Some projAsProp)
-			  in loop cntxt' rest
-		  | _ -> false
+		      in let reqs1 = subPropType cntxt pt1 pt2
+		      in let reqs2 = weakEq (eqProp cntxt) projAsProp prpopt2
+		      in let cntxt' = 
+			insertPropVariable cntxt nm pt1 (Some projAsProp)
+		      in let prereqs3 = loop cntxt' rest
+		      in let subst = insertPropvar emptysubst nm projAsProp
+		      in let reqs3 = List.map (substProp subst) prereqs3
+		      in reqs1 @ reqs2 @ reqs3
+		  | _ -> 
+		      E.tyGenericError ("Missing proposition component " ^ 
+					 string_of_name nm)
 	      end
 
 	  | Declaration(nm, DeclTerm(trmopt2, st2)) :: rest ->
@@ -1340,13 +1337,17 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		match searchElems cntxt nm mdl1 elems1 with
 		    Some (DeclTerm(_, st1)) ->
 		      let projAsTerm = Var(LN(Some mdl1, nm))
-		      in
-			subSet cntxt st1 st2 &&
-			  weakEq (eqTerm cntxt) projAsTerm trmopt2 &&
-			  let cntxt' = 
-			    insertTermVariable cntxt nm st1 (Some projAsTerm)
-			  in loop cntxt' rest
-		  | _ -> false
+		      in let reqs1 = subSet cntxt st1 st2 
+		      in let reqs2 = weakEq (eqTerm cntxt) projAsTerm trmopt2
+		      in let cntxt' = 
+			insertTermVariable cntxt nm st1 (Some projAsTerm)
+		      in let prereqs3 = loop cntxt' rest
+		      in let subst = insertTermvar emptysubst nm projAsTerm
+		      in let reqs3 = List.map (substProp subst) prereqs3
+		      in reqs1 @ reqs2 @ reqs3
+		  | _ -> 
+		      E.tyGenericError ("Missing term component " ^ 
+					 string_of_name nm)
 	      end
 
           | Declaration(nm, DeclModel(thry2)) :: rest ->
@@ -1354,12 +1355,17 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		match searchElems cntxt nm mdl1 elems1 with
 		    Some (DeclModel thry1) ->
 		      let projAsModel = ModelProj(mdl1, nm)
-		      in
-			(checkModelConstraint cntxt projAsModel thry1 thry2 &&
-			    let cntxt' = 
-			      insertModelVariable cntxt nm thry1
-			    in loop cntxt' rest)
-		  | _ -> false
+		      in let reqs1 = 
+			 checkModelConstraint cntxt projAsModel thry1 thry2
+		      in let cntxt' = 
+			insertModelVariable cntxt nm thry1
+		      in let prereqs3 = loop cntxt' rest
+		      in let subst = insertModelvar emptysubst nm projAsModel
+		      in let reqs3 = List.map (substProp subst) prereqs3
+		      in reqs1 @  reqs3
+		  | _ -> 
+		      E.tyGenericError ("Missing model component " ^ 
+					 string_of_name nm)
 	      end
 		
 	  | Comment _ :: rest -> loop cntxt rest
@@ -1369,24 +1375,37 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		match searchElems cntxt nm mdl1 elems1 with
 		    Some (DeclSentence(mbnds1, prp1)) ->
 		      begin
-			match eqMbnds cntxt mbnds1 mbnds2 with
-			    Some (cntxt'', subst1, subst2) -> 
-			      let prp1' = substProp subst1 prp1
-			      in let prp2' = substProp subst2 prp2
-			      in
-				   eqProp cntxt'' prp1' prp2' && 
-				     loop cntxt rest
-			  | _ -> false
+			let (cntxt'', subst1, subst2) = 
+			  eqMbnds cntxt mbnds1 mbnds2 
+			in let prp1' = substProp subst1 prp1
+			in let prp2' = substProp subst2 prp2
+			in let prereqs1 = eqProp cntxt'' prp1' prp2'
+			in let reqs1 = if (prereqs1 <> []) then
+			    (* We can't wrap with "forall mbnds1" *)
+			    E.tyGenericError "UNIMPLEMENTED: CheckModelConstraint/Declaration"
+			  else 
+			    []
+			in let reqs3 = loop cntxt rest
+			in reqs1 @ reqs3
 		      end
-		  | _ -> false
+		  | _ -> 
+		      E.tyGenericError ("Missing axiom " ^ 
+					 string_of_name nm)
+
 	      end
 
 	  | Declaration(nm, DeclTheory _) :: rest ->
 	      E.noNestedTheoriesError nm
 
-	in loop cntxt elems2
+	in begin
+	    try loop cntxt elems2 with
+		E.TypeError msgs -> 
+		  E.tyGenericErrors 
+		    (("...in comparing theory " ^ string_of_theory thry1 ^
+			 "\nand " ^ string_of_theory thry2) :: msgs)
+	  end
 
-    | _ -> false (* No abstract Theory variables *)
+    | _ -> E.tyGenericError "Incompatible theories"
 
 (* coerce: cntxt -> term -> set -> set -> trm option *)
 (**
@@ -1397,64 +1416,74 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
                Some trm'  if we can obtain the term trm'
 *)
 let rec coerce cntxt trm st1 st2 = 
-   if (subSet cntxt st1 st2) then
-      (** Short circuting, since the identity coercion is (we hope)
-          the common case *)
-      Some trm
-   else
-      let    st1' = hnfSet cntxt st1
-      in let st2' = hnfSet cntxt st2
-   
-      in match (trm, st1', st2') with
-	| ( _, Subset ( ( _, st1'1 ) , _ ),
-               Subset ( ( _, st2'1 ) , _ ) ) -> 
+  try
+    (** Short circuting, since the identity coercion is (we hope)
+        the common case *)
+    let reqs = subSet cntxt st1 st2 
+    in 
+      maybeAssure reqs trm st2
+  with E.TypeError _ ->
+    (** Just because the identity coercion won't work doesn't
+        mean it's time to give up! *)
+    let    st1' = hnfSet cntxt st1
+    in let st2' = hnfSet cntxt st2
+    in try       
+	match (trm, st1', st2') with
+	  | ( _, Subset ( ( _, st1'1 ) , _ ),
+            Subset ( ( _, st2'1 ) , _ ) ) -> 
+	      begin
+		(** Try an implicit out-of-subset conversion *)
+		try
+		  coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
+		with E.TypeError _ -> 
+		  (** That didn't work, so try an implicit 
+		      into-subset conversion *)
+		  (* XXX Eventually we may add an assure here for the subin *)
+		  let trm' = coerce cntxt trm st1 st2'1
+		  in  Subin ( trm', st2 )
+	      end
+		
+	  | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
+	      (** Try an implicit out-of-subset conversion *)
+	      (* XXX Eventually we may add an assure here for the subin *)
+	      coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
+		
+	  | ( _, _, Subset( ( _, st2'1 ), _ ) ) -> 
+	      (** Try an implicit into-subset conversion *)
+	      let trm' = coerce cntxt trm st1 st2'1
+	      in  Subin ( trm', st2 )
+		
+	  | ( Tuple trms, Product sts1, Product sts2 ) ->
+	      let rec loop subst2 = function 
+		  ([], [], []) -> []
+		| ([], _, _)   -> failwith "Impossible: coerce 1" 
+		| (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
+		    if (isWild nm1) then
+		      let st2' = substSet subst2 st2
+		      in let subst2' = insertTermvar subst2 nm2 trm
+		      in (coerce cntxt trm st1 st2') ::
+		         (loop subst2' (trms,sts1,sts2))
+		    else
+		      (* This case shouldn't ever arise; tuples naturally
+			 yield non-dependent product types.  
+			 But just in case, ...*)
+		      (failwith
+			  ("coerce: dependent->? case for products arose. " ^
+			      "Maybe it should be implemented after all"))
+		| _ -> raise Impossible
+              in let trms' = loop emptysubst (trms, sts1, sts2)
+	      in Tuple trms'
+		
+          | _ -> E.tyGenericErrors []
+      with
+	  E.TypeError _ -> 
+	    (* Provide a less confusing error message, since some of
+	       the things we tried may have made no sense. *)
+	    E.tyGenericError ("No implicit coercion from  type " ^ 
+				 string_of_set st1 ^ " to type " ^ 
+				 string_of_set st2)
 
-	    (** Try an implicit out-of-subset conversion *)
-           (match ( coerce cntxt ( Subout(trm,st1) ) st1'1 st2 ) with
-              Some trm' -> Some trm'
-            | None -> (** That didn't work, so try an implicit 
-                          into-subset conversion *)
-                      (match (coerce cntxt trm st1 st2'1) with
-                        Some trm' -> Some ( Subin ( trm', st2 ) )
-                      | None      -> None ) )
-
-        | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
-	    (** Try an implicit out-of-subset conversion *)
-            coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
-
-        | ( _, _, Subset( ( _, st2'1 ), _ ) ) -> 
-	    (** Try an implicit into-subset conversion *)
-            ( match (coerce cntxt trm st1 st2'1) with
-                Some trm' -> Some ( Subin ( trm', st2 ))
-              | None      -> None )
-
-        | ( Tuple trms, Product sts1, Product sts2 ) ->
-            let rec loop subst2 = function 
-                ([], [], []) -> Some []
-              | ([], _, _)   -> None
-              | (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
-		  if (isWild nm1) then
-		    let st2' = substSet subst2 st2
-		    in let subst2' = insertTermvar subst2 nm2 trm
-                    in (match (coerce cntxt trm st1 st2', 
-			      loop subst2' (trms,sts1,sts2)) with
-			(Some trm', Some trms') -> Some (trm'::trms')
-                      | _ -> None )
-		  else
-		    (* This case shouldn't ever arise; tuples naturally
-		       yield non-dependent product types.  
-		       But just in case, ...*)
-		    (E.tyGenericWarning
-			("coerce: dependent->? case for products arose. " ^
-			    "Maybe it should be implemented after all");
-		     None)
-	      | _ -> failwith "Impossible: Logicrules.coerce 1"
-            in (match (loop emptysubst (trms, sts1, sts2)) with
-                  Some trms' -> Some (Tuple trms')
-                | None -> None)
-
-        | _ -> None
-
+(* XXX Should this be accumulating and returning assurances? *)
 let rec coerceFromSubset cntxt trm st = 
    match (hnfSet cntxt st) with
       Subset( ( _, st1 ), _ ) -> 

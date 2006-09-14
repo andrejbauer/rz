@@ -100,9 +100,14 @@ let rec process = function
       let thy = read fn in
 
       let (infer_state', lthy) = 
-	Newinfer.annotateToplevels infer_state thy in
+	try
+	  Newinfer.annotateToplevels infer_state thy 
+	with 
+	    Error.TypeError msgs -> 
+	      (Error.printErrors msgs;
+	       failwith "Typechecking failed.")
 
-      let _ = 
+      in let _ = 
 	(if (! Flags.do_dumpinfer) then
           let print_item tplvl = 
 	    (print_endline (Logic.string_of_toplevel tplvl);

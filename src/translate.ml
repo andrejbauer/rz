@@ -434,7 +434,7 @@ and translateTerm ctx = function
 
   | L.Inj (lb, Some t) -> Inj (lb, Some (translateTerm ctx t))
 
-  | L.Case (t1, _, lst) ->
+  | L.Case (t1, _, lst, _) ->
       Case (translateTerm ctx t1, List.map
 	       (function
 		    (lb, Some (n, s), t) ->
@@ -488,11 +488,11 @@ and translateTerm ctx = function
 
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
-  | L.Assure (None, p, t) ->
+  | L.Assure (None, p, t, _) ->
       let (ty, p') = translateProp ctx p in
 	Obligation ((wildName(), TopTy), pApp ctx p' (dagger_of_ty ty), translateTerm ctx t)
 
-  | L.Assure (Some (n, s), p, t) ->
+  | L.Assure (Some (n, s), p, t, _) ->
       let {ty=ty2; tot=q} = translateSet ctx s in
       let ctx' = insertTermvar n s ctx in
       let (ty1, p') = translateProp ctx' p in

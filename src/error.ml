@@ -47,10 +47,9 @@ let noEqPropWarning prp1 prp2 context_expr =
 
 (** The TypeError exception is raised by all type errors 
  *)
-exception TypeError
+exception TypeError of string list
 
-
-let tyGenericErrors msgs =
+let printErrors msgs =
   let    error_header = "\n-------------------------------\nTYPE ERROR:"
   in let error_footer = "-------------------------------\n\n"
   in let printError msg = (print_endline ""; print_endline msg)
@@ -58,8 +57,10 @@ let tyGenericErrors msgs =
        (printAndResetWarnings();
 	print_string error_header; 
 	List.iter printError (List.rev msgs);
-	print_string error_footer;
-	raise TypeError)
+	print_string error_footer)
+
+let tyGenericErrors msgs =
+  raise (TypeError msgs)
 
 let tyGenericError msg = tyGenericErrors [msg]
 
@@ -69,6 +70,7 @@ let inMsg expr =
 
 let inElemMsg elem =
   ("...IN:  " ^ S.string_of_theory_element elem)
+
 
 let tyUnboundMsg nm =
     ("Unbound name " ^ string_of_name nm)

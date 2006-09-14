@@ -86,7 +86,7 @@ let rec lookupModulLong ctx = function
 
 let lookupType  ctx   nm = 
    try (NameMap.find nm ctx.types) with 
-      Not_found -> ( print_string ( "Unbound name: " ^ Name.string_of_name nm ^ "\n");
+      Not_found -> ( print_string ( "Opt: Unbound name: " ^ Name.string_of_name nm ^ "\n");
                      raise Not_found )
 
 let lookupTypeLong  ctx = function
@@ -229,6 +229,11 @@ let rec betaReduce = function
          betaReduce (substTerm (insertTermvar emptysubst nm trm2) trm1)
       else
          trm
+  | App(Obligation(bnd,prp,trm1), trm2) ->
+      Obligation(bnd, prp, betaReduce (App(trm1,trm2)))
+  | Proj(n, Obligation(bnd,prp,trm1)) ->
+      Obligation(bnd, prp, betaReduce (Proj(n,trm1)))
+
   | Let (nm1, trm2, trm3) as trm ->
       if (simpleTerm trm2) then
 	betaReduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)

@@ -20,7 +20,6 @@ BYTE_OBJS = name.cmo \
 	flags.cmo \
 	logic.cmo \
 	error.cmo \
-	possibility.cmo \
 	logicrules.cmo \
         newinfer.cmo \
         outsyn.cmo \

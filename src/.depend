@@ -1,15 +1,20 @@
+coq_parser.cmi: syntax.cmo 
+coq_lexer.cmo: message.cmo coq_parser.cmi 
+coq_lexer.cmx: message.cmx coq_parser.cmx 
+coq_parser.cmo: syntax.cmo name.cmo message.cmo coq_parser.cmi 
+coq_parser.cmx: syntax.cmx name.cmx message.cmx coq_parser.cmi 
 error.cmo: syntax.cmo name.cmo logic.cmo 
 error.cmx: syntax.cmx name.cmx logic.cmx 
 infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
 infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
+load.cmo: coq_parser.cmi coq_lexer.cmo 
+load.cmx: coq_parser.cmx coq_lexer.cmx 
 logic.cmo: syntax.cmo name.cmo 
 logic.cmx: syntax.cmx name.cmx 
-logicrules.cmo: possibility.cmo name.cmo logic.cmo error.cmo 
-logicrules.cmx: possibility.cmx name.cmx logic.cmx error.cmx 
-newinfer.cmo: syntax.cmo possibility.cmo name.cmo logicrules.cmo logic.cmo \
-    error.cmo 
-newinfer.cmx: syntax.cmx possibility.cmx name.cmx logicrules.cmx logic.cmx \
-    error.cmx 
+logicrules.cmo: name.cmo logic.cmo error.cmo 
+logicrules.cmx: name.cmx logic.cmx error.cmx 
+newinfer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
+newinfer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
 opt.cmo: outsyn.cmo name.cmo flags.cmo 
 opt.cmx: outsyn.cmx name.cmx flags.cmx 
 outsyn.cmo: name.cmo logic.cmo 
@@ -19,13 +24,13 @@ possibility.cmx: logic.cmx
 pp.cmo: outsyn.cmo name.cmo flags.cmo 
 pp.cmx: outsyn.cmx name.cmx flags.cmx 
 rz.cmo: translate.cmo pp.cmo opt.cmo newinfer.cmo message.cmo logicrules.cmo \
-    logic.cmo flags.cmo error.cmo 
+    logic.cmo flags.cmo error.cmo coq_parser.cmi coq_lexer.cmo 
 rz.cmx: translate.cmx pp.cmx opt.cmx newinfer.cmx message.cmx logicrules.cmx \
-    logic.cmx flags.cmx error.cmx 
+    logic.cmx flags.cmx error.cmx coq_parser.cmx coq_lexer.cmx 
 rzinfer.cmo: newinfer.cmo message.cmo logicrules.cmo logic.cmo flags.cmo \
-    error.cmo 
+    error.cmo coq_parser.cmi coq_lexer.cmo 
 rzinfer.cmx: newinfer.cmx message.cmx logicrules.cmx logic.cmx flags.cmx \
-    error.cmx 
+    error.cmx coq_parser.cmx coq_lexer.cmx 
 syntax.cmo: name.cmo 
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 

@@ -106,7 +106,7 @@ and term =
     | Lambda   of binding  * term
     | The      of binding  * proposition (* description operator *)
     | Inj      of label * term option
-    | Case     of term * set * (label * binding option * term) list
+    | Case     of term * set * (label * binding option * term) list * set
     | RzQuot   of term
     | RzChoose of binding * term * term * set
     | Quot     of term * proposition
@@ -114,7 +114,7 @@ and term =
     | Let      of binding * term * term * set  (* set is type of the whole let *)
     | Subin    of term * set
     | Subout   of term * set
-    | Assure   of binding option * proposition * term
+    | Assure   of binding option * proposition * term * set
 
 and declaration =
     DeclProp     of proposition option * proptype
@@ -191,19 +191,36 @@ let doOpt funct = function
     None -> None
   | Some v -> Some (funct v)
 
-let foldAssure reqs bdy =
-  List.fold_right (fun req trm -> Assure(None, req, trm)) reqs bdy
+let foldAssure reqs bdy ty =
+  List.fold_right (fun req trm -> Assure(None, req, trm, ty)) reqs bdy
 
 let foldPAssure reqs bdy =
   List.fold_right (fun req prp -> PAssure(None, req, prp)) reqs bdy
+
+(* Oops...this optimization isn't meaning preserving unless we can
+   guarantee that ty is inhabited.  Too bad.
 
 let foldForall =
   let maybeForall  (nm,ty) prp = 
     if isWild nm then prp else Forall((nm,ty), prp)
   in List.fold_right maybeForall
+*)
+
+let foldForall = 
+  List.fold_right fForall
 
 let foldImply = 
   List.fold_right fImply
+
+let maybeAssure reqs trm ty = 
+  match reqs with
+      [] -> trm
+    | reqs -> Assure(None, And reqs, trm, ty)
+
+let maybePAssure reqs prp = 
+  match reqs with 
+      [] -> prp
+    | reqs -> PAssure(None, And reqs, prp)
 
 (****************************************)
 (** (Not-Very)-Pretty-Printing Routines *)
@@ -267,7 +284,7 @@ and string_of_term trm =
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
     | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
     | Inj (lbl, None) -> "`" ^ lbl 
-    | Case (trm,ty',arms) -> 
+    | Case (trm,ty',arms,ty'') -> 
 	let rec doArm = function
 	    (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
 	  | (lbl, Some (n,ty), trm) -> 
@@ -275,7 +292,9 @@ and string_of_term trm =
 		") => " ^ toStr trm
 	in 
 	  "case " ^ toStr trm ^ " : " ^ string_of_set ty' ^ " of " ^
-	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
+	    (String.concat "\n| " (List.map doArm arms)) ^ " end" ^
+	   ": " ^ string_of_set ty''
+
 
 
     | Quot (trm1,prp2) -> "(" ^ toStr trm1 ^ " % " ^ string_of_prop prp2 ^ ")"
@@ -298,11 +317,13 @@ and string_of_term trm =
 	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | The(bnd,prp) ->
 	"(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
-    | Assure(None, p, t) ->
-      "assure " ^ string_of_prop p ^ " in " ^ string_of_term t
-    | Assure(Some (n,s), p, t) ->
+    | Assure(None, p, t, ty) ->
+      "assure " ^ string_of_prop p ^ " in " ^ string_of_term t ^ 
+	" : " ^ string_of_set ty
+    | Assure(Some (n,s), p, t, ty) ->
       "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-	string_of_prop p ^ " in " ^ string_of_term t
+	string_of_prop p ^ " in " ^ string_of_term t ^ 
+	" : " ^ string_of_set ty
 
   in
     toStr trm)
@@ -538,14 +559,15 @@ and fnTerm = function
       NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
   | The((nm, st), prp) ->
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
-  | Case (trm, ty, arms) ->
-      NameSet.union (fnTerm trm) 
-	(NameSet.union (fnSet ty)
-	  (unionNameSetList (List.map fnCaseArm arms)))
-  | Assure(None,prp,trm) -> NameSet.union (fnProp prp) (fnTerm trm)
-  | Assure(Some(nm,st),prp,trm) ->
+  | Case (trm, ty, arms, ty') ->
+      unionNameSetList ( fnTerm trm :: fnSet ty :: fnSet ty' ::
+			   List.map fnCaseArm arms )
+  | Assure(None,prp,trm,ty) -> 
+      unionNameSetList [fnProp prp; fnTerm trm; fnSet ty]
+  | Assure(Some(nm,st),prp,trm,ty) ->
       NameSet.union (fnSet st) 
-	(NameSet.remove nm (NameSet.union (fnProp prp) (fnTerm trm)))
+	(NameSet.union (fnSet ty)
+	    (NameSet.remove nm (NameSet.union (fnProp prp) (fnTerm trm))))
 
 and fnProp = function
     False | True -> NameSet.empty
@@ -705,7 +727,8 @@ let rec subst sbst =
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
     | Inj(l,termopt) -> Inj(l, doOpt (subst sbst) termopt)
-    | Case(t1,ty,arms) -> Case(t1, substSet sbst ty, subarms arms)
+    | Case(t1,ty,arms,ty2) -> Case(t1, substSet sbst ty, 
+				   subarms arms, substSet sbst ty2)
     | RzQuot t -> RzQuot (sub t)
     | RzChoose ((y,sopt),t1,t2,ty) ->
 	let (sbst', y') = updateBoundName sbst y in
@@ -740,13 +763,14 @@ let rec subst sbst =
 	  The((y',substSet sbst st),
 	     substProp sbst' prp)
 
-    | Assure(None, prp, trm) ->
-	Assure(None, substProp sbst prp, sub trm)
+    | Assure(None, prp, trm, ty) ->
+	Assure(None, substProp sbst prp, sub trm, substSet sbst ty)
 
-    | Assure(Some (y, st), prp, trm) ->
+    | Assure(Some (y, st), prp, trm, ty) ->
 	let (sbst', y') = updateBoundName sbst y in
 	  Assure(Some (y, substSet sbst st), 
-		substProp sbst' prp, subst sbst' trm)
+		substProp sbst' prp, subst sbst' trm,
+		substSet sbst ty)
 
   and subarms = function
       [] -> []
