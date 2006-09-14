@@ -1270,13 +1270,13 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
   match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
       (TheoryArrow ((nm1, thry1a), thry1b), 
        TheoryArrow ((nm2, thry2a), thry2b)) ->
-	let (nm, sub1, subs) = jointModelNameSubsts nm1 nm2
+	let (nm, sub1, sub2) = jointModelNameSubsts nm1 nm2
 	in let cntxt' = insertModelVariable cntxt nm thry2a
 	in let prereqs1 = 
 	  (* contravariant domain *)
 	  checkModelConstraint cntxt' (ModelName nm) thry2a thry1a
 	in let thry1b' = substTheory sub1 thry1b
-	in let thry2b' = substTheory sub1 thry1b
+	in let thry2b' = substTheory sub2 thry2b
 	in let prereqs2 =  
 	  (* covariant codomain *)
 	  checkModelConstraint cntxt' (ModelApp(mdl1, ModelName nm)) 
@@ -1287,7 +1287,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	    *)
 	    failwith "Unimplemented: checkModelConstraint1"
           else
-	    []
+	    (print_endline "...yes"; [])
 	    
 
     | (Theory elems1, Theory elems2) ->
