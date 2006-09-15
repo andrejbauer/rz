@@ -50,9 +50,9 @@ let noEqPropWarning prp1 prp2 context_expr =
 exception TypeError of string list
 
 let printErrors msgs =
-  let    error_header = "\n-------------------------------\nTYPE ERROR:"
+  let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
   in let error_footer = "-------------------------------\n\n"
-  in let printError msg = (print_endline ""; print_endline msg)
+  in let printError msg = (print_endline msg)
   in
        (printAndResetWarnings();
 	print_string error_header; 
@@ -62,14 +62,32 @@ let printErrors msgs =
 let tyGenericErrors msgs =
   raise (TypeError msgs)
 
-let tyGenericError msg = tyGenericErrors [msg]
+let newline = Str.regexp "[\n]"
+let splitByLine msg = List.rev (Str.split newline msg)
 
+let addSpecifically msgs =
+  let msgs' = List.rev msgs
+  in let msgs'' = ("Specifically:  " ^ List.hd msgs') :: (List.tl msgs')
+  in List.rev msgs''
+
+let tyGenericError msg = 
+  let msgs = splitByLine msg
+  in tyGenericErrors ("" :: msgs)
+
+let generalizeError msgs msg =
+  tyGenericErrors ("" :: (splitByLine msg) @ msgs)
+
+let specificateError msgs msg =
+  let msgs' = addSpecifically msgs
+  in let msgs'' = List.map (fun s -> "        " ^ s) msgs'
+  in
+     tyGenericErrors (msgs'' @ [msg])
 
 let inMsg expr =
-  ("...IN:  " ^ S.string_of_expr expr)
+  ("...in:  " ^ S.string_of_expr expr)
 
 let inElemMsg elem =
-  ("...IN:  " ^ S.string_of_theory_element elem)
+  ("...in:  " ^ S.string_of_theory_element elem)
 
 
 let tyUnboundMsg nm =

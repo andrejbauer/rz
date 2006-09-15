@@ -29,7 +29,7 @@ BYTE_OBJS = name.cmo \
 
 OPT_OBJS = $(subst .cmo,.cmx,$(BYTE_OBJS))
 
-LIB_OBJS = unix.cma
+LIB_OBJS = unix.cma str.cma
 
 LIB_OPT_OBJS = $(subst .cma,.cmxa,$(subst .cmo,.cmx,$(LIB_OBJS)))
 

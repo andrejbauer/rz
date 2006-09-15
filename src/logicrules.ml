@@ -719,9 +719,9 @@ let rec eqSet' do_subset cntxt =
 
      with
 	 E.TypeError msgs -> 
-	   raise (E.TypeError (("...in comparison of " ^
-				   string_of_set s1 ^ " and " ^
-				   string_of_set s2) :: msgs))
+	   E.generalizeError msgs 
+	     ("...in comparing sets " ^ string_of_set s1 ^ " and " ^
+		 string_of_set s2)
 	     
 	   
       and cmpProducts' cntxt subst1 subst2 = function
@@ -806,9 +806,9 @@ and eqPropType' do_subset cntxt pt1 pt2 =
 	| _ -> raise (E.TypeError ["Incompatible proposition types"])
   with
       E.TypeError msgs -> 
-	raise (E.TypeError (("...in comparison of " ^
-				string_of_proptype pt1 ^ " and " ^
-				string_of_proptype pt2) :: msgs))
+	E.generalizeError msgs
+	  ("...in comparison of " ^ string_of_proptype pt1 ^ " and " ^
+	      string_of_proptype pt2)
 
 and subPropType cntxt pt1 pt2 = eqPropType' true cntxt pt1 pt2
 
@@ -833,8 +833,9 @@ and eqKind' do_subset cntxt k1 k2 =
 	| _ -> E.tyGenericError "Incompatible kinds"
   with 
       E.TypeError msgs -> 
-	E.tyGenericErrors (("...in comparison of " ^ string_of_kind k1 ^
-			      " and " ^ string_of_kind k2) :: msgs)
+	E.generalizeError msgs
+	  ("...in comparing kinds " ^ string_of_kind k1 ^ 
+	       " and " ^ string_of_kind k2)
 
 and subKind cntxt k1 k2 = eqKind' true cntxt k1 k2
 
@@ -934,9 +935,10 @@ and eqProp cntxt prp1 prp2 =
       | _ -> raise (E.TypeError ["Incompatible propositions"]) 
   with
       E.TypeError msgs -> 
-	raise (E.TypeError (("...in comparison of " ^
-				string_of_prop prp1 ^ " and " ^
-				string_of_prop prp2) :: msgs))	    
+	E.generalizeError msgs 
+	  ("...in comparison of propositions " ^ string_of_prop prp1 ^
+	       " and " ^ string_of_prop prp2) 	    
+
 and eqProps cntxt prps1 prps2 = 
   try  
     List.flatten (List.map2 (eqProp cntxt) prps1 prps2)  
@@ -1259,154 +1261,155 @@ and eqTheory cntxt thry1 thry2 =
 		[]
   with
       E.TypeError msgs ->
-	E.tyGenericErrors
-	    (("...in comparing" ^ string_of_theory thry1 ^ "\nand " ^
-		string_of_theory thry2) :: msgs)
+	E.generalizeError msgs
+	    ("...in comparing theories " ^ string_of_theory thry1 ^ "\nand " ^
+		string_of_theory thry2)
 
 (* Inputs must be a well-formed logical model, its inferred theory, and
    some other theory *)
 and checkModelConstraint cntxt mdl1 thry1 thry2 = 
-
-  match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
-      (TheoryArrow ((nm1, thry1a), thry1b), 
-       TheoryArrow ((nm2, thry2a), thry2b)) ->
-	let (nm, sub1, sub2) = jointModelNameSubsts nm1 nm2
-	in let cntxt' = insertModelVariable cntxt nm thry2a
-	in let prereqs1 = 
-	  (* contravariant domain *)
-	  checkModelConstraint cntxt' (ModelName nm) thry2a thry1a
-	in let thry1b' = substTheory sub1 thry1b
-	in let thry2b' = substTheory sub2 thry2b
-	in let prereqs2 =  
-	  (* covariant codomain *)
-	  checkModelConstraint cntxt' (ModelApp(mdl1, ModelName nm)) 
-	    thry1b' thry2b'
-	in if (prereqs1 <> []) || (prereqs2 <> []) then
-	    (* We can't say "forall models", so we just give up.
-	       It's unlikely this case will arise in practice.
-	    *)
-	    failwith "Unimplemented: checkModelConstraint1"
-          else
-	    (print_endline "...yes"; [])
-	    
-
-    | (Theory elems1, Theory elems2) ->
-	let weakEq eqFun left = function
-	    (** Checks for equality iff an optional value is given *)
-	    None -> []
-	  | Some right -> eqFun left right
-	in let rec loop cntxt = function
-	    [] -> []
-	  | Declaration(nm, DeclSet(st2opt, knd2)) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Some (DeclSet (_,knd1)) -> 
-		      let projAsSet = Basic(SLN(Some mdl1, nm), knd1)
-		      in let reqs1 = subKind cntxt knd1 knd2
-		      in let reqs2 = weakEq (eqSet cntxt) projAsSet st2opt
-		      in let cntxt' = 
-			insertSetVariable cntxt nm knd1 (Some projAsSet)
-		      in let prereqs3 = loop cntxt' rest
-		      in let subst = insertSetvar emptysubst nm projAsSet
-		      in let reqs3 = List.map (substProp subst) prereqs3
-		      in reqs1 @ reqs2 @ reqs3
-		  | _ -> 
-		      E.tyGenericError ("Missing set component " ^ 
-					 string_of_name nm)
-	      end    
-	  | Declaration(nm, DeclProp(prpopt2, pt2)) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Some (DeclProp(_, pt1)) ->
-		      let projAsProp = Atomic(LN(Some mdl1, nm), pt1)
-		      in let reqs1 = subPropType cntxt pt1 pt2
-		      in let reqs2 = weakEq (eqProp cntxt) projAsProp prpopt2
-		      in let cntxt' = 
-			insertPropVariable cntxt nm pt1 (Some projAsProp)
-		      in let prereqs3 = loop cntxt' rest
-		      in let subst = insertPropvar emptysubst nm projAsProp
-		      in let reqs3 = List.map (substProp subst) prereqs3
-		      in reqs1 @ reqs2 @ reqs3
-		  | _ -> 
-		      E.tyGenericError ("Missing proposition component " ^ 
-					 string_of_name nm)
-	      end
-
-	  | Declaration(nm, DeclTerm(trmopt2, st2)) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Some (DeclTerm(_, st1)) ->
-		      let projAsTerm = Var(LN(Some mdl1, nm))
-		      in let reqs1 = subSet cntxt st1 st2 
-		      in let reqs2 = weakEq (eqTerm cntxt) projAsTerm trmopt2
-		      in let cntxt' = 
-			insertTermVariable cntxt nm st1 (Some projAsTerm)
-		      in let prereqs3 = loop cntxt' rest
-		      in let subst = insertTermvar emptysubst nm projAsTerm
-		      in let reqs3 = List.map (substProp subst) prereqs3
-		      in reqs1 @ reqs2 @ reqs3
-		  | _ -> 
-		      E.tyGenericError ("Missing term component " ^ 
-					 string_of_name nm)
-	      end
-
-          | Declaration(nm, DeclModel(thry2)) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Some (DeclModel thry1) ->
-		      let projAsModel = ModelProj(mdl1, nm)
-		      in let reqs1 = 
-			 checkModelConstraint cntxt projAsModel thry1 thry2
-		      in let cntxt' = 
-			insertModelVariable cntxt nm thry1
-		      in let prereqs3 = loop cntxt' rest
-		      in let subst = insertModelvar emptysubst nm projAsModel
-		      in let reqs3 = List.map (substProp subst) prereqs3
-		      in reqs1 @  reqs3
-		  | _ -> 
-		      E.tyGenericError ("Missing model component " ^ 
-					 string_of_name nm)
-	      end
+  try
+    match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
+	(TheoryArrow ((nm1, thry1a), thry1b), 
+	TheoryArrow ((nm2, thry2a), thry2b)) ->
+	  let (nm, sub1, sub2) = jointModelNameSubsts nm1 nm2
+	  in let cntxt' = insertModelVariable cntxt nm thry2a
+	  in let prereqs1 = 
+	    (* contravariant domain *)
+	    checkModelConstraint cntxt' (ModelName nm) thry2a thry1a
+	  in let thry1b' = substTheory sub1 thry1b
+	  in let thry2b' = substTheory sub2 thry2b
+	  in let prereqs2 =  
+	    (* covariant codomain *)
+	    checkModelConstraint cntxt' (ModelApp(mdl1, ModelName nm)) 
+	      thry1b' thry2b'
+	  in if (prereqs1 <> []) || (prereqs2 <> []) then
+	      (* We can't say "forall models", so we just give up.
+		 It's unlikely this case will arise in practice.
+	      *)
+	      failwith "Unimplemented: checkModelConstraint1"
+            else
+	      []
 		
-	  | Comment _ :: rest -> loop cntxt rest
 
-          | Declaration(nm, DeclSentence (mbnds2, prp2)) :: rest ->
-	      begin
-		match searchElems cntxt nm mdl1 elems1 with
-		    Some (DeclSentence(mbnds1, prp1)) ->
-		      begin
-			let (cntxt'', subst1, subst2) = 
-			  eqMbnds cntxt mbnds1 mbnds2 
-			in let prp1' = substProp subst1 prp1
-			in let prp2' = substProp subst2 prp2
-			in let prereqs1 = eqProp cntxt'' prp1' prp2'
-			in let reqs1 = if (prereqs1 <> []) then
-			    (* We can't wrap with "forall mbnds1" *)
-			    E.tyGenericError "UNIMPLEMENTED: CheckModelConstraint/Declaration"
-			  else 
-			    []
-			in let reqs3 = loop cntxt rest
-			in reqs1 @ reqs3
-		      end
-		  | _ -> 
-		      E.tyGenericError ("Missing axiom " ^ 
-					 string_of_name nm)
+      | (Theory elems1, Theory elems2) ->
+	  let weakEq eqFun left = function
+	      (** Checks for equality iff an optional value is given *)
+	      None -> []
+	    | Some right -> eqFun left right
+	  in let rec loop cntxt = function
+	      [] -> []
+	    | Declaration(nm, DeclSet(st2opt, knd2)) :: rest ->
+		begin
+		  match searchElems cntxt nm mdl1 elems1 with
+		      Some (DeclSet (_,knd1)) -> 
+			let projAsSet = Basic(SLN(Some mdl1, nm), knd1)
+			in let reqs1 = subKind cntxt knd1 knd2
+			in let reqs2 = weakEq (eqSet cntxt) projAsSet st2opt
+			in let cntxt' = 
+			  insertSetVariable cntxt nm knd1 (Some projAsSet)
+			in let prereqs3 = loop cntxt' rest
+			in let subst = insertSetvar emptysubst nm projAsSet
+			in let reqs3 = List.map (substProp subst) prereqs3
+			in reqs1 @ reqs2 @ reqs3
+		    | _ -> 
+			E.tyGenericError ("Missing set component " ^ 
+					     string_of_name nm)
+		end    
+	    | Declaration(nm, DeclProp(prpopt2, pt2)) :: rest ->
+		begin
+		  match searchElems cntxt nm mdl1 elems1 with
+		      Some (DeclProp(_, pt1)) ->
+			let projAsProp = Atomic(LN(Some mdl1, nm), pt1)
+			in let reqs1 = subPropType cntxt pt1 pt2
+			in let reqs2 = weakEq (eqProp cntxt) projAsProp prpopt2
+			in let cntxt' = 
+			  insertPropVariable cntxt nm pt1 (Some projAsProp)
+			in let prereqs3 = loop cntxt' rest
+			in let subst = insertPropvar emptysubst nm projAsProp
+			in let reqs3 = List.map (substProp subst) prereqs3
+			in reqs1 @ reqs2 @ reqs3
+		    | _ -> 
+			E.tyGenericError ("Missing proposition component " ^ 
+					     string_of_name nm)
+		end
 
-	      end
+	    | Declaration(nm, DeclTerm(trmopt2, st2)) :: rest ->
+		begin
+		  match searchElems cntxt nm mdl1 elems1 with
+		      Some (DeclTerm(_, st1)) ->
+			let projAsTerm = Var(LN(Some mdl1, nm))
+			in let reqs1 = subSet cntxt st1 st2 
+			in let reqs2 = weakEq (eqTerm cntxt) projAsTerm trmopt2
+			in let cntxt' = 
+			  insertTermVariable cntxt nm st1 (Some projAsTerm)
+			in let prereqs3 = loop cntxt' rest
+			in let subst = insertTermvar emptysubst nm projAsTerm
+			in let reqs3 = List.map (substProp subst) prereqs3
+			in reqs1 @ reqs2 @ reqs3
+		    | _ -> 
+			E.tyGenericError ("Missing term component " ^ 
+					     string_of_name nm)
+		end
 
-	  | Declaration(nm, DeclTheory _) :: rest ->
-	      E.noNestedTheoriesError nm
+            | Declaration(nm, DeclModel(thry2)) :: rest ->
+		begin
+		  match searchElems cntxt nm mdl1 elems1 with
+		      Some (DeclModel thry1) ->
+			let projAsModel = ModelProj(mdl1, nm)
+			in let reqs1 = 
+			  checkModelConstraint cntxt projAsModel thry1 thry2
+			in let cntxt' = 
+			  insertModelVariable cntxt nm thry1
+			in let prereqs3 = loop cntxt' rest
+			in let subst = insertModelvar emptysubst nm projAsModel
+			in let reqs3 = List.map (substProp subst) prereqs3
+			in reqs1 @  reqs3
+		    | _ -> 
+			E.tyGenericError ("Missing model component " ^ 
+					     string_of_name nm)
+		end
+		  
+	    | Comment _ :: rest -> loop cntxt rest
 
-	in begin
-	    try loop cntxt elems2 with
-		E.TypeError msgs -> 
-		  E.tyGenericErrors 
-		    (("...in comparing theory " ^ string_of_theory thry1 ^
-			 "\nand " ^ string_of_theory thry2) :: msgs)
-	  end
+            | Declaration(nm, DeclSentence (mbnds2, prp2)) :: rest ->
+		begin
+		  match searchElems cntxt nm mdl1 elems1 with
+		      Some (DeclSentence(mbnds1, prp1)) ->
+			begin
+			  let (cntxt'', subst1, subst2) = 
+			    eqMbnds cntxt mbnds1 mbnds2 
+			  in let prp1' = substProp subst1 prp1
+			  in let prp2' = substProp subst2 prp2
+			  in let prereqs1 = eqProp cntxt'' prp1' prp2'
+			  in let reqs1 = if (prereqs1 <> []) then
+			      (* We can't wrap with "forall mbnds1" *)
+			      E.tyGenericError "UNIMPLEMENTED: CheckModelConstraint/Declaration"
+			    else 
+			      []
+			  in let reqs3 = loop cntxt rest
+			  in reqs1 @ reqs3
+			end
+		    | _ -> 
+			E.tyGenericError ("Missing axiom " ^ 
+					     string_of_name nm)
 
-    | _ -> E.tyGenericError "Incompatible theories"
+		end
 
+	    | Declaration(nm, DeclTheory _) :: rest ->
+		E.noNestedTheoriesError nm
+
+	  in 
+	       loop cntxt elems2
+
+      | _ -> E.tyGenericError "Incompatible theories"
+
+  with
+      E.TypeError msgs -> 
+	E.generalizeError msgs
+	  ("...in comparing theories " ^ string_of_theory thry1 ^
+	      "\nand " ^ string_of_theory thry2)
+	  
 (* coerce: cntxt -> term -> set -> set -> trm option *)
 (**
      coerce trm st1 st2 coerces trm from the set st1 to the set st2
