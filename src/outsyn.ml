@@ -411,6 +411,17 @@ and substTerm ?occ sbst = function
       let sbst' = insertTermvar sbst n (id n') in
 	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst' p, substTerm ?occ sbst' trm)
 
+and substProptype ?occ sbst = function
+    Prop -> Prop
+  | PropArrow((n,ty),pt) -> 
+      let n' = freshVar [n] ?occ sbst in
+	PropArrow((n', substTy ?occ sbst ty), 
+		 substProptype ?occ (insertTermvar sbst n (id n')) pt)
+  | PropMArrow((n,m),pt) ->
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+	PropMArrow((n', substModest ?occ sbst m),
+		 substProptype ?occ (insertTermvar sbst n (id n')) pt)
+
 and substTermList ?occ sbst = List.map (substTerm ?occ sbst)
 
 and substPropList ?occ sbst = List.map (substProp ?occ sbst)
@@ -641,7 +652,7 @@ and string_of_prop level p =
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, r, []), u), t) ->
 	(9, string_of_term r ^ " |= " ^ (string_of_infix (string_of_term u) op (string_of_term t)))
-    | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ " " ^ (string_of_term' 9 t))
+    | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ "" ^ (string_of_term' 9 t))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation ((_, TopTy), p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
     | PObligation ((n, ty), p, q) ->
@@ -664,6 +675,21 @@ and string_of_prop level p =
     if level' > level then "(" ^ str ^ ")" else str
 
 and string_of_proposition p = string_of_prop 999 p
+
+let rec string_of_proptype' level pt = 
+  let (level', str) = match pt with
+      Prop -> (0, "Prop")
+    | PropArrow((n,t),pt) ->
+	(12, "(" ^ (string_of_name n) ^ " : " ^ (string_of_ty t) ^ ") -> " ^
+	  (string_of_proptype' 12 pt))
+    | PropMArrow((n,m),pt) ->
+	(12, "(" ^ (string_of_name n) ^ " : " ^ (string_of_modest m) ^ ") -> " ^
+	  (string_of_proptype' 12 pt))
+  in
+    if level' > level then "(" ^ str ^ ")" else str
+
+and string_of_proptype pt = string_of_proptype' 999 pt
+
 
 let string_of_bind bind =
     String.concat ", " (List.map (fun (n,t) -> (string_of_name n) ^ " : " ^ (string_of_ty t)) bind)

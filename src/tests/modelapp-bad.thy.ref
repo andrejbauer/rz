@@ -9,12 +9,34 @@ A
 instead of theory
 
 B
+        Specifically:  Incompatible sets
+        ...in comparing sets BB.E.f and e
+        
+        ...in comparing theories thy
+        set e : KindSet = BB.a
+        set f : KindSet = BB.b'
+        end
+        and thy
+        set e : KindSet
+        set f : KindSet = e
+        end
+        
+        ...in comparing theories B
+        and A
+        
+...in:  FF BB
 
-...IN:  FF BB
+...in:  FF BB.a
 
-...IN:  FF BB.a
+...in:  Definition a := FF BB.a.
 
-...IN:  Definition a := FF BB.a.
+...in:  thy
+Parameter BB : B.
+Parameter FF : X : A -> A.
+Definition a := FF BB.a.
+
+end
+
 -------------------------------
 
-Fatal error: exception Error.TypeError
+Fatal error: exception Failure("Typechecking failed.")

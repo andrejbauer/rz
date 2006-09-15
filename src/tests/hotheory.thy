@@ -35,5 +35,5 @@ theory PHI := [X:G] -> thy end
 
 model Q : PSI(G0) # ok
 model R : PSI(H0) # ok
-model S : RHO(G0) # not ok, ERROR
-
+# model S : RHO(G0) # not ok, ERROR
+model W : RHO(H0) # ok

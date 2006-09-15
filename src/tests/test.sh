@@ -24,7 +24,7 @@ for FILE in *.thy
 	  if [ $VALIDATE = "1" ]
 	      then
 	      echo ---- $DIFF --side-by-side $FILE.out $FILE.ref ----
-	      $DIFF --side-by-side $FILE.out $FILE.ref
+	      $DIFF --side-by-side -W200 $FILE.out $FILE.ref
 	      echo -----------------------------------
 	      read -p "Validate $FILE.out as new $FILE.ref? (y/n) [n] " ans
 	      if [ "$ans" = "y" -o "$ans" = "Y" ]

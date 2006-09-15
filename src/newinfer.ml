@@ -692,9 +692,9 @@ let rec annotateExpr cntxt orig_expr =
 		     L.Subset ((_,domty2), _) -> 
 		       begin
 			 try
-			   let trm1' =  LR.coerce cntxt trm1 ty1 domty2 
+			   let trm1' =  LR.coerce cntxt trm1 ty1 ty2
 			   in 
-			     ResTerm ( L.Subin ( trm1', ty2 ),
+			     ResTerm ( trm1',
 				     ty2 )
 			 with
 			     E.TypeError msgs ->
@@ -716,7 +716,7 @@ let rec annotateExpr cntxt orig_expr =
 			 try
 			   let trm1' = LR.coerce cntxt trm1 ty1 ty2
 			   in 
-			     ResTerm ( L.Subout ( trm1', ty2),
+			     ResTerm ( trm1',
 				       ty2)
 			 with 
 			     E.TypeError msgs ->

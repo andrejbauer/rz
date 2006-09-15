@@ -217,38 +217,50 @@ let rec optBinds ctx = function
 	   TopTy -> optBinds ctx bnds
 	 | ty' -> (n,ty')::(optBinds ctx bnds))
 
-let simpleTerm = function
+let rec simpleTerm = function
     Id _ -> true
   | EmptyTuple -> true
   | Dagger -> true
+  | Inj(_, None) -> true
+  | Inj(_, Some t) -> simpleTerm t
+  | Proj(_,t) -> simpleTerm t
+  | App(Id _, t) -> simpleTerm t
   | _ -> false
 
-let rec betaReduce = function
-    App(Lambda ((nm, _), trm1), trm2) as trm ->
-      if (simpleTerm trm2) then
-         betaReduce (substTerm (insertTermvar emptysubst nm trm2) trm1)
-      else
-         trm
-  | App(Obligation(bnd,prp,trm1), trm2) ->
-      Obligation(bnd, prp, betaReduce (App(trm1,trm2)))
-  | Proj(n, Obligation(bnd,prp,trm1)) ->
-      Obligation(bnd, prp, betaReduce (Proj(n,trm1)))
+let rec reduce trm = 
+  match trm with 
+    App(Lambda ((nm, _), trm1), trm2) ->
+      reduce (Let(nm, trm2, trm1))
 
-  | Let (nm1, trm2, trm3) as trm ->
+  | App(Obligation(bnd,prp,trm1), trm2) ->
+      Obligation(bnd, prp, reduce (App(trm1,trm2)))
+  | Proj(n, Obligation(bnd,prp,trm1)) ->
+      Obligation(bnd, prp, reduce (Proj(n,trm1)))
+
+  | Lambda((nm1,_), App(trm1, Id(LN(None,nm2)))) when nm1 = nm2 ->
+      (** Eta-reduction ! *)
+      if (List.mem nm1 (fvTerm trm1)) then
+	trm
+      else
+	reduce trm1
+
+  | Let (nm1, trm2, trm3) ->
       if (simpleTerm trm2) then
-	betaReduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
+	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
       else
 	trm
+
   | Proj(n, trm) ->
       begin
-	match betaReduce trm with
-	    Tuple trms -> betaReduce (List.nth trms n)
+	match reduce trm with
+	    Tuple trms -> reduce (List.nth trms n)
 	  | Let (nm1, trm2, trm3) -> 
-	      Let (nm1, trm2, betaReduce (Proj (n, trm3)))
+	      Let (nm1, trm2, reduce (Proj (n, trm3)))
 	  | Obligation (bnd1, prp2, trm3) ->
-	      Obligation (bnd1, prp2, betaReduce (Proj (n, trm3)))
+	      Obligation (bnd1, prp2, reduce (Proj (n, trm3)))
           | trm' -> Proj(n, trm')
       end
+
   | Case(trm1, arms) as trm ->
       begin
 	let rec findArmNone lbl = function
@@ -256,26 +268,69 @@ let rec betaReduce = function
 	      if (lbl = l) then t else findArmNone lbl rest
 	  | (_,Some _, _)::rest -> findArmNone lbl rest
 	  | _ ->
-	      failwith "Impossible:  Opt.betaReduce Case/findArmNone"
+	      failwith "Impossible:  Opt.reduce Case/findArmNone"
 		
 	in let rec findArmSome lbl = function
 	    (l,Some(v,_),t)::rest -> 
 	      if (lbl = l) then (v, t) else findArmSome lbl rest
 	  | (_,None, _)::rest -> findArmSome lbl rest
 	  | _ ->
-	      failwith "Impossible:  Opt.betaReduce Case/findArmSome"
+	      failwith "Impossible:  Opt.reduce Case/findArmSome"
 
 	in
-	     match betaReduce trm1 with
-		 Inj(lbl,None) -> betaReduce (findArmNone lbl arms)
+	     match reduce trm1 with
+		 Inj(lbl,None) -> reduce (findArmNone lbl arms)
 	       | Inj(lbl,Some trm1') -> 
 		   let (nm,trm2) = findArmSome lbl arms
-		   in betaReduce 
-		     (substTerm (insertTermvar emptysubst nm trm1') trm2)
+		   in reduce 
+		     (Let(nm,trm1',trm2))
 	       | _ -> trm
       end
   | trm -> trm
 
+let rec reduceProp prp = 
+  match prp with
+    PApp(PLambda ((nm, _), prp1), trm2) as trm ->
+      if (simpleTerm trm2) then
+        reduceProp (substProp (termSubst nm trm2) prp1)
+      else
+        trm
+  | PApp(PObligation(bnd,prp1,prp2), trm3) ->
+      PObligation(bnd, prp1, reduceProp (PApp(prp2,trm3)))
+  | PMApp(PMLambda ((nm, _), prp1), trm2) as trm ->
+      if (simpleTerm trm2) then
+        reduceProp (substProp (termSubst nm trm2) prp1)
+      else
+        trm
+  | PMApp(PObligation(bnd,prp1,prp2), trm3) ->
+      PObligation(bnd, prp1, reduceProp (PMApp(prp2,trm3)))
+
+(*
+  | (PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2)))) |
+     PMLambda((nm1,_), PMApp(prp1, Id(LN(None,nm2)))))  ->
+      (** Eta-reduction ! *)
+      (print_endline (Name.string_of_name nm1);
+       print_endline (Name.string_of_name nm2);
+       if (List.mem nm1 (fvProp prp1)) then
+	prp
+      else
+	reduceProp prp1)
+
+  | PMLambda((nm1,_), NamedProp(n, Dagger, lst))
+  | PLambda((nm1,_), NamedProp(n, Dagger, lst)) ->
+      begin
+	match List.rev lst with
+	    (Id(LN(None,nm2))::es) -> 
+	      let p' = NamedProp(n, Dagger, List.rev es)
+	      in if (nm1 = nm2) && not (List.mem nm1 (fvProp p')) then
+		  reduceProp p'
+		else
+		  prp
+	  | _ -> prp
+      end
+*)
+
+  | prp -> prp
 
 (* optTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
@@ -305,7 +360,7 @@ let rec optTerm ctx = function
                             ((oldty, e1', ty1'))
          | (ty', _)    -> (* Both parts matter.
                              Eliminate trivial beta-redices, though. *)
-	 ((oldty, betaReduce (App(e1', e2')), ty')))
+	 ((oldty, reduce (App(e1', e2')), ty')))
       | (t1, _, _) -> (print_string "In application ";
                        print_string (Outsyn.string_of_term (App(e1,e2)));
                        print_string " the operator has type ";
@@ -350,7 +405,7 @@ let rec optTerm ctx = function
            else
               (* Nope; there are multiple values so the tuple is 
                  still a tuple and this projection is still a projection *)
-	     (ty, betaReduce (Proj(nonunits, e')), ty')
+	     (ty, reduce (Proj(nonunits, e')), ty')
 	 else
 	   loop(tys, tys', nonunits+1, index+1)
        | (tys,tys',_,index) -> (print_string (string_of_int (List.length tys));
@@ -390,13 +445,13 @@ let rec optTerm ctx = function
 			     thinned type never has a toplevel defn. *)
 			  joinTy emptyCtx tyarm' tyarms')
      in let (tyarms, arms', tyarms') = doArms arms
-     in (tyarms, betaReduce (Case(e',arms')), tyarms')
+     in (tyarms, reduce (Case(e',arms')), tyarms')
 
  | Let(name1, term1, term2) ->
      let    (ty1, term1', ty1') = optTerm ctx term1
      in let ctx' = insertType ctx name1 ty1
      in let (ty2, term2', ty2') = optTerm ctx' term2
-     in (ty2, betaReduce (Let(name1, term1', term2')), ty2')
+     in (ty2, reduce (Let(name1, term1', term2')), ty2')
 
  | Obligation((name,ty), prop, trm) ->
      let    ty'  = optTy ctx ty
@@ -424,7 +479,8 @@ and optTerm' ctx e =
 and optTerms' ctx lst =
   let (_, es, _) = optTerms ctx lst in es
 
-and optProp ctx = function
+and optProp ctx prp = 
+  match prp with
     True                    -> True
   | False                   -> False
   | IsPer (nm, lst)         -> IsPer (nm, optTerms' ctx lst)
@@ -512,7 +568,7 @@ and optProp ctx = function
  
   | ForallTotal((n,ty),p) ->
       let p' = optProp (insertType ctx n ty) p
-      in Forall((n,optTy ctx ty), p')
+      in ForallTotal((n,optTy ctx ty), p')
  
   | Cexists ((n, ty), p) ->
       let p' = optProp (insertType ctx n ty) p in
@@ -530,16 +586,35 @@ and optProp ctx = function
 
   | PMLambda ((n, ms), p) ->
       let ms' = optModest ctx ms in
-      let p' = optProp (insertType ctx n ms'.ty) p in
-	PMLambda ((n,ms'), p')
+      let p' = optProp (insertType ctx n ms.ty) p
+      in let pre = (PMLambda ((n,ms'), p'))
+      in let ans = reduceProp pre
+      in (print_endline (string_of_proposition pre);
+	  print_endline (string_of_proposition ans);
+	  print_endline "";
+	  ans)
+
+  | PMApp (p, t) -> reduceProp (PMApp (optProp ctx p, optTerm' ctx t))
 
   | PLambda ((n,ty), p) ->
-      let p' = optProp (insertType ctx n ty) p
-      in PLambda((n,optTy ctx ty), p')
+      begin
+	let p' = optProp (insertType ctx n ty) p
+	in let ty' = optTy ctx ty
+	in 
+	     match ty' with
+		 TopTy -> p'
+	       | _ -> reduceProp (PLambda((n,ty'), p'))
+      end
 
-  | PApp (p, t) -> PApp (optProp ctx p, optTerm' ctx t)
-
-  | PMApp (p, t) -> PMApp (optProp ctx p, optTerm' ctx t)
+  | PApp (p, t) -> 
+      begin
+	let p' = optProp ctx p
+	in let (_,t',ty') = optTerm ctx t
+	in 
+	     match ty' with
+		 TopTy -> p'
+	       | _ -> PApp(p', t')
+      end
 
   | PCase (e1, e2, arms) ->
       let doBind ctx0 = function
@@ -556,7 +631,6 @@ and optProp ctx = function
 	  (lbl, bnd1', bnd2', p')
       in
 	PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms)
-
 
 and optAssertion ctx (name, prop) = (name, optProp ctx prop)
 
