@@ -757,13 +757,19 @@ let display_subst sbst =
 (** {2 Hoisting} *)
 (*****************)
 
+(* Intended to be run on optimized code *)
+
 (* BUGS:
 
      Cannot use @ to concatenate assertions because
      they might have identical bound variables; need to 
      use a merge function instead.
 
-     Propositional-case not implemented yet.
+     Propositional-case not fully implemented yet.
+
+     The merge functions here rely on there being no shadowing.
+     Is this true?
+
 *)
 
 let rec listminus lst1 lst2 =
