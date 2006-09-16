@@ -757,12 +757,32 @@ let display_subst sbst =
 (** {2 Hoisting} *)
 (*****************)
 
+(* BUGS:
+
+     Cannot use @ to concatenate assertions because
+     they might have identical bound variables; need to 
+     use a merge function instead.
+
+     Propositional-case not implemented yet.
+*)
+
+let rec listminus lst1 lst2 =
+  match lst1 with
+      [] -> []
+    | x::xs ->
+	if (List.mem x lst2) || (List.mem x xs) then 
+	  listminus xs lst2
+	else 
+	  x :: (listminus xs lst2)
+
+
 
 let renaming' subst n n' = insertTermvar subst n (Id(LN(None,n')))
 let renaming n n' = renaming' emptysubst n n'
 
 let mergeObs obs1 obs2 bad0 subst0 = 
   let nms1 = List.map (fun ((n,_),_) -> n) obs1
+  in let obs2 = listminus obs2 obs1 (* delete exact duplicates *)
   in let rec loop bad subst = function
       [] -> ([], subst)
     | ((nm2,ty2),prp2)::rest ->
@@ -774,14 +794,6 @@ let mergeObs obs1 obs2 bad0 subst0 =
   in let (obs2', subst') = loop (nms1 @ bad0) subst0 obs2
   in (obs1 @ obs2', subst')
 
-let rec listminus lst1 lst2 =
-  match lst1 with
-      [] -> []
-    | x::xs ->
-	if (List.mem x lst2) || (List.mem x xs) then 
-	  listminus xs lst2
-	else 
-	  x :: (listminus xs lst2)
 
 let merge2ObsTerm obs1 obs2 trm =
   let nms2 = List.map (fun ((nm,_),_) -> nm) obs2
@@ -1084,34 +1096,8 @@ and hoistProps = function
       in let rest'' = List.map (substProp subst) rest'
       in let prps' = prp' :: rest''
       in 
-
-(*
-       (print_endline "AA"; 
-	List.iter (fun p -> print_endline (string_of_proposition p)) prps;
-	print_endline "BB";
-	List.iter (fun p -> print_endline (string_of_proposition p)) prps';
-*)
 	(obs', prps')
-(* ) *)
 
-(*
-and hoistProps prps =
-  let rec loop = function
-      [] -> ([], [], [])
-    | prp::rest -> 
-	let (obs1,prp') = hoistProp prp
-	in let (obs2,rest',fvrest') = loop rest
-	in let (obs', subst) = mergeObs obs1 obs2 fvrest' emptysubst
-	in let rest'' = List.map (substProp subst) rest'
-	in (obs', prp'::rest'', (fvProp prp') @ fvrest')
-  in let (obs, prps', _) = loop prps
-  in 
-       (print_endline "AA"; 
-	List.iter (fun p -> print_endline (string_of_proposition p)) prps;
-	print_endline "BB";
-	List.iter (fun p -> print_endline (string_of_proposition p)) prps';
-        (obs, prps'))
-*)
 
 and foldPObligation args body = 
   List.fold_right (fun (bnd,prp) x -> PObligation(bnd,prp,x)) args body
