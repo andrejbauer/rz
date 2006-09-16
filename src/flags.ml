@@ -12,3 +12,4 @@ let do_sigapp = ref false (* Should signature applications be retained,
 let do_dumpinfer = ref false (* Should result of infer be written to
                                 stdout? *)
 
+let do_hoist = ref false (* Should obligations be hoisted in assertions? *)

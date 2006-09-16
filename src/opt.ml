@@ -493,7 +493,9 @@ and optProp ctx prp =
   | Equal(e1, e2) -> 
       let (_,e1',ty1') = optTerm ctx e1
       in let e2' = optTerm' ctx e2
-      in (match (hnfTy ctx ty1') with
+      in
+
+(* (match (hnfTy ctx ty1') with
             TopTy -> True
 	  | VoidTy -> True
 	  | SumTy _ ->
@@ -510,7 +512,7 @@ and optProp ctx prp =
 		 | Inj (_, Some _), Inj (_, None) -> False
 		 | _ -> Equal (e1', e2')
 	      )
-          | _ -> Equal(e1',e2'))
+          | _ ->*) Equal(e1',e2') (* )  *)
   | And ps ->
       let rec loop = function
         | ([], []) -> True
@@ -588,11 +590,7 @@ and optProp ctx prp =
       let ms' = optModest ctx ms in
       let p' = optProp (insertType ctx n ms.ty) p
       in let pre = (PMLambda ((n,ms'), p'))
-      in let ans = reduceProp pre
-      in (print_endline (string_of_proposition pre);
-	  print_endline (string_of_proposition ans);
-	  print_endline "";
-	  ans)
+      in reduceProp pre
 
   | PMApp (p, t) -> reduceProp (PMApp (optProp ctx p, optTerm' ctx t))
 
@@ -632,7 +630,17 @@ and optProp ctx prp =
       in
 	PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms)
 
-and optAssertion ctx (name, prop) = (name, optProp ctx prop)
+and optAssertion ctx (name, prop) = 
+  let prop' = optProp ctx prop
+  in 
+
+  let prop'' = if (!Flags.do_hoist) then
+       let (obs, prp') = hoistProp prop' in
+	 foldPObligation obs prp'
+    else
+      prop'
+  in
+    (name, prop'')
 
 and optModest ctx {ty=t; tot=p; per=q} =
   {ty = optTy ctx t;

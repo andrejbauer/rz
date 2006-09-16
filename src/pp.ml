@@ -290,11 +290,11 @@ and output_prop_14 ppf = function
         output_name n  output_ty ty  output_prop_14 p  output_prop_14 q
 
   | PObligation ((_, TopTy), p, q) ->
-      fprintf ppf "assure %a in %a" 
+      fprintf ppf "@[<hov2>assure %a in@ %a@]" 
         output_prop_13 p  output_prop_14 q
 
   | PObligation ((n, ty), p, q) ->
-      fprintf ppf "assure %a : %a . %a in %a" 
+      fprintf ppf "@[<hov 2>assure %a : %a . %a in@ %a@]" 
         output_name n  output_ty ty  output_prop_13 p  output_prop_14 q
 
   | prp -> output_prop_13 ppf prp

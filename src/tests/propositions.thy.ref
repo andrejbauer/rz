@@ -1,17 +1,5 @@
 [Processing propositions.thy]
-PMfun y : s (||s||) => r1 x y
-PMfun y : s (||s||) => r1 x y
-
-PMfun x : s (||s||) => PMfun y : s (||s||) => r1 x y
-PMfun x : s (||s||) => PMfun y : s (||s||) => r1 x y
-
 Is this a Dagger which I see before me?
-PMfun y : s (||s||) => r1 x y
-PMfun y : s (||s||) => r1 x y
-
-PMfun x : s (||s||) => PMfun y : s (||s||) => r1 x y
-PMfun x : s (||s||) => PMfun y : s (||s||) => r1 x y
-
 module type P = 
 sig
   
@@ -124,7 +112,8 @@ sig
   type r2 = top
   (**  Assertion r2_def = 
          forall (x:||s||, y:||s||),  r2 x y <->
-           (assure EQUIV((pmfun x : s(||s||) => pmfun y : s(||s||) => r1 x y), s) in r1 x y)
+           (assure EQUIV((pmfun x : s(||s||) => pmfun y : s(||s||) => r1 x y), s) in
+              r1 x y)
   *)
    
   val w : [`foo | `bar of (s * s)]

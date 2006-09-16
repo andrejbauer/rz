@@ -19,6 +19,8 @@ let command_line_options =
      ("--noshow", fClear, Flags.do_print, "No output to stdout");
      ("--save", fSet, Flags.do_save, "Send output to .mli file");
      ("--nosave", fClear, Flags.do_save, "No output to file");
+     ("--hoist", fSet, Flags.do_hoist, "Hoist all assurances");
+     ("--nohoist", fClear, Flags.do_hoist, "Don't hoist all assurances");
      ("--sigapp", fSet, Flags.do_sigapp, "Retain signature applications");
      ("--nosigapp", fClear, Flags.do_sigapp, "Expand away signature applications");
      ("--dump_infer", fSet, Flags.do_dumpinfer, "Dump result of type inference");
