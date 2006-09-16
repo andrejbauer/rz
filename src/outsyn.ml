@@ -972,8 +972,66 @@ let rec hoistArm trm (lbl, bndopt, x) =
 	in let obs' = List.map addPremise obs
 	in (obs', (lbl, Some(nm,ty), x'))
 
-and hoistPropArm _ _ = 
-  failwith "Outsyn.hoistPropArm:  unimplemented"
+and hoistPropArm trm1 trm2 (lbl, bndopt1, bndopt2, prp) =
+  let fvtrms = fvTerm trm1 @ fvTerm trm2
+  in
+  match (bndopt1, bndopt2) with
+      (None, None) -> 
+	let addPremise ((n,ty), p) = 
+	  (* Alpha-vary so that n doesn't capture any variables in trm *)
+	  let n' = freshVar [n] ~bad:fvtrms emptysubst
+	  in let p' = substProp ( renaming n n' ) p
+	  in ((n',ty), Imply(And[Equal(trm1,Inj(lbl,None));
+				 Equal(trm2,Inj(lbl,None))], p'))
+	in let (obs, prp') = hoistProp prp
+	in let obs' = List.map addPremise obs
+	in (obs', (lbl, bndopt1, bndopt2, prp'))
+
+    | (Some (nm1,ty1), None) ->
+	let addPremise ((n,t), p) = 
+	  (* Alpha-vary so that n doesn't capture any variables in trm
+             or get shadowed by nm1 *)
+	  let n' = freshVar [n] ~bad:(nm1 :: fvtrms) emptysubst
+	  in let p' = substProp (renaming n n') p
+	  in ( (n',t), 
+	       Forall( (nm1,ty1), 
+		     Imply( And[Equal(trm1, Inj(lbl,Some(Id(LN(None,nm1)))));
+			        Equal(trm2, Inj(lbl,None))], p' ) ) )
+	in let (obs, prp') = hoistProp prp
+	in let obs' = List.map addPremise obs
+	in (obs', (lbl, bndopt1, bndopt2, prp'))
+
+    | (None, Some (nm2,ty2)) ->
+	let addPremise ((n,t), p) = 
+	  (* Alpha-vary so that n doesn't capture any variables in trm
+             or get shadowed by nm2 *)
+	  let n' = freshVar [n] ~bad:(nm2 :: fvtrms) emptysubst
+	  in let p' = substProp ( renaming n n' ) p
+	  in ( (n',t), 
+	       Forall( (nm2,ty2), 
+		     Imply( And[Equal(trm1, Inj(lbl,None));
+			        Equal(trm2, Inj(lbl,Some(Id(LN(None,nm2)))))], 
+			    p' ) ) )
+	in let (obs, prp') = hoistProp prp
+	in let obs' = List.map addPremise obs
+	in (obs', (lbl, bndopt1, bndopt2, prp'))
+
+    | (Some(nm1,ty1), Some(nm2,ty2)) ->
+	let addPremise ((n,t), p) = 
+	  (* Alpha-vary so thazt n doesn't capture any variables in trm
+             or get shadowed by nm2 *)
+	  let n' = freshVar [n] ~bad:(nm1 :: nm2 :: fvtrms) emptysubst
+	  in let p' = substProp ( renaming n n' ) p
+	  in ( (n', t),
+	       Forall( (nm1,ty1), 
+		 Forall( (nm2,ty2), 
+		     Imply( And[Equal(trm1, Inj(lbl,Some(Id(LN(None,nm1)))));
+			        Equal(trm2, Inj(lbl,Some(Id(LN(None,nm2)))))], 
+			    p' ) ) ))
+	in let (obs, prp') = hoistProp prp
+	in let obs' = List.map addPremise obs
+	in (obs', (lbl, bndopt1, bndopt2, prp'))
+
 
 and hoist trm =
   match trm with
@@ -1054,6 +1112,8 @@ and hoistProps = function
    to universally quantify the proposition parts of the
    obligations *)
 and quantifyOb nm ty (bnd, prp) = (bnd, Forall((nm,ty), prp))
+
+and quantifyObTotal nm ty (bnd, prp) = (bnd, ForallTotal((nm,ty), prp))
   
 and substOb nm trm ((n,ty),p) =
   let sbst = termSubst nm trm
@@ -1144,7 +1204,7 @@ and hoistProp prp =
 
     | ForallTotal((nm,ty),prp) ->
 	let (obs, prp') = hoistProp prp
-	in let obs' = List.map (quantifyOb nm ty) obs
+	in let obs' = List.map (quantifyObTotal nm ty) obs
 	in (obs', ForallTotal((nm,ty), prp') )
 
     | Cexists((nm,ty), prp) ->
