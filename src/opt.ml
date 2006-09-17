@@ -217,127 +217,12 @@ let rec optBinds ctx = function
 	   TopTy -> optBinds ctx bnds
 	 | ty' -> (n,ty')::(optBinds ctx bnds))
 
-let rec simpleTerm = function
-    Id _ -> true
-  | EmptyTuple -> true
-  | Dagger -> true
-  | Inj(_, None) -> true
-  | Inj(_, Some t) -> simpleTerm t
-  | Proj(_,t) -> simpleTerm t
-  | App(Id _, t) -> simpleTerm t
-  | _ -> false
-
-let rec reduce trm = 
-  match trm with 
-    App(Lambda ((nm, _), trm1), trm2) ->
-      reduce (Let(nm, trm2, trm1))
-
-  | App(Obligation(bnd,prp,trm1), trm2) ->
-      Obligation(bnd, prp, reduce (App(trm1,trm2)))
-  | Proj(n, Obligation(bnd,prp,trm1)) ->
-      Obligation(bnd, prp, reduce (Proj(n,trm1)))
-
-  | Lambda((nm1,_), App(trm1, Id(LN(None,nm2)))) when nm1 = nm2 ->
-      (** Eta-reduction ! *)
-      if (List.mem nm1 (fvTerm trm1)) then
-	trm
-      else
-	reduce trm1
-
-  | Let (nm1, trm2, trm3) ->
-      if (simpleTerm trm2) then
-	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
-      else
-	trm
-
-  | Proj(n, trm) ->
-      begin
-	match reduce trm with
-	    Tuple trms -> reduce (List.nth trms n)
-	  | Let (nm1, trm2, trm3) -> 
-	      Let (nm1, trm2, reduce (Proj (n, trm3)))
-	  | Obligation (bnd1, prp2, trm3) ->
-	      Obligation (bnd1, prp2, reduce (Proj (n, trm3)))
-          | trm' -> Proj(n, trm')
-      end
-
-  | Case(trm1, arms) as trm ->
-      begin
-	let rec findArmNone lbl = function
-	    (l,None,t)::rest -> 
-	      if (lbl = l) then t else findArmNone lbl rest
-	  | (_,Some _, _)::rest -> findArmNone lbl rest
-	  | _ ->
-	      failwith "Impossible:  Opt.reduce Case/findArmNone"
-		
-	in let rec findArmSome lbl = function
-	    (l,Some(v,_),t)::rest -> 
-	      if (lbl = l) then (v, t) else findArmSome lbl rest
-	  | (_,None, _)::rest -> findArmSome lbl rest
-	  | _ ->
-	      failwith "Impossible:  Opt.reduce Case/findArmSome"
-
-	in
-	     match reduce trm1 with
-		 Inj(lbl,None) -> reduce (findArmNone lbl arms)
-	       | Inj(lbl,Some trm1') -> 
-		   let (nm,trm2) = findArmSome lbl arms
-		   in reduce 
-		     (Let(nm,trm1',trm2))
-	       | _ -> trm
-      end
-  | trm -> trm
-
-let rec reduceProp prp = 
-  match prp with
-    PApp(PLambda ((nm, _), prp1), trm2) as trm ->
-      if (simpleTerm trm2) then
-        reduceProp (substProp (termSubst nm trm2) prp1)
-      else
-        trm
-  | PApp(PObligation(bnd,prp1,prp2), trm3) ->
-      PObligation(bnd, prp1, reduceProp (PApp(prp2,trm3)))
-  | PMApp(PMLambda ((nm, _), prp1), trm2) as trm ->
-      if (simpleTerm trm2) then
-        reduceProp (substProp (termSubst nm trm2) prp1)
-      else
-        trm
-  | PMApp(PObligation(bnd,prp1,prp2), trm3) ->
-      PObligation(bnd, prp1, reduceProp (PMApp(prp2,trm3)))
-
-(*
-  | (PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2)))) |
-     PMLambda((nm1,_), PMApp(prp1, Id(LN(None,nm2)))))  ->
-      (** Eta-reduction ! *)
-      (print_endline (Name.string_of_name nm1);
-       print_endline (Name.string_of_name nm2);
-       if (List.mem nm1 (fvProp prp1)) then
-	prp
-      else
-	reduceProp prp1)
-
-  | PMLambda((nm1,_), NamedProp(n, Dagger, lst))
-  | PLambda((nm1,_), NamedProp(n, Dagger, lst)) ->
-      begin
-	match List.rev lst with
-	    (Id(LN(None,nm2))::es) -> 
-	      let p' = NamedProp(n, Dagger, List.rev es)
-	      in if (nm1 = nm2) && not (List.mem nm1 (fvProp p')) then
-		  reduceProp p'
-		else
-		  prp
-	  | _ -> prp
-      end
-*)
-
-  | prp -> prp
-
 (* optTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
             e' is the optimized version of e
             t' is the optimized type (i.e., the type of e')
 
-      Never returns Tuple []
+      Never returns Tuple [] or Tuple [x]
 *)       
 let rec optTerm ctx = function
    Id n -> (let oldty = lookupTypeLong ctx n
@@ -378,7 +263,12 @@ let rec optTerm ctx = function
      | (_,_)     -> (oldty, Lambda((name1,ty1'),term2'), ArrowTy(ty1',ty2')))
  | Tuple es -> 
      let (ts, es', ts') = optTerms ctx es
-     in (TupleTy ts, Tuple es', topTyize (TupleTy ts'))
+     in let e' = 
+       (match es' with
+	   [] -> Dagger
+	 | [e] -> e
+	 | _ -> Tuple es')
+     in (TupleTy ts, e', topTyize (TupleTy ts'))
  | Proj (n,e) as proj_code ->
      let (ty, e', _) = optTerm ctx e
      in let tys = 

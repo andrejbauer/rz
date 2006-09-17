@@ -196,7 +196,7 @@ and output_term_0 ppf = function
   | EmptyTuple -> fprintf ppf "()"
   | Dagger -> fprintf ppf "DAGGER"
   | Tuple [] -> fprintf ppf "()"
-  | Tuple [t] -> output_term_0 ppf t
+  | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t
   | Tuple lst -> 
 	fprintf ppf "@[(%a)@]"   (output_term_components output_term_9 ",") lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)

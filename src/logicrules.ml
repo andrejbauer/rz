@@ -1476,7 +1476,7 @@ let rec coerce cntxt trm st1 st2 =
 		| _ -> raise Impossible
               in let trms' = loop emptysubst (trms, sts1, sts2)
 	      in Tuple trms'
-		
+
           | _ -> E.tyGenericErrors []
       with
 	  E.TypeError _ -> 

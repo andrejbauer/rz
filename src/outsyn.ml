@@ -192,12 +192,15 @@ and fvProp' flt acc = function
   | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
   | PObligation ((n, _), p, q) -> fvProp' (n::flt) (fvProp' (n::flt) acc p) q
   | PCase (t1, t2, lst) ->
-      List.fold_left
-	(fun a (_, bnd1, bnd2, t) ->
-	  let flt1 = match bnd1 with None -> flt | Some (n, _) -> n::flt in
-	  let flt2 = match bnd2 with None -> flt | Some (n, _) -> n::flt1 in
-	    fvProp' flt2 a t)
-	(fvTerm' flt (fvTerm' flt acc t1) t2) lst
+	fvPCaseArms' flt (fvTerm' flt (fvTerm' flt acc t1) t2) lst
+
+and fvPCaseArm' flt acc (_, bnd1, bnd2, t) = 
+  let flt1 = match bnd1 with None -> flt | Some (n, _) -> n::flt in
+  let flt2 = match bnd2 with None -> flt | Some (n, _) -> n::flt1 in
+    fvProp' flt2 acc t
+
+and fvPCaseArms' flt acc arms =
+      List.fold_left (fvPCaseArm' flt) acc arms
 
 and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
@@ -211,6 +214,8 @@ and fvModestList' flt acc = List.fold_left (fun a t -> fvModest' flt a (snd t)) 
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
 let fvModest = fvModest' [] []
+let fvPCaseArm = fvPCaseArm' [] []
+let fvPCaseArms = fvPCaseArms' [] []
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
@@ -365,18 +370,21 @@ and substProp ?occ sbst = function
 	PObligation ((n', s), substProp ?occ sbst' p, substProp ?occ sbst' q)
 
   | PCase (t1, t2, lst) -> 
-      let update_subst sbst0 = function
-	  None -> None, sbst0
-	| Some (n, ty) ->
-	    let n' =  freshVar [n] ?occ sbst0 in
-      	      Some (n', substTy ?occ sbst ty), insertTermvar sbst0 n (id n')
-      in
 	PCase (substTerm ?occ sbst t1, substTerm ?occ sbst t2,
-	      List.map (function (lb, bnd1, bnd2, p) ->
-		let bnd1', sbst1 = update_subst sbst  bnd1 in
-		let bnd2', sbst2 = update_subst sbst1 bnd2 in
-		  (lb, bnd1', bnd2', substProp ?occ sbst2 p))
-		lst)
+	       substPCaseArms ?occ sbst lst)
+
+and substPCaseArm ?occ sbst (lb, bnd1, bnd2, p) =
+  let update_subst sbst0 = function
+      None -> None, sbst0
+    | Some (n, ty) ->
+	let n' =  freshVar [n] ?occ sbst0 in
+      	  Some (n', substTy ?occ sbst ty), insertTermvar sbst0 n (id n')
+  in let bnd1', sbst1 = update_subst sbst  bnd1
+  in let bnd2', sbst2 = update_subst sbst1 bnd2 
+  in (lb, bnd1', bnd2', substProp ?occ sbst2 p)
+
+and substPCaseArms ?occ sbst arms =
+  List.map (substPCaseArm ?occ sbst) arms
 
 and substTerm ?occ sbst = function
     Id (LN (None, nm)) -> getTermvar sbst nm
@@ -571,7 +579,7 @@ let rec string_of_term' level t =
 	(12, "fun (" ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
 	   (string_of_term' 12 t))
     | Tuple [] -> (0, "()")
-    | Tuple [t] -> (0, string_of_term' 0 t)
+    | Tuple [t] -> (0, "Tuple " ^ string_of_term' 0 t)
     | Tuple lst -> (0, "(" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ ")")
     | Proj (k, t) -> (4, ("pi" ^ (string_of_int k) ^ " " ^ (string_of_term' 3 t)))
     | Inj (lb, None) -> (4, ("`" ^ lb))
@@ -749,6 +757,9 @@ let display_subst sbst =
        ModulNameMap.iter do_modul sbst.moduls)
 
 
+
+
+
 (* If we ever let obligations appear in *types*, this will have
    to be modified! *)
 
@@ -860,49 +871,64 @@ let rec listminus lst1 lst2 =
 let renaming' subst n n' = insertTermvar subst n (Id(LN(None,n')))
 let renaming n n' = renaming' emptysubst n n'
 
-let merge2Obs fvFun1 substFn1 fvFun2 substFn2 obs1 obs2 x1 x2 = 
+(* Compute the free variables in a list of obligations.
+   Resulting list might have duplicates. *)
+let rec fvObs = function
+    [] -> []
+  | ((nm,_),prp) :: rest ->
+      (fvProp prp) @ (listminus (fvObs rest) [nm])
+
+(* Rename a list of obligations, given bound variable names to avoid
+   using, and an initial (renaming) substitution.
+
+   Returns the list of renamed obligations, and a (renaming)
+   substitution mapping from old obligation names to new ones. *)
+let rec renameObs bad subst = function
+    []                    -> ([], subst)
+  | ((nm,ty),prp) :: rest ->
+      let nm' = freshVar [nm] ~bad:bad subst
+      in let subst' = renaming' subst nm nm'
+      in let prp' = substProp subst' prp
+      in let (rest', subst'') = renameObs (nm'::bad) subst' rest
+      in ( ((nm',ty),prp') ::rest', subst'')
+	
+let rec printObs = function
+    [] -> ()
+  | (bnd,p)::rest -> print_endline (string_of_term (Obligation(bnd,p,EmptyTuple))); printObs rest
+
+  
+(* Returns set difference, but also returns the names of the 
+   bound variables that were removed *)
+
+(* XXX:  BUG!
+     Doesn't do the same thing if obs1 binds the same variable twice
+     (differently), and only the first(duplicate) is removed.
+*)
+let rec obsListminus obs1 obs2 =
+  match obs1 with
+      [] -> ([], [])
+    | (((n,_),_) as ob)::obs ->
+	if (List.mem ob obs) then
+	  obsListminus obs obs2
+	else let (ns, obs') = obsListminus obs obs2
+	  in if (List.mem ob obs2) then
+	      (n::ns, obs')
+	    else 
+	      (ns, ob::obs')
+
+
+let merge2Obs fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
+(*  let _ = print_endline "Obs1"; printObs obs1
+  in let _ = print_endline "Obs2"; printObs obs2 in *)
+
   (* Delete exact duplicates *)
-  let obs2 = listminus obs2 obs1 in 
+  let (deletedNames2, obs2) = obsListminus obs2 obs1
+
+(*  in let _ = print_endline "Obs2'"; printObs obs2  *)
     
-  (* Get the bound variables in each obligation list 
-     let getName ((nm,_),_) = nm
-     in let nms1 = List.map getName obs1
-     in let nms2 = List.map getName obs2 in
-  *)
-
-  (* Compute the free variables in a list of obligations.
-     Resulting list might have duplicates. *)
-  let rec fvObs = function
-      [] -> []
-    | ((nm,_),prp) :: rest ->
-	(fvProp prp) @ (listminus (fvObs rest) [nm])
-
-  (* Rename a list of obligations, given bound variable names
-     to avoid using, and an initial (renaming) substitution.
-
-     Returns the list of renamed obligations, and a (renaming)
-     substitution mapping from old obligation names to new ones. *)
-  in let rec renameObs bad subst = function
-      []                    -> ([], subst)
-    | ((nm,ty),prp) :: rest ->
-	let nm' = freshVar [nm] ~bad:bad subst
-	in let subst' = renaming' subst nm nm'
-	in let prp' = substProp subst' prp
-	in let (rest', subst'') = renameObs (nm'::bad) subst' rest
-	in ( ((nm',ty),prp') ::rest', subst'')
-
-  (* Apply a substitution to a list of obligations. 
-  in let rec substObs subst = function
-      [] -> []
-    | ((nm,ty),prp) :: rest ->
-	let subst' = renaming' subst nm nm
-	in let prp' = substProp subst' prp
-	in let rest' = substObs subst' rest
-	in ((nm,ty),prp') :: rest'
-  *)
-
   in let (obs1', subst1) = 
-    renameObs ((fvFun2 x2) @ (fvObs obs2)) emptysubst obs1
+    renameObs ((listminus (fvFun2 x2) deletedNames2) @ (fvObs obs2)) 
+      emptysubst obs1
   in let x1' = substFn1 subst1 x1
   
   in let (obs2', subst2) = 
@@ -911,17 +937,42 @@ let merge2Obs fvFun1 substFn1 fvFun2 substFn2 obs1 obs2 x1 x2 =
 
   in let obs' = obs1' @ obs2'
 
+(*  in let _ = print_endline "Obs'"; printObs obs' *)
+
   in (obs', x1', x2')
 
+let merge3Obs fvFun1 fvFun2 fvFun3 substFn1 substFn2 substFn3 
+              obs1 obs2 obs3 x1 x2 x3 = 
+  (* Delete exact duplicates *)
+  let obs2 = listminus obs2 obs1
+  in let obs3 = listminus obs3 (obs1 @ obs2)
+    
+  in let (obs1', subst1) = 
+    renameObs (fvFun2 x2 @ fvFun3 x3 @ fvObs obs2 @ fvObs obs3) emptysubst obs1
+  in let x1' = substFn1 subst1 x1
+  
+  in let (obs2', subst2) = 
+    renameObs (fvFun1 x1' @ fvFun3 x3 @ fvObs obs3) emptysubst obs2
+  in let x2' = substFn2 subst2 x2
 
-let merge2ObsTerm = merge2Obs fvTerm substTerm fvTerm substTerm
+  in let (obs3', subst3) = 
+    renameObs (fvFun1 x1' @ fvFun2 x2') emptysubst obs3
+  in let x3' = substFn3 subst3 x3
+
+
+  in let obs' = obs1' @ obs2' @ obs3'
+
+  in (obs', x1', x2', x3')
+
+
+let merge2ObsTerm = merge2Obs fvTerm fvTerm substTerm substTerm
 
 let merge2ObsTermTerms obs1 obs2 trm trms =
   match (merge2ObsTerm obs1 obs2 trm (Tuple trms)) with
       (obs', trm', Tuple trms') -> (obs', trm', trms')
     | _ -> failwith "Obj.merge2ObsTermTerms: impossible"
 
-let merge2ObsProp = merge2Obs fvProp substProp fvProp substProp
+let merge2ObsProp = merge2Obs fvProp fvProp substProp substProp
 
 let merge2ObsPropProps obs1 obs2 prp prps =
   match (merge2ObsProp obs1 obs2 prp (And prps)) with
@@ -930,7 +981,7 @@ let merge2ObsPropProps obs1 obs2 prp prps =
 
 
 
-let merge2ObsPropModest =  merge2Obs fvProp substProp fvModest substModest
+let merge2ObsPropModest =  merge2Obs fvProp fvModest substProp substModest
 
 
 let rec hoistArm trm (lbl, bndopt, x) =
@@ -1043,7 +1094,8 @@ and hoist trm =
     | App(trm1, trm2) ->
 	let    (obs1,trm1') = hoist trm1
 	in let (obs2, trm2') = hoist trm2
-	in (obs1 @ obs2, App(trm1',trm2'))
+	in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
+	in (obs', reduce (App(trm1'',trm2'')) )
 
     | Lambda((nm,ty),trm) ->
 	let (obs1, trm1') = hoist trm
@@ -1056,7 +1108,7 @@ and hoist trm =
 
     | Proj(n, trm) ->
 	let (obs, trm') = hoist trm
-	in (obs, Proj(n,trm'))
+	in (obs, reduce (Proj(n,trm')))
 
     | Inj(lbl, Some trm) ->
 	let (obs, trm') = hoist trm
@@ -1066,7 +1118,7 @@ and hoist trm =
 	let (obs1, trm') = hoist trm
 	in let (obs2s, arms') = List.split (List.map (hoistArm trm) arms)
 	in let obs2 = List.flatten obs2s
-	in (obs1 @ obs2, Case(trm',arms'))
+	in (obs1 @ obs2, reduce (Case(trm',arms')))
 
     | Let(nm, trm1, trm2) ->
 	(* BEFORE (assuming only assure is in body):
@@ -1082,15 +1134,18 @@ and hoist trm =
 	let (obs1, trm1') = hoist trm1
 	in let (preobs2, trm2') = hoist trm2
 	in let addPremise ((n,ty),p) =
-	  let n' = freshVar [n] ~bad:(nm :: fvTerm trm1) emptysubst
+	  let n' = freshVar [n] ~bad:(nm :: fvTerm trm1') emptysubst
 	  in let p' = substProp (termSubst n (Id(LN(None,n')))) p
-	  in ((n',ty), substProp (termSubst nm trm1) p')
+	  in ((n',ty), substProp (termSubst nm trm1') p')
 	in let obs2 = List.map addPremise preobs2
-	in (obs1 @ obs2, Let(nm, trm1', trm2'))
+	in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
+	in (obs', reduce (Let(nm, trm1'', trm2'')))
 
     | Obligation(bnd, prp, trm) ->
-	let (obs, trm') = hoist trm
-	in ((bnd,prp) :: obs, trm')
+	let (obs1, prp') = hoistProp prp
+	in let obs2 = [(bnd, prp')]
+	in let (obs3, trm') = hoist trm
+	in (obs1 @ obs2 @ obs3, trm')
 
 and hoistTerms = function
     [] -> ([], [])
@@ -1107,6 +1162,28 @@ and hoistProps = function
       in let (obs2, prps') = hoistProps prps
       in let (obs', prp'', prps'') = merge2ObsPropProps obs1 obs2 prp' prps'
       in (obs', prp'' :: prps'')
+
+and hoistPCaseArms = function
+    [] -> ([], [])
+  | arm::arms ->
+      let (obs1, arm') = hoistPCaseArm arm
+      in let (obs2, arms') = hoistPCaseArms arms
+      in let (obs', arm'', arms'') = 
+	merge2Obs fvPCaseArm fvPCaseArms substPCaseArm substPCaseArms 
+	  obs1 obs2 arm' arms'
+      in (obs', arm'' :: arms'')
+
+and hoistPCaseArm (lbl, bndopt1, bndopt2, prp) =
+  let (obs,trm') = hoistProp prp
+  in let obs' = 
+    match bndopt1 with
+	None -> obs
+      | Some (nm,ty) -> List.map (quantifyOb nm ty) obs
+  in let obs'' = 
+    match bndopt2 with
+	None -> obs'
+      | Some (nm,ty) -> List.map (quantifyOb nm ty) obs'
+  in (obs'', (lbl, bndopt1, bndopt2, trm'))
 
 (* Fortunately, terms cannot appear in types, so we only have
    to universally quantify the proposition parts of the
@@ -1233,28 +1310,31 @@ and hoistProp prp =
 	let (obs1, prp') = hoistProp prp
 	in let (obs2, trm') = hoist trm
 	in let (obs', prp'', trm'') = 
-	  merge2Obs fvProp substProp fvTerm substTerm obs1 obs2 prp' trm'
+	  merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
 	in (obs', PApp(prp'', trm''))
 
     | PMApp(prp, trm) ->
 	let (obs1, prp') = hoistProp prp
 	in let (obs2, trm') = hoist trm
 	in let (obs', prp'', trm'') = 
-	  merge2Obs fvProp substProp fvTerm substTerm obs1 obs2 prp' trm'
+	  merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
 	in (obs', PMApp(prp'', trm''))
 
-    | PCase(trm1, trm2, parms) -> 
+    | PCase(trm1, trm2, arms) -> 
 	let (obs1, trm1') = hoist trm1
 	in let (obs2, trm2') = hoist trm2
-	in let (obs3s, parms') = 
-	  List.split (List.map (hoistPropArm trm1 trm2) parms)
-	in let obs3 = List.flatten obs3s
-	in (obs1 @ obs2 @ obs3, PCase(trm1', trm2', parms')) (* XXX *)
+	in let (obs3, arms') = hoistPCaseArms arms
+	in let (obs', trm1'', trm2'', arms'') =
+	     merge3Obs fvTerm fvTerm fvPCaseArms
+                       substTerm substTerm substPCaseArms
+                       obs1 obs2 obs3 trm1' trm2' arms'
+	in (obs', PCase(trm1', trm2', arms''))
 
     | PObligation(bnd, prp1, prp2) ->
 	let (obs1, prp1') = hoistProp prp1
-	in let (obs2, prp2') = hoistProp prp2
-	in ((bnd, prp1')::obs1 @ obs2, prp2') (* XXX *)
+	in let (obs3, prp2') = hoistProp prp2
+	in let obs2 = [(bnd,prp1')]
+	in (obs1 @ obs2 @ obs3, prp2') (* XXX *)
   in
 (
 (*  print_endline "hoistProp";
@@ -1270,3 +1350,123 @@ and hoistModest {ty=ty; tot=tot; per=per} =
 
 and foldPObligation args body = 
   List.fold_right (fun (bnd,prp) x -> PObligation(bnd,prp,x)) args body
+
+
+(******************)
+(** {2 Reductions *)
+
+
+and simpleTerm = function
+    Id _ -> true
+  | EmptyTuple -> true
+  | Dagger -> true
+  | Inj(_, None) -> true
+  | Inj(_, Some t) -> simpleTerm t
+  | Proj(_,t) -> simpleTerm t
+  | App(Id _, t) -> simpleTerm t
+  | _ -> false
+
+and reduce trm =
+  match trm with 
+    App(Lambda ((nm, _), trm1), trm2) ->
+      reduce (Let(nm, trm2, trm1))
+
+  | App(Obligation(bnd,prp,trm1), trm2) ->
+      Obligation(bnd, prp, reduce (App(trm1,trm2)))
+  | Proj(n, Obligation(bnd,prp,trm1)) ->
+      Obligation(bnd, prp, reduce (Proj(n,trm1)))
+
+  | Lambda((nm1,_), App(trm1, Id(LN(None,nm2)))) when nm1 = nm2 ->
+      (** Eta-reduction ! *)
+      if (List.mem nm1 (fvTerm trm1)) then
+	trm
+      else
+	reduce trm1
+
+  | Let (nm1, trm2, trm3) ->
+      if (simpleTerm trm2) then
+	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
+      else
+	trm
+
+  | Proj(n, trm) ->
+      begin
+	match reduce trm with
+	    Tuple trms -> reduce (List.nth trms n)
+	  | Let (nm1, trm2, trm3) -> 
+	      Let (nm1, trm2, reduce (Proj (n, trm3)))
+	  | Obligation (bnd1, prp2, trm3) ->
+	      Obligation (bnd1, prp2, reduce (Proj (n, trm3)))
+          | trm' -> Proj(n, trm')
+      end
+
+  | Case(trm1, arms) as trm ->
+      begin
+	let rec findArmNone lbl = function
+	    (l,None,t)::rest -> 
+	      if (lbl = l) then t else findArmNone lbl rest
+	  | (_,Some _, _)::rest -> findArmNone lbl rest
+	  | _ ->
+	      failwith "Impossible:  Opt.reduce Case/findArmNone"
+		
+	in let rec findArmSome lbl = function
+	    (l,Some(v,_),t)::rest -> 
+	      if (lbl = l) then (v, t) else findArmSome lbl rest
+	  | (_,None, _)::rest -> findArmSome lbl rest
+	  | _ ->
+	      failwith "Impossible:  Opt.reduce Case/findArmSome"
+
+	in
+	     match reduce trm1 with
+		 Inj(lbl,None) -> reduce (findArmNone lbl arms)
+	       | Inj(lbl,Some trm1') -> 
+		   let (nm,trm2) = findArmSome lbl arms
+		   in reduce 
+		     (Let(nm,trm1',trm2))
+	       | _ -> trm
+      end
+  | trm -> trm
+
+let rec reduceProp prp = 
+  match prp with
+    PApp(PLambda ((nm, _), prp1), trm2) as trm ->
+      if (simpleTerm trm2) then
+        reduceProp (substProp (termSubst nm trm2) prp1)
+      else
+        trm
+  | PApp(PObligation(bnd,prp1,prp2), trm3) ->
+      PObligation(bnd, prp1, reduceProp (PApp(prp2,trm3)))
+  | PMApp(PMLambda ((nm, _), prp1), trm2) as trm ->
+      if (simpleTerm trm2) then
+        reduceProp (substProp (termSubst nm trm2) prp1)
+      else
+        trm
+  | PMApp(PObligation(bnd,prp1,prp2), trm3) ->
+      PObligation(bnd, prp1, reduceProp (PMApp(prp2,trm3)))
+
+(*
+  | (PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2)))) |
+     PMLambda((nm1,_), PMApp(prp1, Id(LN(None,nm2)))))  ->
+      (** Eta-reduction ! *)
+      (print_endline (Name.string_of_name nm1);
+       print_endline (Name.string_of_name nm2);
+       if (List.mem nm1 (fvProp prp1)) then
+	prp
+      else
+	reduceProp prp1)
+
+  | PMLambda((nm1,_), NamedProp(n, Dagger, lst))
+  | PLambda((nm1,_), NamedProp(n, Dagger, lst)) ->
+      begin
+	match List.rev lst with
+	    (Id(LN(None,nm2))::es) -> 
+	      let p' = NamedProp(n, Dagger, List.rev es)
+	      in if (nm1 = nm2) && not (List.mem nm1 (fvProp p')) then
+		  reduceProp p'
+		else
+		  prp
+	  | _ -> prp
+      end
+*)
+
+  | prp -> prp

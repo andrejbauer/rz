@@ -744,18 +744,18 @@ let rec annotateExpr cntxt orig_expr =
 	    in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
 	    in 
 		 begin
-		   try
-		     let trm2' = LR.coerce cntxt trm2 ty2 ty1
-		     in
-		       if NameSet.mem nm1 (L.fnSet ty3) then
-			 E.cantElimError nm1 ty3 orig_expr
-		       else 
-			 ResTerm ( L.Let ((nm1,ty1), trm2', trm3, ty3),
-				 ty3 )
-		   with
-		       E.TypeError msgs ->
-			 E.specificateError msgs
-			   (E.tyMismatchMsg expr2 ty1 ty2) 
+		   let trm2' = try
+		       LR.coerce cntxt trm2 ty2 ty1
+		     with
+			 E.TypeError msgs ->
+			   E.specificateError msgs
+			     (E.tyMismatchMsg expr2 ty1 ty2) 
+		   in
+		     if NameSet.mem nm1 (L.fnSet ty3) then
+		       E.cantElimError nm1 ty3 orig_expr
+		     else 
+		       ResTerm ( L.Let ((nm1,ty1), trm2', trm3, ty3),
+			       ty3 )
 		 end
 	  end
 	    
