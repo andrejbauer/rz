@@ -159,11 +159,15 @@ let rec fvTerm' flt acc = function
   | Inj (_, Some t) -> fvTerm' flt acc t
   | Inj (_, None) -> acc
   | Case (t, lst) ->
-      List.fold_left
-      (fun a (_, bnd, t) -> fvTerm' (match bnd with None -> flt | Some (n, _) -> n::flt) a t)
-      (fvTerm' flt acc t) lst
+      fvCaseArms' flt (fvTerm' flt acc t) lst
   | Let (n, t1, t2) -> fvTerm' flt (fvTerm' (n::flt) acc t2) t1
   | Obligation ((n, s), p, t) -> fvTerm' (n::flt) (fvProp' (n::flt) acc p) t
+
+and fvCaseArm' flt acc (_, bnd, t) =
+    fvTerm' (match bnd with None -> flt | Some (n, _) -> n::flt) acc t
+
+and fvCaseArms' flt acc arms =
+    List.fold_left (fvCaseArm' flt) acc arms
 
 and fvProp' flt acc = function
     True -> acc
@@ -216,6 +220,8 @@ let fvProp = fvProp' [] []
 let fvModest = fvModest' [] []
 let fvPCaseArm = fvPCaseArm' [] []
 let fvPCaseArms = fvPCaseArms' [] []
+let fvCaseArm = fvCaseArm' [] []
+let fvCaseArms = fvCaseArms' [] []
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
@@ -404,19 +410,22 @@ and substTerm ?occ sbst = function
   | Inj (k, Some t) -> Inj (k, Some (substTerm ?occ sbst t))
   | Case (t, lst) -> 
       Case (substTerm ?occ sbst t,
-	    List.map (function
+	    substCaseArms ?occ sbst lst)
+  | Obligation ((n, ty), p, trm) ->
+      let n' = freshVar [n] ?occ sbst in
+      let sbst' = insertTermvar sbst n (id n') in
+	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst' p, substTerm ?occ sbst' trm)
+
+and substCaseArm ?occ sbst = function
 			  (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
 			| (lb, Some (n, ty), t) ->
 			    let n' = freshVar [n] ?occ sbst in
 			      (lb,
 			       Some (n', substTy ?occ sbst ty),
 			       substTerm ?occ (insertTermvar sbst n (id n')) t)
-		     )
-	      lst)
-  | Obligation ((n, ty), p, trm) ->
-      let n' = freshVar [n] ?occ sbst in
-      let sbst' = insertTermvar sbst n (id n') in
-	Obligation ((n', substTy ?occ sbst ty), substProp ?occ sbst' p, substTerm ?occ sbst' trm)
+		     
+and substCaseArms ?occ sbst arms = 
+   List.map (substCaseArm ?occ sbst) arms
 
 and substProptype ?occ sbst = function
     Prop -> Prop
@@ -767,18 +776,7 @@ let display_subst sbst =
 (** {2 Hoisting} *)
 (*****************)
 
-(* Intended to be run on optimized code *)
-
-(* BUGS:
-
-     Cannot use @ to concatenate assertions because
-     they might have identical bound variables; need to 
-     use a merge function instead.
-
-     hoisting of Obligation/PObligation is broken. Need to be
-     much more careful...
-
-*)
+(* The hoist functions are intended to be run on optimized code *)
 
 let rec listminus lst1 lst2 =
   match lst1 with
@@ -1007,6 +1005,24 @@ let merge2ObsPropProps obs1 obs2 prp prps =
 
 let merge2ObsPropModest =  merge2Obs fvProp fvModest substProp substModest
 
+let hoistList hoistFn fvFn substFn =
+   let rec nodups = function
+       [] -> []
+     | x::xs -> 
+	 let z = nodups xs
+         in if (List.mem x z) then z else x::z
+   in let fvsFn xs = nodups (List.flatten (List.map fvFn xs))
+   in let substsFn sbst xs = List.map (substFn sbst) xs
+   in let rec loop = function
+      [] -> ([], [])
+    | x::xs -> 
+       let (obs1, x') = hoistFn x
+       in let (obs2, xs') = loop xs
+       in let (obs', x'', xs'') = 
+         merge2Obs fvFn fvsFn substFn substsFn obs1 obs2 x' xs'
+       in (obs', x''::xs'')
+    in loop
+
 let rec hoistArm trm (lbl, bndopt, x) =
   match bndopt with
       None -> 
@@ -1139,9 +1155,11 @@ and hoist trm =
 
     | Case(trm,arms) ->
 	let (obs1, trm') = hoist trm
-	in let (obs2s, arms') = List.split (List.map (hoistArm trm) arms)
-	in let obs2 = List.flatten obs2s
-	in (obs1 @ obs2, reduce (Case(trm',arms'))) (* XXX Bug *)
+	in let (obs2, arms') = hoistCaseArms arms
+        in let (obs', trm'', arms'') = 
+           merge2Obs fvTerm fvCaseArms substTerm substCaseArms
+             obs1 obs2 trm' arms'
+        in (obs', Case(trm'', arms''))
 
     | Let(nm, trm1, trm2) ->
 	(* BEFORE (assuming only assure is in body):
@@ -1165,39 +1183,39 @@ and hoist trm =
 	in (obs', reduce (Let(nm, trm1'', trm2'')))
 
     | Obligation(bnd, prp, trm) ->
-	let (obs1, prp') = hoistProp prp
-	in let obs2 = [(bnd, prp')]
-	in let (obs3, trm') = hoist trm
-	in (obs1 @ obs2 @ obs3, trm') (* XXX BOGUS  - obs1 may refer to bnd *)
+        (** What should be the result of hoisting
+               assure x:s . (assure y:t. phi(x,y) in psi(x,y)) in trm ?
+            It's not entirely clear; perhaps
+               assure z:s*t. (phi(z.0,z.1) /\ psi(z.0,z.1)) in trm
+            But for our purposes it doesn't really matter; we can just
+            pull off
+               ((x,s), assure y:t.phi(x,y) in psi(x,y)) 
+            as a single assurance; the really important invariant is that
+            the residue trm' of trm contains no assurances, *not* that
+            all assurances are at top level.
+         *)
+        (* But, to get a little closer to the assurances-at-top-level
+           idea, and in case we can do some duplicate-assurance elimination,
+           we'll at least move assurances to the top of prp.
+         *)
+	let (obsp, prp') = hoistProp prp
+	in let obs1 = [(bnd, foldPObligation obsp prp')]
+	in let (obs2, trm') = hoist trm
+        (* It's ok to use @ rather than a merge function here;
+        obs2 was already in the scope of obs1, and trm' was
+        already in the scope of both. *)
+	in (obs1 @ obs2, trm') 
 
-and hoistTerms = function
-    [] -> ([], [])
-  | trm::trms ->
-      let (obs1, trm') = hoist trm
-      in let (obs2, trms') = hoistTerms trms
-      in let (obs', trm'', trms'') = merge2ObsTermTerms obs1 obs2 trm' trms'
-      in (obs', trm'' :: trms'')
+and hoistTerms trms = hoistList hoist fvTerm substTerm trms
 
-and hoistProps = function
-    [] -> ([], [])
-  | prp::prps ->
-      let (obs1, prp') = hoistProp prp
-      in let (obs2, prps') = hoistProps prps
-      in let (obs', prp'', prps'') = merge2ObsPropProps obs1 obs2 prp' prps'
-      in (obs', prp'' :: prps'')
+and hoistProps prps = hoistList hoistProp fvProp substProp prps
 
-and hoistPCaseArms = function
-    [] -> ([], [])
-  | arm::arms ->
-      let (obs1, arm') = hoistPCaseArm arm
-      in let (obs2, arms') = hoistPCaseArms arms
-      in let (obs', arm'', arms'') = 
-	merge2Obs fvPCaseArm fvPCaseArms substPCaseArm substPCaseArms 
-	  obs1 obs2 arm' arms'
-      in (obs', arm'' :: arms'')
+and hoistPCaseArms arms = hoistList hoistPCaseArm fvPCaseArm substPCaseArm arms
+
+and hoistCaseArms arms = hoistList hoistCaseArm fvCaseArm substCaseArm arms
 
 and hoistPCaseArm (lbl, bndopt1, bndopt2, prp) =
-  let (obs,trm') = hoistProp prp
+  let (obs,prp') = hoistProp prp
   in let obs' = 
     match bndopt1 with
 	None -> obs
@@ -1206,7 +1224,15 @@ and hoistPCaseArm (lbl, bndopt1, bndopt2, prp) =
     match bndopt2 with
 	None -> obs'
       | Some (nm,ty) -> List.map (quantifyOb nm ty) obs'
-  in (obs'', (lbl, bndopt1, bndopt2, trm'))
+  in (obs'', (lbl, bndopt1, bndopt2, prp'))
+
+and hoistCaseArm (lbl, bndopt, trm) =
+  let (obs,trm') = hoist trm
+  in let obs' = 
+    match bndopt with
+	None -> obs
+      | Some (nm,ty) -> List.map (quantifyOb nm ty) obs
+  in (obs', (lbl, bndopt, trm'))
 
 (* Fortunately, terms cannot appear in types, so we only have
    to universally quantify the proposition parts of the
@@ -1354,10 +1380,13 @@ and hoistProp prp =
 	in (obs', PCase(trm1', trm2', arms''))
 
     | PObligation(bnd, prp1, prp2) ->
-	let (obs1, prp1') = hoistProp prp1
-	in let (obs3, prp2') = hoistProp prp2
-	in let obs2 = [(bnd,prp1')]
-	in (obs1 @ obs2 @ obs3, prp2') (* XXX BOGUS  - obs1 may refer to bnd *)
+        (* For justification of this code, see the comments for 
+           the Obligation case of the hoist function. *)
+	let (obsp, prp1') = hoistProp prp1
+	in let obs1 = [(bnd, foldPObligation obsp prp1')]
+	in let (obs2, prp2') = hoistProp prp2
+	in (obs1 @ obs2, prp2') 
+
   in
 (
 (*  print_endline "hoistProp";
@@ -1375,6 +1404,9 @@ and hoistModest {ty=ty; tot=tot; per=per} =
 and foldPObligation args body = 
   List.fold_right (fun (bnd,prp) x -> PObligation(bnd,prp,x)) args body
 
+and foldObligation args body = 
+  List.fold_right (fun (bnd,prp) x -> Obligation(bnd,prp,x)) args body
+
 
 (******************)
 (** {2 Reductions *)
@@ -1389,6 +1421,18 @@ and simpleTerm = function
   | Proj(_,t) -> simpleTerm t
   | App(Id _, t) -> simpleTerm t
   | _ -> false
+
+and reduceProj hoistFn foldObFn lst n =
+  let rec collectObs k = function
+      [] -> []
+    | x::xs ->
+        if k = n then
+           collectObs (k+1) xs
+        else
+           (fst (hoistFn x)) @ collectObs (k+1) xs
+  in 
+     foldObFn (collectObs 0 lst) (List.nth lst n)
+     
 
 and reduce trm =
   match trm with 
@@ -1416,7 +1460,7 @@ and reduce trm =
   | Proj(n, trm) ->
       begin
 	match reduce trm with
-	    Tuple trms -> reduce (List.nth trms n)
+	    Tuple trms -> reduceProj hoist foldObligation trms n
 	  | Let (nm1, trm2, trm3) -> 
 	      Let (nm1, trm2, reduce (Proj (n, trm3)))
 	  | Obligation (bnd1, prp2, trm3) ->
