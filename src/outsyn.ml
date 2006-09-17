@@ -853,7 +853,7 @@ let rec listminus lst1 lst2 =
   in 1..n you need to rename the bound variables in obs_k so that they
   are different from the free variables in obs_(k+1), ..., obs_n and
   in all the propositions *except* prp_k, and to rename these bound
-  variables in prp_k appropriately.
+  variables in prp_k appropriately. [But see below.]
 
   --------------
   
@@ -866,6 +866,39 @@ let rec listminus lst1 lst2 =
   assure x:nat. x<>0 in assure y:nat. y<>0 in ...
 
   but I'll wait until this case actually occurs in practice.
+
+  The rule above won't give quite the right result, though, since
+  if we're merging
+      assure x:nat ... in trm1
+  with  
+      assure x:nat ... in trm2
+  then we *don't* want to rename the first x, even though it's
+  free in trm2.  So, we only want to look for free variables in 
+  trm2 that do not correspond to an eliminated-duplicate assurance.
+
+
+  Eliminating duplicates also gets a little tricky if a single list 
+  contains multiple bindings for the same name.  E.g., if we have :
+     assure x:nat...  
+  in the first list and
+     assure x:bool ... in assure x:nat ...
+  we cannot eliminate the x:nat because then the x:bool will
+  shadow the x:nat in the merged list, which may capture
+  uses of x (from the first expression) expecting x to be a nat.
+
+  THEREFORE, we maintain the following invariant:
+     No list of obligations may bind the same variable more than once.
+
+  Then the general renaming strategy changes to: 
+
+  If you have obs_1 ... obs_n and prp_1 ... prp_n, for k in 1..n you
+  need to rename the bound variables in obs_k so that they are
+  different from the free variables in obs_(k+1), ..., obs_n, and
+  different from the free variables in every proposition prp_i *except*
+  prp_k (once you've removed those free variables from each corresponding to
+  eliminated obligations in obs_i), and different from the bound
+  variables in obs_(k+1), ..., obs_n;  then to rename these bound
+  variables in prp_k appropriately.
 *)
 
 let renaming' subst n n' = insertTermvar subst n (Id(LN(None,n')))
@@ -900,34 +933,39 @@ let rec printObs = function
 (* Returns set difference, but also returns the names of the 
    bound variables that were removed *)
 
-(* XXX:  BUG!
-     Doesn't do the same thing if obs1 binds the same variable twice
-     (differently), and only the first(duplicate) is removed.
+(* 
+   Precondition: obs1 doesn't contain 2 obligations with the same name;
+     same for obs2.
 *)
 let rec obsListminus obs1 obs2 =
   match obs1 with
       [] -> ([], [])
     | (((n,_),_) as ob)::obs ->
-	if (List.mem ob obs) then
-	  obsListminus obs obs2
-	else let (ns, obs') = obsListminus obs obs2
-	  in if (List.mem ob obs2) then
-	      (n::ns, obs')
-	    else 
-	      (ns, ob::obs')
+	let (ns, obs') = obsListminus obs obs2
+	in if (List.mem ob obs2) then
+	    (n::ns, obs')
+	  else 
+	    (ns, ob::obs')
 
 
 let merge2Obs fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
 (*  let _ = print_endline "Obs1"; printObs obs1
   in let _ = print_endline "Obs2"; printObs obs2 in *)
 
-  (* Delete exact duplicates *)
+  (* Delete exact duplicates.
+     Correctness relies on the invariant that obs1 and obs2 never
+     bind the same variable twice. *)
   let (deletedNames2, obs2) = obsListminus obs2 obs1
 
 (*  in let _ = print_endline "Obs2'"; printObs obs2  *)
-    
+
+  (* Get the bound variables in an obligation list *)
+  in let getName ((nm,_),_) = nm
+  in let nms2 = List.map getName obs2 
+
   in let (obs1', subst1) = 
-    renameObs ((listminus (fvFun2 x2) deletedNames2) @ (fvObs obs2)) 
+    renameObs ((listminus (fvFun2 x2) deletedNames2) @ 
+		  (fvObs obs2) @ nms2) 
       emptysubst obs1
   in let x1' = substFn1 subst1 x1
   
@@ -943,26 +981,14 @@ let merge2Obs fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 =
 
 let merge3Obs fvFun1 fvFun2 fvFun3 substFn1 substFn2 substFn3 
               obs1 obs2 obs3 x1 x2 x3 = 
-  (* Delete exact duplicates *)
-  let obs2 = listminus obs2 obs1
-  in let obs3 = listminus obs3 (obs1 @ obs2)
-    
-  in let (obs1', subst1) = 
-    renameObs (fvFun2 x2 @ fvFun3 x3 @ fvObs obs2 @ fvObs obs3) emptysubst obs1
-  in let x1' = substFn1 subst1 x1
-  
-  in let (obs2', subst2) = 
-    renameObs (fvFun1 x1' @ fvFun3 x3 @ fvObs obs3) emptysubst obs2
-  in let x2' = substFn2 subst2 x2
-
-  in let (obs3', subst3) = 
-    renameObs (fvFun1 x1' @ fvFun2 x2') emptysubst obs3
-  in let x3' = substFn3 subst3 x3
-
-
-  in let obs' = obs1' @ obs2' @ obs3'
-
-  in (obs', x1', x2', x3')
+  let (obs12, x1', x2') = 
+    merge2Obs fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2
+  in let fvFun12(a,b) = fvFun1 a @ fvFun1 b
+  in let substFn12 sbst (a,b) = (substFn1 sbst a, substFn2 sbst b)
+  in let (obs', (x1'',x2''), x3') = 
+    merge2Obs fvFun12 fvFun3 substFn12 substFn3 obs12 obs3 (x1',x2') x3
+  in 
+       (obs', x1'', x2'', x3')
 
 
 let merge2ObsTerm = merge2Obs fvTerm fvTerm substTerm substTerm
@@ -982,7 +1008,6 @@ let merge2ObsPropProps obs1 obs2 prp prps =
 
 
 let merge2ObsPropModest =  merge2Obs fvProp fvModest substProp substModest
-
 
 let rec hoistArm trm (lbl, bndopt, x) =
   match bndopt with
@@ -1118,7 +1143,7 @@ and hoist trm =
 	let (obs1, trm') = hoist trm
 	in let (obs2s, arms') = List.split (List.map (hoistArm trm) arms)
 	in let obs2 = List.flatten obs2s
-	in (obs1 @ obs2, reduce (Case(trm',arms')))
+	in (obs1 @ obs2, reduce (Case(trm',arms'))) (* XXX Bug *)
 
     | Let(nm, trm1, trm2) ->
 	(* BEFORE (assuming only assure is in body):
@@ -1145,7 +1170,7 @@ and hoist trm =
 	let (obs1, prp') = hoistProp prp
 	in let obs2 = [(bnd, prp')]
 	in let (obs3, trm') = hoist trm
-	in (obs1 @ obs2 @ obs3, trm')
+	in (obs1 @ obs2 @ obs3, trm') (* XXX BUG *)
 
 and hoistTerms = function
     [] -> ([], [])
@@ -1345,7 +1370,8 @@ and hoistProp prp =
 and hoistModest {ty=ty; tot=tot; per=per} =
   let (obs1, tot') = hoistProp tot
   in let (obs2, per') = hoistProp per
-  in (obs1 @ obs2, {ty=ty; tot=tot'; per=per'})
+  in let (obs', tot'', per'') = merge2ObsProp obs1 obs2 tot' per'
+  in (obs', {ty=ty; tot=tot''; per=per''})
 
 
 and foldPObligation args body = 
