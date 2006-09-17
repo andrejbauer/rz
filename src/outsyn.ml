@@ -775,10 +775,8 @@ let display_subst sbst =
      they might have identical bound variables; need to 
      use a merge function instead.
 
-     Propositional-case not fully implemented yet.
-
-     The merge functions here rely on there being no shadowing.
-     Is this true?
+     hoisting of Obligation/PObligation is broken. Need to be
+     much more careful...
 
 *)
 
@@ -1170,7 +1168,7 @@ and hoist trm =
 	let (obs1, prp') = hoistProp prp
 	in let obs2 = [(bnd, prp')]
 	in let (obs3, trm') = hoist trm
-	in (obs1 @ obs2 @ obs3, trm') (* XXX BUG *)
+	in (obs1 @ obs2 @ obs3, trm') (* XXX BOGUS  - obs1 may refer to bnd *)
 
 and hoistTerms = function
     [] -> ([], [])
@@ -1359,7 +1357,7 @@ and hoistProp prp =
 	let (obs1, prp1') = hoistProp prp1
 	in let (obs3, prp2') = hoistProp prp2
 	in let obs2 = [(bnd,prp1')]
-	in (obs1 @ obs2 @ obs3, prp2') (* XXX *)
+	in (obs1 @ obs2 @ obs3, prp2') (* XXX BOGUS  - obs1 may refer to bnd *)
   in
 (
 (*  print_endline "hoistProp";
