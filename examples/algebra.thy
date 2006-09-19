@@ -31,9 +31,10 @@ end
 
 
 (** A semigroup is an associative magma. *)
-theory Semigroup (S : Primodial) :=
+theory Semigroup :=
 thy
-  include Magma(S).
+  include Magma.
+  include Associative(
 
   Axiom mul_associative:
     forall x y z : S.s, mul (mul x y) z = mul x (mul y z).
