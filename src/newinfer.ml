@@ -739,24 +739,34 @@ let rec annotateExpr cntxt orig_expr =
 	      (* Careful with error messages; nm1 might have been renamed *)
 	      annotateSimpleBindingWithDefault cntxt orig_expr ty2 sbnd1
 
-            (* XXX term definitions missing from the context, since
-               annotateSimpleBinding doesn't know the definition... *)
-	    in let (trm3, ty3) = annotateTerm cntxt' orig_expr expr3
-	    in 
-		 begin
-		   let trm2' = try
-		       LR.coerce cntxt trm2 ty2 ty1
-		     with
-			 E.TypeError msgs ->
-			   E.specificateError msgs
-			     (E.tyMismatchMsg expr2 ty1 ty2) 
-		   in
-		     if NameSet.mem nm1 (L.fnSet ty3) then
-		       E.cantElimError nm1 ty3 orig_expr
-		     else 
-		       ResTerm ( L.Let ((nm1,ty1), trm2', trm3, ty3),
-			       ty3 )
-		 end
+	    (* XXX term definitions missing from the context, since
+	       annotateSimpleBinding doesn't know the definition... *)
+
+	    in let trm2' =  try LR.coerce cntxt trm2 ty2 ty1 with
+		E.TypeError msgs ->
+		  E.specificateError msgs
+		    (E.tyMismatchMsg expr2 ty1 ty2) 
+	    in
+		 match annotateExpr cntxt' expr3 with
+		     ResTerm(trm3,ty3) ->
+		       let ty3' = 
+			 (* Eliminate dependencies. *)
+			 (* A SLet would be nicer here. *)
+			 L.substSet (L.insertTermvar L.emptysubst nm1 trm2') ty3
+		       in
+			 ResTerm ( L.Let ((nm1,ty1), trm2', trm3, ty3),
+				 ty3' )
+		   | ResProp(prp3,pt3) ->
+		       let pt3' = 
+			 (* Eliminate dependencies. *)
+			 L.substProptype
+			   (L.insertTermvar L.emptysubst nm1 trm2') pt3
+		       in
+		       ResProp(L.PLet((nm1,ty1), trm2', prp3),
+			      pt3')
+		   | _ ->
+		       E.tyGenericError 
+			 ("Let body is not a term or proposition")
 	  end
 	    
       | The(sbnd1, expr2)  ->

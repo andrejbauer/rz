@@ -73,6 +73,7 @@ and proposition =
     | IsEquiv of proposition * set                (* [IsEquiv(p,s)] means [p] is an equivalence relation on [s] *)
     | PCase   of term * set * (label * binding option * proposition) list
     | PAssure of binding option * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
+    | PLet of binding * term * proposition (* Propositional let-term *)
 	
 and set =
     | Empty
@@ -365,6 +366,9 @@ and string_of_prop prp =
     | PAssure (Some (n,s), p, q) ->
 	"assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
 	  string_of_prop p ^ " in " ^ string_of_prop q
+    | PLet ((n,s), t, p) ->
+	"let " ^ string_of_name n ^ ":" ^ string_of_set s ^ " = " ^ 
+	  string_of_term t ^ " in " ^ string_of_prop p ^ " end"
     in
      toStr prp)
 
@@ -595,6 +599,10 @@ and fnProp = function
   | PAssure(Some(nm,st),prp1,prp2) ->
       NameSet.union (fnSet st) 
 	(NameSet.remove nm (NameSet.union (fnProp prp1) (fnProp prp2)))
+  | PLet((nm,st),trm,prp) ->
+      NameSet.union (fnSet st)
+	(NameSet.union (fnTerm trm)
+	    (NameSet.remove nm (fnProp prp)))
 
 and fnCaseArm = function
     (_, None, trm) -> fnTerm trm
@@ -820,6 +828,10 @@ and substProp sbst =
 	let (sbst', y') = updateBoundName sbst y in
 	  PAssure(Some (y, substSet sbst st), 
 		 substProp sbst' prp1, substProp sbst' prp2)
+    | PLet((y,st), trm, prp) ->
+	let (sbst', y') = updateBoundName sbst y in
+	  PLet((y',substSet sbst st), 
+	      subst sbst trm, substProp sbst' prp)
 
   and psubarms = function
       [] -> []

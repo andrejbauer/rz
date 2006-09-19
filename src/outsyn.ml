@@ -77,6 +77,7 @@ and proposition =
   | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
   | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
+  | PLet of name * term * proposition
 
 type proptype = 
     | Prop
@@ -202,6 +203,7 @@ and fvProp' flt acc = function
 
   | PCase (t1, t2, lst) ->
 	fvPCaseArms' flt (fvTerm' flt (fvTerm' flt acc t1) t2) lst
+  | PLet (n, t, p) -> fvProp' (n::flt) (fvTerm' flt acc t) p
 
 and fvPCaseArm' flt acc (_, bnd1, bnd2, t) = 
   let flt1 = match bnd1 with None -> flt | Some (n, _) -> n::flt in
@@ -383,6 +385,10 @@ and substProp ?occ sbst = function
   | PCase (t1, t2, lst) -> 
 	PCase (substTerm ?occ sbst t1, substTerm ?occ sbst t2,
 	       substPCaseArms ?occ sbst lst)
+  | PLet (n, t, p) ->
+      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+	PLet (n', substTerm ?occ sbst t, 
+	     substProp ?occ (insertTermvar sbst n (id n')) p)
 
 and substPCaseArm ?occ sbst (lb, bnd1, bnd2, p) =
   let update_subst sbst0 = function
@@ -707,6 +713,10 @@ and string_of_prop level p =
 	      (List.map (fun (lb, bnd1, bnd2, p) ->
 		s_of_b lb bnd1  ^ " " ^ s_of_b lb bnd2 ^ " => " ^ (string_of_prop 14 p)) lst)) ^
 	    " | _, _ -> false")
+    | PLet (n, t, p) ->
+	(14, "let " ^ (string_of_name n) ^ " = " ^
+	   (string_of_term' 13 t) ^ " in " ^ (string_of_prop 14 p))
+
   in
     if level' > level then "(" ^ str ^ ")" else str
 
@@ -969,14 +979,16 @@ let rec obsListminus obs1 obs2 =
 	    (ns, ob::obs')
 
 
-let merge2Obs fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
+let merge2Obs ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
 (*  let _ = print_endline "Obs1"; printObs obs1
   in let _ = print_endline "Obs2"; printObs obs2 in *)
+
+  let bad' = match bad with None -> [] | Some nms -> nms
 
   (* Delete exact duplicates.
      Correctness relies on the invariant that obs1 and obs2 never
      bind the same variable twice. *)
-  let (deletedNames2, obs2) = obsListminus obs2 obs1
+  in let (deletedNames2, obs2) = obsListminus obs2 obs1
 
 (*  in let _ = print_endline "Obs2'"; printObs obs2  *)
 
@@ -985,7 +997,7 @@ let merge2Obs fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 =
 
   in let (obs1', subst1) = 
     renameObs ((listminus (fvFun2 x2) deletedNames2) @ 
-		  (fvObs obs2) @ nms2) 
+		  (fvObs obs2) @ nms2 @ bad') 
       emptysubst obs1
   in let x1' = substFn1 subst1 x1
   
@@ -1011,7 +1023,8 @@ let merge3Obs fvFun1 fvFun2 fvFun3 substFn1 substFn2 substFn3
        (obs', x1'', x2'', x3')
 
 
-let merge2ObsTerm = merge2Obs fvTerm fvTerm substTerm substTerm
+let merge2ObsTerm ?bad obs1 obs2 trm1 trm2 = 
+  merge2Obs ?bad fvTerm fvTerm substTerm substTerm obs1 obs2 trm1 trm2
 
 let merge2ObsTermTerms obs1 obs2 trm trms =
   match (merge2ObsTerm obs1 obs2 trm (Tuple trms)) with
@@ -1025,6 +1038,8 @@ let merge2ObsPropProps obs1 obs2 prp prps =
       (obs', prp', And prps') -> (obs', prp', prps')
     | _ -> failwith "Obj.merge2ObsPropProps: impossible"
 
+let merge2ObsTermProp ?bad obs1 obs2 trm prp =
+  merge2Obs ?bad fvTerm fvProp substTerm substProp obs1 obs2 trm prp
 
 
 let merge2ObsPropModest =  merge2Obs fvProp fvModest substProp substModest
@@ -1189,14 +1204,13 @@ and hoist trm =
 
     | Let(nm, trm1, trm2) ->
 	(* BEFORE (assuming only assure is in body):
-	      let nm = trm1 in (assure n:ty.p(n,nm) in trm2'(n))
+	      let nm = trm1 in (assure n:ty.p(n,nm) in trm2'(n,nm))
 
            AFTER:
               assure n':ty. p(n',trm1)
            &
-              let nm = trm1 in trm2'
+              let nm = trm1 in trm2'(n',nm)
         *)
-	(*XXX Using a PLet would be much preferred to substitution! *)
 
 	let (obs1, trm1') = hoist trm1
 	in let (preobs2, trm2') = hoist trm2
@@ -1204,9 +1218,10 @@ and hoist trm =
 	  let (subst', bnds') = 
 	    renameBnds ~bad:((List.map fst bnds) @ fvTerm trm1') emptysubst bnds
 	  in let p' = substProp subst' p
-	  in (bnds', substProp (termSubst nm trm1') p')
+	  in (bnds', reduceProp (PLet(nm, trm1', p')))
 	in let obs2 = List.map addPremise preobs2
-	in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
+	in let (obs', trm1'', trm2'') = 
+	  merge2ObsTerm ~bad:[nm] obs1 obs2 trm1' trm2'
 	in (obs', reduce (Let(nm, trm1'', trm2'')))
 
     | Obligation(bnds, prp, trm) ->
@@ -1414,11 +1429,38 @@ and hoistProp prp =
 	in let (obs2, prp2') = hoistProp prp2
 	in (obs1 @ obs2, prp2') 
 
+    | PLet(nm, trm, prp) ->
+	(* BEFORE (assuming only assure is in body):
+	      let nm = trm in (assure n:ty.p(n,nm) in prp(n,nm))
+
+           AFTER:
+              assure n':ty. let nm = trm in p(n',nm)
+           &
+              let nm = trm in prp(n',nm)
+        *)
+
+	let (obs1, trm') = hoist trm
+
+	in let addPremise (bnds,p) =
+	  (* e.g., rename n to n' if needed to avoid being shadowed by
+	     nm of capturing variables in trm *)
+	  let (subst', bnds') = 
+	    renameBnds ~bad:(nm :: fvTerm trm') emptysubst bnds
+	  in let p' = substProp subst' p
+	  in (bnds', reduceProp (PLet(nm, trm', p')))
+
+	in let (preobs2, prp') = hoistProp prp
+	in let obs2 = List.map addPremise preobs2
+
+	in let (obs', trm'', prp'') = 
+	  merge2ObsTermProp ~bad:[nm] obs1 obs2 trm' prp'
+	in (obs', reduceProp (PLet(nm, trm'', prp'')))
+
   in
-(
-(*  print_endline "hoistProp";
-  print_endline (string_of_proposition prp);
-  print_endline ((string_of_proposition (snd ans)));	 *)
+    (
+      (*  print_endline "hoistProp";
+	  print_endline (string_of_proposition prp);
+	  print_endline ((string_of_proposition (snd ans)));	 *)
    ans)
 
 and hoistModest {ty=ty; tot=tot; per=per} =
@@ -1529,7 +1571,7 @@ and reduce trm =
       end
   | trm -> trm
 
-let rec reduceProp prp = 
+and reduceProp prp = 
   match prp with
     PApp(PLambda ((nm, _), prp1), trm2) as trm ->
       if (simpleTerm trm2) then

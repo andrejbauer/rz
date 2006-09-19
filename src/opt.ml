@@ -523,7 +523,14 @@ and optProp ctx prp =
 	let p' = optProp ctx2 p in
 	  (lbl, bnd1', bnd2', p')
       in
-	PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms)
+	reduceProp 
+	  (PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms))
+
+  | PLet(nm, trm, prp) ->
+      let    (ty, trm', ty') = optTerm ctx trm
+      in let ctx' = insertType ctx nm ty
+      in let prp' = optProp ctx' prp
+      in (reduceProp (PLet(nm, trm', prp')))
 
 and optAssertion ctx (name, prop) = 
   let prop' = optProp ctx prop
