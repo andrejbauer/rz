@@ -1454,8 +1454,17 @@ and reduce trm =
     App(Lambda ((nm, _), trm1), trm2) ->
       reduce (Let(nm, trm2, trm1))
 
-  | App(Obligation(bnd,prp,trm1), trm2) ->
-      Obligation(bnd, prp, reduce (App(trm1,trm2)))
+  | App(Obligation(bnds,prp,trm1), trm2) ->
+      (* Complicated but short method of renaming bnds to
+	 avoid the free variables of trm2 *)
+      let nm = wildName() 
+      in let trm' = Obligation(bnds,prp,App(trm1,id nm))
+      in let trm'' = substTerm (termSubst nm trm2) trm'
+      in reduce trm'' 
+
+  | Obligation(bnds,prp,trm) ->
+      Obligation(bnds, prp, reduce trm)
+
   | Proj(n, Obligation(bnd,prp,trm1)) ->
       Obligation(bnd, prp, reduce (Proj(n,trm1)))
 
