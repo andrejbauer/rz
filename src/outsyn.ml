@@ -1449,18 +1449,6 @@ and simpleTerm = function
   | App(Id _, t) -> simpleTerm t
   | _ -> false
 
-and reduceProj hoistFn foldObFn lst n =
-  let rec collectObs k = function
-      [] -> []
-    | x::xs ->
-        if k = n then
-           collectObs (k+1) xs
-        else
-           (fst (hoistFn x)) @ collectObs (k+1) xs
-  in 
-     foldObFn (collectObs 0 lst) (List.nth lst n)
-     
-
 and reduce trm =
   match trm with 
     App(Lambda ((nm, _), trm1), trm2) ->
@@ -1487,7 +1475,9 @@ and reduce trm =
   | Proj(n, trm) ->
       begin
 	match reduce trm with
-	    Tuple trms -> reduceProj hoist foldObligation trms n
+	    Tuple trms -> 
+	      let (obs, trms') = hoistTerms trms
+	      in foldObligation obs (reduce (List.nth trms' n))
 	  | Let (nm1, trm2, trm3) -> 
 	      Let (nm1, trm2, reduce (Proj (n, trm3)))
 	  | Obligation (bnd1, prp2, trm3) ->
@@ -1511,14 +1501,22 @@ and reduce trm =
 	  | _ ->
 	      failwith "Impossible:  Opt.reduce Case/findArmSome"
 
+	in let (obs, trm1', arms') = 
+	  (match hoist trm with
+	      (obs, Case(trm1', arms')) -> (obs, trm1', arms')
+	    | _ -> failwith "Impossible: Opt.reduce Case/hoist")
+
 	in
-	     match reduce trm1 with
-		 Inj(lbl,None) -> reduce (findArmNone lbl arms)
-	       | Inj(lbl,Some trm1') -> 
-		   let (nm,trm2) = findArmSome lbl arms
-		   in reduce 
-		     (Let(nm,trm1',trm2))
-	       | _ -> trm
+	     match reduce trm1' with
+                 Inj(lbl,None) -> 
+		   foldObligation obs (reduce (findArmNone lbl arms'))
+
+	       | Inj(lbl,Some trm3) -> 
+		   foldObligation obs 
+		     (let (nm,trm2) = findArmSome lbl arms'
+		       in reduce (Let(nm,trm3,trm2)))
+		     
+	       | _ -> trm (* unhoisted! *)
       end
   | trm -> trm
 
