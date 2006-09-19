@@ -294,8 +294,13 @@ expr:
       { App(App(makeIdent($2,Infix1), $1), $3) }
   | expr INFIXOP2 expr                        
       { App(App(makeIdent($2,Infix2), $1), $3) }
+  | expr PLUS expr
+      { App(App(makeIdent("+",Infix2), $1), $3) }
   | expr INFIXOP3 expr                        
       { App(App(makeIdent($2,Infix3), $1), $3) }
+/*  | expr STAR expr
+      { App(App(makeIdent("*",Infix3), $1), $3) }
+*/
   | expr INFIXOP4 expr                        
       { App(App(makeIdent($2,Infix4), $1), $3) }
   | expr MPROJECT { makeMProj $1 ($2, Word) }
