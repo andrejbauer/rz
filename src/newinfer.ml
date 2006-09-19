@@ -407,16 +407,36 @@ let rec annotateExpr cntxt orig_expr =
 
       | Product sbnds   ->
 	  begin
-	    (* A [possibly dependent] type for a tuple. *)
-	    let rec loop cntxt = function
-		[] -> []
-	      | (nm,expr) :: rest ->     
-		  let (cntxt', lbnd) = 
-		    annotateSimpleBinding cntxt orig_expr (nm, Some expr)
+	    (* Check first item in the product to see whether it's
+	       a product of sets or a product of terms *)
+	    match annotateExpr cntxt (snd(List.hd sbnds)) with
+		ResSet _ ->
+		  (* A [possibly dependent] type for a tuple. *)
+		  let rec loop cntxt = function
+		      [] -> []
+		    | (nm,expr) :: rest ->     
+			let (cntxt', lbnd) = 
+			  annotateSimpleBinding cntxt orig_expr (nm, Some expr)
+			in 
+			  lbnd :: loop cntxt' rest
+		  in    
+		    ResSet(L.Product (loop cntxt sbnds), L.KindSet) 
+	    | ResTerm _ ->
+		  (* Multiplication, or other operation on terms *)
+		  let (nms, exprs) = List.split sbnds
 		  in 
-		    lbnd :: loop cntxt' rest
-	    in    
-	      ResSet(L.Product (loop cntxt sbnds), L.KindSet) 
+		    if (List.for_all isWild nms) then
+		      let orig_expr' = 
+			List.fold_left 
+			  (fun e1 e2 -> App(App(Ident(N("*",Infix3)), e1), e2))
+			  (List.hd exprs) (List.tl exprs)
+		      in 
+			annotateExpr cntxt orig_expr'
+		    else
+		      E.tyGenericError "Term products can't be labeled"
+	    | _ -> 
+		E.tyGenericError "Incoherent product"
+
 	  end
 
       | Sum lsos  ->
