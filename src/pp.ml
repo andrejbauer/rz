@@ -46,6 +46,7 @@ and output_term_12 ppf = function
     Lambda ((n, ty), t) ->
       fprintf ppf "@[fun %a : %a =>@ %a@]" 
         output_name n  output_ty ty  output_term_12 t
+(*
   | Obligation ((n, TopTy), p, trm) ->
       fprintf ppf "@[<hov 2>assure @[%a@]@ in %a@]" 
         output_prop_0 p  output_term_12 trm
@@ -55,6 +56,13 @@ and output_term_12 ppf = function
   | Obligation ((n, ty), p, trm) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a : %a .@ @[%a@]@]@ in %a@]" 
         output_name n  output_ty ty  output_prop p  output_term_12 trm
+*)
+  | Obligation ([], p, trm) ->
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a@]@ in %a@]" 
+        output_prop_0 p   output_term_12 trm
+  | Obligation (bnds, p, trm) ->
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
+        output_binds bnds   output_prop_0 p   output_term_12 trm
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
@@ -288,7 +296,7 @@ and output_prop_14 ppf = function
   | PMLambda ((n, {ty=ty; tot=p}), q) ->
       fprintf ppf "@[<hov 2>pmfun %a : %a(%a) =>@ %a@]" 
         output_name n  output_ty ty  output_prop_14 p  output_prop_14 q
-
+(*
   | PObligation ((_, TopTy), p, q) ->
       fprintf ppf "@[<hov2>assure %a in@ %a@]" 
         output_prop_13 p  output_prop_14 q
@@ -296,6 +304,15 @@ and output_prop_14 ppf = function
   | PObligation ((n, ty), p, q) ->
       fprintf ppf "@[<hov 2>assure %a : %a . %a in@ %a@]" 
         output_name n  output_ty ty  output_prop_13 p  output_prop_14 q
+*)
+
+  | PObligation ([], p, q) ->
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a@]@ in %a@]" 
+	output_prop_13 p   output_prop_14 q
+
+  | PObligation (bnds, p, q) ->
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
+        output_binds bnds   output_prop_13 p   output_prop_14 q
 
   | prp -> output_prop_13 ppf prp
     

@@ -419,16 +419,16 @@ and translateTerm ctx = function
       let {ty=t; tot=p1; per=p2} = translateSet ctx s in
       let (v,q) = translateProp (insertTermvar n s ctx) phi in
       let n', z, z' = fresh3 [n] [mk "z"] [mk "z"] ~bad:[n] ctx in
-	Obligation ((n, t), pApp ctx p1 (id n),
-		   Obligation ((z,v),
-			      And [pApp ctx q (id z);
-				   Forall ((n',t),
-					  Imply (pApp ctx p1 (id n'),
-						Forall ((z',v),
-						       Imply (pApp ctx (sbp ctx [(n, id n')] q) (id z'),
-							     pApp ctx (pApp ctx p2 (id n)) (id n')))))],
-			      Tuple [id n; id z]
-		    ))
+	Obligation ([(n, t); (z,v)], 
+		   And [pApp ctx p1 (id n);
+			pApp ctx q (id z);
+			Forall ((n',t),
+			       Imply (pApp ctx p1 (id n'),
+				     Forall ((z',v),
+					    Imply (pApp ctx (sbp ctx [(n, id n')] q) (id z'),
+						  pApp ctx (pApp ctx p2 (id n)) (id n')))))],
+		   Tuple [id n; id z]
+		   )
 
   | L.Inj (lb, None) -> Inj (lb, None)
 
@@ -454,7 +454,7 @@ and translateTerm ctx = function
       let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
-	     Obligation ((any(), TopTy),
+	     Obligation ([],
 			 Forall ((n', ty1),
 				 Imply (pApp ctx (pApp ctx p1 (id n)) (id n'),
 					pApp ctx (pApp ctx p2 v) v')),
@@ -470,7 +470,7 @@ and translateTerm ctx = function
       let v = translateTerm (insertTermvar n st1 ctx) u in
       let v' = sbt ctx [(n, id n')] v in
 	Let (n, translateTerm ctx t,
-	     Obligation ((any(), TopTy),
+	     Obligation ([],
 			 Forall ((n', ty1), Imply (
 				   pApp ctx (pMApp ctx (pMApp ctx q (id n)) (id n')) (dagger_of_ty ty2),
 				   pApp ctx (pApp ctx p2 v) v')),
@@ -484,19 +484,19 @@ and translateTerm ctx = function
       let (ty, p') = translateProp (insertTermvar x s ctx) p in
       let t' = translateTerm ctx t in
       let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ~bad:((fvTerm t')) ctx in
-	Obligation ((y, ty), pApp ctx (sbp ctx [(x,t')] p') (id y), Tuple [t'; id y])
+	Obligation ([(y, ty)], pApp ctx (sbp ctx [(x,t')] p') (id y), Tuple [t'; id y])
 
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
   | L.Assure (None, p, t, _) ->
       let (ty, p') = translateProp ctx p in
-	Obligation ((wildName(), TopTy), pApp ctx p' (dagger_of_ty ty), translateTerm ctx t)
+	Obligation ([], pApp ctx p' (dagger_of_ty ty), translateTerm ctx t)
 
   | L.Assure (Some (n, s), p, t, _) ->
       let {ty=ty2; tot=q} = translateSet ctx s in
       let ctx' = insertTermvar n s ctx in
       let (ty1, p') = translateProp ctx' p in
-	Obligation ((n, ty2),
+	Obligation ([(n, ty2)],
 		   And [pApp ctx q (id n); pApp ctx p' (dagger_of_ty ty1)],
 		   translateTerm ctx' t)
 
@@ -644,14 +644,14 @@ and translateProp ctx = function
   | L.PAssure (None, p, q) ->
       let (ty1, p') = translateProp ctx p in
       let (ty2, q') = translateProp ctx q in
-	ty2, PObligation ((wildName(), TopTy), pApp ctx p' (dagger_of_ty ty1), q')
+	ty2, PObligation ([], pApp ctx p' (dagger_of_ty ty1), q')
 
   | L.PAssure (Some (n, s), p, q) ->
       let {ty=ty2; tot=r} = translateSet ctx s in
       let ctx' = insertTermvar n s ctx in
       let (ty1, p') = translateProp ctx' p in
       let (ty3, q') = translateProp ctx q in
-	ty3, PObligation ((n, ty2), And [pApp ctx r (id n); pApp ctx p' (dagger_of_ty ty1)], q')
+	ty3, PObligation ([(n, ty2)], And [pApp ctx r (id n); pApp ctx p' (dagger_of_ty ty1)], q')
       
 
 and translateBinding ctx bind =

@@ -343,13 +343,15 @@ let rec optTerm ctx = function
      in let (ty2, term2', ty2') = optTerm ctx' term2
      in (ty2, reduce (Let(name1, term1', term2')), ty2')
 
- | Obligation((name,ty), prop, trm) ->
-     let    ty'  = optTy ctx ty
-     in let ctx' = insertType ctx name ty
+ | Obligation(bnds, prop, trm) ->
+     let (names,tys) = List.split bnds
+     in let tys'  = List.map (optTy ctx) tys
+     in let bnds' = List.combine names tys'
+     in let bnds'' = List.filter (fun (n,t) -> t <> TopTy) bnds'
+     in let ctx' = List.fold_left2 insertType ctx names tys
      in let prop' = optProp ctx' prop
      in let ty2', trm', ty2 = optTerm ctx' trm
-     (** XXX: Is this the right typing rule for obligations? *)
-     in (ty2', Obligation((name,ty'), prop', trm'), ty2)
+     in (ty2', Obligation(bnds'', prop', trm'), ty2)
 
 
 
@@ -469,12 +471,15 @@ and optProp ctx prp =
 	   | (TopTy, _) -> p'
 	   | (ty', _) -> Cexists((n, ty'), p'))
 
-  | PObligation ((n, ty), p, q) ->
-      let ctx' = insertType ctx n ty in
-      let q' = optProp ctx' q in
-	(match optProp ctx' p with
-	    True -> q'
-	  | p' -> PObligation ((n, optTy ctx ty), p', q'))
+  | PObligation (bnds, p, q) ->
+     let (names,tys) = List.split bnds
+     in let tys'  = List.map (optTy ctx) tys
+     in let bnds' = List.combine names tys'
+     in let bnds'' = List.filter (fun (n,t) -> t <> TopTy) bnds'
+     in let ctx' = List.fold_left2 insertType ctx names tys
+     in let p' = optProp ctx' p
+     in let q' = optProp ctx' q
+     in PObligation(bnds'', p', q')
 
   | PMLambda ((n, ms), p) ->
       let ms' = optModest ctx ms in
