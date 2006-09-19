@@ -131,10 +131,8 @@ rule token = parse
             { INFIXOP1(Lexing.lexeme lexbuf) }
   | ['+' '-'] symbolchar *
             { INFIXOP2(Lexing.lexeme lexbuf) }
-(*
   | "**" symbolchar *
             { INFIXOP4(Lexing.lexeme lexbuf) }
-*)
   | ['*' '/' '%'] symbolchar *
             { INFIXOP3(Lexing.lexeme lexbuf) }
   | "(*"    { commentdepth := 1;

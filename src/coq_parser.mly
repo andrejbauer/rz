@@ -229,6 +229,7 @@ operator:
   | PLUS             { "+", Infix2 }
   | INFIXOP3         { $1, Infix3 }
   | STAR             { "*", Infix3 }
+  | INFIXOP4         { $1, Infix4 }
 
 name:
   | name MPROJECT                        { makeMProj $1 ($2, Word) }
