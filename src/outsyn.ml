@@ -1569,7 +1569,6 @@ let rec reduceProp prp =
 
 (* We don't eta-reduce NamedProp's because (according to Andrej)
    they are supposed to always be fully-applied to arguments.
-*)
   | PMLambda((nm1,_), NamedProp(n, Dagger, lst))
   | PLambda((nm1,_), NamedProp(n, Dagger, lst)) ->
       begin
@@ -1582,5 +1581,6 @@ let rec reduceProp prp =
 		  prp
 	  | _ -> prp
       end
+*)
 
   | prp -> prp
