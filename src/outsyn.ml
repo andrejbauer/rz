@@ -230,6 +230,83 @@ let fvPCaseArms = fvPCaseArms' [] []
 let fvCaseArm = fvCaseArm' [] []
 let fvCaseArms = fvCaseArms' [] []
 
+(** ====== OCCURRENCE COUNTING ========= *)
+
+let rec countTerm x = function
+  | Id (LN(None,nm)) -> if x = nm then 1 else 0
+  | Id (LN(Some _, _)) -> 0
+  | EmptyTuple -> 0
+  | Dagger -> 0
+  | App (u, v) -> countTerm x u + countTerm x v
+  | Lambda ((n, s), t) -> if x = n then 0 else countTerm x t
+  | Tuple lst -> countTermList x lst
+  | Proj (_, t) -> countTerm x t
+  | Inj (_, Some t) -> countTerm x t
+  | Inj (_, None) -> 0
+  | Case (t, lst) -> List.fold_left (fun a arm -> a + countCaseArm x arm) (countTerm x t) lst
+  | Let (n, t1, t2) -> countTerm x t1 + (if x = n then 0 else countTerm x t2)
+  | Obligation (bnds, p, t) ->
+      if List.exists (fun (n,_) -> n = x) bnds then
+	0
+      else
+	countProp x p + countTerm x t
+
+and countTermList x lst =
+  List.fold_left (fun a t -> a + countTerm x t) 0 lst
+
+and countCaseArm x = function
+    (_, Some (n, _), t) -> if x = n then 0 else countTerm x t
+  | (_, None, t)        -> countTerm x t
+
+and countProp x = function
+    True -> 0
+  | False -> 0
+  | IsPer (_, lst) -> countTermList x lst
+  | IsPredicate (_, _, lst) -> countModestList x lst
+  | IsEquiv (r, {tot=p; per=q}) -> countProp x r + countProp x p + countProp x q
+  | NamedTotal (_, lst) -> countTermList x lst
+  | NamedPer (_, lst) -> countTermList x lst
+  | Equal (u, v) -> countTerm x u + countTerm x v
+  | And lst -> countPropList x lst
+  | Cor lst -> countPropList x lst
+  | Imply (u, v) -> countProp x u + countProp x v
+  | Forall ((n, _), p) -> if x = n then 0 else countProp x p
+  | ForallTotal ((n, _), p) -> if x = n then 0 else countProp x p
+  | Cexists ((n, _), p) -> if x = n then 0 else countProp x p
+  | Not p -> countProp x p
+  | Iff (p, q) -> countProp x p + countProp x q
+  | NamedProp (_, t, lst) -> countTerm x t + countTermList x lst
+  | PApp (p, t) -> countProp x p + countTerm x t
+  | PMApp (p, t) -> countProp x p + countTerm x t
+  | PLambda ((n, _), p) -> if x = n then 0 else countProp x p
+  | PMLambda ((n, {tot=p; per=q}), r) ->
+      countProp x p + countProp x q + (if x = n then 0 else countProp x r)
+  | PObligation (bnds, p, q) -> 
+      countProp x p +
+      (if List.exists (fun (n,_) -> n = x) bnds then 0 else countProp x q)
+
+  | PCase (t1, t2, lst) ->
+      List.fold_left
+      (fun a arm -> a + countPCaseArm x arm)
+      (countTerm x t1 + countTerm x t2) lst
+
+  | PLet (n, t, p) ->
+      countTerm x t + (if x = n then 0 else countProp x p)
+
+and countPCaseArm x (_, bnd1, bnd2, p) = 
+  match bnd1, bnd2 with
+      None, None -> countProp x p
+    | Some (n, _), None
+    | None, Some (n, _) -> if x = n then 0 else countProp x p
+    | Some (n, _), Some (n', _) -> if x = n || x = n' then 0 else countProp x p
+
+and countModest x {tot=p; per=q} = countProp x p + countProp x q
+
+and countPropList x lst = List.fold_left (fun a p -> a + countProp x p) 0 lst
+
+and countModestList x lst = List.fold_left (fun a (_, m) -> a + countModest x m) 0 lst
+
+
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
 module NameOrder =

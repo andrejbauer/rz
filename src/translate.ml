@@ -172,16 +172,25 @@ let sbp ctx ?(bad=[]) lst =
 
 let sbt ctx lst = substTerm ~occ:(occursCtx ctx) (termsSubst lst)
 
+let reduceApp ctx n t p =
+  match t with
+      EmptyTuple | Id _ | Dagger | Tuple [Id _; Id _] -> sbp ctx [(n, t)] p
+    | _ ->
+	if countProp n p < 2 then
+	  sbp ctx [(n, t)] p
+	else
+	  PLet (n, t, p)
+
 let pApp ctx p t = match p with
-    PLambda ((n,_), q) -> sbp ctx [(n,t)] q
-  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ -> PApp (p, t)
+    PLambda ((n, _), q) -> reduceApp ctx n t q
+  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ -> PApp (p, t)
   | PMLambda _ | True | False | IsPer _ | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let pMApp ctx p t = match p with
-    PMLambda ((n,_), q) -> sbp ctx [(n,t)] q
-  | IsPer _ | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ ->
+    PMLambda ((n, _), q) -> reduceApp ctx n t q
+  | IsPer _ | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ ->
       PMApp (p, t)
   | PLambda _ -> failwith ("bad propositional application on " ^ string_of_proposition p)
   | True | False | IsPredicate _ | IsEquiv _ | Equal _ | And _
@@ -652,6 +661,10 @@ and translateProp ctx = function
       let (ty1, p') = translateProp ctx' p in
       let (ty3, q') = translateProp ctx q in
 	ty3, PObligation ([(n, ty2)], And [pApp ctx r (id n); pApp ctx p' (dagger_of_ty ty1)], q')
+
+  | L.PLet ((n,s), t, p) ->
+      let ty, q = translateProp (insertTermvar n s ctx) p in
+	ty, PLet (n, translateTerm ctx t, q)
       
 
 and translateBinding ctx bind =

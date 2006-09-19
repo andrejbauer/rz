@@ -314,6 +314,10 @@ and output_prop_14 ppf = function
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
         output_binds bnds   output_prop_13 p   output_prop_14 q
 
+  | PLet (n, t, u) ->
+	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
+            output_name n  output_term_12 t  output_prop_14 u
+
   | prp -> output_prop_13 ppf prp
     
 and output_prop_13 ppf = function
