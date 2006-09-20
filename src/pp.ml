@@ -107,7 +107,9 @@ and output_term_5 ppf = function
 
 and output_term_4 ppf = function
   | Proj (k, t) -> 
-      fprintf ppf "pi%d %a" k   output_term_0 t  (* skip applications! *)
+      fprintf ppf "pi%d %a" k   output_term_0 t  (* skip applications! *) 
+(*  | Proj (k, t) -> 
+      fprintf ppf "%a.%d"   output_term_4 t  k  (* skip applications! *) *)
   | Inj (lb, None) -> 
       fprintf ppf "`%s" lb
   | Inj (lb, Some t) -> 
@@ -218,9 +220,6 @@ and output_name ppf nm =
 and output_ln ppf ln = 
   fprintf ppf "%s" (string_of_ln ln)
 
-and output_tln ppf ln =
-  fprintf ppf "%s" (string_of_tln ln)
-  
 (** Outputs a proposition to the pretty-printing formatter ppf.
       The various output_prop_n functions each will display a proposition of 
       level <=n without enclosing parentheses, or a proposition of level
@@ -338,16 +337,16 @@ and output_prop_10 ppf = function
 and output_prop_9 ppf = function
     PApp (PApp (NamedPer (ln, []), t), u) -> 
       fprintf ppf "%a =%a= %a" 
-        output_term_4 t   output_tln ln   output_term_4 u
+        output_term_4 t   output_ln ln   output_term_4 u
   | PApp (PApp (NamedPer (ln, lst), t), u) -> 
       fprintf ppf "%a =(%a %a)= %a" 
-        output_term_4 t   output_tln ln   output_term_apps lst   output_term_4 u
+        output_term_4 t   output_ln ln   output_term_apps lst   output_term_4 u
   | PApp (NamedTotal (ln, []), t) ->
       fprintf ppf "%a : ||%a||"
-	output_term_9 t   output_tln ln
+	output_term_9 t   output_ln ln
   | PApp (NamedTotal (ln, lst), t) ->
       fprintf ppf "%a : ||%a %a||"
-	output_term_9 t   output_tln ln   output_term_apps lst
+	output_term_9 t   output_ln ln   output_term_apps lst
   | PApp (p, t) ->
       fprintf ppf "%a %a"
 	output_prop_9 p   output_term_3 t
@@ -372,10 +371,10 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
-  | NamedPer (ln, []) -> fprintf ppf "=%a=" output_tln ln
+  | NamedPer (ln, []) -> fprintf ppf "=%a=" output_ln ln
   | NamedPer (ln, lst) ->
       fprintf ppf "=(%a %a)="
-	output_tln ln   output_term_apps lst
+	output_ln ln   output_term_apps lst
   | IsPer (stnm, []) -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
   | IsPer (stnm, lst) -> fprintf ppf "PER(=%s %a=)"
       (Name.string_of_name stnm)   output_term_apps lst
@@ -388,10 +387,10 @@ and output_prop_0 ppf = function
   | IsEquiv (p, {ty=t}) ->
       fprintf ppf "@[EQUIV(@[<hov>%a, %a@])@]"
 	output_prop_11 p    output_ty t
-  | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_tln ln
+  | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_ln ln
   | NamedTotal (ln, lst) ->
       fprintf ppf "||%a %a||"
-	output_tln ln   output_term_apps lst
+	output_ln ln   output_term_apps lst
   | And [] -> fprintf ppf "true"
   | Cor [] -> fprintf ppf "false"
   | prp ->
@@ -434,7 +433,7 @@ and output_ty_1 ppf = function
   | typ -> output_ty_0 ppf typ
 
 and output_ty_0 ppf = function
-    NamedTy ln -> output_tln ppf ln
+    NamedTy ln -> output_ln ppf ln
   | UnitTy     -> fprintf ppf "unit"
   | TopTy      -> fprintf ppf "top"
   | TupleTy [] -> fprintf ppf "top"

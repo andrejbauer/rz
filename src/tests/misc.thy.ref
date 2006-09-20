@@ -1,1 +1,399 @@
-This test should not cause stack overflow.
+[Processing misc.thy]
+module type T = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  type t
+  (**  Assertion per_t =  forall (x:||s||),  PER(=t x=)
+  *)
+   
+  type www = t
+  (**  Assertion www_def_total = 
+         forall (x:||s||),  forall y:t,  y : ||www x|| <-> y : ||t x||
+        
+       Assertion www_def_per = 
+         forall (x:||s||),  forall y:t, z:t,  y =(www x)= z <-> y =(t x)= z
+  *)
+   
+  type u
+  (**  Assertion per_u =  forall (x:||s||, x':||s||),  PER(=u x x'=)
+  *)
+   
+  type wwww = u
+  (**  Assertion wwww_def_total = 
+         forall (x:||s||, x':||s||), 
+           forall y:u,  y : ||wwww x x'|| <-> y : ||u x x'||
+        
+       Assertion wwww_def_per = 
+         forall (x:||s||, x':||s||), 
+           forall y:u, z:u,  y =(wwww x x')= z <-> y =(u x x')= z
+  *)
+   
+  val a : s -> s
+  (**  Assertion a_total =  forall x:s, x':s,  x =s= x' -> a x =s= a x'
+  *)
+   
+  val b : s -> s
+  (**  Assertion b_total =  forall x:s, x':s,  x =s= x' -> b x =s= b x'
+  *)
+   
+  val c : s
+  (**  Assertion c_total =  c : ||s||
+  *)
+   
+  val d : s
+  (**  Assertion d_total =  d : ||s||
+  *)
+   
+  val m : s -> s * [`or0 | `or1]
+  (**  Assertion m = 
+         forall (x:||s||),  pi0 (m x) : ||s|| and 
+           (pi1 (m x) = `or0 cor pi1 (m x) = `or1)
+  *)
+   
+  val n : s
+  (**  Assertion n_def = 
+         let x' = assure y:s.
+                      (y : ||s|| and y =s= y and 
+                       (forall (y':||s||),  y' =s= y' -> y =s= y')) in y
+         in n =s= n and x' =s= x' and n =s= x'
+  *)
+   
+  type uu = t
+  (**  Assertion uu_def_total =  forall x:t,  x : ||uu|| <-> x : ||t n||
+        
+       Assertion uu_def_per =  forall y:t, z:t,  y =uu= z <-> y =(t n)= z
+  *)
+   
+  type q = s -> s
+  (**  Assertion q_def_total = 
+         forall x:s -> s,  x : ||q|| <->
+           (forall x':s, x'':s,  x' =s= x'' -> x x' =s= x x'')
+        
+       Assertion q_def_per = 
+         forall y:s -> s, z:s -> s,  y =q= z <->
+           (forall x:s, x':s,  x =s= x' -> y x =s= z x')
+  *)
+   
+  val dd : s -> s
+  (**  Assertion dd_def =  dd =q= a
+  *)
+   
+  val yy : s * t * s
+  (**  Assertion yy_total =  pi0 yy : ||s|| and pi1 yy : ||t (pi0 yy)|| and 
+         pi2 yy : ||s||
+  *)
+   
+  val zz : s -> t -> s
+  (**  Assertion zz_total = 
+         forall y:s, x':s,  y =s= x' ->
+           forall z:t, x'':t,  z =(t y)= x'' -> zz y z =s= zz x' x''
+  *)
+   
+  val ww : s -> s -> u
+  (**  Assertion ww_total = 
+         forall y:s, x':s,  y =s= x' ->
+           forall z:s, x'':s,  z =s= x'' -> ww y z =(u y z)= ww x' x''
+  *)
+   
+  val yy0 : s
+  (**  Assertion yy0_def =  yy0 =s= pi0 yy
+  *)
+   
+  val yy1 : t
+  (**  Assertion yy1_def =  yy1 =(t (pi0 yy))= pi1 yy
+  *)
+   
+  val yy2 : s
+  (**  Assertion yy2_def =  yy2 =s= pi2 yy
+  *)
+   
+  val wwcd : u
+  (**  Assertion wwcd_def =  wwcd =(u c d)= ww c d
+  *)
+end
+
+module type U = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  type t = s
+  (**  Assertion t_def_total =  forall x:s,  x : ||t|| <-> x : ||s||
+        
+       Assertion t_def_per =  forall y:s, z:s,  y =t= z <-> y =s= z
+  *)
+   
+  val n : s * s
+  (**  Assertion n_total =  pi0 n : ||s|| and pi1 n : ||s||
+  *)
+end
+
+module type Iteration = 
+sig
+  type a
+  (**  Assertion per_a =  PER(=a=)
+  *)
+   
+  val x : a
+  (**  Assertion x_total =  x : ||a||
+  *)
+   
+  val s : a -> a
+  (**  Assertion s_total =  forall y:a, x':a,  y =a= x' -> s y =a= s x'
+  *)
+end
+
+module type DenseLinearOrder = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  type _less
+  (**  Assertion predicate_(<) =  PREDICATE((<), (<))
+  *)
+   
+  
+  (**  Assertion irreflexive = 
+         forall (x:||s||),  forall r:_less,  not (r |= (<) x x)
+  *)
+   
+  val transitive : s -> s -> s -> _less * _less -> _less
+  (**  Assertion transitive = 
+         forall (x:||s||, y:||s||, z:||s||), 
+           forall x':_less * _less,  pi0 x' |= (<) x y and 
+             pi1 x' |= (<) y z -> transitive x y z x' |= (<) x z
+  *)
+   
+  
+  (**  Assertion assymetric = 
+         forall (x:||s||, y:||s||), 
+           forall r:_less * _less, 
+             not (pi0 r |= (<) x y and pi1 r |= (<) y x)
+  *)
+   
+  val linear : s -> s -> s -> _less -> [`or0 of _less | `or1 of _less]
+  (**  Assertion linear = 
+         forall (x:||s||, y:||s||, z:||s||), 
+           forall x':_less,  x' |= (<) x y ->
+             let u = linear x y z x'
+             in (exists x'':_less,  u = `or0 x'' and x'' |= (<) x z) cor 
+             (exists x'':_less,  u = `or1 x'' and x'' |= (<) z y)
+  *)
+   
+  val dense : s -> s -> _less -> s * (_less * _less)
+  (**  Assertion dense = 
+         forall (x:||s||, y:||s||), 
+           forall z:_less,  z |= (<) x y ->
+             let w = dense x y z in pi0 w : ||s|| and 
+             pi0 (pi1 w) |= (<) x (pi0 w) and pi1 (pi1 w) |= (<) (pi0 w) y
+  *)
+end
+
+module type Sums = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  val a : s
+  (**  Assertion a_total =  a : ||s||
+  *)
+   
+  val b : s
+  (**  Assertion b_total =  b : ||s||
+  *)
+   
+  val c : s
+  (**  Assertion c_total =  c : ||s||
+  *)
+   
+  type sum = [`yes of s | `no of unit | `maybe]
+  (**  Assertion sum_def_total = 
+         forall x:[`yes of s | `no of unit | `maybe],  x : ||sum|| <->
+           (exists w':s,  x = `yes w' and w' : ||s||) cor 
+           (exists w':unit,  x = `no w' and w' = ()) cor x = `maybe
+        
+       Assertion sum_def_per = 
+         forall y:[`yes of s | `no of unit | `maybe], z:[`yes of s | 
+           `no of unit | `maybe],  y =sum= z <->
+           (exists v':s, t':s,  y = `yes v' and z = `yes t' and v' =s= t') cor 
+           (exists v':unit, t':unit,  y = `no v' and z = `no t' and v' = t') cor 
+           y = `maybe and z = `maybe
+  *)
+   
+  val tmp1 : [`yes of s]
+  (**  Assertion tmp1_def = 
+         (exists v':s, t':s,  tmp1 = `yes v' and `yes a = `yes t' and 
+            v' =s= t')
+  *)
+   
+  val tmp2 : [`yes of s | `no of unit | `maybe]
+  (**  Assertion tmp2_def =  tmp2 =sum= tmp1
+  *)
+   
+  val d : s * unit
+  (**  Assertion d_def = 
+         let u = (match tmp2 with
+                    `yes(q : s) -> (q,()) 
+                  | `no(r : unit) -> (c,r) 
+                  | `maybe -> (a,()) 
+                  ]) in pi0 d =s= pi0 u and pi1 d = pi1 u
+       *)
+   
+  val e : s
+  (**  Assertion e_def =  e =s= pi0 d
+  *)
+  end
+
+module type TestSubset = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  type p
+  (**  Assertion predicate_p =  PREDICATE(p, p)
+  *)
+   
+  type q
+  (**  Assertion predicate_q =  PREDICATE(q, q)
+  *)
+   
+  type r
+  (**  Assertion predicate_r =  PREDICATE(r, r)
+  *)
+   
+  type t = s * r
+  (**  Assertion t_def_total = 
+         forall x:s * r,  x : ||t|| <-> pi0 x : ||s|| and 
+           pi1 x |= r (pi0 x) (pi0 x)
+        
+       Assertion t_def_per = 
+         forall y:s * r, z:s * r,  y =t= z <->
+           pi1 y |= r (pi0 y) (pi0 y) and pi1 z |= r (pi0 z) (pi0 z) and 
+           pi0 y =s= pi0 z
+  *)
+   
+  val c : s * r
+  (**  Assertion c_total =  c : ||t||
+  *)
+   
+  val warning : q
+  (**  Assertion warning = 
+         warning |= q (assure x:p. (x |= p (pi0 c)) in (pi0 c,x))
+  *)
+   
+  val foo : s -> p -> q
+  (**  Assertion foo = 
+         forall (x:||s||), 
+           forall y:p,  y |= p x ->
+             foo x y |= q (assure y':p. (y' |= p x) in (x,y'))
+  *)
+   
+  val bar : s -> p -> q
+  (**  Assertion bar = 
+         forall (x:||s||), 
+           forall y:p,  y |= p x ->
+             bar x y |= q (assure y':p. (y' |= p x) in (x,y'))
+  *)
+   
+  val baz : s * r -> r
+  (**  Assertion baz = 
+         forall x:s * r,  x : ||t|| -> baz x |= r (pi0 x) (pi0 x)
+  *)
+end
+
+module type Choice = 
+sig
+  type a
+  (**  Assertion per_a =  PER(=a=)
+  *)
+   
+  type b
+  (**  Assertion per_b =  PER(=b=)
+  *)
+   
+  type r
+  (**  Assertion predicate_r =  PREDICATE(r, r)
+  *)
+   
+  val choice : (a -> b * r) -> (a -> b) * (a -> r)
+  (**  Assertion choice = 
+         forall x:a -> b * r, 
+           (forall (x':||a||),  pi0 (x x') : ||b|| and 
+              pi1 (x x') |= r x' (pi0 (x x'))) ->
+           (forall x':a, x'':a,  x' =a= x'' ->
+              (pi0 (choice x)) x' =b= (pi0 (choice x)) x'') and 
+           (forall (x':||a||), 
+              (pi1 (choice x)) x' |= r x' (pi0 (choice x)) x')
+  *)
+   
+  val intensionalChoice : (a -> b * r) -> (a -> b) * (a -> r)
+  (**  Assertion intensionalChoice = 
+         forall x:a -> b * r, 
+           (forall (x':||a||),  pi0 (x x') : ||b|| and 
+              pi1 (x x') |= r x' (pi0 (x x'))) ->
+           (forall x':a, x'':a,  x' = x'' ->
+              (pi0 (intensionalChoice x)) x' =b= (pi0 (intensionalChoice x))
+                                                   x'') and 
+           (forall (x':||a||), 
+              (pi1 (intensionalChoice x)) x' |= r x' (pi0 (intensionalChoice
+                                                             x)) x')
+  *)
+end
+
+module type Quotients = 
+sig
+  type s
+  (**  Assertion per_s =  PER(=s=)
+  *)
+   
+  
+  (**  Assertion predicate_(<<) =  PREDICATE((<<))
+  *)
+   
+  
+  (**  Assertion predicate_r =  PREDICATE(r)
+  *)
+   
+  
+  (**  Assertion reflexive =  forall (x:||s||),  (<<) x x
+  *)
+   
+  
+  (**  Assertion transitive = 
+         forall (x:||s||, y:||s||, z:||s||),  (<<) x y and (<<) y z ->
+           (<<) x z
+  *)
+   
+  type eq = top
+  (**  Assertion eq_def = 
+         forall (x:||s||, y:||s||),  eq x y <->
+           (assure EQUIV((pmfun x' : s(||s||) =>
+                            pmfun y' : s(||s||) => (<<) x' y' and (<<) y' x'), s)
+              in (<<) x y and (<<) y x)
+  *)
+   
+  type s2 = s
+  (**  Assertion s2_def_total =  forall x:s,  x : ||s2|| <-> x : ||s||
+        
+       Assertion s2_def_per =  forall y:s, z:s,  y =s2= z <-> eq y z
+  *)
+   
+  val surj : s -> s
+  (**  Assertion surj =  forall (e:||s||),  surj e : ||s|| and r e surj e
+  *)
+   
+  
+  (**  Assertion bar = 
+         forall f:s -> s,  (forall x:s, x':s,  x =s= x' -> f x =s= f x') ->
+           forall (a:||s||, e:||s||), 
+             r a (assure (forall x':s,  r e x' -> f e =s= f x') in f e)
+  *)
+end
+

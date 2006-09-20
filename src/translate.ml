@@ -709,13 +709,13 @@ and translateTheoryElements ctx = function
             [(string_of_name n ^ "_def_total",
 	      nest_forall ctx binds
 		(Forall((x,t),
-			Iff (PApp (NamedTotal (tln_of_tyname n, idys), id x),
+			Iff (PApp (NamedTotal (ln_of_name n, idys), id x),
 			     pApp ctx (List.fold_left (pMApp ctx) p idys) (id x)))));
 	     (string_of_name n ^ "_def_per",
 	     nest_forall ctx binds
 	       (Forall ((y,t),
                        Forall ((y',t),
-			      Iff (PApp (PApp (NamedPer (tln_of_tyname n, idys), id y), id y'),
+			      Iff (PApp (PApp (NamedPer (ln_of_name n, idys), id y), id y'),
 				  pApp ctx (pApp ctx (List.fold_left (pMApp ctx) q idys) (id y)) (id y'))))))]
 	)) :: sgnt,
 	insertSetvar n knd s smmry
@@ -723,7 +723,7 @@ and translateTheoryElements ctx = function
   | L.Declaration(n, L.DeclProp(None, pt)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertPropvar n pt ctx) rest in
       let binds = bindings_of_proptype ctx pt in
-      let tyopt = (if L.is_stable pt then None else Some (NamedTy (tln_of_tyname n))) in
+      let tyopt = (if L.is_stable pt then None else Some (NamedTy (ln_of_name n))) in
       let spec = IsPredicate (n, tyopt, binds) in
 	(if L.is_stable pt then
 	   AssertionSpec ("predicate_" ^ (string_of_name n), spec)
@@ -803,8 +803,8 @@ and translateTheoryElements ctx = function
 
 
 and translateSLN = function
-    L.SLN (None, nm) -> TLN (None, nm)
-  | L.SLN (Some mdl, nm) -> TLN (Some (translateModel mdl), nm)
+    L.SLN (None, nm) -> LN (None, nm)
+  | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), nm)
 
 and translateModelBinding ctx = function
     [] -> [], ctx

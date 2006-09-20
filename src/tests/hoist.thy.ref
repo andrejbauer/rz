@@ -35,21 +35,19 @@ sig
    
   val tuple : (s * p) * s * (s * p)
   (**  Assertion tuple_def = 
-         let u = ((assure x:s, z:p.
-                       (x : ||s|| and z |= p x and 
-                        (forall (x':||s||), 
-                           forall z':p,  z' |= p x' -> x =s= x')) in 
-                     (x,z)),b,(assure x:s, z:p.
-                                   (x : ||s|| and z |= p f x and 
-                                    (forall (x':||s||), 
-                                       forall z':p,  z' |= p f x' -> x =s= x'))
-                                 in (x,z)))
-         in pi1 (pi0 tuple) |= p (pi0 (pi0 tuple)) and 
-         pi1 (pi0 u) |= p (pi0 (pi0 u)) and 
-         pi0 (pi0 tuple) =s= pi0 (pi0 u) and pi1 tuple =s= pi1 u and 
-         pi1 (pi2 tuple) |= p f (pi0 (pi2 tuple)) and 
-         pi1 (pi2 u) |= p f (pi0 (pi2 u)) and pi0 (pi2 tuple) =s= pi0 
-         (pi2 u)
+         let u = assure x:s, z:p.
+                     (x : ||s|| and z |= p x and 
+                      (forall (x':||s||), 
+                         forall z':p,  z' |= p x' -> x =s= x')) in (x,z)
+         in let u'' = assure x:s, z:p.
+                          (x : ||s|| and z |= p f x and 
+                           (forall (x':||s||), 
+                              forall z':p,  z' |= p f x' -> x =s= x'))
+                        in (x,z)
+            in pi1 (pi0 tuple) |= p (pi0 (pi0 tuple)) and 
+            pi1 u |= p (pi0 u) and pi0 (pi0 tuple) =s= pi0 u and 
+            pi1 tuple =s= b and pi1 (pi2 tuple) |= p f (pi0 (pi2 tuple)) and 
+            pi1 u'' |= p f (pi0 u'') and pi0 (pi2 tuple) =s= pi0 u''
   *)
    
   val proj : s

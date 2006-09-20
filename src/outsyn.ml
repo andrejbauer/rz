@@ -14,12 +14,11 @@ type modul =
 type longname = LN of modul option * name
 
 type ty_name = L.set_name
-type ty_longname = TLN of modul option * ty_name
 
 type signat_name = L.theory_name
 
 type ty =
-    NamedTy of ty_longname                 (* 0 *)
+    NamedTy of longname                    (* 0 *)
   | UnitTy                                 (* 0 *)
   | VoidTy                                 (* 0 *)
   | TopTy                                  (* 0 *)
@@ -59,8 +58,8 @@ and proposition =
   | IsPredicate of name * ty option * (name * modest) list
                                                (* [name] is a (parametrized) predicate  *)
   | IsEquiv of proposition * modest            (* is a stable equivalence relation *)
-  | NamedTotal of ty_longname * term list      (* totality of a term *)
-  | NamedPer of ty_longname * term list        (* extensional equality of terms *)
+  | NamedTotal of longname * term list         (* totality of a term *)
+  | NamedPer of longname * term list           (* extensional equality of terms *)
   | NamedProp of longname * term * term list   (* basic proposition with a realizer *)
   | Equal of term * term                       (* (observational?) equality of terms *)
   | And of proposition list                    (* conjunction *)
@@ -116,16 +115,14 @@ and toplevel =
 (****************************************)
 
 (* ln_of_name : nm -> longname
-   tln_of_name: nm -> ty_longname
 *)
 let ln_of_name nm = LN (None, nm)
-let tln_of_tyname nm = TLN (None, nm)
 
 (* id: name -> term *)
 let id nm = Id (ln_of_name nm)
 
 (* namedty: name -> ty *)
-let namedty nm = NamedTy (tln_of_tyname nm)
+let namedty nm = NamedTy (ln_of_name nm)
 
 
 let tupleOrTopTy = function
@@ -137,6 +134,12 @@ let curried_app head args =
 
 let nested_lambda args trm =
   List.fold_right (fun b t -> Lambda (b, t)) args trm
+
+let nested_let names defns trm =
+  List.fold_right2 (fun n t1 t2 -> Let (n, t1, t2)) names defns trm
+
+let nested_plet names defns prp =
+  List.fold_right2 (fun n t1 p2 -> PLet (n, t1, p2)) names defns prp
 
 let rec dagger_of_ty = function
     NamedTy _ -> Dagger (* XXX: suspicous, should unfold definition? *)
@@ -233,7 +236,9 @@ let fvPCaseArms = fvPCaseArms' [] []
 let fvCaseArm = fvCaseArm' [] []
 let fvCaseArms = fvCaseArms' [] []
 
-(** ====== OCCURRENCE COUNTING ========= *)
+(****************************)
+(** {2: Occurence Counting} *)
+(****************************)
 
 let rec countTerm x = function
   | Id (LN(None,nm)) -> if x = nm then 1 else 0
@@ -309,18 +314,91 @@ and countPropList x lst = List.fold_left (fun a p -> a + countProp x p) 0 lst
 
 and countModestList x lst = List.fold_left (fun a (_, m) -> a + countModest x m) 0 lst
 
+(****************************)
+(** {2: Occurence Counting} *)
+(****************************)
+
+let rec opTerm x = function
+  | Id (LN(None,nm))  -> x <> nm
+  | Id (LN(Some _, _)) -> true
+  | EmptyTuple -> true
+  | Dagger -> true
+  | App (u, v) -> opTerm x u && opTerm x v
+  | Lambda ((n, s), t) -> if x = n then true else opTerm x t
+  | Tuple lst -> opTermList x lst
+  | Proj (_, Id _) -> true
+  | Proj (_, t) -> opTerm x t
+  | Inj (_, Some t) -> opTerm x t
+  | Inj (_, None) -> true
+  | Case (t, lst) -> List.fold_left (fun a arm -> a && opCaseArm x arm) (opTerm x t) lst
+  | Let (n, t1, t2) -> opTerm x t1 && (if x = n then true else opTerm x t2)
+  | Obligation (bnds, p, t) ->
+      if List.exists (fun (n,_) -> n = x) bnds then
+	true
+      else
+	opProp x p && opTerm x t
+
+and opTermList x lst =
+  List.fold_left (fun a t -> a && opTerm x t) true lst
+
+and opCaseArm x = function
+    (_, Some (n, _), t) -> if x = n then true else opTerm x t
+  | (_, None, t)        -> opTerm x t
+
+and opProp x = function
+    True -> true
+  | False -> true
+  | IsPer (_, lst) -> opTermList x lst
+  | IsPredicate (_, _, lst) -> opModestList x lst
+  | IsEquiv (r, {tot=p; per=q}) -> opProp x r && opProp x p && opProp x q
+  | NamedTotal (_, lst) -> opTermList x lst
+  | NamedPer (_, lst) -> opTermList x lst
+  | Equal (u, v) -> opTerm x u && opTerm x v
+  | And lst -> opPropList x lst
+  | Cor lst -> opPropList x lst
+  | Imply (u, v) -> opProp x u && opProp x v
+  | Forall ((n, _), p) -> if x = n then true else opProp x p
+  | ForallTotal ((n, _), p) -> if x = n then true else opProp x p
+  | Cexists ((n, _), p) -> if x = n then true else opProp x p
+  | Not p -> opProp x p
+  | Iff (p, q) -> opProp x p && opProp x q
+  | NamedProp (_, t, lst) -> opTerm x t && opTermList x lst
+  | PApp (p, t) -> opProp x p && opTerm x t
+  | PMApp (p, t) -> opProp x p && opTerm x t
+  | PLambda ((n, _), p) -> if x = n then true else opProp x p
+  | PMLambda ((n, {tot=p; per=q}), r) ->
+      opProp x p && opProp x q && (if x = n then true else opProp x r)
+  | PObligation (bnds, p, q) -> 
+      opProp x p &&
+      (if List.exists (fun (n,_) -> n = x) bnds then true else opProp x q)
+
+  | PCase (t1, t2, lst) ->
+      List.fold_left
+      (fun a arm -> a && opPCaseArm x arm)
+      (opTerm x t1 && opTerm x t2) lst
+
+  | PLet (n, t, p) ->
+      opTerm x t && (if x = n then true else opProp x p)
+
+and opPCaseArm x (_, bnd1, bnd2, p) = 
+  match bnd1, bnd2 with
+      None, None -> opProp x p
+    | Some (n, _), None
+    | None, Some (n, _) -> if x = n then true else opProp x p
+    | Some (n, _), Some (n', _) -> if x = n || x = n' then true else opProp x p
+
+and opModest x {tot=p; per=q} = opProp x p && opProp x q
+
+and opPropList x lst = List.fold_left (fun a p -> a && opProp x p) true lst
+
+and opModestList x lst = List.fold_left (fun a (_, m) -> a && opModest x m) true lst
+
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
 module NameOrder =
 struct
   type t = name
-  let compare = Pervasives.compare
-end
-
-module TyNameOrder =
-struct
-  type t = ty_name
   let compare = Pervasives.compare
 end
 
@@ -332,18 +410,16 @@ end
 
 module NameMap = Map.Make(NameOrder)
 
-module TyNameMap = Map.Make(TyNameOrder)
-
 module ModulNameMap = Map.Make(ModulNameOrder)
 
 (** A substitution is a simultaneous map from names, type names and module names. *)
 
 type subst = {terms: term NameMap.t;
-              tys: ty TyNameMap.t;
+              tys: ty NameMap.t;
               moduls: modul ModulNameMap.t}
 
 let emptysubst = {terms = NameMap.empty;
-		  tys = TyNameMap.empty;
+		  tys = NameMap.empty;
 		  moduls = ModulNameMap.empty}
 
 let fvSubst {terms=ts} = NameMap.fold (fun _ t acc -> fvTerm' [] acc t) ts []
@@ -352,7 +428,7 @@ let insertTermvar sbst nm trm =
   {sbst with terms = NameMap.add nm trm sbst.terms}
 
 let insertTyvar sbst nm ty =
-  {sbst with tys = TyNameMap.add nm ty sbst.tys}
+  {sbst with tys = NameMap.add nm ty sbst.tys}
 
 let insertModulvar sbst strng mdl =
   {sbst with moduls = ModulNameMap.add strng mdl sbst.moduls}
@@ -366,7 +442,7 @@ let getTermvar sbst nm =
    try (NameMap.find nm sbst.terms) with Not_found -> Id (ln_of_name nm)
 
 let getTyvar sbst tynm =
-   try (TyNameMap.find tynm sbst.tys) with Not_found -> NamedTy (tln_of_tyname tynm)
+   try (NameMap.find tynm sbst.tys) with Not_found -> NamedTy (ln_of_name tynm)
 
 let getModulvar sbst mdlnm =
    try (ModulNameMap.find mdlnm sbst.moduls) with Not_found -> ModulName mdlnm
@@ -382,7 +458,7 @@ let occursSubstName sbst nm =
       Not_found -> false
 
 let occursSubstTyname sbst str =
-  try ignore (TyNameMap.find str sbst.tys) ; true with Not_found -> false
+  try ignore (NameMap.find str sbst.tys) ; true with Not_found -> false
 
 let occursSubstModulname sbst nm =
   try ignore (ModulNameMap.find nm sbst.moduls) ; true with Not_found -> false
@@ -411,10 +487,6 @@ let rec substLN ?occ sbst = function
     (LN (None, _)) as ln -> ln
   | LN (Some mdl, nm) -> LN (Some (substModul ?occ sbst mdl), nm)
 
-and substTLN ?occ sbst = function
-    (TLN (None, _)) as tln -> tln
-  | TLN (Some mdl, nm) -> TLN (Some (substModul ?occ sbst mdl), nm)
-
 and substModul ?occ sbst = function
     ModulName nm -> getModulvar sbst nm
   | ModulProj (mdl, nm) -> ModulProj (substModul ?occ sbst mdl, nm)
@@ -430,8 +502,8 @@ and substProp ?occ sbst = function
   | IsEquiv (r, {ty=t; tot=p; per=q}) ->
       IsEquiv (substProp ?occ sbst r,
 	      {ty = substTy ?occ sbst t; tot = substProp ?occ sbst p; per = substProp ?occ sbst q})
-  | NamedTotal (tln, lst) -> NamedTotal (substTLN ?occ sbst tln, substTermList ?occ sbst lst)
-  | NamedPer (tln, lst) -> NamedPer (substTLN ?occ sbst tln, substTermList ?occ sbst lst)
+  | NamedTotal (tln, lst) -> NamedTotal (substLN ?occ sbst tln, substTermList ?occ sbst lst)
+  | NamedPer (tln, lst) -> NamedPer (substLN ?occ sbst tln, substTermList ?occ sbst lst)
   | NamedProp (ln, t, lst) -> NamedProp (substLN ?occ sbst ln, substTerm ?occ sbst t, substTermList ?occ sbst lst)
   | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
   | And lst -> And (substPropList ?occ sbst lst)
@@ -546,8 +618,8 @@ and substPropList ?occ sbst = List.map (substProp ?occ sbst)
 and substModestList ?occ sbst = List.map (substModest ?occ sbst)
 
 and substTy ?occ sbst = function
-    NamedTy (TLN (None, tynm)) -> getTyvar sbst tynm
-  | NamedTy (TLN (Some mdl, tynm)) -> NamedTy (TLN (Some (substModul ?occ sbst mdl), tynm))
+    NamedTy (LN (None, tynm)) -> getTyvar sbst tynm
+  | NamedTy (LN (Some mdl, tynm)) -> NamedTy (LN (Some (substModul ?occ sbst mdl), tynm))
   | UnitTy -> UnitTy
   | VoidTy -> VoidTy
   | TopTy -> TopTy
@@ -624,11 +696,6 @@ let rec string_of_ln = function
     LN (None, nm) -> string_of_name nm
   | LN (Some mdl, nm) -> (string_of_modul mdl) ^ "."  ^ (string_of_name nm)
 
-let rec string_of_tln = function
-    TLN (None, nm) -> string_of_name nm
-  | TLN (Some mdl, nm) -> (string_of_modul mdl) ^ "."  ^ string_of_name nm
-
-
 let rec string_of_ty' level t =
   let rec makeTupleTy = function
       []    -> "top"
@@ -647,7 +714,7 @@ let rec string_of_ty' level t =
 		
   in let (level', str ) = 
        (match t with
-            NamedTy lname  -> (0, string_of_tln lname)
+            NamedTy lname  -> (0, string_of_ln lname)
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
 	  | VoidTy         -> (0, "void")
@@ -736,9 +803,9 @@ and string_of_prop level p =
 	(0, "PREDICATE(" ^ string_of_name p ^ "," ^ string_of_ty ty ^ ", ...)")
     | IsEquiv (p, ms) ->
 	(0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest ms ^ ")")
-    | NamedTotal (n, []) -> (0, "||" ^ (string_of_tln n) ^ "||")
-    | NamedTotal (n, lst) -> (0, "||" ^ string_of_name_app (string_of_tln n) lst ^ "||")
-    | NamedPer (n, lst) -> (0, "(=" ^ string_of_name_app (string_of_tln n) lst ^"=)")
+    | NamedTotal (n, []) -> (0, "||" ^ (string_of_ln n) ^ "||")
+    | NamedTotal (n, lst) -> (0, "||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
+    | NamedPer (n, lst) -> (0, "(=" ^ string_of_name_app (string_of_ln n) lst ^"=)")
     | NamedProp (n, Dagger, lst) -> (0, string_of_name_app (string_of_ln n) lst)
     | NamedProp (n, t, lst) -> (9, string_of_term t ^ " |= " ^ string_of_name_app (string_of_ln n) lst)
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
@@ -760,11 +827,11 @@ and string_of_prop level p =
     | PMLambda ((n, {ty=ty; tot=p}), q) ->
 	(14, "PMfun " ^ string_of_name n ^ " : " ^ (string_of_ty ty) ^ " (" ^ string_of_prop 0 p^ ") => " ^
 	  string_of_prop 14 q)
-    | PApp (NamedTotal (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_tln n) lst ^ "||")
+    | PApp (NamedTotal (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
     | PApp (PApp (NamedPer (n, []), t), u) ->
-	(9, (string_of_term' 9 t) ^ " =" ^ (string_of_tln n) ^ "= " ^ (string_of_term' 9 u))
+	(9, (string_of_term' 9 t) ^ " =" ^ (string_of_ln n) ^ "= " ^ (string_of_term' 9 u))
     | PApp (PApp (NamedPer (n, lst), t), u) ->
-	(9, (string_of_term' 9 t) ^ " =(" ^ string_of_name_app (string_of_tln n) lst ^ ")= " ^ (string_of_term' 9 u))
+	(9, (string_of_term' 9 t) ^ " =(" ^ string_of_name_app (string_of_ln n) lst ^ ")= " ^ (string_of_term' 9 u))
     | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, Dagger, []), u), t) ->
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, r, []), u), t) ->
@@ -873,7 +940,7 @@ let display_subst sbst =
   in  (print_string "Terms: ";
        NameMap.iter do_term sbst.terms;
        print_string "\nTypes: ";
-       TyNameMap.iter do_ty sbst.tys;
+       NameMap.iter do_ty sbst.tys;
        print_string "\nModuls: ";
        ModulNameMap.iter do_modul sbst.moduls)
 
@@ -1304,6 +1371,24 @@ and hoist trm =
 	  merge2ObsTerm ~bad:[nm] obs1 obs2 trm1' trm2'
 	in (obs', reduce (Let(nm, trm1'', trm2'')))
 
+(*
+
+  Turned off for now; pulling obligations out of prp extends their scope,
+  which leads to more renaming without any obviously-big gains
+
+    | Obligation([], prp, trm) ->
+	let (obs1a, prp') = hoistProp prp
+	in let obs1b = [([], prp')] 
+	in let obs1 = obs1a @ obs1b
+	in let (obs2, trm') = hoist trm
+	in let (obs', _, trm'') = 
+	  (* We need to merge the obligations, and rename obs1 propositions
+	     so that they don't capture any free variables of trm' *)
+	  (* EmptyTuple stands for anything without free variables *)
+	  merge2ObsTerm obs1 obs2 EmptyTuple trm'
+	in (obs', trm'')
+*)
+
     | Obligation(bnds, prp, trm) ->
         (** What should be the result of hoisting
                assure x:s . (assure y:t. phi(x,y) in psi(x,y)) in trm ?
@@ -1557,9 +1642,9 @@ and foldObligation args body =
   List.fold_right (fun (bnd,prp) x -> Obligation(bnd,prp,x)) args body
 
 
-(******************)
-(** {2 Reductions *)
-
+(************************)
+(** {2 Head-reductions} *)
+(************************)
 
 and simpleTerm = function
     Id _ -> true
@@ -1597,6 +1682,12 @@ and reduce trm =
 	trm
       else
 	reduce trm1
+
+  | Let (nm1, Let (nm2, trm2a, trm2b), trm3) ->
+      let occur nm = List.mem nm (fvTerm trm3)
+      in let nm2' = freshName [nm2] [nm1] occur
+      in let trm2b' = substTerm (renaming nm2 nm2') trm2b
+      in reduce (Let(nm2', trm2a, Let(nm1, trm2b', trm3)))
 
   | Let (nm1, trm2, trm3) ->
       (* May lose obligations *)
@@ -1657,6 +1748,12 @@ and reduceProp prp =
   match prp with
       PApp(PLambda ((nm, _), prp1), trm2) ->
 	reduceProp (PLet(nm, trm2, prp1))
+
+    | PLet (nm1, Let (nm2, trm2a, trm2b), prp3) ->
+	let occur nm = List.mem nm (fvProp prp3)
+	in let nm2' = freshName [nm2] [nm1] occur
+	in let trm2b' = substTerm (renaming nm2 nm2') trm2b
+	in reduceProp (PLet(nm2', trm2a, PLet(nm1, trm2b', prp3)))
 	  
     | PLet(nm, trm1, prp2) ->
 	if (simpleTerm trm1) || (countProp nm prp2 < 2) then

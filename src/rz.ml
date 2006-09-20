@@ -124,10 +124,6 @@ let rec process = function
 	(try ( Opt.optToplevels opt_state spec ) with
 	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
 
-      let (spec2,opt_state') = 
-	(try ( Opt.optToplevels opt_state' spec2 ) with
-	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
-	
       (** The output file replaces the .thr extension by .mli *)
       let outfile = (Filename.chop_extension fn) ^ ".mli" in
 

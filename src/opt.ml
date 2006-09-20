@@ -8,52 +8,26 @@
 (** or through a prior "implicit" statement.                       *)
 (*******************************************************************)
 
+open Name
 open Outsyn
 
 exception Unimplemented
 exception Impossible of string
-
-(*************************************)
-(** {2 Lookup Tables (Environments)} *)
-(*************************************)
-
-let emptyenv = []
-let insert (x,s,env) = (x,s)::env
-
-let rec lookup = function
-      (y,[]) -> (raise Not_found)
-    | (y,(k,v)::rest) -> if (y=k) then v else lookup(y,rest)
-
-
-let rec peek = function
-      (y,[]) -> None
-    | (y,(k,v)::rest) -> if (y=k) then Some v else peek(y,rest)
-
-(* XXX: This does not seem to be used?
-
-let rec lookupName = function
-      (y,[]) -> (print_string ("Unbound name: " ^ Name.string_of_name y ^ "\n");
-                 raise Not_found)
-    | (y,(k,v)::rest) -> if (y=k) then v else lookupName(y,rest)
-
-*)
 
 
 (*********************************)
 (** {2 The Typechecking Context} *)
 (*********************************)
 
-
-
 (** Context carried around by the type reconstruction algorithm.
  *)
 type ctx = {types      : ty NameMap.t;
                (** Typing context; types for names in scope.
 		   Records the UNoptimized type. *)
-            tydefs     : ty TyNameMap.t;
+            tydefs     : ty NameMap.t;
                (** Definitions of type variables in scope.
                    Records the UNoptimized type definition *)
-            moduli     : (modul_name * sig_summary ) list;
+            moduli     : sig_summary NameMap.t;
 	    termdefs   : term NameMap.t;
            }
 
@@ -61,9 +35,16 @@ and sig_summary =
     Summary_Struct  of ctx
   | Summary_Functor of modul_name * sig_summary
 
+let occurs ctx nm =
+  NameMap.mem nm ctx.types  ||
+  NameMap.mem nm ctx.tydefs ||
+  NameMap.mem nm ctx.moduli ||
+  NameMap.mem nm ctx.termdefs 
+
 (* lookupModul : cntxt -> modul_name -> sig_summary
  *)
-let lookupModul    ctx str = lookup (str, ctx.moduli) 
+let lookupModul ctx nm = 
+  NameMap.find nm ctx.moduli
        
 (* lookupModulLong : ctx -> sig_summary * subst
 
@@ -101,12 +82,12 @@ let lookupTypeLong  ctx = function
 
 
 let peekTydef ctx tynm = 
-   try  Some (TyNameMap.find tynm ctx.tydefs)  with 
+   try  Some (NameMap.find tynm ctx.tydefs)  with 
       Not_found -> None
 
 let peekTydefLong ctx = function
-    TLN(None, nm)     ->  peekTydef ctx nm
-  | TLN(Some mdl, nm) ->
+    LN(None, nm)     ->  peekTydef ctx nm
+  | LN(Some mdl, nm) ->
        begin
 	 match (lookupModulLong ctx mdl) with
            ( Summary_Struct ctx', sub ) -> substTyOption sub (peekTydef ctx' nm)
@@ -135,13 +116,28 @@ let insertTypeBnds ({types=types} as ctx) bnds =
        { ctx  with  types = insertBnds types bnds }
 
 let insertTydef ({tydefs=tydefs} as ctx) tynm ty = 
-       { ctx with tydefs = TyNameMap.add tynm ty tydefs }
+       { ctx with tydefs = NameMap.add tynm ty tydefs }
 
-let insertModul ({moduli=moduli} as ctx) str ctx' = 
-       {ctx with moduli = insert(str,ctx',moduli)}
+let insertModul ({moduli=moduli} as ctx) nm sg = 
+       { ctx with moduli = NameMap.add nm sg moduli }
 
-let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; 
-		termdefs = NameMap.empty; moduli = []}
+let emptyCtx = {types = NameMap.empty; tydefs = NameMap.empty; 
+		termdefs = NameMap.empty; moduli = NameMap.empty}
+
+
+(*******************)
+(** Set operations *)
+(*******************)
+
+
+let nonTopTy = function
+      TopTy -> false
+    | _ -> true
+
+let topTyize = function
+      TupleTy [] -> TopTy
+    | TupleTy [ty] -> ty
+    | ty -> ty
 
  
 (** Expand out any top-level definitions for a set *)
@@ -152,17 +148,6 @@ let rec hnfTy ctx = function
       | Some s' -> hnfTy ctx s')
   | s -> s
 
-
-(*******************)
-
-let notTopTy = function
-      TopTy -> false
-    | _ -> true
-
-let topTyize = function
-      TupleTy [] -> TopTy
-    | TupleTy [ty] -> ty
-    | ty -> ty
 
 let joinTy ctx s1 s2 = 
    if (s1 = s2) then
@@ -186,39 +171,52 @@ let joinTy ctx s1 s2 =
                        typechecks! *)
 
 
+(***************************)
+(** Optimization functions *)
+(***************************)
+
+
+
 (* optTy : ty -> ty
 
-     Never returns TupleTy []
+     Never returns TupleTy [] or TupleTy[_]
  *)
 let rec optTy ctx ty = 
   let ans = match (hnfTy ctx ty) with
     ArrowTy (ty1, ty2) -> 
       (match (optTy ctx ty1, optTy ctx ty2) with
-        (TopTy, ty2') -> ty2'
-      | (_, TopTy)    -> TopTy
-      | (ty1', ty2')   -> ArrowTy(ty1', ty2'))
-  | TupleTy tys -> topTyize
-        (TupleTy (List.filter notTopTy
-                    (List.map (optTy ctx) tys)))
-  | SumTy lst ->
-      SumTy (List.map (function
-			 (lb, None) -> (lb,None)
-		       | (lb, Some ty) ->
-			   (lb, 
-			    match optTy ctx ty with
-				TopTy -> None
-			      | ty' -> Some ty')) lst)
-  | nonunit_ty -> nonunit_ty
+        (TopTy, ty2')  -> ty2'
+      | (_,     TopTy) -> TopTy
+      | (ty1',  ty2')  -> ArrowTy(ty1', ty2'))
+
+    | TupleTy tys -> 
+	let tys' = List.filter nonTopTy (List.map (optTy ctx) tys)
+	in topTyize (TupleTy tys')
+	  
+    | SumTy lst ->
+	SumTy (List.map (function
+	 		 (lbl, None) ->    (lbl, None)
+		       | (lbl, Some ty) -> (lbl, match optTy ctx ty with
+			                           TopTy -> None
+ 			                         | ty' -> Some ty')) 
+                      lst)
+
+    | nonunit_ty -> nonunit_ty
   in
     hnfTy ctx ans
 
 let rec optTyOption ctx = function
-    None -> None
+    None    -> None
   | Some ty -> Some (optTy ctx ty)
 
+(** optBinds: ctx -> binding list -> binding list
+
+    Thins all the types in the binding, and removes any bindings
+    of variables to TopTy.
+*)
 let rec optBinds ctx = function
     [] -> []
-  | (n,ty)::bnds ->
+  | (n,ty) :: bnds ->
       (match optTy ctx ty with
 	   TopTy -> optBinds ctx bnds
 	 | ty' -> (n,ty')::(optBinds ctx bnds))
@@ -251,7 +249,7 @@ let rec optTerm ctx = function
                             ((oldty, e1', ty1'))
          | (ty', _)    -> (* Both parts matter.
                              Eliminate trivial beta-redices, though. *)
-	 ((oldty, reduce (App(e1', e2')), ty')))
+	 ((oldty, optReduce ctx (App(e1', e2')), ty')))
       | (t1, _, _) -> (print_string "In application ";
                        print_string (Outsyn.string_of_term (App(e1,e2)));
                        print_string " the operator has type ";
@@ -295,13 +293,13 @@ let rec optTerm ctx = function
 	 if index = n then
            (* The projection returns some interesting value.
               Check if it's the only interesting value in the tuple. *)
-           if (nonunits = 0 && List.length(List.filter notTopTy tys')=0) then
+           if (nonunits = 0 && List.length(List.filter nonTopTy tys')=0) then
               (* Yes; there were no non-unit types before or after. *)
 	     (ty, e', ty')
            else
               (* Nope; there are multiple values so the tuple is 
                  still a tuple and this projection is still a projection *)
-	     (ty, reduce (Proj(nonunits, e')), ty')
+	     (ty, optReduce ctx (Proj(nonunits, e')), ty')
 	 else
 	   loop(tys, tys', nonunits+1, index+1)
        | (tys,tys',_,index) -> (print_string (string_of_int (List.length tys));
@@ -341,13 +339,25 @@ let rec optTerm ctx = function
 			     thinned type never has a toplevel defn. *)
 			  joinTy emptyCtx tyarm' tyarms')
      in let (tyarms, arms', tyarms') = doArms arms
-     in (tyarms, reduce (Case(e',arms')), tyarms')
+     in (tyarms, optReduce ctx (Case(e',arms')), tyarms')
 
  | Let(name1, term1, term2) ->
+     (* Phase 1: Basic Optimization *)
      let    (ty1, term1', ty1') = optTerm ctx term1
      in let ctx' = insertTermdef (insertType ctx name1 ty1) name1 term1'
      in let (ty2, term2', ty2') = optTerm ctx' term2
-     in (ty2, reduce (Let(name1, term1', term2')), ty2')
+     in let trm' = optReduce ctx (Let(name1, term1', term2'))
+     in let trm'' =
+       match trm' with
+	   (* Turn a let of a tuple into a sequence of lets, if
+	      the tuple is never referred to as a whole *)
+	   Let(name1, Tuple trms, term2) when opTerm name1 term2 ->
+	     let good = List.map (fun _ -> [name1]) trms
+	     in let nms = freshNameList good [] (occurs ctx) 
+	     in let trm'' = nested_let nms trms term2
+	     in optReduce ctx trm''
+	 | _ -> trm'
+     in (ty2, trm'', ty2')
 
  | Obligation(bnds, prop, trm) ->
      let (names,tys) = List.split bnds
@@ -360,6 +370,21 @@ let rec optTerm ctx = function
      in (ty2', Obligation(bnds'', prop', trm'), ty2)
 
 
+and optReduce ctx trm =
+  let trm' = reduce trm
+  in 
+    if trm <> trm' then
+      let (_,trm'',_) = optTerm ctx trm' in trm''
+    else
+      trm'
+
+and optReduceProp ctx prp =
+  let prp' = reduceProp prp
+  in 
+    if prp <> prp' then
+      optProp ctx prp'
+    else
+      prp'
 
 and optTerms ctx = function 
     [] -> ([], [], [])   
@@ -491,9 +516,9 @@ and optProp ctx prp =
       let ms' = optModest ctx ms in
       let p' = optProp (insertType ctx n ms.ty) p
       in let pre = (PMLambda ((n,ms'), p'))
-      in reduceProp pre
+      in optReduceProp ctx pre
 
-  | PMApp (p, t) -> reduceProp (PMApp (optProp ctx p, optTerm' ctx t))
+  | PMApp (p, t) -> optReduceProp ctx (PMApp (optProp ctx p, optTerm' ctx t))
 
   | PLambda ((n,ty), p) ->
       begin
@@ -502,7 +527,7 @@ and optProp ctx prp =
 	in 
 	     match ty' with
 		 TopTy -> p'
-	       | _ -> reduceProp (PLambda((n,ty'), p'))
+	       | _ -> optReduceProp ctx (PLambda((n,ty'), p'))
       end
 
   | PApp (p, t) -> 
@@ -512,7 +537,7 @@ and optProp ctx prp =
 	in 
 	     match ty' with
 		 TopTy -> p'
-	       | _ -> reduceProp (PApp(p', t'))
+	       | _ -> optReduceProp ctx (PApp(p', t'))
       end
 
   | PCase (e1, e2, arms) ->
@@ -529,14 +554,29 @@ and optProp ctx prp =
 	let p' = optProp ctx2 p in
 	  (lbl, bnd1', bnd2', p')
       in
-	reduceProp 
+	optReduceProp ctx
 	  (PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms))
 
-  | PLet(nm, trm, prp) ->
-      let    (ty, trm', ty') = optTerm ctx trm
-      in let ctx' = insertType ctx nm ty
-      in let prp' = optProp ctx' prp
-      in (reduceProp (PLet(nm, trm', prp')))
+  | PLet(nm, trm1, prp2) ->
+      let    (ty1, trm1', ty1') = optTerm ctx trm1
+      in let ctx' = insertType ctx nm ty1
+      in let prp2' = optProp ctx' prp2
+      in let prp' = optReduceProp ctx (PLet(nm, trm1', prp2'))
+      in let prp'' = 
+	match prp' with
+	   (* Turn a let of a tuple into a sequence of lets, if
+	      the tuple is never referred to as a whole *)
+	   PLet(name1, Tuple trms, prp2) when opProp name1 prp2 ->
+	     let good = List.map (fun _ -> [name1]) trms
+	     in let nms = freshNameList good [] (occurs ctx) 
+	     in let subst = 
+	       insertTermvar emptysubst name1 (Tuple (List.map id nms))
+	     in let prp2' = substProp subst prp2
+	     in let prp'' = nested_plet nms trms prp2'
+	     in optProp ctx prp''
+	 | _ -> prp'
+     in 
+	prp''   
 
 and optAssertion ctx (name, prop) = 
   let prop' = optProp ctx prop
