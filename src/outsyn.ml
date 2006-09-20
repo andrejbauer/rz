@@ -1700,8 +1700,9 @@ and reduce trm =
       begin
 	match reduce trm with
 	    Tuple trms -> 
-	      let (obs, trms') = hoistTerms trms
-	      in foldObligation obs (reduce (List.nth trms' n))
+(*	      let (obs, trms') = hoistTerms trms
+	      in foldObligation obs (reduce (List.nth trms' n)) *)
+	      List.nth trms n
 	  | Let (nm1, trm2, trm3) -> 
 	      Let (nm1, trm2, reduce (Proj (n, trm3)))
 	  | Obligation (bnd1, prp2, trm3) ->
@@ -1726,9 +1727,11 @@ and reduce trm =
 	      failwith "Impossible:  Opt.reduce Case/findArmSome"
 
 	in let (obs, trm1', arms') = 
-	  (match hoist trm with
+(*	  (match hoist trm with
 	      (obs, Case(trm1', arms')) -> (obs, trm1', arms')
 	    | _ -> failwith "Impossible: Opt.reduce Case/hoist")
+*)
+	  ([], trm1, arms)
 
 	in
 	     match reduce trm1' with
