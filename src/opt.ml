@@ -53,7 +53,8 @@ type ctx = {types      : ty NameMap.t;
             tydefs     : ty TyNameMap.t;
                (** Definitions of type variables in scope.
                    Records the UNoptimized type definition *)
-            moduli     : (modul_name * sig_summary ) list
+            moduli     : (modul_name * sig_summary ) list;
+	    termdefs   : term NameMap.t;
            }
 
 and sig_summary = 
@@ -112,8 +113,12 @@ let peekTydefLong ctx = function
 	 | _                -> raise (Impossible "peekTydefLong")
        end
 
+let peekTermdef ctx nm = 
+   try  Some (NameMap.find nm ctx.termdefs)  with 
+      Not_found -> None
 
-
+let insertTermdef ({termdefs=termdefs} as ctx) nm trm =
+  { ctx with termdefs = NameMap.add nm trm termdefs }
 
 let insertType ({types=types} as ctx) nm ty = 
        {ctx with types = NameMap.add nm ty types}
@@ -135,7 +140,8 @@ let insertTydef ({tydefs=tydefs} as ctx) tynm ty =
 let insertModul ({moduli=moduli} as ctx) str ctx' = 
        {ctx with moduli = insert(str,ctx',moduli)}
 
-let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; moduli = []}
+let emptyCtx = {types = NameMap.empty; tydefs = TyNameMap.empty; 
+		termdefs = NameMap.empty; moduli = []}
 
  
 (** Expand out any top-level definitions for a set *)
@@ -230,7 +236,7 @@ let rec optTerm ctx = function
                    TopTy -> (oldty, Dagger, TopTy)
                  | nonunit_ty -> (oldty, Id n, nonunit_ty))
  | EmptyTuple -> (UnitTy, EmptyTuple, UnitTy)
- | Dagger -> (print_string "Is this a Dagger which I see before me?\n";
+ | Dagger -> ((* print_string "Is this a Dagger which I see before me?\n"; *)
 	      (TopTy, Dagger, TopTy))
  | App(e1,e2) -> 
      begin
@@ -339,7 +345,7 @@ let rec optTerm ctx = function
 
  | Let(name1, term1, term2) ->
      let    (ty1, term1', ty1') = optTerm ctx term1
-     in let ctx' = insertType ctx name1 ty1
+     in let ctx' = insertTermdef (insertType ctx name1 ty1) name1 term1'
      in let (ty2, term2', ty2') = optTerm ctx' term2
      in (ty2, reduce (Let(name1, term1', term2')), ty2')
 
@@ -506,7 +512,7 @@ and optProp ctx prp =
 	in 
 	     match ty' with
 		 TopTy -> p'
-	       | _ -> PApp(p', t')
+	       | _ -> reduceProp (PApp(p', t'))
       end
 
   | PCase (e1, e2, arms) ->

@@ -8,11 +8,65 @@ type fixity = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4 | Wild
 
 type name = N of string * fixity
 
+(********************************)
+(** {2:Simple utility functions *)
+(********************************)
+
+(** mk_word: string -> name *)
+let mk_word str = N(str, Word)
+
+(** string_of_name: name -> string
+
+    [string_of_name n] converts a name [n] to its string representation. *)
+let rec string_of_name = function 
+  | N(_, Wild) -> "_"
+  | N(str,Word) -> str
+  | N("*",_) -> "( * )"
+  | N(str,_) -> "(" ^ str ^ ")"
+
+
+(** capitalize_name: name -> name *)
+let capitalize_name (N(nm, fxty)) = N(String.capitalize nm, fxty)
+
+(** wildName:      unit -> name
+    wildModelName: unit -> name 
+
+    [wildName ()] generates a new wildcard (an anonymous name).
+    [wildModelName ()] does the same, but returns a name suitable
+    for a model or theory, i.e., capitalized. *)
+let (wildName, wildModelName) =
+  let k = ref 0 in
+    ((fun () -> incr k; N ("__" ^ string_of_int !k, Wild)),
+     (fun () -> incr k; N ("Z__" ^ string_of_int !k, Wild)))
+
+(** isWild: name -> bool
+
+    [isWild n] checks whether [n] is a wildcard variable. *)
+let isWild = function
+    N(_, Wild) -> true
+  | _          -> false
+
+
+
+(************************************)
+(** {2: Name-indexed Sets and Maps} *)
+(************************************)
+
 module NameOrder =
 struct
   type t = name
   let compare = Pervasives.compare
 end
+
+module NameMap = Map.Make(NameOrder)
+
+module NameSet = Set.Make(NameOrder)
+
+let unionNameSetList = List.fold_left NameSet.union NameSet.empty
+
+(*************************************)
+(* {2: String-indexed Sets and Maps} *)
+(*************************************)
 
 module StringOrder =
 struct
@@ -20,17 +74,15 @@ struct
   let compare = Pervasives.compare
 end
 
-module NameMap = Map.Make(NameOrder)
-
 module StringMap = Map.Make(StringOrder)
-
-module NameSet = Set.Make(NameOrder)
-
-let unionNameSetList = List.fold_left NameSet.union NameSet.empty
 
 module StringSet = Set.Make(StringOrder)
 
-let capitalize_name (N(nm, fxty)) = N(String.capitalize nm, fxty)
+
+
+(********************************************************)
+(** {2: Utility functions for the string parts of names *)
+(********************************************************)
 
 (** [stringSubscript s] splits name [s] into everything that comes beofore
     and after the first underscore ['_'] appearing in [s]. *)
@@ -74,18 +126,19 @@ let nextString n =
 	       )
 	)
 
-(** [freshString good bad occurs] generates a fresh string. It uses
-    one of the strings in list [good], possibly adding primes and
-    subscripts to it, it avoids strings in the list [bad], and it makes sure
-    the [occurs] function returns [false] on it.
-*)
-let freshString good bad occurs =
-  let rec find g =
-    try
-      List.find (fun x -> not (List.mem x bad) && not (occurs x)) g
-    with Not_found -> find (List.map nextString g)
+
+let (freshNameString, freshModelNameString) = 
+  let counter = ref 0
   in
-    find good
+     ((function () -> (incr counter;
+	               "___" ^ string_of_int (!counter))),
+     (function () -> (incr counter;
+		      "Z__" ^ string_of_int (!counter))))
+
+(*******************************)
+(** {2: Fresh Name Generation} *)
+(*******************************)
+
 
 (** [nextName n] computes a subtitute for name [n], just like
     [nextString] does for strings. *)
@@ -101,7 +154,7 @@ let nextName = function
 let freshName good bad occurs =
   let rec find g =
     try
-      List.find (fun nm -> not (List.mem nm bad) && not (occurs nm)) g
+      List.find (fun nm -> not (List.mem nm bad || occurs nm)) g
     with Not_found -> find (List.map nextName g)
   in
     find good
@@ -135,31 +188,18 @@ let rec freshNameList goods bad occurs =
 	let n = freshName g bad occurs in
 	  n :: (freshNameList gs (n::bad) occurs)
 
-(** [string_of_name n] converts a name [n] to its string representation. *)
-let rec string_of_name = function 
-  | N(_, Wild) -> "_"
-  | N(str,Word) -> str
-  | N("*",_) -> "( * )"
-  | N(str,_) -> "(" ^ str ^ ")"
 
-(** [wildName ()] generates a new wildcard (an anonymous name). *)
-let (wildName, wildModelName) =
-  let k = ref 0 in
-    ((fun () -> incr k; N ("__" ^ string_of_int !k, Wild)),
-     (fun () -> incr k; N ("Z__" ^ string_of_int !k, Wild)))
+(*****************************)
+(** {2: Name Validity Tests} *)
+(*****************************)
 
-let wildName =
-  let k = ref 0 in
-    fun () -> incr k; N ("_" ^ string_of_int !k, Wild)
-
-let isWild = function
-    N(_, Wild) -> true
-  | _ -> false
+(** Theory and term names must be capitalized; all others are
+    lowercased or symbolic (infixed) *)
 
 let validTermName = function
     N(str, Word) -> (str = String.uncapitalize str) 
-  | N(_, Wild) -> true
-  | _ -> true
+  | N(_,   Wild) -> true
+  | _            -> true    (* infixed *)
 
 let validSetName = validTermName
 
@@ -167,19 +207,16 @@ let validPropName = validTermName
 
 let validModelName = function
     N(str, Word) -> (str = String.capitalize str)
-  | N(_, Wild) -> true
-  | _ -> false
+  | N(_, Wild)   -> true
+  | _            -> false
 
 let validTheoryName = validModelName
 
-let (freshNameString, freshModelNameString) = 
-  let counter = ref 0
-  in
-     ((function () -> (incr counter;
-	               "___" ^ string_of_int (!counter))),
-     (function () -> (incr counter;
-		      "Z__" ^ string_of_int (!counter))))
 
+
+(***********************)
+(** {2: Merging Names} *)
+(***********************)
 
 (** Given two names of the same "sort" (wildness, capitalization), 
     find a name suitable for replacing them both.
@@ -201,4 +238,3 @@ let jointName nm1 nm2 =
 	| (false, false) -> N(freshNameString(), Word)
 	| (false, true)  -> N(freshModelNameString(), Word)
     end
-

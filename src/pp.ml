@@ -290,7 +290,7 @@ and output_prop_14 ppf = function
       fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
   | PLambda ((n, ty), p) ->
-      fprintf ppf "@[<hov>pfun %a : %a =>@ %a@]" 
+      fprintf ppf "@[<hov 2>pfun %a : %a =>@ @[%a@]@]" 
         output_name n  output_ty ty  output_prop_14 p
 
   | PMLambda ((n, {ty=ty; tot=p}), q) ->

@@ -77,7 +77,7 @@ and proposition =
   | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
   | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
-  | PLet of name * term * proposition
+  | PLet of name * term * proposition          (* Local term-binding *)
 
 type proptype = 
     | Prop
@@ -111,19 +111,22 @@ and toplevel =
   | TopComment of string
   | TopModul   of modul_name  * signat
     
-let tln_of_tyname nm = TLN (None, nm)
-let ln_of_name nm = LN (None, nm)
+(****************************************)
+(* {3: Helper functions for the syntax} *)
+(****************************************)
 
+(* ln_of_name : nm -> longname
+   tln_of_name: nm -> ty_longname
+*)
+let ln_of_name nm = LN (None, nm)
+let tln_of_tyname nm = TLN (None, nm)
+
+(* id: name -> term *)
 let id nm = Id (ln_of_name nm)
+
+(* namedty: name -> ty *)
 let namedty nm = NamedTy (tln_of_tyname nm)
 
-let mk_word str = N(str, Word)
-let mk_id str = Id (LN(None, N(str,Word)))
-let tuplify = function [] -> Dagger | [t] -> t | ts -> Tuple ts
-
-let tupleOrDagger = function
-    [] -> Dagger
-  | xs -> Tuple xs
 
 let tupleOrTopTy = function
     [] -> TopTy
@@ -1566,6 +1569,7 @@ and simpleTerm = function
   | Inj(_, Some t) -> simpleTerm t
   | Proj(_,t) -> simpleTerm t
   | App(Id _, t) -> simpleTerm t
+  | Tuple ts -> List.for_all simpleTerm ts
   | _ -> false
 
 and reduce trm =
@@ -1595,7 +1599,8 @@ and reduce trm =
 	reduce trm1
 
   | Let (nm1, trm2, trm3) ->
-      if (simpleTerm trm2) then
+      (* May lose obligations *)
+      if (simpleTerm trm2) then (* || (countTerm nm1 trm3 < 2) then *)
 	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
       else
 	trm
@@ -1653,9 +1658,9 @@ and reduceProp prp =
       PApp(PLambda ((nm, _), prp1), trm2) ->
 	reduceProp (PLet(nm, trm2, prp1))
 	  
-    | PLet(nm, trm, prp) ->
-	if (simpleTerm trm) then
-          reduceProp (substProp (termSubst nm trm) prp)
+    | PLet(nm, trm1, prp2) ->
+	if (simpleTerm trm1) || (countProp nm prp2 < 2) then
+          reduceProp (substProp (termSubst nm trm1) prp2)
 	else
           prp
 
