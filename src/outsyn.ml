@@ -1650,11 +1650,14 @@ and reduce trm =
 
 and reduceProp prp = 
   match prp with
-    PApp(PLambda ((nm, _), prp1), trm2) as trm ->
-      if (simpleTerm trm2) then
-        reduceProp (substProp (termSubst nm trm2) prp1)
-      else
-        trm
+      PApp(PLambda ((nm, _), prp1), trm2) ->
+	reduceProp (PLet(nm, trm2, prp1))
+	  
+    | PLet(nm, trm, prp) ->
+	if (simpleTerm trm) then
+          reduceProp (substProp (termSubst nm trm) prp)
+	else
+          prp
 
   | PApp(PObligation(bnds,prp1,prp2), trm3) ->
       (* Complicated but short method of renaming bnds to
