@@ -87,9 +87,7 @@ sig
   *)
    
   val choose_term : s
-  (**  Assertion choose_term_def = 
-         eq choose_term (assure (forall x':s,  eq quot x' -> eq quot x')
-                           in quot)
+  (**  Assertion choose_term_def =  eq choose_term quot
   *)
    
   val let_term : s * s

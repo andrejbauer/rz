@@ -367,7 +367,11 @@ let rec optTerm ctx = function
      in let ctx' = List.fold_left2 insertType ctx names tys
      in let prop' = optProp ctx' prop
      in let ty2', trm', ty2 = optTerm ctx' trm
-     in (ty2', Obligation(bnds'', prop', trm'), ty2)
+     in begin
+	 match (bnds'', prop') with
+	     ([], True) -> (ty2', trm', ty2)
+	   | _ -> (ty2', Obligation(bnds'', prop', trm'), ty2)
+       end
 
 
 and optReduce ctx trm =
@@ -459,19 +463,21 @@ and optProp ctx prp =
 
   | Imply (p1, p2) -> 
       (match (optProp ctx p1, optProp ctx p2) with
-        (True,  p2'  ) -> p2'
-      | (False, _    ) -> True
-      | (_,     True ) -> True
-      | (p1',   False) -> Not p1'
-      | (p1',   p2'  ) -> Imply(p1', p2'))
+	  (p1',   p2'  ) when p1' = p2' -> True
+	| (True,  p2'  ) -> p2'
+	| (False, _    ) -> True
+	| (_,     True ) -> True
+	| (p1',   False) -> Not p1'
+	| (p1',   p2'  ) -> Imply(p1', p2'))
 
   | Iff (p1, p2) -> 
       (match (optProp ctx p1, optProp ctx p2) with
-        (True,  p2'  ) -> p2'
-      | (False, p2'  ) -> Not p2'
-      | (p1',   True ) -> p1'
-      | (p1',   False) -> Not p1'
-      | (p1',   p2'  ) -> Iff(p1', p2'))
+	  (p1',   p2'  ) when p1' = p2' -> True
+	| (True,  p2'  ) -> p2'
+	| (False, p2'  ) -> Not p2'
+	| (p1',   True ) -> p1'
+	| (p1',   False) -> Not p1'
+	| (p1',   p2'  ) -> Iff(p1', p2'))
 
   | Not p -> (match optProp ctx p with
       True  -> False
@@ -510,7 +516,12 @@ and optProp ctx prp =
      in let ctx' = List.fold_left2 insertType ctx names tys
      in let p' = optProp ctx' p
      in let q' = optProp ctx' q
-     in PObligation(bnds'', p', q')
+     in 
+	  begin
+	    match (bnds'', p') with
+		([], True) -> q'
+	      | _ -> PObligation(bnds'', p', q')
+	  end
 
   | PMLambda ((n, ms), p) ->
       let ms' = optModest ctx ms in
@@ -584,7 +595,7 @@ and optAssertion ctx (name, prop) =
 
   let prop'' = if (!Flags.do_hoist) then
        let (obs, prp') = hoistProp prop' in
-	 foldPObligation obs prp'
+	 optProp ctx (foldPObligation obs prp') 
     else
       prop'
   in

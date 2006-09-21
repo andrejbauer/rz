@@ -1126,7 +1126,7 @@ let rec obsListminus obs1 obs2 =
 	    (ns, ob::obs')
 
 
-let merge2Obs ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
+let merge2Obs' ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
 (*  let _ = print_endline "Obs1"; printObs obs1
   in let _ = print_endline "Obs2"; printObs obs2 in *)
 
@@ -1152,11 +1152,16 @@ let merge2Obs ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 =
     renameObs (fvFun1 x1') emptysubst obs2
   in let x2' = substFn2 subst2 x2
 
-  in let obs' = obs1' @ obs2'
-
 (*  in let _ = print_endline "Obs'"; printObs obs' *)
 
-  in (obs', x1', x2')
+  in (obs1', obs2', x1', x2')
+
+let merge2Obs ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
+  let (obs1', obs2', x1', x2') = 
+    merge2Obs' ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 
+  in let obs' = obs1' @ obs2'
+  in 
+    (obs', x1', x2')
 
 let merge3Obs fvFun1 fvFun2 fvFun3 substFn1 substFn2 substFn3 
               obs1 obs2 obs3 x1 x2 x3 = 
@@ -1350,25 +1355,21 @@ and hoist trm =
         in (obs', Case(trm'', arms''))
 
     | Let(nm, trm1, trm2) ->
-	(* BEFORE (assuming only assure is in body):
-	      let nm = trm1 in (assure n:ty.p(n,nm) in trm2'(n,nm))
-
-           AFTER:
-              assure n':ty. p(n',trm1)
-           &
-              let nm = trm1 in trm2'(n',nm)
-        *)
+	(* See comments for PLet *)
 
 	let (obs1, trm1') = hoist trm1
 	in let (preobs2, trm2') = hoist trm2
-	in let addPremise (bnds,p) =
-	  let (subst', bnds') = 
-	    renameBnds ~bad:((List.map fst bnds) @ fvTerm trm1') emptysubst bnds
-	  in let p' = substProp subst' p
-	  in (bnds', reduceProp (PLet(nm, trm1', p')))
-	in let obs2 = List.map addPremise preobs2
-	in let (obs', trm1'', trm2'') = 
-	  merge2ObsTerm ~bad:[nm] obs1 obs2 trm1' trm2'
+
+	in let (obs1', preobs2', trm1'', trm2'') = 
+	  merge2Obs' ~bad:[nm] fvTerm fvTerm substTerm substTerm
+             obs1 preobs2 trm1' trm2'
+
+	in let addPremise (bnds,prp) =
+	  (bnds, reduceProp (PLet(nm, trm1'', prp)))
+	in let obs2' = List.map addPremise preobs2'
+
+	in let obs' = obs1' @ obs2'
+
 	in (obs', reduce (Let(nm, trm1'', trm2'')))
 
 (*
@@ -1454,11 +1455,11 @@ and substOb nm trm ((n,ty),p) =
   in let sbst' = insertTermvar sbst n (id n') 
   in ((n', ty), substProp sbst' p)
 
-and hoistProp prp =
+and hoistProp orig_prp =
   let ans = 
-    match prp with
+    match orig_prp with
 	True
-      | False -> ([], prp)
+      | False -> ([], orig_prp)
 	  
       | IsPer(nm, trms) ->
 	  let (obs, trms') = hoistTerms trms
@@ -1596,29 +1597,51 @@ and hoistProp prp =
 
     | PLet(nm, trm, prp) ->
 	(* BEFORE (assuming only assure is in body):
-	      let nm = trm in (assure n:ty.p(n,nm) in prp(n,nm))
+	      let nm = (assure m:t.q(m) in trm(m)) 
+                in (assure n:t.p(n,nm) in prp(n,nm))
 
            AFTER:
-              assure n':ty. let nm = trm in p(n',nm)
+              assure m':t. q(m')
+              assure n':t. let nm = trm'(m'[!]) in p(n',nm)
            &
-              let nm = trm in prp(n',nm)
+              let nm = trm'(m') in prp(n',nm)
+
         *)
 
 	let (obs1, trm') = hoist trm
-
-	in let addPremise (bnds,p) =
-	  (* e.g., rename n to n' if needed to avoid being shadowed by
-	     nm of capturing variables in trm *)
-	  let (subst', bnds') = 
-	    renameBnds ~bad:(nm :: fvTerm trm') emptysubst bnds
-	  in let p' = substProp subst' p
-	  in (bnds', reduceProp (PLet(nm, trm', p')))
-
 	in let (preobs2, prp') = hoistProp prp
-	in let obs2 = List.map addPremise preobs2
 
-	in let (obs', trm'', prp'') = 
-	  merge2ObsTermProp ~bad:[nm] obs1 obs2 trm' prp'
+	in let (obs1', preobs2', trm'', prp'') = 
+	  merge2Obs' ~bad:[nm] fvTerm fvProp substTerm substProp
+             obs1 preobs2 trm' prp'
+
+	(* Normally we'd call addPremise before merging the
+	   obligations, but there's a glitch.  
+	    (1) We'd rather wrap the obligations in preobs2 with
+                  the definition nm = trm' instead of nm = trm
+                  (i.e., not duplicate the obligations in trm)
+
+            (2) But trm' refers to variables bound in obs1.
+ 
+                If we wrap the definition nm = trm' around preobs2
+                  to get obs2, then the bound variables in obs1 that 
+                  are free in trm' would be free in obs2, and then the
+                  merge function would alpha-vary the bound variables
+                  in obs1 to avoid capture.  At the very least this
+                  is unnecessary renaming, and it's actually going to
+                  be wrong --- the occurrences of trm' in the
+                  wrappers won't be renamed to match.
+
+            (3) So, we first merge the bindings, get trm''
+                  (which reflects any renamings in obs1) and 
+                  only then wrap preobs2.
+	*)
+	in let addPremise (bnds,p) =
+	  (bnds, reduceProp (PLet(nm, trm'', p)))
+	in let obs2' = List.map addPremise preobs2'
+
+	in let obs' = obs1' @ obs2'
+
 	in (obs', reduceProp (PLet(nm, trm'', prp'')))
 
   in
