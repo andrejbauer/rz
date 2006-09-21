@@ -148,7 +148,8 @@ and comment = parse
 		COMMENT ( String.concat "" (List.rev !current_comment)) }
   | "(*"    { commentdepth := !commentdepth + 1;
               comment lexbuf }
-  | "\n"    { incr_linenum lexbuf; comment lexbuf }
+  | "\n"    { current_comment := (Lexing.lexeme lexbuf) :: !current_comment;
+	      incr_linenum lexbuf; comment lexbuf }
   | _       { current_comment := (Lexing.lexeme lexbuf) :: !current_comment;
 	      comment lexbuf }
 

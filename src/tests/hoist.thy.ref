@@ -59,10 +59,11 @@ sig
          forall x:s -> s, x':s -> s, 
            (forall x'':s, x_1:s,  x'' =s= x_1 -> x x'' =s= x' x_1) ->
            g x =s= x'
-                     (assure x:s, z:p.
-                          (x : ||s|| and z |= p x and 
-                           (forall (x'':||s||), 
-                              forall z':p,  z' |= p x'' -> x =s= x'')) in x)
+                     (assure x'':s, z:p.
+                          (x'' : ||s|| and z |= p x'' and 
+                           (forall (x_1:||s||), 
+                              forall z':p,  z' |= p x_1 -> x'' =s= x_1))
+                        in x'')
   *)
    
   val application : s
@@ -138,10 +139,7 @@ sig
   *)
    
   val rzquot : s
-  (**  Assertion rzquot_def = 
-         rzquot =s= (assure q:s.
-                         (q : ||s|| and q = r and 
-                          (forall (q':||s||),  q' = r -> q = q')) in q)
+  (**  Assertion rzquot_def =  rzquot =s= (assure (r : ||s||) in r)
   *)
    
   val rzchoose : s
@@ -150,23 +148,10 @@ sig
                                    (x : ||s|| and a =s= x and 
                                     (forall (x':||s||),  a =s= x' -> x =s= x'))
                                  in x
-                       in assure (forall x':s,  x = x' ->
-                                    (assure q:s.
-                                         (q : ||s|| and q = x and 
-                                          (forall (q':||s||),  q' = x ->
-                                             q = q')) in q) =s= (assure q:s.
-                                                                    (
-                                                                    q : ||s|| and 
-                                                                    q = x' and 
-                                                                    (
-                                                                    forall (q':||s||), 
-                                                                    q' = x' ->
-                                                                    q = q'))
-                                                                   in q))
-                            in assure q:s.
-                                   (q : ||s|| and q = x and 
-                                    (forall (q':||s||),  q' = x -> q = q'))
-                                 in q)
+                       in assure ((assure (x : ||s||) in x) =s= (assure (
+                                                                    x : ||s||)
+                                                                   in x))
+                            in assure (x : ||s||) in x)
   *)
    
   

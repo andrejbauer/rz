@@ -28,6 +28,8 @@ type ctx = {types      : ty NameMap.t;
                (** Definitions of type variables in scope. *)
             moduli     : sig_summary NameMap.t;
 	    termdefs   : term NameMap.t;
+	    renaming   : name NameMap.t;
+	    facts : proposition list;
            }
 
 and sig_summary = 
@@ -121,8 +123,49 @@ let insertModul ({moduli=moduli} as ctx) nm sg =
        { ctx with moduli = NameMap.add nm sg moduli }
 
 let emptyCtx = {types = NameMap.empty; tydefs = NameMap.empty; 
-		termdefs = NameMap.empty; moduli = NameMap.empty}
+		termdefs = NameMap.empty; moduli = NameMap.empty;
+	        renaming = NameMap.empty; facts = []}
 
+let checkFact ({facts = facts}) prp =
+  List.mem prp facts
+
+let insertFact ({facts=facts} as ctx) prp =
+  if checkFact ctx prp then
+    ctx
+  else
+    { ctx with facts = prp::facts }
+
+
+(* Stolen from logicrules.ml *)
+let renameBoundVar cntxt nm =
+  let rec findUnusedName nm =
+    if (not (occurs cntxt nm)) then 
+      nm
+    else 
+      findUnusedName (nextName nm)
+  in let nm' = findUnusedName nm
+  in 
+       if (nm = nm') then
+	 (cntxt, nm)
+       else
+	 begin
+(*	   E.tyGenericWarning
+	     ("Shadowing of " ^ string_of_name nm ^ " detected."); *)
+	   ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
+	 end
+
+let rec renameBoundVars ctx = function
+    [] -> (ctx, []) 
+  | n::ns -> 
+      let (ctx', ns') = renameBoundVars ctx ns
+      in let (ctx'', n') = renameBoundVar ctx' n
+      in (ctx'', n'::ns')
+
+(** Apply the context's renaming substitution to the given name.
+*)
+let applyContextSubst cntxt nm = 
+  try  NameMap.find nm cntxt.renaming  with
+      Not_found -> nm
 
 (*******************)
 (** Set operations *)
@@ -163,14 +206,70 @@ let joinTy ctx s1 s2 =
 (** Helper functions *)
 (*********************)
 
-let findEq nm orig_prop =
-  match orig_prop with
-      Equal(Id(LN(None,nm')), trm) 
-        when nm = nm' and not(List.mem nm (fvTerm trm)) ->
-	    
-      True
-    | False
-    |  -> 
+let rec findEqs findEqFn nm = function
+    [] -> None
+  | p::ps ->
+      match findEqFn nm p with
+	  None -> 
+	    begin
+	      match findEqs findEqFn nm ps with
+	          None -> None
+		| Some (trm, ps') -> Some(trm, p :: ps')
+	    end
+	| Some(trm, p') ->
+	    Some(trm, p' :: ps)
+
+let rec findEqPremise nm orig_prop =
+  let validDefn trm =
+    if not(List.mem nm (fvTerm trm)) then
+      Some (trm, True)
+    else
+      None
+  in 
+    match orig_prop with
+      (* Have to be a little careful with how the pattern-matching
+	 is structured here, since if orig_prop is a comparison of
+	 two variables, either one might be the one we're looking for. *)
+
+      Equal(Id(LN(None,nm')), trm) when nm = nm' -> validDefn trm
+
+    | Equal(trm, Id(LN(None,nm'))) when nm = nm' -> validDefn trm
+
+    | And prps -> 
+	begin
+	  match findEqs findEqPremise nm prps with
+	      None -> None
+	    | Some (trm, prps') -> Some (trm, And prps')
+	end 
+    | _ -> 	  
+	None
+
+
+and findEq nm = function
+    Imply(prp1, prp2) -> 
+      begin
+	match findEqPremise nm prp1 with
+	    None -> 
+	      if not (List.mem nm (fvProp prp1)) then
+		match findEq nm prp2 with
+		    None -> None
+		  | Some (trm, prp2') -> Some(trm, Imply(prp1, prp2'))
+	      else
+		None
+	  | Some (trm, prp1') -> Some(trm, Imply(prp1', prp2))
+      end
+  | Forall((nm',ty1),prp2) ->
+      begin
+	match findEqPremise nm prp2 with
+	    None -> None
+	  | Some (trm, prp2') ->
+	      if not (List.mem nm (fvTerm trm)) then
+		Some(trm, Forall((nm',ty1),prp2'))
+	      else
+		(* Can't pull the definition of the term outside its binding *)
+		None
+      end
+  | _ -> None
 
 (***************************)
 (** Optimization functions *)
@@ -203,8 +302,13 @@ let rec optBinds ctx bnds = bnds
 let rec optTerm ctx orig_term = 
   try
     match orig_term with
-	Id n -> let ty = lookupTypeLong ctx n
-          in  (ty, Id n)
+      | Id (LN(None, nm)) ->
+	  let nm = applyContextSubst ctx nm
+	  in let ty = lookupType ctx nm
+	  in (ty, Id(LN(None,nm)))
+      |	Id path -> 
+	  let ty = lookupTypeLong ctx path
+          in  (ty, Id path)
       | EmptyTuple -> (UnitTy, EmptyTuple)
       | Dagger -> 
 	  (print_string "Is this a Dagger which I see before me?\n";
@@ -223,7 +327,8 @@ let rec optTerm ctx orig_term =
 			 raise (Impossible "App"))
 	  end
       | Lambda((nm1, ty1), trm2) ->
-	  let    ty1' = optTy ctx ty1
+	  let (ctx,nm1) = renameBoundVar ctx nm1
+	  in let ty1' = optTy ctx ty1
 	  in let ctx' = insertType ctx nm1 ty1
 	  in let (ty2', trm2') = optTerm ctx' trm2
 	  in let ty = ArrowTy(ty1',ty2')
@@ -251,7 +356,8 @@ let rec optTerm ctx orig_term =
 	  let (ty, e') = optTerm ctx e
 	  in let doArm = function
 	      (lbl, Some (name2,ty2),  e3) -> 
-		let ty2' = optTy ctx ty2 
+		let (ctx,name2) = renameBoundVar ctx name2
+		in let ty2' = optTy ctx ty2 
 		in let ctx' = insertType ctx name2 ty
 		in let (ty3, e3') = optTerm ctx' e3
 		in (ty3, (lbl, Some (name2, ty2'), e3'))
@@ -270,8 +376,9 @@ let rec optTerm ctx orig_term =
 	  in (tyarms, optReduce ctx (Case(e',arms')))
 
       | Let(name1, term1, term2) ->
+	  let (ctx, name1) = renameBoundVar ctx name1
 	  (* Phase 1: Basic Optimization *)
-	  let    (ty1, term1') = optTerm ctx term1
+	  in let (ty1, term1') = optTerm ctx term1
 	  in let ctx' = insertTermdef (insertType ctx name1 ty1) name1 term1'
 	  in let (ty2, term2') = optTerm ctx' term2
 	  in let trm' = optReduce ctx (Let(name1, term1', term2'))
@@ -289,16 +396,33 @@ let rec optTerm ctx orig_term =
 
       | Obligation(bnds, prop, trm) ->
 	  let (names,tys) = List.split bnds
+	  in let (ctx, names) = renameBoundVars ctx names
 	  in let tys'  = List.map (optTy ctx) tys
 	  in let bnds' = List.combine names tys'
 	  in let ctx' = List.fold_left2 insertType ctx names tys
 	  in let prop' = optProp ctx' prop
 	  in let ty2, trm' = optTerm ctx' trm
-	  in begin
-	      match (bnds', prop') with
-		  ([], True) -> (ty2, trm')
-		| _ -> (ty2, Obligation(bnds', prop', trm'))
-	    end
+
+	  in let doObligation = function
+	      ([], True, trm3) -> 
+		(* The zero-binding no-obligation case *)
+		trm3
+
+	    | ([(nm,_)] as bnds1, prp2, trm3) ->
+		begin
+		  (* The one-binding case *)
+		  match findEqPremise nm prp2 with
+		      None -> Obligation(bnds1, prp2, trm3)
+		    | Some (trm,prp2') ->
+			optReduce ctx
+			  (Let(nm, trm, Obligation([], prp2', trm3)))
+		end
+
+	    | (bnds1, prp2, trm3) -> Obligation(bnds1, prp2, trm3)
+
+	  in 
+	       (ty2, doObligation (bnds', prop', trm'))
+
   with e ->
     (print_endline ("\n\n...in " ^
 		       string_of_term orig_term);
@@ -365,25 +489,28 @@ and optProp ctx orig_prp =
 	    let (ty1,e1') = optTerm ctx e1
 	    in let e2' = optTerm' ctx e2
 	    in
-		 match (hnfTy ctx ty1) with
-	             VoidTy -> True
-		   | UnitTy -> True
-		   | SumTy _ ->
-		       begin
-			 match e1', e2' with
-			     Inj (lbl1, None), Inj (lbl2, None) ->
-			       if lbl1 = lbl2 then True else False
-			   | Inj (lbl1, Some t1), Inj (lbl2, Some t2) ->
-			       if lbl1 = lbl2 then
-				 Equal (t1, t2)
-				   (* optProp ctx (Equal (t1, t2)) *)
-			       else
-				 False
-			   | Inj (_, None), Inj (_, Some _)
-			   | Inj (_, Some _), Inj (_, None) -> False
-			   | _ -> Equal (e1', e2')
-		       end
-		   | _ -> Equal(e1',e2') 
+		 if (e1 = e2) then
+		   True
+		 else
+		   match (hnfTy ctx ty1) with
+	               VoidTy -> True
+		     | UnitTy -> True
+		     | SumTy _ ->
+			 begin
+			   match e1', e2' with
+			       Inj (lbl1, None), Inj (lbl2, None) ->
+				 if lbl1 = lbl2 then True else False
+			     | Inj (lbl1, Some t1), Inj (lbl2, Some t2) ->
+				 if lbl1 = lbl2 then
+				   Equal (t1, t2)
+				     (* optProp ctx (Equal (t1, t2)) *)
+				 else
+				   False
+			     | Inj (_, None), Inj (_, Some _)
+			     | Inj (_, Some _), Inj (_, None) -> False
+			     | _ -> Equal (e1', e2')
+			 end
+		     | _ -> Equal(e1',e2') 
 	  end
       | And ps ->
 	  let rec loop = function
@@ -415,6 +542,7 @@ and optProp ctx orig_prp =
 	    | (p1',   False) -> Not p1'
 	    | (p1',   p2'  ) -> Imply(p1', p2'))
 
+
       | Iff (p1, p2) -> 
 	  (match (optProp ctx p1, optProp ctx p2) with
 	      (p1',   p2'  ) when p1' = p2' -> True
@@ -431,7 +559,15 @@ and optProp ctx orig_prp =
 	  | p'    -> Not p')
 	  
       | Forall((n,ty), p) ->
-	  let p' = optProp (insertType ctx n ty) p
+	  let (ctx, n) = renameBoundVar ctx n
+          in let p' = optProp (insertType ctx n ty) p
+	  in let doForall(nm1,ty1,prp2) =
+	    begin
+	      match findEq nm1 prp2 with
+		  None -> Forall((nm1,ty1),prp2)
+		| Some(trm,prp2') -> 
+		    optReduceProp ctx (PLet(n,trm,prp2'))
+	    end
 	  in (match (optTy ctx ty, p') with
               (_, True) -> True
 	    | (UnitTy, _) -> optReduceProp ctx (PLet(n,EmptyTuple,p'))
@@ -440,23 +576,40 @@ and optProp ctx orig_prp =
 		if (LN(None,n) = n3) && (n1 = n2) then
 		  ForallTotal((n, NamedTy n1), p'')
 		else
-		  Forall((n,NamedTy n1),p')
-	    | (ty',_) -> Forall((n,ty'), p'))
+		  doForall(n, NamedTy n1, p')
+	    | (ty',_) -> doForall(n, ty', p'))
 	    
       | ForallTotal((n,ty),p) ->
-	  let p' = optProp (insertType ctx n ty) p
-	  in ForallTotal((n,optTy ctx ty), p')
+	  let (ctx, n) = renameBoundVar ctx n
+	  in let doForallTotal(nm1,ty1,prp2) =
+	    begin
+	      match findEq nm1 prp2 with
+		  None -> ForallTotal((nm1,ty1),prp2)
+		| Some(trm,prp2') -> 
+		    optReduceProp ctx (PLet(n,trm,prp2'))
+	    end
+	  in let p' = optProp (insertType ctx n ty) p
+	  in doForallTotal(n, optTy ctx ty, p')
 	    
       | Cexists ((n, ty), p) ->
-	  let p' = optProp (insertType ctx n ty) p in
+	  let (ctx, n) = renameBoundVar ctx n
+	  in let doExists(nm1,ty1,prp2) =
+	    begin
+	      match findEqPremise nm1 prp2 with
+		  None -> Cexists((nm1,ty1),prp2)
+		| Some(trm,prp2') -> 
+		    optReduceProp ctx (PLet(n,trm,prp2'))
+	    end
+	  in let p' = optProp (insertType ctx n ty) p in
 	    (match optTy ctx ty, p' with
 		(_, False) -> False
 	      | (VoidTy, _) -> False
 	      | (UnitTy, _) -> optReduceProp ctx (PLet(n,EmptyTuple,p'))
-	      | (ty', _) -> Cexists((n, ty'), p'))
+	      | (ty', _) -> doExists(n, ty', p'))
 
       | PObligation (bnds, p, q) ->
 	  let (names,tys) = List.split bnds
+	  in let (ctx, names) = renameBoundVars ctx names
 	  in let tys'  = List.map (optTy ctx) tys
 	  in let bnds' = List.combine names tys'
 	  in let ctx' = List.fold_left2 insertType ctx names tys
@@ -470,7 +623,8 @@ and optProp ctx orig_prp =
 	       end
 
       | PMLambda ((n, ms), p) ->
-	  let ms' = optModest ctx ms in
+	  let (ctx, n) = renameBoundVar ctx n
+	  in let ms' = optModest ctx ms in
 	  let p' = optProp (insertType ctx n ms.ty) p
 	  in let pre = (PMLambda ((n,ms'), p'))
 	  in optReduceProp ctx pre
@@ -479,7 +633,8 @@ and optProp ctx orig_prp =
 	  optReduceProp ctx (PMApp (optProp ctx p, optTerm' ctx t))
 
       | PLambda ((n,ty), p) ->
-	  let p' = optProp (insertType ctx n ty) p
+	  let (ctx, n) = renameBoundVar ctx n
+	  in let p' = optProp (insertType ctx n ty) p
 	  in let ty' = optTy ctx ty
 	  in
 	       optReduceProp ctx (PLambda((n,ty'), p'))
@@ -494,7 +649,8 @@ and optProp ctx orig_prp =
 	  let doBind ctx0 = function
 	      None -> None, ctx0
 	    | Some (nm, ty) ->
-		let ty' = optTy ctx ty
+		let (ctx0, nm) = renameBoundVar ctx0 nm
+		in let ty' = optTy ctx ty
 		in 
 		  (Some (nm, ty'), insertType ctx0 nm ty)
 	  in
@@ -508,7 +664,8 @@ and optProp ctx orig_prp =
 	      (PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms))
 
       | PLet(nm, trm1, prp2) ->
-	  let    (ty1, trm1') = optTerm ctx trm1
+	  let (ctx, nm) = renameBoundVar ctx nm
+	  in let (ty1, trm1') = optTerm ctx trm1
 	  in let ctx' = insertType ctx nm ty1
 	  in let prp2' = optProp ctx' prp2
 	  in let prp' = optReduceProp ctx (PLet(nm, trm1', prp2'))
