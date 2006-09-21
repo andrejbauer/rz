@@ -126,14 +126,28 @@ let emptyCtx = {types = NameMap.empty; tydefs = NameMap.empty;
 		termdefs = NameMap.empty; moduli = NameMap.empty;
 	        renaming = NameMap.empty; facts = []}
 
-let checkFact ({facts = facts}) prp =
-  List.mem prp facts
+let rec checkFact ({facts = facts} as ctx) prp =
+  List.mem prp facts ||
+    (match prp with 
+	And prps -> List.for_all (checkFact ctx) prps
+      | Cor prps -> List.exists (checkFact ctx) prps
+      | Imply (prp1,prp2) -> 
+	  checkFact (insertFact ctx prp1) prp2
+      | Iff(prp1,prp2) ->
+	  checkFact ctx (Imply(prp1,prp2)) &&
+	    checkFact ctx (Imply(prp2,prp1))
+      | _ -> false)
 
-let insertFact ({facts=facts} as ctx) prp =
+and insertFact ({facts=facts} as ctx) prp =
   if checkFact ctx prp then
     ctx
   else
-    { ctx with facts = prp::facts }
+    (match prp with
+	And prps -> insertFacts ctx prps
+      | _ -> { ctx with facts = prp::facts })
+
+and insertFacts ctx prps =
+  List.fold_left insertFact ctx prps
 
 
 (* Stolen from logicrules.ml *)
@@ -473,13 +487,16 @@ and optTerms' ctx lst =
 
 and optProp ctx orig_prp = 
   try
-    match orig_prp with
+    let result_prop = 
+      match orig_prp with
 	True                    -> True
       | False                   -> False
       | IsPer (nm, lst)         -> IsPer (nm, optTerms' ctx lst)
       | IsPredicate (nm, ty, lst) ->
 	  IsPredicate (nm, optTyOption ctx ty, List.map (fun (nm, ms) -> (nm, optModest ctx ms)) lst)
       | IsEquiv (p, ms)         -> IsEquiv (optProp ctx p, optModest ctx ms)
+      | PApp(PApp(NamedPer(n,lst),t1),t2) when optTerm ctx t1 = optTerm ctx t2 ->
+	  optProp ctx (PApp(NamedTotal(n,lst), t1))
       | NamedTotal (n, lst)     -> NamedTotal (n, optTerms' ctx lst)
       | NamedPer (n, lst)       -> NamedPer (n, optTerms' ctx lst)
       | NamedProp (n, Dagger, lst) -> NamedProp(n, Dagger, optTerms' ctx lst)
@@ -512,16 +529,18 @@ and optProp ctx orig_prp =
 			 end
 		     | _ -> Equal(e1',e2') 
 	  end
+
       | And ps ->
-	  let rec loop = function
+	  let rec loop ctx = function
             | ([], []) -> True
 	    |  ([], raccum) -> And (List.rev raccum)
 	    | (p::ps, raccum) -> 
 		(match optProp ctx p with
-		    True -> loop(ps,raccum)
+		    True -> loop ctx (ps,raccum)
 		  | False -> False
-		  | p' -> loop(ps, p' :: raccum))
-	  in loop(ps,[])
+		  | p' -> loop (insertFact ctx p') (ps, p' :: raccum))
+	  in loop ctx (ps,[])
+
       | Cor ps ->
 	  let rec loop = function
             | ([], []) -> False
@@ -534,13 +553,15 @@ and optProp ctx orig_prp =
 	  in loop(ps,[])
 
       | Imply (p1, p2) -> 
-	  (match (optProp ctx p1, optProp ctx p2) with
-	      (p1',   p2'  ) when p1' = p2' -> True
-	    | (True,  p2'  ) -> p2'
-	    | (False, _    ) -> True
-	    | (_,     True ) -> True
-	    | (p1',   False) -> Not p1'
-	    | (p1',   p2'  ) -> Imply(p1', p2'))
+	  let p1' = optProp ctx p1
+	  in
+	    (match (p1', optProp (insertFact ctx p1') p2) with
+		(p1',   p2'  ) when p1' = p2' -> True
+	      | (True,  p2'  ) -> p2'
+	      | (False, _    ) -> True
+	      | (_,     True ) -> True
+	      | (p1',   False) -> Not p1'
+	      | (p1',   p2'  ) -> Imply(p1', p2'))
 
 
       | Iff (p1, p2) -> 
@@ -614,7 +635,9 @@ and optProp ctx orig_prp =
 	  in let bnds' = List.combine names tys'
 	  in let ctx' = List.fold_left2 insertType ctx names tys
 	  in let p' = optProp ctx' p
-	  in let q' = optProp ctx' q
+
+	  in let ctx'' = if bnds = [] then insertFact ctx' p else ctx'
+	  in let q' = optProp ctx'' q
 	  in 
 	       begin
 		 match (bnds', p') with
@@ -684,27 +707,32 @@ and optProp ctx orig_prp =
 	      | _ -> prp'
 	  in 
 	       prp''   
+    in
+      if (checkFact ctx result_prop) then
+	True
+      else
+	result_prop
   with e ->
     (print_endline ("\n\n...in " ^
 		       string_of_proposition orig_prp);
      raise e)
 
-	  and optAssertion ctx (name, prop) = 
-	    let prop' = optProp ctx prop
-	    in 
-
-	    let prop'' = if (!Flags.do_hoist) then
-		let (obs, prp') = hoistProp prop' in
-		  optProp ctx (foldPObligation obs prp') 
-	      else
-		prop'
-	    in
-	      (name, prop'')
-
-	  and optModest ctx {ty=t; tot=p; per=q} =
-	    {ty = optTy ctx t;
-	     tot = optProp ctx p;
-	     per = optProp ctx q}
+and optAssertion ctx (name, prop) = 
+  let prop' = optProp ctx prop
+  in 
+    
+  let prop'' = if (!Flags.do_hoist) then
+      let (obs, prp') = hoistProp prop' in
+	optProp ctx (foldPObligation obs prp') 
+    else
+      prop'
+  in
+    (name, prop'')
+      
+and optModest ctx {ty=t; tot=p; per=q} =
+  {ty = optTy ctx t;
+   tot = optProp ctx p;
+   per = optProp ctx q}
 
 	  and optElems ctx orig_elems = 
 	    try
@@ -714,7 +742,8 @@ and optProp ctx orig_prp =
 		     let ty'  = optTy ctx ty in
 		     let ctx' = insertType ctx name ty in
 		     let assertions' = List.map (optAssertion ctx') assertions
-		     in let (rest', ctx'') = optElems (insertType ctx name ty) rest in
+		     in let ctx' = insertFacts ctx' (List.map snd assertions')
+		     in let (rest', ctx'') = optElems ctx' rest in
 			  (ValSpec (name, ty', assertions') :: rest', 
 			  insertType ctx'' name ty')
 			    
@@ -731,9 +760,10 @@ and optProp ctx orig_prp =
 			ctx''')
 
 		|  TySpec(nm, None, assertions) :: rest -> 
-		     (** We don't add nm to the input context of optAssertion
-			 because we never need to know whether something is a type or
-			 not; we're assuming that the input was well-formed *)
+		     (** We don't add nm to the input context of
+			 optAssertion because we never need to know
+			 whether something is a type or not; we're
+			 assuming that the input was well-formed *)
 		     let assertions' = List.map (optAssertion ctx) assertions in
 		     let rest', ctx'' = optElems ctx rest in
 		       (TySpec (nm, None, assertions') :: rest'), ctx''
