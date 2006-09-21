@@ -493,7 +493,7 @@ and translateTerm ctx = function
       let (ty, p') = translateProp (insertTermvar x s ctx) p in
       let t' = translateTerm ctx t in
       let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ~bad:((fvTerm t')) ctx in
-	Obligation ([(y, ty)], pApp ctx (sbp ctx [(x,t')] p') (id y), Tuple [t'; id y])
+	Tuple[t'; Obligation ([(y, ty)], pApp ctx (sbp ctx [(x,t')] p') (id y), id y)]
 
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 

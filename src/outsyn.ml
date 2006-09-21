@@ -1714,7 +1714,7 @@ and reduce trm =
 
   | Let (nm1, trm2, trm3) ->
       (* May lose obligations *)
-      if (simpleTerm trm2) then (* || (countTerm nm1 trm3 < 2) then *)
+      if (simpleTerm trm2) || (countTerm nm1 trm3 < 2) then 
 	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
       else
 	trm

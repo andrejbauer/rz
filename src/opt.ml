@@ -405,6 +405,13 @@ let rec optTerm ctx orig_term =
 		  in let nms = freshNameList good [] (occurs ctx) 
 		  in let trm'' = nested_let nms trms term2
 		  in optReduce ctx trm''
+	      | Let(nm1, (Obligation([(nm2,_)],prp2,Id(LN(None,nm2'))) as obprp), trm3) 
+		  when nm2 = nm2' ->
+                  let prp2' = substProp (renaming nm2 nm1) prp2
+		  in let ctx' = insertFact ctx' prp2'
+		  in let trm3' = optTerm' ctx' trm3
+		  in 
+		       optReduce ctx (Let(nm1, obprp, trm3'))
 	      | _ -> trm'
 	  in (ty2, trm'')
 
@@ -415,6 +422,7 @@ let rec optTerm ctx orig_term =
 	  in let bnds' = List.combine names tys'
 	  in let ctx' = List.fold_left2 insertType ctx names tys
 	  in let prop' = optProp ctx' prop
+	    
 	  in let ty2, trm' = optTerm ctx' trm
 
 	  in let doObligation = function
