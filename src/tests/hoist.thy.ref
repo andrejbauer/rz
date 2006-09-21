@@ -26,7 +26,7 @@ sig
   *)
    
   val emptyTuple : unit
-  (**  Assertion emptyTuple_def =  emptyTuple = ()
+  (**  Assertion emptyTuple_def =  true
   *)
    
   val var : s
@@ -208,10 +208,11 @@ sig
          let x = assure x:s.
                      (x : ||s|| and x =s= a and 
                       (forall (x':||s||),  x' =s= a -> x =s= x')) in x
-         in let u = (x,(assure y:s.
-                            (y : ||s|| and x =s= y and 
-                             (forall (y':||s||),  x =s= y' -> y =s= y')) in y))
-            in pi0 let_term =s= pi0 u and pi1 let_term =s= pi1 u
+         in pi0 let_term =s= x and 
+         pi1 let_term =s= (assure y:s.
+                               (y : ||s|| and x =s= y and 
+                                (forall (y':||s||),  x =s= y' -> y =s= y'))
+                             in y)
   *)
    
   val subin : s * p

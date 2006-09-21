@@ -15,6 +15,8 @@ let command_line_options =
   in let flag_data = 
     [("--opt", fSet, Flags.do_opt, "Turn on simplification optimations");
      ("--noopt", fClear, Flags.do_opt,"Turn off simplification optimizations");
+     ("--thin", fSet, Flags.do_thin, "");
+     ("--nthin", fClear, Flags.do_thin, "");
      ("--show", fSet, Flags.do_print, "Show output on stdout");
      ("--noshow", fClear, Flags.do_print, "No output to stdout");
      ("--save", fSet, Flags.do_save, "Send output to .mli file");
@@ -91,8 +93,8 @@ let send_to_formatter ppf toplevels =
     that respects dependencies.
 *)
 let rec process = function
-    ([], _, _, _) -> ()
-  | (fn::fns, infer_state, translate_state, opt_state) ->
+    ([], _, _, _, _) -> ()
+  | (fn::fns, infer_state, translate_state, thin_state, opt_state) ->
       let thy = read fn in
 
       let (infer_state', lthy) = 
@@ -119,6 +121,10 @@ let rec process = function
 
       let (spec,translate_state') = 
 	Translate.translateToplevel translate_state lthy in
+
+      let (spec, thin_state') =
+	try (Thin.thinToplevels thin_state spec) with
+	    (Thin.Impossible s) as exn -> (print_endline s; raise exn) in
 
       let (spec2,opt_state') = 
 	(try ( Opt.optToplevels opt_state spec ) with
@@ -153,7 +159,7 @@ let rec process = function
               else () 
 		
       in 
-	process (fns, infer_state', translate_state', opt_state');;
+	process (fns, infer_state', translate_state', thin_state', opt_state');;
 
 (** MAIN PROGRAM *)
 
@@ -178,6 +184,7 @@ try
   process (List.rev !filenames, 
 	   Logicrules.emptyContext, 
 	   Translate.emptyCtx, 
+	   Thin.emptyCtx,
 	   Opt.emptyCtx)
 with
     Arg.Bad s

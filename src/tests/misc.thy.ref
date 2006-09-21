@@ -215,21 +215,19 @@ sig
   type sum = [`yes of s | `no of unit | `maybe]
   (**  Assertion sum_def_total = 
          forall x:[`yes of s | `no of unit | `maybe],  x : ||sum|| <->
-           (exists w':s,  x = `yes w' and w' : ||s||) cor 
-           (exists w':unit,  x = `no w' and w' = ()) cor x = `maybe
+           (exists w':s,  x = `yes w' and w' : ||s||) cor x = `no () cor 
+           x = `maybe
         
        Assertion sum_def_per = 
          forall y:[`yes of s | `no of unit | `maybe], z:[`yes of s | 
            `no of unit | `maybe],  y =sum= z <->
            (exists v':s, t':s,  y = `yes v' and z = `yes t' and v' =s= t') cor 
-           (exists v':unit, t':unit,  y = `no v' and z = `no t' and v' = t') cor 
-           y = `maybe and z = `maybe
+           y = `no () and z = `no () cor y = `maybe and z = `maybe
   *)
    
   val tmp1 : [`yes of s]
   (**  Assertion tmp1_def = 
-         (exists v':s, t':s,  tmp1 = `yes v' and `yes a = `yes t' and 
-            v' =s= t')
+         (exists v':s, t':s,  tmp1 = `yes v' and a = t' and v' =s= t')
   *)
    
   val tmp2 : [`yes of s | `no of unit | `maybe]
@@ -238,11 +236,11 @@ sig
    
   val d : s * unit
   (**  Assertion d_def = 
-         let u = (match tmp2 with
-                    `yes(q : s) -> (q,()) 
-                  | `no(r : unit) -> (c,r) 
-                  | `maybe -> (a,()) 
-                  ]) in pi0 d =s= pi0 u and pi1 d = pi1 u
+         pi0 d =s= pi0 (match tmp2 with
+                          `yes(q : s) -> (q,()) 
+                        | `no(r : unit) -> (c,r) 
+                        | `maybe -> (a,()) 
+                        ])
        *)
    
   val e : s
