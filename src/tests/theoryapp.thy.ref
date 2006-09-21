@@ -1,6 +1,4 @@
 [Processing theoryapp.thy]
-Reusing the fact x : ||a||
-Reusing the fact x : ||a||
 module type A = 
 sig
   type a

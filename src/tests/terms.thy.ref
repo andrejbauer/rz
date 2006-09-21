@@ -1,11 +1,4 @@
 [Processing terms.thy]
-Reusing the fact true
-Reusing the fact a : ||s||
-Reusing the fact true
-Reusing the fact a : ||s||
-Reusing the fact eq x x'
-Reusing the fact true
-Reusing the fact true
 module type Terms = 
 sig
   type s

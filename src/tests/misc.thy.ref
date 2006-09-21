@@ -1,6 +1,4 @@
 [Processing misc.thy]
-Reusing the fact y : ||s||
-Reusing the fact y' : ||s||
 module type T = 
 sig
   type s

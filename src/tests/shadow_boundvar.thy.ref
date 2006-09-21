@@ -1,5 +1,4 @@
 [Processing shadow_boundvar.thy]
-Reusing the fact w : ||s||
 module type T = 
 sig
   type s
