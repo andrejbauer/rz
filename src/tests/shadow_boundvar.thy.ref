@@ -1,4 +1,5 @@
 [Processing shadow_boundvar.thy]
+Reusing the fact w : ||s||
 module type T = 
 sig
   type s
@@ -6,8 +7,7 @@ sig
   *)
    
   val shadow : s -> s
-  (**  Assertion shadow = 
-         forall (x:||s||),  shadow x : ||s|| and shadow x =s= shadow x
+  (**  Assertion shadow =  forall (x:||s||),  shadow x : ||s||
   *)
 end
 

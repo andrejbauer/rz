@@ -1,4 +1,6 @@
 [Processing misc.thy]
+Reusing the fact y : ||s||
+Reusing the fact y' : ||s||
 module type T = 
 sig
   type s
@@ -55,10 +57,9 @@ sig
    
   val n : s
   (**  Assertion n_def = 
-         let x' = assure y:s.
-                      (y : ||s|| and y =s= y and 
-                       (forall (y':||s||),  y' =s= y' -> y =s= y')) in y
-         in n =s= n and x' =s= x' and n =s= x'
+         let x' = assure y:s. (y : ||s|| and (forall (y':||s||),  y =s= y'))
+                    in y
+         in n : ||s|| and x' : ||s|| and n =s= x'
   *)
    
   type uu = t
@@ -335,9 +336,7 @@ sig
          forall x:a -> b * r, 
            (forall (x':||a||),  pi0 (x x') : ||b|| and 
               pi1 (x x') |= r x' (pi0 (x x'))) ->
-           (forall x':a, 
-              (pi0 (intensionalChoice x)) x' =b= (pi0 (intensionalChoice x))
-                                                   x') and 
+           (forall x':a,  (pi0 (intensionalChoice x)) x' : ||b||) and 
            (forall (x':||a||), 
               (pi1 (intensionalChoice x)) x' |= r x' (pi0 (intensionalChoice
                                                              x)) x')

@@ -709,7 +709,9 @@ and optProp ctx orig_prp =
 	       prp''   
     in
       if (checkFact ctx result_prop) then
-	True
+	(print_string "Reusing the fact ";
+	 print_endline (string_of_proposition result_prop);
+	True)
       else
 	result_prop
   with e ->

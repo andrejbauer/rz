@@ -1,4 +1,70 @@
 [Processing hoist.thy]
+Reusing the fact r : ||s||
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact r : ||s||
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
+Reusing the fact true
 module type HoistTerms = 
 sig
   type s
@@ -139,7 +205,7 @@ sig
   *)
    
   val rzquot : s
-  (**  Assertion rzquot_def =  rzquot =s= (assure (r : ||s||) in r)
+  (**  Assertion rzquot_def =  rzquot =s= r
   *)
    
   val rzchoose : s
@@ -148,9 +214,7 @@ sig
                                    (x : ||s|| and a =s= x and 
                                     (forall (x':||s||),  a =s= x' -> x =s= x'))
                                  in x
-                       in assure ((assure (x : ||s||) in x) =s= (assure (
-                                                                    x : ||s||)
-                                                                   in x))
+                       in assure ((assure (x : ||s||) in x) : ||s||)
                             in assure (x : ||s||) in x)
   *)
    

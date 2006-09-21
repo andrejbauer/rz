@@ -1,4 +1,11 @@
 [Processing terms.thy]
+Reusing the fact true
+Reusing the fact a : ||s||
+Reusing the fact true
+Reusing the fact a : ||s||
+Reusing the fact eq x x'
+Reusing the fact true
+Reusing the fact true
 module type Terms = 
 sig
   type s
@@ -74,7 +81,7 @@ sig
   *)
    
   val rzchoose : s
-  (**  Assertion rzchoose_def =  rzchoose =s= (assure (a =s= a) in a)
+  (**  Assertion rzchoose_def =  rzchoose =s= a
   *)
    
   

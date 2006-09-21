@@ -1,4 +1,6 @@
 [Processing theoryapp.thy]
+Reusing the fact x : ||a||
+Reusing the fact x : ||a||
 module type A = 
 sig
   type a
@@ -14,7 +16,7 @@ sig
   *)
    
   
-  (**  Assertion q =  forall (x:||a||),  x =a= x
+  (**  Assertion q =  true
   *)
 end
 
@@ -33,7 +35,7 @@ sig
   *)
    
   
-  (**  Assertion q =  forall (x:||a||),  x =a= x
+  (**  Assertion q =  true
   *)
    
   val m : a
