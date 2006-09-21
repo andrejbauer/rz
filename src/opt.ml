@@ -15,6 +15,7 @@ exception Unimplemented
 exception Impossible of string
 
 
+
 (*********************************)
 (** {2 The Typechecking Context} *)
 (*********************************)
@@ -228,7 +229,9 @@ let rec optBinds ctx = function
 
       Never returns Tuple [] or Tuple [x]
 *)       
-let rec optTerm ctx = function
+let rec optTerm ctx orig_term = 
+try
+  match orig_term with
    Id n -> (let oldty = lookupTypeLong ctx n
             in  match (optTy ctx oldty) with
                    TopTy -> (oldty, Dagger, TopTy)
@@ -274,7 +277,7 @@ let rec optTerm ctx = function
 	 | _ -> Tuple es')
      in (TupleTy ts, e', topTyize (TupleTy ts'))
  | Proj (n,e) as proj_code ->
-     let (ty, e', _) = optTerm ctx e
+     let (ty, e', ty') = optTerm ctx e
      in let tys = 
                match  hnfTy ctx ty with
 		 TupleTy tys -> tys
@@ -372,8 +375,12 @@ let rec optTerm ctx = function
 	     ([], True) -> (ty2', trm', ty2)
 	   | _ -> (ty2', Obligation(bnds'', prop', trm'), ty2)
        end
+with e ->
+  (print_endline ("\n\n...in " ^
+      string_of_term orig_term);
+   raise e)
 
-
+(*
 and optReduce ctx trm =
   let trm' = reduce trm
   in 
@@ -389,7 +396,10 @@ and optReduceProp ctx prp =
       optProp ctx prp'
     else
       prp'
+*)
 
+and optReduce ctx trm = reduce trm
+and optReduceProp ctx prp = reduceProp prp
 and optTerms ctx = function 
     [] -> ([], [], [])   
   | e::es -> let (ty, e', ty') = optTerm ctx e
@@ -406,8 +416,9 @@ and optTerm' ctx e =
 and optTerms' ctx lst =
   let (_, es, _) = optTerms ctx lst in es
 
-and optProp ctx prp = 
-  match prp with
+and optProp ctx orig_prp = 
+try
+  match orig_prp with
     True                    -> True
   | False                   -> False
   | IsPer (nm, lst)         -> IsPer (nm, optTerms' ctx lst)
@@ -588,6 +599,10 @@ and optProp ctx prp =
 	 | _ -> prp'
      in 
 	prp''   
+with e ->
+  (print_endline ("\n\n...in " ^
+      string_of_proposition orig_prp);
+   raise e)
 
 and optAssertion ctx (name, prop) = 
   let prop' = optProp ctx prop
@@ -606,7 +621,9 @@ and optModest ctx {ty=t; tot=p; per=q} =
    tot = optProp ctx p;
    per = optProp ctx q}
 
-and optElems ctx = function
+and optElems ctx orig_elems = 
+try
+  match orig_elems with
     [] -> [], emptyCtx
   |  ValSpec(name, ty, assertions) :: rest ->
       let ty'  = optTy ctx ty in
@@ -653,6 +670,10 @@ and optElems ctx = function
   |  Comment cmmnt :: rest -> 
        let rest', ctx' = optElems ctx rest in
 	 (Comment cmmnt :: rest', ctx')
+with e ->
+  (print_endline ("\n\n...in " ^
+      (String.concat "\n" (List.map string_of_spec orig_elems)));
+   raise e)
 
 
 and optSignat ctx = function

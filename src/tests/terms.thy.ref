@@ -30,8 +30,8 @@ sig
   *)
    
   val tuple : s * s * s
-  (**  Assertion tuple_def =  pi0 tuple =s= a and pi1 tuple =s= b and 
-         pi2 tuple =s= c
+  (**  Assertion tuple_def =  pi0 tuple =s= pi0 (a,b,c) and 
+         pi1 tuple =s= pi1 (a,b,c) and pi2 tuple =s= pi2 (a,b,c)
   *)
    
   val proj : s
@@ -91,7 +91,8 @@ sig
   *)
    
   val let_term : s * s
-  (**  Assertion let_term_def =  pi0 let_term =s= a and pi1 let_term =s= a
+  (**  Assertion let_term_def =  pi0 let_term =s= pi0 (a,a) and 
+         pi1 let_term =s= pi1 (a,a)
   *)
    
   val subin : s * p
