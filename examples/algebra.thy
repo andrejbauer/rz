@@ -14,30 +14,25 @@ end
 theory Magma :=
 thy
   Parameter s : Set.
-  Parameter op : s -> s -> s.
+  Parameter mul : s -> s -> s.
 end
 
-theory Commutative(S : Magma) :=
+theory CommutativeMagma :=
 thy
+  Parameter s : Set.
+  Parameter add : s -> s -> s.
+
   Axiom commutative:
-    forall x y : S.s, S.op x y = S.op y x.
+    forall x y : s, add x y = add y x.
 end
-
-theory Associative(S : Magma) :=
-thy
-  Axiom associative:
-    forall x y z : S.s, S.op x (S.op y z) = S.op (S.op x y) z.
-end
-
 
 (** A semigroup is an associative magma. *)
 theory Semigroup :=
 thy
   include Magma.
-  include Associative(
 
   Axiom mul_associative:
-    forall x y z : S.s, mul (mul x y) z = mul x (mul y z).
+    forall x y z : s, mul (mul x y) z = mul x (mul y z).
 end
 
 
@@ -97,10 +92,39 @@ thy
 end
 
 
-# In example below we would want to get the definition of a ring.
 (** We now combine semigroups and commutative groups to get rings. *)
 theory Ring :=
 thy
-  include Semigroup.
   include CommutativeGroup.
+
+  # It's a pity we cannot just "include Semiroup",
+  # we can't because s would get shadowed.
+
+  Parameter mul : s -> s -> s.
+
+  Axiom mul_associative:
+    forall x y z : s, mul (mul x y) z = mul x (mul y z).
+
+  Axiom add_mul_distribute:
+    forall x y z : s,
+      mul x (add y z) = add (mul x y) (mul x z) /\
+      mul (add x y) z = add (mul x z) (mul y z).
+end
+
+theory RingWithUnit :=
+thy
+  include CommutativeGroup.
+
+  # It's a pity we cannot just "include Semiroup",
+  # we can't because s would get shadowed.
+
+  Parameter mul : s -> s -> s.
+
+  Axiom mul_associative:
+    forall x y z : s, mul (mul x y) z = mul x (mul y z).
+
+  Axiom add_mul_distribute:
+    forall x y z : s,
+      mul x (add y z) = add (mul x y) (mul x z) /\
+      mul (add x y) z = add (mul x z) (mul y z).
 end
