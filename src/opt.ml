@@ -344,12 +344,14 @@ and findEqPremise nm = function
       begin
 	match findEq nm prp1 with
 	    None -> 
-	      if not (List.mem nm (fvProp prp1)) then
+	      begin
+(*	      if not (List.mem nm (fvProp prp1)) then *)
 		match findEqPremise nm prp2 with
 		    None -> None
 		  | Some (trm, prp2') -> Some(trm, Imply(prp1, prp2'))
-	      else
-		None
+(*	      else
+		None *)
+	      end
 	  | Some (trm, prp1') -> Some(trm, Imply(prp1', prp2))
       end
   | Forall((nm',ty1),prp2) ->
@@ -528,7 +530,7 @@ let rec optTerm ctx orig_term =
 		  in let nms = freshNameList good [] (occurs ctx) 
 		  in let trm'' = nested_let nms trms term2
 		  in optReduce ctx trm''
-	      | Let(nm1, (Obligation([(nm2,_)], prp2, 
+	      | Let(nm1, (Obligation([(nm2,ty2)], prp2, 
 				    Id(LN(None,nm2'))) as obprp), trm3) 
 		  when nm2 = nm2' ->
 		  (** Now that assures start out like indefinite
@@ -539,10 +541,31 @@ let rec optTerm ctx orig_term =
 		      fact that phi(y) holds, so we do that here.
                   *)
                   let prp2' = substProp (renaming nm2 nm1) prp2
+		  in let ctx' = insertType ctx nm1 ty2
 		  in let ctx' = insertFact ctx' prp2'
 		  in let trm3' = optTerm' ctx' trm3
 		  in 
 		       optReduce ctx (Let(nm1, obprp, trm3'))
+	      | Let(nm1, (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
+				    (Tuple[Id(LN(None,nm2'));
+					  Id(LN(None,nm3'))])) as obprp), 
+		                    trm3)
+		  when nm2 = nm2' && nm3 = nm3' && nm2 <> nm3  ->
+		  (** Now that assures start out like indefinite
+		      descriptions, one pattern that has cropped up 
+		      occasionally is:
+		        let y = (assure (x,r). phi(x,r) in (x,r) in trm.
+		      When optimizing trm, we should be able to use the
+		      fact that phi(pi0 y, pi1 y) holds, so we do that here.
+                  *)
+		    let subst = insertTermvar emptysubst nm2 (Proj(0,Id(LN(None,nm1))))
+		    in let subst = insertTermvar subst nm3 (Proj(1,Id(LN(None,nm1))))
+                    in let prp2' = substProp subst prp2
+		    in let ctx' = insertType ctx nm1 (TupleTy[ty2;ty3])
+		    in let ctx' = insertFact ctx' prp2'
+		    in let trm3' = optTerm' ctx' trm3
+		    in 
+			 optReduce ctx (Let(nm1, obprp, trm3'))
 	      | _ -> trm'
 	  in (ty2, trm'')
 
@@ -801,7 +824,11 @@ and optProp ctx orig_prp =
 		      optReduceProp ctx (PLet(n,trm,prp2'))
 	      end
 	    in let p' = optProp (insertType ctx n ty) p
-	    in doForallTotal(n, optTy ctx ty, p')
+	    in (match (optTy ctx ty, p') with
+		(_, True) -> True
+	      | (UnitTy, _) -> optReduceProp ctx (PLet(n,EmptyTuple,p'))
+	      | (VoidTy, _) -> True
+	      | (ty',_) -> doForallTotal(n, ty', p'))
 	      
 	| Cexists ((n, ty), p) ->
 	    let (ctx, n) = renameBoundVar ctx n
@@ -895,12 +922,58 @@ and optProp ctx orig_prp =
 		  in let prp2' = substProp subst prp2
 		  in let prp'' = nested_plet nms trms prp2'
 		  in optProp ctx prp''
+	      | PLet(nm1, (Obligation([(nm2,ty2)], prp2, 
+				    Id(LN(None,nm2'))) as obprp), prp3) 
+		  when nm2 = nm2' ->
+		  (** Now that assures start out like indefinite
+		      descriptions, one pattern that has cropped up 
+		      occasionally is:
+		        let y = (assure x:s. phi(x) in x) in prp3.
+		      When optimizing prp3, we should be able to use the
+		      fact that phi(y) holds, so we do that here.
+                  *)
+                  let prp2' = substProp (renaming nm2 nm1) prp2
+		  in let ctx' = insertType ctx nm1 ty2
+		  in let ctx' = insertFact ctx' prp2'
+		  in let prp3' = optProp ctx' prp3
+		  in 
+		       optReduceProp ctx (PLet(nm1, obprp, prp3'))
+
+	      | PLet(nm1, (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
+				    (Tuple[Id(LN(None,nm2'));
+					  Id(LN(None,nm3'))])) as obprp), 
+		                    prp3)
+		  when nm2 = nm2' && nm3 = nm3' && nm2 <> nm3 ->
+		  (** Now that assures start out like indefinite
+		      descriptions, one pattern that has cropped up 
+		      occasionally is:
+		        let y = (assure (x,r). phi(x,r) in (x,r) in trm.
+		      When optimizing trm, we should be able to use the
+		      fact that phi(pi0 y, pi1 y) holds, so we do that here.
+                  *)
+		    let subst = insertTermvar emptysubst nm2 (Proj(0,Id(LN(None,nm1))))
+		    in let subst = insertTermvar subst nm3 (Proj(1,Id(LN(None,nm1))))
+                    in let prp2' = substProp subst prp2
+		    in let ctx' = insertType ctx nm1 (TupleTy[ty2;ty3])
+		    in let ctx' = insertFact ctx' prp2'
+		    in let prp3' = optProp ctx' prp3
+		    in 
+			 optReduceProp ctx (PLet(nm1, obprp, prp3'))
 	      | _ -> prp'
 	  in 
 	       prp''   
     in
+(*
+      print_string ">>> ";
+      print_endline (string_of_proposition orig_prp);
+      print_string "<<< ";
+      print_endline (string_of_proposition result_prop);
+*)	
       if (checkFact ctx result_prop) then
-	True
+	begin
+(*	  print_endline "--> True";  *)
+	  True
+	end
       else
 	result_prop
   with e ->
