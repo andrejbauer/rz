@@ -514,9 +514,9 @@ let rec optTerm ctx orig_term =
       | Let(name1, term1, term2) ->
 	  (** Phase 1: Basic Optimization: optimize subexpressions
 	      and see if the let can be reduced *)
-	  let (ctx, name1) = renameBoundVar ctx name1
-	  in let (ty1, term1') = optTerm ctx term1
-	  in let ctx' = insertTermdef (insertType ctx name1 ty1) name1 term1'
+	  let (ty1, term1') = optTerm ctx term1
+	  in let (ctx', name1) = renameBoundVar ctx name1
+	  in let ctx' = insertTermdef (insertType ctx' name1 ty1) name1 term1'
 	  in let (ty2, term2') = optTerm ctx' term2
 	  in let trm' = optReduce ctx (Let(name1, term1', term2'))
 	  in let trm'' =
@@ -905,16 +905,17 @@ and optProp ctx orig_prp =
 		(PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms))
 
 	| PLet(nm, trm1, prp2) ->
-	    let (ctx, nm) = renameBoundVar ctx nm
-	    in let (ty1, trm1') = optTerm ctx trm1
-	    in let ctx' = insertType ctx nm ty1
+
+	    let (ty1, trm1') = optTerm ctx trm1
+	    in let (ctx', nm) = renameBoundVar ctx nm
+	    in let ctx' = insertType ctx' nm ty1
 	    in let prp2' = optProp ctx' prp2
 	    in let prp' = optReduceProp ctx (PLet(nm, trm1', prp2'))
 	    in let prp'' = 
 	      match prp' with
+		PLet(name1, Tuple trms, prp2) when opProp name1 prp2 ->
 		  (* Turn a let of a tuple into a sequence of lets, if
 		     the tuple is never referred to as a whole *)
-		PLet(name1, Tuple trms, prp2) when opProp name1 prp2 ->
 		  let good = List.map (fun _ -> [name1]) trms
 		  in let nms = freshNameList good [] (occurs ctx) 
 		  in let subst = 
@@ -933,7 +934,7 @@ and optProp ctx orig_prp =
 		      fact that phi(y) holds, so we do that here.
                   *)
                   let prp2' = substProp (renaming nm2 nm1) prp2
-		  in let ctx' = insertType ctx nm1 ty2
+		  in let ctx' = insertType ctx' nm1 ty2
 		  in let ctx' = insertFact ctx' prp2'
 		  in let prp3' = optProp ctx' prp3
 		  in 
