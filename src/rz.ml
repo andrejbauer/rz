@@ -15,8 +15,8 @@ let command_line_options =
   in let flag_data = 
     [("--opt", fSet, Flags.do_opt, "Turn on simplification optimations");
      ("--noopt", fClear, Flags.do_opt,"Turn off simplification optimizations");
-     ("--thin", fSet, Flags.do_thin, "");
-     ("--nthin", fClear, Flags.do_thin, "");
+     ("--thin", fSet, Flags.do_thin, "Strip top type from output");
+     ("--nothin", fClear, Flags.do_thin, "Do not strip top type from output");
      ("--show", fSet, Flags.do_print, "Show output on stdout");
      ("--noshow", fClear, Flags.do_print, "No output to stdout");
      ("--save", fSet, Flags.do_save, "Send output to .mli file");

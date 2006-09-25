@@ -30,7 +30,7 @@ sig
   *)
    
   val tuple : s * s * s
-  (**  Assertion tuple_def =  pi0 tuple =s= a and pi1 tuple =s= b and 
+  (**  Assertion tuple_def =  pi0 tuple =s= a /\ pi1 tuple =s= b /\ 
          pi2 tuple =s= c
   *)
    
@@ -40,25 +40,24 @@ sig
    
   val g : (s -> s) -> s -> s
   (**  Assertion g_def = 
-         forall x:s -> s, x':s -> s, 
-           (forall x'':s, x_1:s,  x'' =s= x_1 -> x x'' =s= x' x_1) ->
-           forall x'':s, x_1:s,  x'' =s= x_1 -> g x x'' =s= x' x_1
+         forall x:s -> s, y:s -> s, 
+           (forall x':s, y':s,  x' =s= y' -> x x' =s= y y') ->
+           forall x':s, y':s,  x' =s= y' -> g x x' =s= y y'
   *)
    
   val application : s -> s
   (**  Assertion application_def = 
-         forall x:s, x':s,  x =s= x' ->
-           application x =s= g (fun x'' : s => a) x'
+         forall x:s, y:s,  x =s= y -> application x =s= g (fun x' : s => a) y
   *)
    
   val description : s * p
   (**  Assertion description_def = 
-         let x' = assure x:s, z:p.
-                      (x : ||s|| and z |= p x and 
-                       (forall (x':||s||), 
-                          forall z':p,  z' |= p x' -> x =s= x')) in (x,z)
-         in pi1 description |= p (pi0 description) and 
-         pi1 x' |= p (pi0 x') and pi0 description =s= pi0 x'
+         pi1 description |= p (pi0 description) /\ 
+         pi0 description =s= (assure x:s, y:p.
+                                  (x : ||s|| /\ y |= p x /\ 
+                                   (forall (x':||s||), 
+                                      forall z:p,  z |= p x' -> x =s= x'))
+                                in x)
   *)
    
   val cases : s
@@ -90,20 +89,18 @@ sig
   *)
    
   val let_term : s * s
-  (**  Assertion let_term_def =  pi0 let_term =s= a and pi1 let_term =s= a
+  (**  Assertion let_term_def =  pi0 let_term =s= a /\ pi1 let_term =s= a
   *)
    
   val subin : s * p
-  (**  Assertion subin_def = 
-         let x' = assure x:p. (x |= p a) in (a,x)
-         in pi1 subin |= p (pi0 subin) and pi1 x' |= p (pi0 x') and 
-         pi0 subin =s= pi0 x'
+  (**  Assertion subin_def =  pi1 subin |= p (pi0 subin) /\ 
+         (assure x:p. (x |= p a) in x) |= p a /\ pi0 subin =s= a
   *)
    
   (** fishy *)
    
   val d : s * p
-  (**  Assertion d_total =  pi0 d : ||s|| and pi1 d |= p (pi0 d)
+  (**  Assertion d_total =  pi0 d : ||s|| /\ pi1 d |= p (pi0 d)
   *)
    
   val subout : s

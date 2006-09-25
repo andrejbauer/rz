@@ -10,15 +10,15 @@ sig
   *)
    
   val a : s * t
-  (**  Assertion a_total =  pi0 a : ||s|| and pi1 a : ||t (pi0 a)||
+  (**  Assertion a_total =  pi0 a : ||s|| /\ pi1 a : ||t (pi0 a)||
   *)
    
   val b : s * t
-  (**  Assertion b_total =  pi0 b : ||s|| and pi1 b : ||t (pi0 b)||
+  (**  Assertion b_total =  pi0 b : ||s|| /\ pi1 b : ||t (pi0 b)||
   *)
    
   
-  (**  Assertion eq =  pi0 a =s= pi0 b and pi1 a =(t (pi0 a))= pi1 b
+  (**  Assertion eq =  pi0 a =s= pi0 b /\ pi1 a =(t (pi0 a))= pi1 b
   *)
 end
 
