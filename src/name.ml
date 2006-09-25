@@ -19,7 +19,7 @@ let mk_word str = N(str, Word)
 
     [string_of_name n] converts a name [n] to its string representation. *)
 let rec string_of_name = function 
-  | N(_, Wild) -> "_"
+  | N(n, Wild) -> n
   | N(str,Word) -> str
   | N("*",_) -> "( * )"
   | N(str,_) -> "(" ^ str ^ ")"
@@ -144,6 +144,7 @@ let (freshNameString, freshModelNameString) =
     [nextString] does for strings. *)
 let nextName = function
     N(nm, Word) -> N(nextString nm, Word)
+  | N(_, Wild) -> N("wild", Word)
   | N(_, fixity) -> N(nextString "op", fixity)
 
 (** [freshName good bad occurs] generates a fresh name. It uses
@@ -154,7 +155,7 @@ let nextName = function
 let freshName good bad occurs =
   let rec find g =
     try
-      List.find (fun nm -> not (List.mem nm bad || occurs nm)) g
+      List.find (fun nm -> not (isWild nm || List.mem nm bad || occurs nm)) g
     with Not_found -> find (List.map nextName g)
   in
     find good

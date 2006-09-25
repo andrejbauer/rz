@@ -331,7 +331,7 @@ and output_prop_11 ppf = function
 
 and output_prop_10 ppf = function
     And (_::_ as lst) -> 
-      output_prop_components output_prop_10 " and " ppf lst
+      output_prop_components output_prop_10 " /\\ " ppf lst
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function

@@ -167,29 +167,24 @@ let fresh3 g1 g2 g3 ?(bad=[]) ctx = freshName3 g1 g2 g3 bad (occursCtx ctx)
 let fresh4 g1 g2 g3 g4 ?(bad=[]) ctx = freshName4 g1 g2 g3 g4 bad (occursCtx ctx)
 let freshList gs ?(bad=[]) ctx = freshNameList gs bad (occursCtx ctx)
 
-let sbp ctx ?(bad=[]) lst =
-  substProp ~occ:(fun nm -> List.mem nm bad || occursCtx ctx nm) (termsSubst lst)
+let sbp nm t p = PLet (nm, t, p)
+let sbt nm t u = Let (nm, t, u)
 
-let sbt ctx lst = substTerm ~occ:(occursCtx ctx) (termsSubst lst)
-
-let reduceApp ctx n t p =
-  match t with
-      EmptyTuple | Id _ | Dagger | Tuple [Id _; Id _] -> sbp ctx [(n, t)] p
-    | _ ->
-	if countProp n p < 2 then
-	  sbp ctx [(n, t)] p
-	else
-	  PLet (n, t, p)
+let rec map3 f lst1 lst2 lst3 =
+  match lst1, lst2, lst3 with
+      [], [], [] -> []
+    | x::xs, y::ys, z::zs -> (f x y z) :: (map3 f xs ys zs)
+    | _ -> failwith "map3"
 
 let pApp ctx p t = match p with
-    PLambda ((n, _), q) -> reduceApp ctx n t q
+    PLambda ((n, _), q) -> sbp n t q
   | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ -> PApp (p, t)
   | PMLambda _ | True | False | IsPer _ | IsPredicate _ | IsEquiv _ | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let pMApp ctx p t = match p with
-    PMLambda ((n, _), q) -> reduceApp ctx n t q
+    PMLambda ((n, _), q) -> sbp n t q
   | IsPer _ | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ ->
       PMApp (p, t)
   | PLambda _ -> failwith ("bad propositional application on " ^ string_of_proposition p)
@@ -204,7 +199,7 @@ let rec deepPApp k ctx p t =
     match p with
 	PMLambda ((n, ty), q) ->
 	  let n' = fresh [n] ~bad:(fvTerm t) ctx in
-	    PMLambda ((n, ty), deepPApp (k-1) ctx (sbp ctx [(n, (id n'))] q) t)
+	    PMLambda ((n, ty), deepPApp (k-1) ctx (sbp n (id n') q) t)
       | _ -> failwith ("invalid deep PApp")
 
 
@@ -228,7 +223,7 @@ let rec translateSet (ctx : ctxElement list) = function
       }
 
   | L.Unit ->
-      let x, y = fresh2 [mk "x"; mk "y"] [mk "y"; mk "z"] ctx in
+      let x, y = fresh2 [mk "x"; mk "y"; mk "u"] [mk "y"; mk "z"; mk "v"] ctx in
       { ty  = UnitTy;
 	tot = makeTot (x, UnitTy) (Equal (id x, EmptyTuple));
 	per = makePer (x, y, UnitTy) (Equal (id x, id y));
@@ -243,40 +238,41 @@ let rec translateSet (ctx : ctxElement list) = function
 	}
 
   | L.Product lst ->
-      let us = List.rev (snd
-	(List.fold_left
-	   (fun (ctx, us) (nm,st) -> (insertTermvar nm st ctx, (nm, translateSet ctx st) :: us))
-	   (ctx, [])
-	   lst)) in
-      let v = TupleTy (List.map (fun (_, u) -> u.ty) us) in
+      let _, nms, ws =
+	List.fold_left
+	  (fun (ctx, nms, ws) (nm,st) -> (insertTermvar nm st ctx, nm::nms, (translateSet ctx st)::ws))
+	  (ctx, [], [])
+	  lst
+      in
+      let n = List.length ws - 1 in
+      let nms = List.rev nms in
+      let ws = List.rev ws in
+      let v = TupleTy (List.map (fun w -> w.ty) ws) in
 	{
 	  ty = v;
 	  tot = (
-	    let t = fresh [mk "t"; mk "u"; mk "v"] ctx in
-	      makeTot (t, v)
-		(And (List.rev (fst (List.fold_left
-	               (fun (ps, (sbst, k)) (nm, w) ->
-			 let t' = Proj (k, id t) in
-			   ((pApp ctx (sbp ctx sbst w.tot) t') :: ps, ((nm,t')::sbst, k + 1))
-		       )
-		       ([], ([], 0))
-		       us
-		))))
+	    let t = fresh [mk "t"; mk "u"; mk "v"] ~bad:nms ctx in
+	      makeTot
+		(t, v)
+		(fst (List.fold_right
+		       (fun nm (p,k) -> PLet (nm, Proj (k, id t), p), k-1)
+		       nms
+		       (And (List.map2 (fun nm w -> pApp ctx w.tot (id nm)) nms ws), n)
+		))
 	  );
 	  per = (
-	      let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] ctx in
+	      let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] ~bad:nms ctx in
+	      let nms' = Name.freshNameList (List.map (fun n -> [n]) nms) (t::u::nms) (occursCtx ctx) in
 		makePer (t, u, v) 
-		  (And (List.rev (fst (List.fold_left
-			      (fun (ps, (sbst, k)) (nm, w) ->
-				let t' = Proj (k, id t) in
-				let u' = Proj (k, id u) in
-				  ((pApp ctx (pApp ctx (sbp ctx sbst w.per) t') u') :: ps, ((nm,t')::sbst, k + 1))
-			      )
-			      ([], ([], 0))
-			      us
-		  ))))
+		  (fst (List.fold_right (fun nm (p,k) -> PLet (nm, Proj (k, id t), p), k-1) nms
+			 (
+			   (fst (List.fold_right (fun nm (p,k) -> PLet (nm, Proj (k, id u), p), k-1) nms'
+				  (And (map3 (fun nm nm' w -> pApp ctx (pApp ctx w.per (id nm)) (id nm')) nms nms' ws), n))
+			   ), n)
+		  ))
 	  )
 	}
+
 
   | L.Exp (nm, s, t) ->
       let {ty=u; per=p} = translateSet ctx s in
@@ -285,7 +281,7 @@ let rec translateSet (ctx : ctxElement list) = function
       let z, z', f, g =
 	fresh4
 	  [mk "x"; mk "y"; mk "z"]
-	  [mk "x'"; mk "y'"; mk "z'"]
+	  [mk "x"; mk "y"; mk "z"]
 	  [mk "f"; mk "g"; mk "h"]
 	  [mk "g"; mk "h"; mk "k"] ~bad:[nm] ctx
       in
@@ -295,14 +291,14 @@ let rec translateSet (ctx : ctxElement list) = function
 		    Forall ((z', u),
 			   Imply (
 			       pApp ctx (pApp ctx p (id z)) (id z'),
-			       pApp ctx (pApp ctx (sbp ctx [(nm, id z)] q) (App (id f, id z))) (App (id f, id z'))
+			       pApp ctx (pApp ctx (sbp nm (id z) q) (App (id f, id z))) (App (id f, id z'))
 			   ))));
 	  per = makePer (f, g, w)
 	    (Forall ((z, u),
 		    Forall ((z', u),
 			   Imply (
 			       pApp ctx (pApp ctx p (id z)) (id z'),
-			       pApp ctx (pApp ctx (sbp ctx [(nm, id z)] q) (App (id f, id z))) (App (id g, id z'))
+			       pApp ctx (pApp ctx (sbp nm (id z) q) (App (id f, id z))) (App (id g, id z'))
 			   ))))
 	}
 
@@ -314,16 +310,16 @@ let rec translateSet (ctx : ctxElement list) = function
 	{
 	  ty = w;
 	  tot = (
-	    let k = fresh [mk "k"; mk "j"; mk "x"] ctx in
+	    let k = fresh [mk "k"; mk "j"; mk "r"] ctx in
 	      makeTot (k,w)
 	      (And [pApp ctx p (Proj (0, id k));
-		    pApp ctx (sbp ctx [(n, Proj (0, id k))] r) (Proj (1, id k))]
+		    pApp ctx (sbp n (Proj (0, id k)) r) (Proj (1, id k))]
 	      ));
 	  per = (
 	    let y, y'  = fresh2 [mk "x"; mk "y"; mk "w"] [mk "x'"; mk "y'"; mk "w'"] ctx in
 	      makePer (y, y', w) (And [
-		  pApp ctx (sbp ctx [(n, Proj (0, id y ))] r) (Proj (1, id y ));
-		  pApp ctx (sbp ctx [(n, Proj (0, id y'))] r) (Proj (1, id y'));
+		  pApp ctx (sbp n (Proj (0, id y )) r) (Proj (1, id y ));
+		  pApp ctx (sbp n (Proj (0, id y')) r) (Proj (1, id y'));
 		  pApp ctx (pApp ctx q (Proj (0, id y))) (Proj (0, id y'))
 	      ])
 	  )
@@ -335,7 +331,7 @@ let rec translateSet (ctx : ctxElement list) = function
 	{ ty = t;
 	  tot = p;
 	  per = (
-	    let x, x' = fresh2 [mk "x"] [mk "y"] ctx in
+	    let x, x' = fresh2 [mk "x"; mk "e"; mk "q"] [mk "y"; mk "e"; mk "q"] ctx in
 	      makePer (x, x', t) (pApp ctx (pMApp ctx (pMApp ctx r (id x)) (id x')) (dagger_of_ty ty))
 	  )
 	}
@@ -427,14 +423,14 @@ and translateTerm ctx = function
   | L.The ((n, s), phi) ->
       let {ty=t; tot=p1; per=p2} = translateSet ctx s in
       let (v,q) = translateProp (insertTermvar n s ctx) phi in
-      let n', z, z' = fresh3 [n] [mk "z"] [mk "z"] ~bad:[n] ctx in
+      let n', z, z' = fresh3 [n] [mk "x"; mk "y"; mk "z"] [mk "x"; mk "y"; mk "z"] ~bad:[n] ctx in
 	Obligation ([(n, t); (z,v)], 
 		   And [pApp ctx p1 (id n);
 			pApp ctx q (id z);
 			Forall ((n',t),
 			       Imply (pApp ctx p1 (id n'),
 				     Forall ((z',v),
-					    Imply (pApp ctx (sbp ctx [(n, id n')] q) (id z'),
+					    Imply (pApp ctx (sbp n (id n') q) (id z'),
 						  pApp ctx (pApp ctx p2 (id n)) (id n')))))],
 		   Tuple [id n; id z]
 		   )
@@ -461,7 +457,7 @@ and translateTerm ctx = function
       let {per=p2} = translateSet ctx st2 in
       let n' = fresh [n] ~bad:[n] ctx in
       let v = translateTerm (insertTermvar n st1 ctx) u in
-      let v' = sbt ctx [(n, id n')] v in
+      let v' = sbt n (id n') v in
 	Let (n, translateTerm ctx t,
 	     Obligation ([],
 			 Forall ((n', ty1),
@@ -477,7 +473,7 @@ and translateTerm ctx = function
       let ty2, q = translateProp ctx r in
       let n' = fresh [n] ~bad:[n] ctx in
       let v = translateTerm (insertTermvar n st1 ctx) u in
-      let v' = sbt ctx [(n, id n')] v in
+      let v' = sbt n (id n') v in
 	Let (n, translateTerm ctx t,
 	     Obligation ([],
 			 Forall ((n', ty1), Imply (
@@ -493,7 +489,7 @@ and translateTerm ctx = function
       let (ty, p') = translateProp (insertTermvar x s ctx) p in
       let t' = translateTerm ctx t in
       let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ~bad:((fvTerm t')) ctx in
-	Tuple[t'; Obligation ([(y, ty)], pApp ctx (sbp ctx [(x,t')] p') (id y), id y)]
+	Tuple[t'; Obligation ([(y, ty)], pApp ctx (sbp x t' p') (id y), id y)]
 
   | L.Subout (t, _) -> Proj (0, translateTerm ctx t)
 
@@ -522,7 +518,7 @@ and translateProp ctx = function
 	  then TopTy
 	  else NamedTy (translateSLN (L.sln_of_ln ln)))
       in
-      let r = fresh [mk "r"] ctx in
+      let r = fresh [mk "r"; mk "u"; mk "t"; mk "w"] ctx in
       let binds = bindings_of_proptype ctx pt in
 	(ty, nest_lambda ctx binds
 	  (PLambda ((r, ty), NamedProp (translateLN ln, id r, List.map (fun (y,_) -> id y) binds))))
@@ -589,7 +585,7 @@ and translateProp ctx = function
       in
 	makeProp (w, TupleTy [t; u])
 	 (And [pApp ctx q (Proj (0, id w));
-	       pApp ctx (sbp ctx [(n, Proj (0, id w))] p') (Proj (1, id w))])
+	       pApp ctx (sbp n (Proj (0, id w)) p') (Proj (1, id w))])
 
   | L.Unique ((n, s), p) -> 
       let {ty=t; tot=q; per=pr} = translateSet ctx s in
@@ -598,10 +594,10 @@ and translateProp ctx = function
 	makeProp (w, TupleTy [t; u])
 	 (And [
 	     pApp ctx q (Proj (0, id w));
-	     pApp ctx (sbp ctx [(n, Proj (0, id w))] p') (Proj (1, id w));
+	     pApp ctx (sbp n (Proj (0, id w)) p') (Proj (1, id w));
 	     Forall ((w', TupleTy [t; u]),
 		    Imply (And [pApp ctx q (Proj (0, id w'));
-				pApp ctx (sbp ctx [(n, Proj (0, id w'))] p') (Proj (1, id w;))],
+				pApp ctx (sbp n (Proj (0, id w')) p') (Proj (1, id w;))],
 			  pApp ctx (pApp ctx pr (Proj (0, id w))) (Proj (0, id w'))))
 	 ])
 
@@ -636,12 +632,12 @@ and translateProp ctx = function
 	    (lb, Some (n, s), p) ->
 	      let {ty=ty2; tot=q} = translateSet ctx s in
 	      let (ty1, p') = translateProp (insertTermvar n s ctx) p in
-	      let x = fresh [mk "r"] ~bad:[n] ctx in
+	      let x = fresh [mk "r"; mk "q"; mk "s"] ~bad:[n] ctx in
 		(lb, Some ty1)::tys, (lb, Some (x, ty1), Some (n, ty2),
 				     And [pApp ctx q (id n); pApp ctx p' (id x)])::arms
           | (lb, None, p) ->
 	      let (ty1, p') = translateProp ctx p in
-	      let x = fresh [mk "r"] ctx in
+	      let x = fresh [mk "r"; mk "q"; mk "s"] ctx in
 		(lb, Some ty1)::tys, (lb, Some (x, ty1), None, pApp ctx p' (id x))::arms
 	)
 	([], [])
@@ -673,17 +669,17 @@ and translateBinding ctx bind =
 and bindings_of_proptype ctx = function
     L.Prop | L.StableProp -> []
   | L.EquivProp s ->
-      let x, y = fresh2 [mk "x"] [mk "y"] ctx in
+      let x, y = fresh2 [mk "x"; mk "y"; mk "z"] [mk "y"; mk "z"; mk "w"] ctx in
       let ms = translateSet ctx s in
 	[(x, ms); (y, ms)]
   | L.PropArrow (m, s, pt) ->
-      let m' = if isWild m then fresh [mk "x"] ctx else m in
+      let m' = if isWild m then fresh [mk "x"; mk "y"; mk "z"; mk "w"] ctx else m in
 	(m', translateSet ctx s) :: (bindings_of_proptype (insertTermvar m' s ctx) pt)
 
 and bindings_of_setkind ctx = function
     L.KindSet -> []
   | L.KindArrow (m, s, knd) ->
-      let m' = if isWild m then fresh [mk "x"] ctx else m in
+      let m' = if isWild m then fresh [mk "x"; mk "y"; mk "z"] ctx else m in
 	(m', translateSet ctx s) :: (bindings_of_setkind (insertTermvar m' s ctx) knd)
 
 and translateTheoryElements ctx = function
