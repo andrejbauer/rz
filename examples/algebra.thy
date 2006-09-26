@@ -128,3 +128,33 @@ thy
       mul x (add y z) = add (mul x y) (mul x z) /\
       mul (add x y) z = add (mul x z) (mul y z).
 end
+
+theory CommutativeRingWithUnit :=
+thy
+  include CommutativeGroup.
+
+  Parameter mul : s -> s -> s.
+
+  Axiom mul_associative:
+    forall x y z : s, mul (mul x y) z = mul x (mul y z).
+
+  Axiom mul_commutative:
+    forall x y : s, mul x y = mul y x.
+
+  Axiom add_mul_distribute:
+    forall x y z : s,
+      mul x (add y z) = add (mul x y) (mul x z) /\
+      mul (add x y) z = add (mul x z) (mul y z).
+end
+
+theory RingHomSig := [S : Ring] -> [R : Ring] ->
+thy
+  Definition homomorphism (f : S.s -> R.s) :=
+    f S.zero = R.zero /\
+    (forall x : S.s, f (S.neg x) = R.neg (f x)) /\
+    (forall x y : S.s, f (S.add x y) = R.add (f x) (f y)).
+
+  Definition s := {f : S.s -> R.s | homomorphism(f)}.
+end
+
+model RingHom : RingHomSig

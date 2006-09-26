@@ -38,8 +38,8 @@ sig
   *)
    
   val tst_and : phi * (psi * rho)
-  (**  Assertion tst_and =  pi0 tst_and |= phi  and 
-         pi0 (pi1 tst_and) |= psi  and pi1 (pi1 tst_and) |= rho 
+  (**  Assertion tst_and =  pi0 tst_and |= phi  /\ 
+         pi0 (pi1 tst_and) |= psi  /\ pi1 (pi1 tst_and) |= rho 
   *)
    
   val tst_imply : phi -> psi
@@ -48,16 +48,15 @@ sig
    
   val tst_iff : (phi -> psi) * (psi -> phi)
   (**  Assertion tst_iff = 
-         (forall x:phi,  x |= phi  -> (pi0 tst_iff) x |= psi ) and 
+         (forall x:phi,  x |= phi  -> (pi0 tst_iff) x |= psi ) /\ 
          (forall y:phi,  y |= psi  -> (pi1 tst_iff) y |= phi )
   *)
    
   val tst_or : [`or0 of phi | `or1 of [`or0 of psi | `or1 of rho]]
-  (**  Assertion tst_or = 
-         (exists x:phi,  tst_or = `or0 x and x |= phi ) cor 
-         (exists x:[`or0 of psi | `or1 of rho],  tst_or = `or1 x and 
-            ((exists x':psi,  x = `or0 x' and x' |= psi ) cor 
-             (exists x':rho,  x = `or1 x' and x' |= rho )))
+  (**  Assertion tst_or =  (exists x:phi,  tst_or = `or0 x /\ x |= phi ) cor 
+         (exists x:[`or0 of psi | `or1 of rho],  tst_or = `or1 x /\ 
+            ((exists x':psi,  x = `or0 x' /\ x' |= psi ) cor 
+             (exists x':rho,  x = `or1 x' /\ x' |= rho )))
   *)
    
   val tst_forall : s -> p
@@ -65,14 +64,14 @@ sig
   *)
    
   val tst_exists : s * p
-  (**  Assertion tst_exists =  pi0 tst_exists : ||s|| and 
+  (**  Assertion tst_exists =  pi0 tst_exists : ||s|| /\ 
          pi1 tst_exists |= p (pi0 tst_exists)
   *)
    
   val tst_exists1 : s * p
-  (**  Assertion tst_exists1 =  pi0 tst_exists1 : ||s|| and 
-         pi1 tst_exists1 |= p (pi0 tst_exists1) and 
-         (forall u:s * p,  pi0 u : ||s|| and pi1 tst_exists1 |= p (pi0 u) ->
+  (**  Assertion tst_exists1 =  pi0 tst_exists1 : ||s|| /\ 
+         pi1 tst_exists1 |= p (pi0 tst_exists1) /\ 
+         (forall u:s * p,  pi0 u : ||s|| /\ pi1 tst_exists1 |= p (pi0 u) ->
             pi0 tst_exists1 =s= pi0 u)
   *)
    
@@ -104,27 +103,29 @@ sig
   type r1 = top
   (**  Assertion r1_def = 
          forall (x:||s||, y:||s||),  r1 x y <->
-           (forall r':p, 
-              not (r' |= p x and (forall r'':p,  not (r'' |= p y))))
+           (forall r:p,  not (r |= p x /\ (forall r':p,  not (r' |= p y))))
   *)
    
   type r2 = top
   (**  Assertion r2_def = 
          forall (x:||s||, y:||s||),  r2 x y <->
            (assure EQUIV((pmfun x' : s(||s||) =>
-                            pmfun y' : s(||s||) => r1 x' y'), s) in r1 x y)
+                            pmfun x'' : s(||s||) =>
+                              (pmfun y' : s(||s||) => r1 x'' y') x''), s)
+              in r1 x y)
   *)
    
   val w : [`foo | `bar of (s * s)]
   (**  Assertion w_total =  w = `foo cor 
-         (exists w':s * s,  w = `bar w' and pi0 w' : ||s|| and pi1 w' : ||s||)
+         (exists w'':s * s,  w = `bar w'' /\ pi0 w'' : ||s|| /\ 
+            pi1 w'' : ||s||)
   *)
    
   val tst_pcase : [`bar of p | `foo of p]
   (**  Assertion tst_pcase = 
          match tst_pcase, w with
            `bar (r' : p), `bar (u : s * s) =>
-              pi0 u : ||s|| and pi1 u : ||s|| and r' |= p (pi0 u) 
+              pi0 u : ||s|| /\ pi1 u : ||s|| /\ r' |= p (pi0 u) 
          | `foo (r' : p), `foo  => r' |= p x0 
          
   *)

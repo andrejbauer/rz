@@ -154,6 +154,12 @@ let rec is_stable = function
   | EquivProp _ -> true
   | PropArrow (_, _, pt) -> is_stable pt
 
+let rec is_equiv = function
+    Prop -> false
+  | StableProp -> false
+  | EquivProp _ -> true
+  | PropArrow (_, _, pt) -> is_equiv pt
+
 (***************************************************)
 (* Constructors-with-bindings as curried functions *)
 (***************************************************)
