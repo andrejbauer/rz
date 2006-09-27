@@ -97,11 +97,15 @@ let rec process = function
   | (fn::fns, infer_state, translate_state, thin_state, opt_state) ->
       let basename = Filename.chop_extension fn in
 
-      let thy = read fn in
+      let thy_elts = read fn in
+	
+      let thy = Syntax.Value(Syntax.Parameter,
+			     [([Name.mk_word(String.capitalize basename)],
+			      Syntax.Theory thy_elts)])
 
-      let (infer_state', lthy) = 
+      in let (infer_state', lthys) = 
 	try
-	  Newinfer.annotateTheoryElems infer_state thy 
+	  Newinfer.annotateTheoryElems infer_state [thy] 
 	with 
 	    Error.TypeError msgs -> 
 	      (Error.printErrors msgs;
@@ -109,13 +113,10 @@ let rec process = function
 
       in let _ = 
 	(if (! Flags.do_dumpinfer) then
-          let print_item tplvl = 
-	    (print_endline (Logic.string_of_theory_element tplvl);
-	     print_endline "")
-	  in (print_endline "----------------";
+	    (print_endline "----------------";
 	      print_endline "After Inference:";
 	      print_endline "----------------";
-	      List.iter print_item lthy;
+	      print_endline (Logic.string_of_theory_elements lthys);
 	      print_string "\n\n\n";
 	      Error.printAndResetWarnings())
 	else ()) in
@@ -125,7 +126,7 @@ let rec process = function
           else () in
 *)
       let (spec,translate_state') = 
-	Translate.translateToplevel translate_state lthy in
+	Translate.translateToplevel translate_state lthys in
 
 (*      let _ = if (!Flags.do_print) 
              then print_string ("[Thinning " ^ fn ^ "]\n") 
@@ -144,8 +145,14 @@ let rec process = function
 	(try ( Opt.optToplevels opt_state spec ) with
 	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
 
+      let spec3 = 
+	match spec2 with
+	    [Outsyn.Spec(_, Outsyn.ModulSpec(Outsyn.Signat elts), _)] ->
+	      elts
+	  | _ -> failwith "Cannot unwrap translated code"
+
       (** The output file replaces the .thr extension by .mli *)
-      let outfile = basename ^ ".mli" in
+      in let outfile = basename ^ ".mli" in
 
       (** Write the output file 
       *)
@@ -153,7 +160,7 @@ let rec process = function
  	        let outb = Buffer.create 1024 in
 		let formatter = Format.formatter_of_buffer outb in
  		let outchan = open_out outfile in
-		let _ = send_to_formatter formatter spec2 in
+		let _ = send_to_formatter formatter spec3 in
 		let _ = Buffer.output_buffer outchan outb in
 		close_out outchan
               else () in
@@ -161,7 +168,7 @@ let rec process = function
       (** Optionally display to stdout as well.
       *)
       let _ = if (!Flags.do_print) then
-	       send_to_formatter Format.std_formatter spec2
+	       send_to_formatter Format.std_formatter spec3
               else ()  in
 
       (** We put these messages after any displayed code so that
