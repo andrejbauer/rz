@@ -1261,13 +1261,10 @@ and annotateTheoryElem cntxt elem =
             | (nms,expr)::rest ->
 		begin
 		  let res = annotateExpr cntxt expr 
+	          in let elems = List.map (process res) nms
+		  in let cntxt' = LR.updateContextForElems cntxt elems
 		  in 
-		    (List.map (process res) nms) @ 
-		      (* XXX: ought to extend the context, since in Coq
-		         Parameter (a : Set) (x : a).
-		         is perfectly legal.
-                      *)
-		      (loop cntxt rest)
+		       elems @ (loop cntxt' rest)
 		end
 	  in 
 	       loop cntxt values
