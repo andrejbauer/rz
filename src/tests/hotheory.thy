@@ -1,39 +1,39 @@
-theory T := thy
+Definition T := thy
   Parameter a : Set.
 # THE FOLLOWING LINE CRASHES IT
 #  Parameter t : a. # This line crashes it
-end
+end.
 
-theory F (M : T) := thy end
+Definition F (M : T) := thy end.
 
-theory G := [M : T] -> thy
+Definition G := [M : T] -> thy
   include F(M).
-end
+end.
 
-theory H := [M : T] -> thy
+Definition H := [M : T] -> thy
   include F(M).
   Parameter x : M.a.
-end
+end.
 
-model M0 : T
+Parameter M0 : T.
 
-model G0 : G
+Parameter G0 : G.
 
-model H0 : H
+Parameter H0 : H.
 
-theory PSI (X:G) :=  thy
+Definition PSI (X:G) :=  thy
 #  Definition y := X(M0).x.  # And what should this be?
-end
+end.
 
-theory RHO (X:H) := 
+Definition RHO (X:H) := 
 thy
 #  Definition y := X(M0).xx. # This is weird
 #  Definition z := X(M0).x.  # This shouldn't die.
-end
+end.
 
-theory PHI := [X:G] -> thy end
+Definition PHI := [X:G] -> thy end.
 
-model Q : PSI(G0) # ok
-model R : PSI(H0) # ok
-# model S : RHO(G0) # not ok, ERROR
-model W : RHO(H0) # ok
+Parameter Q : PSI(G0). # ok
+Parameter R : PSI(H0). # ok
+# Parameter S : RHO(G0). # not ok, ERROR
+Parameter W : RHO(H0). # ok

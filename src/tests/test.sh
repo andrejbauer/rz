@@ -1,7 +1,9 @@
 #!/bin/bash
 
 RZ=../rz
-DIFF=diff
+
+DIFF="diff --side-by-side -W200 -w"
+
 BASENAME=basename
 
 VALIDATE=0
@@ -23,8 +25,8 @@ for FILE in *.thy
 	  echo "FAILED:  $FILE"
 	  if [ $VALIDATE = "1" ]
 	      then
-	      echo ---- $DIFF --side-by-side $FILE.out $FILE.ref ----
-	      $DIFF --side-by-side -W200 $FILE.out $FILE.ref
+	      echo ---- $DIFF $FILE.out $FILE.ref ----
+	      $DIFF $FILE.out $FILE.ref
 	      echo -----------------------------------
 	      read -p "Validate $FILE.out as new $FILE.ref? (y/n) [n] " ans
 	      if [ "$ans" = "y" -o "$ans" = "Y" ]

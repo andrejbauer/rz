@@ -1,2 +1,3 @@
-theory Empty := thy
-end
+Definition Empty := thy
+end.
+

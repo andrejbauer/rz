@@ -1,13 +1,13 @@
-theory A := thy
+Definition A := thy
        Parameter a : Set.
-end
+end.
 
-theory B := thy
+Definition B := thy
        include A.
        Parameter b : Set.
-end
+end.
 
-theory C := thy
+Definition C := thy
        include B.
        Definition d := a * b.
-end
+end.

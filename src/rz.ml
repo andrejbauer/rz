@@ -13,10 +13,10 @@ let command_line_options =
   let    fSet = ((fun x -> Arg.Set x), true)
   in let fClear = ((fun x -> Arg.Clear x), false)
   in let flag_data = 
-    [("--opt", fSet, Flags.do_opt, "Turn on simplification optimations");
+    [("--opt", fSet, Flags.do_opt, "Turn on simplification optimations (requires trimming)");
      ("--noopt", fClear, Flags.do_opt,"Turn off simplification optimizations");
-     ("--thin", fSet, Flags.do_thin, "Strip top type from output");
-     ("--nothin", fClear, Flags.do_thin, "Do not strip top type from output");
+     ("--thin", fSet, Flags.do_thin, "Remove trivial realizers");
+     ("--nothin", fClear, Flags.do_thin, "Leave trivial realizers");
      ("--show", fSet, Flags.do_print, "Show output on stdout");
      ("--noshow", fClear, Flags.do_print, "No output to stdout");
      ("--save", fSet, Flags.do_save, "Send output to .mli file");
@@ -81,7 +81,7 @@ let parse str = Coq_parser.toplevels Coq_lexer.token (Lexing.from_string str);;
 (* Helper function:  write the final output to a pretty-printing
    formatter. *)
 let send_to_formatter ppf toplevels =
-   List.iter (fun s -> Pp.output_toplevel ppf s) toplevels;;
+   Pp.output_toplevel ppf toplevels
 
 
 (** Main function for translating theories into code.  Takes a
@@ -95,11 +95,13 @@ let send_to_formatter ppf toplevels =
 let rec process = function
     ([], _, _, _, _) -> ()
   | (fn::fns, infer_state, translate_state, thin_state, opt_state) ->
+      let basename = Filename.chop_extension fn in
+
       let thy = read fn in
 
       let (infer_state', lthy) = 
 	try
-	  Newinfer.annotateToplevels infer_state thy 
+	  Newinfer.annotateTheoryElems infer_state thy 
 	with 
 	    Error.TypeError msgs -> 
 	      (Error.printErrors msgs;
@@ -108,7 +110,7 @@ let rec process = function
       in let _ = 
 	(if (! Flags.do_dumpinfer) then
           let print_item tplvl = 
-	    (print_endline (Logic.string_of_toplevel tplvl);
+	    (print_endline (Logic.string_of_theory_element tplvl);
 	     print_endline "")
 	  in (print_endline "----------------";
 	      print_endline "After Inference:";
@@ -117,21 +119,33 @@ let rec process = function
 	      print_string "\n\n\n";
 	      Error.printAndResetWarnings())
 	else ()) in
-
-
+(*
+      let _ = if (!Flags.do_print) 
+             then print_string ("[Translating " ^ fn ^ "]\n") 
+          else () in
+*)
       let (spec,translate_state') = 
 	Translate.translateToplevel translate_state lthy in
+
+(*      let _ = if (!Flags.do_print) 
+             then print_string ("[Thinning " ^ fn ^ "]\n") 
+          else () in
+*)
 
       let (spec, thin_state') =
 	try (Thin.thinToplevels thin_state spec) with
 	    (Thin.Impossible s) as exn -> (print_endline s; raise exn) in
 
+(*      let _ = if (!Flags.do_print) 
+             then print_string ("[Optimizing " ^ fn ^ "]\n") 
+          else () in
+*)
       let (spec2,opt_state') = 
 	(try ( Opt.optToplevels opt_state spec ) with
 	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
 
       (** The output file replaces the .thr extension by .mli *)
-      let outfile = (Filename.chop_extension fn) ^ ".mli" in
+      let outfile = basename ^ ".mli" in
 
       (** Write the output file 
       *)
@@ -184,8 +198,8 @@ try
   process (List.rev !filenames, 
 	   Logicrules.emptyContext, 
 	   Translate.emptyCtx, 
-	   Thin.emptyCtx,
-	   Opt.emptyCtx)
+	   Outsynrules.emptyContext,   (* Thin *)
+	   Outsynrules.emptyContext)   (* Opt *)
 with
     Arg.Bad s
   | Arg.Help s -> prerr_endline s

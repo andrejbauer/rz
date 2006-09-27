@@ -19,20 +19,24 @@ newinfer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo
 newinfer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
 opt-bak.cmo: outsyn.cmo name.cmo flags.cmo 
 opt-bak.cmx: outsyn.cmx name.cmx flags.cmx 
-opt.cmo: outsyn.cmo name.cmo flags.cmo 
-opt.cmx: outsyn.cmx name.cmx flags.cmx 
+opt.cmo: outsynrules.cmo outsyn.cmo name.cmo flags.cmo 
+opt.cmx: outsynrules.cmx outsyn.cmx name.cmx flags.cmx 
 outsyn-bad.cmo: name.cmo logic.cmo 
 outsyn-bad.cmx: name.cmx logic.cmx 
 outsyn.cmo: name.cmo logic.cmo 
 outsyn.cmx: name.cmx logic.cmx 
+outsynrules.cmo: outsyn.cmo name.cmo 
+outsynrules.cmx: outsyn.cmx name.cmx 
 possibility.cmo: logic.cmo 
 possibility.cmx: logic.cmx 
 pp.cmo: outsyn.cmo name.cmo flags.cmo 
 pp.cmx: outsyn.cmx name.cmx flags.cmx 
-rz.cmo: translate.cmo thin.cmo pp.cmo opt.cmo newinfer.cmo message.cmo \
-    logicrules.cmo logic.cmo flags.cmo error.cmo coq_parser.cmi coq_lexer.cmo 
-rz.cmx: translate.cmx thin.cmx pp.cmx opt.cmx newinfer.cmx message.cmx \
-    logicrules.cmx logic.cmx flags.cmx error.cmx coq_parser.cmx coq_lexer.cmx 
+rz.cmo: translate.cmo thin.cmo pp.cmo outsynrules.cmo opt.cmo newinfer.cmo \
+    message.cmo logicrules.cmo logic.cmo flags.cmo error.cmo coq_parser.cmi \
+    coq_lexer.cmo 
+rz.cmx: translate.cmx thin.cmx pp.cmx outsynrules.cmx opt.cmx newinfer.cmx \
+    message.cmx logicrules.cmx logic.cmx flags.cmx error.cmx coq_parser.cmx \
+    coq_lexer.cmx 
 rzinfer.cmo: newinfer.cmo message.cmo logicrules.cmo logic.cmo flags.cmo \
     error.cmo coq_parser.cmi coq_lexer.cmo 
 rzinfer.cmx: newinfer.cmx message.cmx logicrules.cmx logic.cmx flags.cmx \
@@ -41,8 +45,8 @@ syntax.cmo: name.cmo
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 
 tex.cmx: logic.cmx 
-thin.cmo: outsyn.cmo name.cmo flags.cmo 
-thin.cmx: outsyn.cmx name.cmx flags.cmx 
+thin.cmo: outsynrules.cmo outsyn.cmo name.cmo flags.cmo 
+thin.cmx: outsynrules.cmx outsyn.cmx name.cmx flags.cmx 
 topty.cmo: outsyn.cmo name.cmo flags.cmo 
 topty.cmx: outsyn.cmx name.cmx flags.cmx 
 translate.cmo: outsyn.cmo name.cmo logic.cmo 

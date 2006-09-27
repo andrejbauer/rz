@@ -1,4 +1,5 @@
-theory T :=
+Definition T :=
 thy
   Parameter s : Set.
-end
+end.
+

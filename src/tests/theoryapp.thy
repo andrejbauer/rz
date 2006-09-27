@@ -1,12 +1,12 @@
-theory A :=
+Definition A :=
 thy
         Parameter a : Set.
 	Parameter n : a.
 	Definition m: a := n. 
 	Axiom q : forall (x:a), x=x. 
-end
+end.
 
-theory B :=
+Definition B :=
 thy
         Parameter a : Set.
 	Parameter n p : a.
@@ -16,16 +16,16 @@ thy
 	     `no => p 
 	     | `yes (z:a) => ((fun x:a => x)z,p).0
            end.
-end
+end.
 
-theory C := 
+Definition C := 
        fun (M : A) => 
        	   thy 
 	       Definition b := M.a.
 	       Definition c := M.a.
-      	   end
+      	   end.
 
-model X : B
+Parameter X : B.
 
-theory D := C X
+Definition D := C X.
 

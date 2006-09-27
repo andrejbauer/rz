@@ -458,21 +458,24 @@ and output_assertions ppf = function
 	fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
 
 and output_spec ppf = function
-    ValSpec (nm, ty, assertions) ->
+    Spec(nm, ValSpec ty, assertions) ->
       fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
       (Name.string_of_name nm)   output_ty ty  output_assertions assertions
-  | TySpec (tynm, None, assertions) -> 
+  | Spec(tynm, TySpec None, assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
 	(Name.string_of_name tynm)   output_assertions assertions
-  | TySpec (tynm, Some ty, assertions) -> 
+  | Spec(tynm, TySpec (Some ty), assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s =@ %a@]%a@]"  
 	(Name.string_of_name tynm)   output_ty ty   output_assertions assertions
-  | AssertionSpec assertion -> output_assertions ppf [assertion]
+  | Spec(nm, ModulSpec sgntr, assertions) ->
+      fprintf ppf "@[<v>@[module %s : %a@]%a@]"
+	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
+  | Spec(nm, SignatSpec sgntr, assertions) ->
+      fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
+	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
+  | Assertion assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
       fprintf ppf "(**%s*)" cmmnt
-  | ModulSpec (nm, sgntr) ->
-      fprintf ppf "@[module %s : %a@]"   
-	(Name.string_of_name nm)   output_signat sgntr
 
 and output_specs ppf = function
     [] -> ()
@@ -491,6 +494,8 @@ and output_signat_no_sigapp ppf = function
          output_signat_sigapp sgnt1
          output_modul mdl
          output_signat_no_sigapp sgnt2
+  | SignatProj (mdl, nm) -> 
+      fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 
 and output_signat_sigapp ppf = function
     SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
@@ -501,18 +506,22 @@ and output_signat_sigapp ppf = function
   | SignatApp (sgnt1,mdl,sgnt2) ->
       fprintf ppf "@[%a(%a)@]"
          output_signat_sigapp sgnt1    output_modul mdl
+  | SignatProj (mdl, nm) -> 
+      fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 
 and output_signat ppf = function
     SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
   | SignatFunctor ((m,sgnt1),sgnt2) ->
-      fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
+      fprintf ppf "@[<v>functor (%s : %a) ->@ %a@]"
          (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
   | (SignatApp _) as sgnt ->
       if ( ! Flags.do_sigapp ) then
         output_signat_no_sigapp ppf sgnt
       else
         output_signat_sigapp ppf sgnt
+  | SignatProj (mdl, nm) -> 
+      fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 
 and output_modul ppf = function
     ModulName s -> fprintf ppf "%s" (Name.string_of_name s)
@@ -520,14 +529,27 @@ and output_modul ppf = function
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name s)
   | ModulApp (mdl1, mdl2) -> 
       fprintf ppf "%a(%a)" output_modul mdl1   output_modul mdl2
+  | ModulStruct defs -> 
+      fprintf ppf "@[<v>struct@ %a@ end]"  output_defs defs
 
-and output_toplevel ppf = function
-    Signatdef (nm, signat) ->
-      fprintf ppf "@[<v>module type %s = @,@[<v>%a@]@]@.@."  
-	  (Name.string_of_name nm)   output_signat signat
-  | TopComment cmmnt -> 
-      fprintf ppf "@[(**%s*)@]@." cmmnt
-  | TopModul (mdlnm, signat) ->
-      fprintf ppf "@[module %s : %a@]@.@."
-	  (Name.string_of_name mdlnm)   output_signat signat
-	
+and output_defs ppf = function
+    [] -> ()
+  | [def] -> output_def ppf def
+  | def::defs -> 
+      fprintf ppf "%a@, @,%a"   output_def def   output_defs defs
+
+and output_def ppf = function
+    DefType(nm,ty) -> 
+      fprintf ppf "type %a = %a"  output_name nm  output_ty ty
+  | DefTerm(nm,ty,trm) ->
+      fprintf ppf "let %a : %a = %a"  
+	output_name nm   output_ty ty   output_term trm
+  | DefModul(nm,signat,mdl) ->
+      fprintf ppf "module %a = %a : %a"
+	output_name nm   output_modul mdl   output_signat signat
+  | DefSignat(nm,signat) ->
+      fprintf ppf "@[<v>module type %a = @,@[<v>%a@]@]@.@." 
+	output_name nm   output_signat signat
+
+and output_toplevel ppf body =
+  fprintf ppf "@[<v>%a@]@.@."  output_specs body

@@ -50,9 +50,9 @@ let isUnbound cntxt nm =
   not (NameMap.mem nm cntxt.bindings)
 
 
-(******************)
-(* {3 Insertion } *)
-(******************)
+(*****************)
+(* {3 Insertion} *)
+(*****************)
 
 let rec insertImplicits cntxt names info = 
   let infos = List.map (fun _ -> info) names
@@ -106,6 +106,8 @@ let rec updateContextForElem cntxt = function
       insertTermVariable cntxt nm ty trmopt
   | Declaration(nm, DeclModel(thry)) -> 
       insertModelVariable cntxt nm thry
+  | Declaration(nm, DeclTheory(thry,tknd)) ->
+      insertTheoryVariable cntxt nm thry tknd
   | Declaration(nm, DeclSentence _) ->
       begin
 	(* We need to check for bound variable shadowing and appropriate
@@ -118,8 +120,6 @@ let rec updateContextForElem cntxt = function
 	cntxt 
       end 
   | Comment _   -> cntxt
-  | Declaration(_, DeclTheory _) -> 
-      failwith "updateContextForElem : DeclTheory"
 
 and updateContextForElems cntxt elems = 
   List.fold_left updateContextForElem cntxt elems
@@ -313,6 +313,7 @@ let rec modelToTheory cntxt = function
 	      in substTheory subst thry2
 	  | _ -> failwith "modelToTheory 4"
       end
+  | ModelOf thry -> thry
 	
 
 (** Expand out any top-level definitions or function
@@ -329,6 +330,8 @@ let rec hnfSet cntxt = function
 
   | Basic (SLN ( Some mdl, nm), _) as orig_set -> 
       begin
+        (** XXX: Shouldn't modelToTheory be applying the context renaming
+	    if this is a model variable? *)
 	match hnfTheory cntxt (modelToTheory cntxt mdl) with
 	    Theory elems -> 
 	      begin

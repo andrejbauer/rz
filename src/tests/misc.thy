@@ -1,4 +1,4 @@
-theory T := thy
+Definition T := thy
        Parameter s : Set.
 
        Parameter t : s -> Set.
@@ -27,25 +27,25 @@ theory T := thy
        Definition yy2 := yy.2.
 
        Definition wwcd := ww c d.
-end
+end.
 
-Module Type U.
+Definition U := thy
 
    Parameter s : Set.
    Definition t := s.
 
    Parameter n : [x : s] * s .
 
-End U.
+end.
 
-theory Iteration :=
+Definition Iteration :=
 thy
   Parameter (a : Set).
   Parameter (x:a).
   Parameter s : a -> a.
-end
+end.
 
-theory DenseLinearOrder :=
+Definition DenseLinearOrder :=
 thy
   Parameter s : Set.
   Parameter (<) : s -> s -> Prop.
@@ -67,9 +67,9 @@ thy
   Axiom dense:
         forall x y, x < y -> exists z, x < z /\ z < y.
 
-end
+end.
 
-theory Sums :=
+Definition Sums :=
 thy
 
 	Parameter s : Set.
@@ -89,9 +89,9 @@ thy
 
 	Definition e : s := d.0.
 
-end
+end.
 
-theory TestSubset :=
+Definition TestSubset :=
 thy
   Parameter s : Set.
   Parameter p : s -> Prop.
@@ -108,9 +108,9 @@ thy
   Axiom bar : forall x:s,  p(x) -> q(x).
   Axiom baz : forall x : t, r x x.
 
-end
+end.
 
-theory Choice :=
+Definition Choice :=
 thy
   Parameter (a b : Set).
   Parameter r : a -> b -> Prop.
@@ -124,10 +124,10 @@ thy
   Axiom intensionalChoice :
    (forall x, exists y, r x y) -> exists (f : (rz a) -> b) , forall (x' : rz a) , r (rz x') (f x').
 
-end
+end.
 
 
-theory Quotients :=
+Definition Quotients :=
 thy
   Parameter s : Set.
   Parameter (<<) : s -> s -> Stable.
@@ -149,4 +149,5 @@ thy
 
   Axiom bar : forall (f : s -> s) (a : s) e, r a (let [x] = e in f x).
 
-end
+end.
+

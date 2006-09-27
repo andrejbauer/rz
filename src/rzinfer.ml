@@ -101,7 +101,7 @@ let rec process = function
 
       let (infer_state', lthy) = 
 	try
-	  Newinfer.annotateToplevels infer_state thy 
+	  Newinfer.annotateTheoryElems infer_state thy 
 	with 
 	    Error.TypeError msgs -> 
 	      (Error.printErrors msgs;
@@ -110,7 +110,7 @@ let rec process = function
       in let _ = 
 	(if (! Flags.do_dumpinfer) then
           let print_item tplvl = 
-	    (print_endline (Logic.string_of_toplevel tplvl);
+	    (print_endline (Logic.string_of_theory_element tplvl);
 	     print_endline "")
 	  in (print_endline "----------------";
 	      print_endline "After Inference:";

@@ -32,24 +32,25 @@ type model =
     | ModelName of model_name
     | ModelProj of model * model_name
     | ModelApp of model * model
+    | ModelOf of theory
 
 (** names of components inside models *)
-type longname = LN of model option * name
+and longname = LN of model option * name
 
 (** short names of sets *)
-type set_name = name
+and set_name = name
 
 (** long names of sets *)
-type set_longname = SLN of model option * set_name
+and set_longname = SLN of model option * set_name
 
 (** names of theories *)
-type theory_name = S.theory_name
+and theory_name = S.theory_name
 
 (** sorts of sentences *)
-type sentence_type = S.sentence_type
+and sentence_type = S.sentence_type
 
 (** a binding in a quantifier or lambda *)
-type binding = name * set
+and binding = name * set
 
 (** a binding in a parameterized theory *)
 and model_binding = model_name * theory
@@ -240,16 +241,17 @@ let rec string_of_model = function
   | ModelApp (mdl1, mdl2) ->
       string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
   | ModelProj (mdl, nm) -> string_of_model mdl ^ "." ^ string_of_name nm
+  | ModelOf thry -> "ModelOf " ^ string_of_theory thry ^ ""
 
-let rec string_of_ln = function
+and string_of_ln = function
     LN (None, nm) -> string_of_name nm
   | LN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ (string_of_name nm)
 
-let rec string_of_sln = function
+and string_of_sln = function
     SLN (None, nm) -> string_of_name nm
   | SLN (Some mdl, nm) -> (string_of_model mdl) ^ "."  ^ string_of_name nm
 
-let rec string_of_set = function
+and string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
   | Basic (lname, _) -> string_of_sln lname
@@ -399,8 +401,6 @@ and string_of_kind = function
 	"(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") => " ^
 	  string_of_kind knd
 
-
-
 and string_of_theory = function
     Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
   | TheoryName thrynm -> string_of_name thrynm
@@ -512,6 +512,9 @@ let theory_name_of_name = model_name_of_name
 (** Free-variable (name) functions *)
 (***********************************)
 
+let fnOpt fnFun = function
+    None -> NameSet.empty
+  | Some x -> fnFun x
 
 let rec fnSet = function
     Empty | Unit  -> NameSet.empty
@@ -629,6 +632,47 @@ and fnModel = function
     ModelName nm -> NameSet.singleton nm
   | ModelProj (mdl, _) -> fnModel mdl
   | ModelApp (mdl1, mdl2) -> NameSet.union (fnModel mdl1) (fnModel mdl2)
+  | ModelOf thry -> fnTheory thry
+
+and fnTheory = function
+    TheoryName nm -> NameSet.singleton nm
+  | TheoryApp(thry,mdl) ->
+      NameSet.union (fnTheory thry) (fnModel mdl)
+  | TheoryLambda((nm,thry1),thry2) 
+  | TheoryArrow((nm,thry1),thry2) ->
+      NameSet.union (NameSet.remove nm (fnTheory thry1)) (fnTheory thry2)
+  | Theory elems -> fnElems elems
+
+and fnElems = function
+    [] -> NameSet.empty
+  | Comment _ :: rest -> fnElems rest
+  | Declaration(nm, decl) :: rest ->
+      NameSet.union (fnDecl decl) (NameSet.remove nm (fnElems rest))
+
+and fnDecl = function
+    DeclProp(popt, pt) -> NameSet.union (fnOpt fnProp popt) (fnProptype pt)
+  | DeclSet(sopt, knd) -> NameSet.union (fnOpt fnSet sopt) (fnKind knd)
+  | DeclTerm(topt, ty) -> NameSet.union (fnOpt fnTerm topt) (fnSet ty)
+  | DeclModel thry     -> fnTheory thry
+  | DeclTheory(thry,tknd) -> NameSet.union (fnTheory thry) (fnTheoryKind tknd)
+  | DeclSentence([], prp) -> fnProp prp
+  | DeclSentence((nm,thy)::mbnds, prp) ->
+      NameSet.union (fnTheory thy) 
+	(NameSet.remove nm (fnDecl(DeclSentence(mbnds,prp))))
+
+and fnTheoryKind = function
+    ModelTheoryKind -> NameSet.empty
+  | TheoryKindArrow((nm,thry),tknd) ->
+      NameSet.union (fnTheory thry) (NameSet.remove nm (fnTheoryKind tknd))
+
+and fnKind = function
+    KindSet -> NameSet.empty
+  | KindArrow(nm,ty,knd) ->
+      NameSet.union (fnSet ty) (NameSet.remove nm (fnKind knd))
+
+
+    
+      
 
 (***************************)
 (** Substitution functions *)
@@ -890,6 +934,7 @@ and substModel sbst = function
   | ModelProj (mdl, lbl) -> ModelProj(substModel sbst mdl, lbl)
   | ModelApp (mdl1, mdl2) -> ModelApp(substModel sbst mdl1,
 				     substModel sbst mdl2)
+  | ModelOf thry -> ModelOf (substTheory sbst thry)
 
 and substSetkind sbst = function
     KindArrow(y, st, k) -> 
@@ -905,7 +950,7 @@ and substProptype sbst = function
       let (sbst', y') = updateBoundName sbst y in
 	PropArrow(y', substSet sbst st, substProptype sbst' prpty)
 	  
-let rec substTheory sbst = function 
+and substTheory sbst = function 
     Theory elts       -> Theory (substTheoryElts sbst elts)
   | TheoryName thrynm -> TheoryName thrynm
   | TheoryArrow ((y, thry1), thry2) ->

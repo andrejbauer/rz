@@ -37,7 +37,11 @@ type inferResult =
   | ResProp     of L.proposition * L.proptype
   | ResModel    of L.model       * L.theory 
   | ResTheory   of L.theory      * L.theorykind
+  | ResSentence of L.model_binding list * L.proposition
 
+type genericBinding =
+      TB of L.binding
+    | MB of L.model_binding
 
 let rec annotateExpr cntxt orig_expr = 
   try
@@ -180,6 +184,7 @@ let rec annotateExpr cntxt orig_expr =
 				  E.specificateError msgs
 				    (E.theoryMismatchMsg expr2 thry1a thry2)
 			  in let _ = if (reqs <> []) then
+			      (* XXX *)
 			      failwith "UNIMPLEMENTED annotateExpr/App/ResModel"
 			  in let subst = L.insertModelvar L.emptysubst nm1 mdl2
 			  in let thry = L.substTheory subst thry1b
@@ -203,6 +208,7 @@ let rec annotateExpr cntxt orig_expr =
 				  E.specificateError msgs
 				    (E.theoryMismatchMsg expr2 thry1a thry2)
 			  in let _ = if (reqs <> []) then
+			      (* XXX *)
 			      failwith "UNIMPLEMENTED annotateExpr/App/ResTheory"
 			  in let sub = L.insertModelvar L.emptysubst nm3 mdl2
 			  in let tk = L.substTheoryKind sub tk1
@@ -251,7 +257,22 @@ let rec annotateExpr cntxt orig_expr =
 		      | _ -> E.notWhatsExpectedInError 
 			  expr2 "proposition, set, or term" orig_expr
 		  end
-	      | _ -> E.innerModelBindingError orig_expr
+	      | (cntxt', mbnds, []) ->
+		  begin
+		    match annotateExpr cntxt' expr2 with 
+			ResTheory (thry, tknd) ->
+			  ResTheory(L.foldTheoryLambda mbnds thry,
+				   L.foldTheoryKindArrow mbnds tknd)
+		      | _ -> 
+			  E.tyGenericError 
+			    ("Cannot have model parameters in " ^ 
+				string_of_expr orig_expr)
+		  end
+	      | _ ->
+		  (* Non-empty model and term binding lists *)
+		  E.tyGenericError
+		    ("Cannot have model and term parameters in " ^ 
+			string_of_expr orig_expr)
 	  end
       | Arrow (nm, expr1, expr2)  ->
 	  begin
@@ -269,8 +290,9 @@ let rec annotateExpr cntxt orig_expr =
 		| ResKind _ ->
 		    E.noPolymorphismError orig_expr
 		| ResTerm _ | ResSet (_, L.KindArrow _) 
-		| ResModel _ | ResTheory _ 
-		| ResProp (_, (L.PropArrow _ | L.EquivProp _) ) ->
+		| ResModel _ | ResTheory(_, L.TheoryKindArrow _)
+		| ResProp (_, (L.PropArrow _ | L.EquivProp _) )
+		| ResSentence _ ->
 		    badDomainError()
 		| ResProp (prp1, (L.Prop | L.StableProp)) -> 
 		    let (cntxt, nm) = LR.renameBoundVar cntxt nm in
@@ -313,6 +335,18 @@ let rec annotateExpr cntxt orig_expr =
 			| _ ->
 			    E.notWhatsExpectedInError expr2
 			      "set, proposition-type, or kind" orig_expr
+		    end
+		| ResTheory(thry1, L.ModelTheoryKind) ->
+		    begin
+		      let (cntxt, nm) = LR.renameBoundVar cntxt nm
+		      in let cntxt' = LR.insertModelVariable cntxt nm thry1
+		      in match annotateExpr cntxt' expr2 with
+		          ResTheory(thry2, L.ModelTheoryKind) ->
+			    ResTheory(L.TheoryArrow((nm, thry1), thry2),
+				     L.ModelTheoryKind) 
+			| _ -> 
+			    E.notWhatsExpectedInError expr2
+			      "theory" orig_expr
 		    end
 	  end
 
@@ -373,6 +407,7 @@ let rec annotateExpr cntxt orig_expr =
 		    try
 		      let reqs = LR.subKind cntxt knd1 knd2
 		      in if (reqs <> []) then
+			  (* XXX *)
 			  failwith "UNIMPLEMENTED: annotateExpr/Constrant/ResSet"
 			else ResSet(st1, knd2)
 		    with 
@@ -387,6 +422,7 @@ let rec annotateExpr cntxt orig_expr =
 		    try
 		      let reqs = LR.checkModelConstraint cntxt mdl1 thry1 thry2
 		      in if (reqs <> []) then
+			  (* XXX *)
 			  failwith "UNIMPLEMENTED: annotateExpr/Constrant/ResModel"
 			else
 			  ResModel(mdl1, thry2)  
@@ -852,12 +888,34 @@ let rec annotateExpr cntxt orig_expr =
 	  end
 
       | Forall (bnd1, expr2)  ->
-	  let (cntxt', lbnds1) = annotateInnerBinding cntxt orig_expr bnd1
-	  in let (prp2, stab2) = annotateProperProp cntxt' orig_expr expr2
-	  in let forallprp = 
-	    List.fold_right (fun lbnd p -> L.Forall(lbnd, p)) lbnds1 prp2
-	  in
-	       ResProp ( forallprp, stab2 )
+	  begin
+	    match annotateBinding cntxt orig_expr bnd1 with
+		(cntxt', [], lbnds1) -> 
+		  (* No model bindings, so it's just an ordinary abstraction *)
+		  let (prp2, stab2) = annotateProperProp cntxt' orig_expr expr2
+		  in let forallprp = 
+		    List.fold_right (fun lbnd p -> L.Forall(lbnd, p)) 
+		      lbnds1 prp2
+		  in
+		       ResProp ( forallprp, stab2 )
+			 
+	      | (cntxt', mbnds, []) ->
+		  begin
+		    match annotateExpr cntxt' expr2 with
+			ResSentence(mbnds_rest, prp) ->
+			  ResSentence(mbnds @ mbnds_rest, prp)
+		      | ResProp(prp, (L.Prop | L.StableProp)) ->
+			  ResSentence(mbnds, prp)
+		      | _ -> E.notWhatsExpectedInError expr2 "sentence" orig_expr
+		  end
+	      | (cntxt', mbnds, lbnds1) ->
+		  let (prp2,_) = annotateProperProp cntxt' orig_expr expr2 
+		  in let forallprp = 
+		    List.fold_right (fun lbnd p -> L.Forall(lbnd, p)) 
+		      lbnds1 prp2
+		  in ResSentence(mbnds, forallprp)
+	  end
+
 		 
       | Exists (bnd1, expr2)  ->
 	  let (cntxt', lbnds1) = annotateInnerBinding cntxt orig_expr bnd1
@@ -1070,93 +1128,6 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
 	     (* NB:  No checking of binding annotation vs default! *)
 	  (LR.insertTermVariable cntxt nm ty None,  (nm, ty) )
 
-(* Top-level propositions in sentences are permitted to contain
-   module bindings. *)
-and annotateTopLevelExpr cntxt orig_expr = 
-  match orig_expr with 
-    Forall (binding1, expr2)  ->
-      begin
-	match annotateBinding cntxt orig_expr binding1 with
-	    (_, [], _) -> 
-	      (* No model bindings, so it's just an ordinary abstraction *)
-	      ([], annotateExpr cntxt orig_expr )
-	  | (cntxt', mbnds, []) ->
-	      let (mbnds_rest, prp, pt) = annotateTopLevelProp cntxt' orig_expr expr2
-	      in (mbnds @ mbnds_rest, ResProp(prp, pt))
-	  | (cntxt', mbnds, lbnds) ->
-	      let (prp, pt) = annotateProp cntxt' orig_expr expr2 
-	      in let forallprp = 
-		List.fold_right (fun lbnd p -> L.Forall(lbnd, p)) lbnds prp
-	      in (mbnds, ResProp(forallprp, pt))
-      end
-	
-  | Lambda (binding1, expr2)  ->
-      begin
-	match annotateBinding cntxt orig_expr binding1 with
-	    (_, [], _) ->
-	      (* No model bindings, so it's just an ordinary abstraction *)
-	      ([], annotateExpr cntxt orig_expr)
-	  | (cntxt', mbnds, []) ->
-	      begin
-		match annotateTopLevelExpr cntxt' expr2 with 
-		    ([], ResTheory (thry, tknd) ) ->
-		      ([], ResTheory(L.foldTheoryLambda mbnds thry,
-				     L.foldTheoryKindArrow mbnds tknd))
-		  | _ -> 
-		      E.tyGenericError 
-			("Cannot have model parameters in " ^ 
-			    string_of_expr orig_expr)
-	      end
-	  | _ ->
-	      (* Non-empty model and term binding lists *)
-	      E.tyGenericError
-		("Cannot have model and term parameters in " ^ 
-		    string_of_expr orig_expr)
-      end
-
-  | (Arrow (nm1, expr2, expr3))  -> 
-      begin
-	match annotateExpr cntxt expr2 with
-	    ResTheory(thry2, L.ModelTheoryKind) ->
-	      begin
-		let (cntxt, nm1) = LR.renameBoundVar cntxt nm1
-		in let cntxt' = LR.insertModelVariable cntxt nm1 thry2
-		in let thry3 = 
-		  annotateTopLevelProperTheory cntxt' orig_expr expr3
-		in
-		     ([], ResTheory(L.TheoryArrow((nm1, thry2), thry3),
-				   L.ModelTheoryKind) )
-	      end
-		
-	  | _ -> ([], annotateExpr cntxt orig_expr)
-      end
-
-  | expr ->  ([], annotateExpr cntxt expr)
-
-and annotateTopLevelProp cntxt context_expr expr =
-    begin
-      match annotateTopLevelExpr cntxt expr with
-	  (mbnds, ResProp(prp, pt)) -> (mbnds, prp, pt)
-	| _ -> E.notWhatsExpectedInError expr "proposition" context_expr
-    end
-
-and annotateTopLevelProperTheory cntxt context_expr expr =
-    begin
-      match annotateTopLevelExpr cntxt expr with
-	  ([], ResTheory(thry, L.ModelTheoryKind)) -> thry
-	| _ -> E.notWhatsExpectedInError expr "theory for a model" context_expr
-    end
-
-and annotateTopLevelTheory cntxt context_expr expr =
-    begin
-      match annotateTopLevelExpr cntxt expr with
-	  ([], ResTheory(thry, tknd)) -> (thry, tknd)
-	| _ -> E.notWhatsExpectedInError expr "theory for a model" context_expr
-    end
-
-
-
-
 (* We explicitly do _not_ rename bound variables in
    annotateTheoryElem, as they will eventually become labels.  Thus, a
    Definition or a Value declaration is not permitted to shadow an
@@ -1199,6 +1170,7 @@ and annotateTheoryElem cntxt elem =
 			    try
 			      let reqs = LR.subKind cntxt k3 k2
 			      in let _ = if reqs <> [] then
+				  (* XXX *)
 				  failwith "UNIMPLEMENTED: annotateTheoryElem"
 			      in
 				   [ L.Declaration(nm1, L.DeclSet(Some st3, k2)) ]
@@ -1227,7 +1199,18 @@ and annotateTheoryElem cntxt elem =
 				  E.propTypeMismatchError expr3 pt2 pt3 (Ident nm1)
 		  end
 
-	      | ResPropType _ | ResKind _ | ResModel _ | ResTheory _ ->
+	      | ResTheory (thry3, tknd3) ->
+		  begin
+		    (* Definition of a theory *)
+		    match expropt2 with
+			None       ->
+			  [ L.Declaration(nm1, L.DeclTheory(thry3, tknd3)) ]
+		      | Some _ ->
+			  E.tyGenericError ("A theory definitions must not" ^
+					       " have a constraint")
+		  end
+
+	      | ResPropType _ | ResKind _ | ResModel _ | ResSentence _ ->
 		  E.tyGenericError 
 		    ("Invalid right-hand-side in " ^
 			string_of_theory_element orig_elem)
@@ -1261,50 +1244,33 @@ and annotateTheoryElem cntxt elem =
 			       ResSet(ty, L.KindSet) -> L.DeclTerm(None, ty)
 			     | ResPropType pt        -> L.DeclProp(None, pt)
 			     | ResKind k             -> L.DeclSet (None, k)
-			     | ResTheory (thry, L.ModelTheoryKind) 
-			       -> L.DeclModel(thry)
-			     | ResProp(prp, (L.Prop | L.StableProp)) 
-			       -> L.DeclSentence([], prp)
+			     | ResTheory (thry, L.ModelTheoryKind) ->
+				 L.DeclModel(thry)
+			     | ResProp(prp, (L.Prop | L.StableProp)) ->
+				 L.DeclSentence([], prp)
+			     | ResSentence(mbnds, prp) ->
+				 L.DeclSentence(mbnds, prp)
 			     | ResSet _ | ResTerm _ | ResProp _ 
 			     | ResModel _ | ResTheory _ -> 
 				 E.tyGenericError 
 				   ("Invalid classifier for " ^ string_of_name nm ^
 				       " in " ^ string_of_theory_element orig_elem))
 	    end
-	  in let processTop mbnds res nm = 
-	    begin
-	      match res with
-		  ResProp(prp, (L.Prop | L.StableProp)) -> 
-		    L.Declaration(nm, L.DeclSentence(mbnds, prp))
-		| _ ->
-		    E.tyGenericError 
-		      ("Cannot parameterize " ^ string_of_name nm ^ 
-			  " by a model in " ^
-			  string_of_theory_element orig_elem)
-	    end
-	  in let rec loop = function
+	  in let rec loop cntxt = function
 	      [] -> []
             | (nms,expr)::rest ->
 		begin
-		  match annotateTopLevelExpr cntxt expr with
-		      ([], res) ->		 
-			(List.map (process res) nms) @ 
-		          (* XXX: ought to extend the context, since in Coq
-		             Parameter (a : Set) (x : a).
-		             is perfectly legal.
-                          *)
-			  (loop rest)
-		    | (mbnds, res) ->
-			(* Non-empty model bindings *)
-			(List.map (processTop mbnds res) nms) @ 
-		          (* XXX: ought to extend the context, since in Coq
-		             Parameter (a : Set) (x : a).
-		             is perfectly legal.
-                          *)
-			  (loop rest)
+		  let res = annotateExpr cntxt expr 
+		  in 
+		    (List.map (process res) nms) @ 
+		      (* XXX: ought to extend the context, since in Coq
+		         Parameter (a : Set) (x : a).
+		         is perfectly legal.
+                      *)
+		      (loop cntxt rest)
 		end
 	  in 
-	       loop values
+	       loop cntxt values
 
   with
       E.TypeError msgs ->
@@ -1342,7 +1308,7 @@ and annotateToplevel cntxt = function
 
   | Theorydef(nm, expr) ->
       begin
-	let (thry, tknd) = annotateTopLevelTheory cntxt False(*X*) expr
+	let (thry, tknd) = annotateTheory cntxt False(*X*) expr
 	in (LR.insertTheoryVariable cntxt nm thry tknd, 
 	   L.Theorydef(nm, thry))
       end

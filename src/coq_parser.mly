@@ -136,23 +136,13 @@
 /* Entry points */
 
 %start toplevels
-%type <Syntax.toplevel list> toplevels
+%type <Syntax.theory_element list> toplevels
 
 %%
 
 toplevels:
   | EOF                       { [] }
-  | toplevel toplevels      { $1 :: $2 }
-
-toplevel:
-  | THEORY NAME tbinderz COLONEQUAL expr   { Theorydef (makeWord $2, makeLambda $3 $5) }
-  | COMMENT                              { TopComment($1) }
-  | MODEL NAME COLON expr                { TopModel(makeWord $2, $4) }
-  | MODULE TYPE NAME PERIOD theory_elements END NAME PERIOD 
-      { if $3 = $7 then
-	  Theorydef (makeWord $3, Theory $5) 
-        else
-          nameError $3 $7 7}
+  | theory_element toplevels      { $1 :: $2 }
 
 theory_elements:
   |                            	   { [] }
@@ -376,9 +366,3 @@ xbinderz:
   | xbinder xbinderz                 { $1 :: $2 }
 */
 
-tbinder:
-    LPAREN ident COLON expr RPAREN  { ([$2], Some $4) }
-
-tbinderz:
-                                    { [] }
-  | tbinder tbinderz                { $1 :: $2 }

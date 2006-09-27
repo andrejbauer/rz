@@ -737,7 +737,7 @@ and translateTheoryElements ctx = function
     [] -> [], emptyCtx
   | L.Declaration(n, L.DeclSet (None, knd)) :: rest -> 
       let sgnt, smmry = translateTheoryElements (insertAbstractSetvar n knd ctx) rest in
-	(TySpec (n, None, [("per_" ^ string_of_name n,
+	(Spec (n, TySpec None, [("per_" ^ string_of_name n,
 			   (let binds = bindings_of_setkind ctx knd in
 			      nest_forall ctx binds
 				(IsPer (n, (List.map (fun (y,_) -> id y) binds)))
@@ -752,7 +752,7 @@ and translateTheoryElements ctx = function
 	let idys = List.map id ys in
 	let x = fresh [mk "x"; mk "y"] ~bad:ys ctx in
 	let y, y' = fresh2 [mk "y"; mk "z"; mk "w"] [mk "y"; mk "z"; mk "w"] ~bad:ys ctx in
-	  TySpec (n, Some t,
+	  Spec (n, TySpec (Some t),
             [(string_of_name n ^ "_def_total",
 	      nest_forall ctx binds
 		(Forall((x,t),
@@ -777,13 +777,13 @@ and translateTheoryElements ctx = function
 	  binds
       in
 	(if L.is_stable pt then
-	   AssertionSpec ("predicate_" ^ (string_of_name n), spec)
+	   Assertion ("predicate_" ^ (string_of_name n), spec)
 	 else
-	   (TySpec (n,
-		    None,
+	   (Spec (L.typename_of_name n,
+		    TySpec None,
 		    [("predicate_" ^ (string_of_name n), spec)]))
 	) :: (if L.is_equiv pt then
-	    [AssertionSpec ("equiv_" ^ (string_of_name n),
+	    [Assertion    ("equiv_" ^ (string_of_name n),
 			    let bnds1, bnds2, s' = equiv_bindings_of_proptype ctx pt in
 			    let ctx' = insertBinding bnds2 ctx in
 			    let xs = List.map fst bnds1 in
@@ -807,9 +807,9 @@ and translateTheoryElements ctx = function
 	let ys = List.map fst binds in
 	let idys = List.map id ys in
 	let r = fresh [mk "r"; mk "q"] ~bad:ys ctx in
-	  TySpec (
+	  Spec (
 	    L.typename_of_name n,
-	    Some ty,
+	    TySpec (Some ty),
             [((string_of_name n) ^ "_def",
 	     nest_forall ctx binds
 	       (Forall ((r, ty),
@@ -825,14 +825,14 @@ and translateTheoryElements ctx = function
       let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
 	(let {ty=u; per=q} = translateSet ctx s in
 	 let t' = translateTerm ctx t in
-	   ValSpec (n, u, [((string_of_name n) ^ "_def", pApp (pApp q (id n)) t')])
+	   Spec(n, ValSpec u, [((string_of_name n) ^ "_def", pApp (pApp q (id n)) t')])
 	) :: sgnt,
 	insertTermvar n s smmry
 
   | L.Declaration(n, L.DeclTerm(None, s)) :: rest ->
       let sgnt, smmry = translateTheoryElements (insertTermvar n s ctx) rest in
        (let {ty=t; tot=p} = translateSet ctx s in
-	  ValSpec (n, t, [((string_of_name n) ^ "_total", pApp p (id n))])
+	  Spec (n, ValSpec t, [((string_of_name n) ^ "_total", pApp p (id n))])
        ) :: sgnt,
        insertTermvar n s smmry
 
@@ -846,7 +846,7 @@ and translateTheoryElements ctx = function
 	  let strctbind, ctx' = translateModelBinding ctx mdlbind in
 	  let (typ, prp') = translateProp ctx' prp in
 	  let elem =
-	    ValSpec (nm, typ, [(string_of_name nm, pApp prp' (id nm))])
+	    Spec (nm, ValSpec typ, [(string_of_name nm, pApp prp' (id nm))])
 	  in
 	    if mdlbind = [] then
 	      elem
@@ -854,19 +854,21 @@ and translateTheoryElements ctx = function
 	      let fnctr =
 		List.fold_right (fun bnd sgnt -> SignatFunctor (bnd,sgnt)) strctbind (Signat [elem])
 	      in
-		ModulSpec (capitalize_name nm, fnctr)
+		Spec(capitalize_name nm, ModulSpec fnctr, [])
 	end :: sgnt,
 	smmry
 
   | L.Declaration(mdlnm, L.DeclModel (thr)) :: rest ->
       let sgnt, smmry = translateTheory ctx thr in
       let sgnt', smmry' = translateTheoryElements (insertModelvar mdlnm smmry ctx) rest in
-	ModulSpec (mdlnm, sgnt) :: sgnt',
+	Spec (mdlnm, ModulSpec sgnt, []) :: sgnt',
 	(insertModelvar mdlnm smmry smmry')
 
-  | L.Declaration(_, L.DeclTheory _) :: rest ->
-      failwith "Translate found nested theory"
-
+  | L.Declaration(n, L.DeclTheory (thr,_)) :: rest ->
+     let sgnt, smmry = translateTheory ctx thr in
+     let sgnt', smmry' = translateTheoryElements (addTheory n smmry ctx) rest in
+       Spec(n, SignatSpec sgnt, []) :: sgnt',
+       addTheory n smmry smmry'
 
 and translateSLN = function
     L.SLN (None, nm) -> LN (None, nm)
@@ -900,13 +902,4 @@ and translateTheory ctx = function
 		 
 let attachSignat s (ss, ctx) = s::ss, ctx
 
-let rec translateToplevel ctx = function
-  | [] -> [], ctx
-  | L.Theorydef (n, thr) :: rest -> 
-      let sgnt, smmry = translateTheory ctx thr in
-	attachSignat (Signatdef (n, sgnt)) (translateToplevel (addTheory n smmry ctx) rest)
-  | L.TopComment cmmnt :: rest ->
-      attachSignat (TopComment cmmnt) (translateToplevel ctx rest)
-  | L.TopModel (mdlnm, thry) :: rest ->
-      let sgnt, smmry = translateTheory ctx thry in
-	attachSignat (TopModul (mdlnm, sgnt)) (translateToplevel (insertModelvar mdlnm smmry ctx) rest)
+let translateToplevel = translateTheoryElements

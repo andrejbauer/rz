@@ -1,6 +1,5 @@
 [Processing empty.thy]
-module type Empty = 
-sig
-  
-end
+module type Empty = sig
+                      
+                    end
 

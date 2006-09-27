@@ -1,4 +1,4 @@
-theory P :=
+Definition P :=
 thy
 
   Axiom tst_false : False.
@@ -28,4 +28,5 @@ thy
 
   Parameter w : [`foo + `bar:(s*s)].
   Axiom tst_pcase : match w with `foo => p x0 | `bar (u:s*s) => p (u.0)	 end.
-end
+end.
+

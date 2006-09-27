@@ -1,4 +1,4 @@
-theory HoistTerms :=
+Definition HoistTerms :=
 thy
   Parameter s : Set.
   Parameter a b c : s.
@@ -31,4 +31,4 @@ thy
   Parameter d : {x:s | p x}.
   Definition subout      := d :< s.
   # assure cannot be tested directly
-end
+end.

@@ -10,14 +10,21 @@ type modul =
     ModulName of modul_name
   | ModulProj of modul * modul_name
   | ModulApp  of modul * modul
+  | ModulStruct of moduldef list
 
-type longname = LN of modul option * name
+and moduldef =
+    DefType of name * ty
+  | DefTerm of name * ty * term
+  | DefModul of name * signat * modul
+  | DefSignat of name * signat
 
-type ty_name = L.set_name
+and longname = LN of modul option * name
 
-type signat_name = L.theory_name
+and ty_name = L.set_name
 
-type ty =
+and signat_name = L.theory_name
+
+and ty =
     NamedTy of longname                    (* 0 *)
   | UnitTy                                 (* 0 *)
   | VoidTy                                 (* 0 *)
@@ -78,22 +85,27 @@ and proposition =
   | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
   | PLet of name * term * proposition          (* Local term-binding *)
 
-type proptype = 
+and proptype = 
     | Prop
     | PropArrow of binding * proptype
     | PropMArrow of mbinding * proptype 
 
-type assertion = string * proposition
+and assertion = string * proposition
 
-type signat_element =
-    ValSpec of name * ty * assertion list
-  | ModulSpec of modul_name * signat
-  | AssertionSpec of assertion
-  | TySpec of ty_name * ty option * assertion list
-  | Comment of string
+and signat_element =
+    Spec      of name * spec * assertion list
+  | Assertion of assertion
+  | Comment   of string
+
+and spec =
+    ValSpec    of ty
+  | ModulSpec  of signat
+  | TySpec     of ty option
+  | SignatSpec of signat
 
 and signat =
     SignatName of signat_name
+  | SignatProj of modul * signat_name
   | Signat of signat_element list
   | SignatFunctor of modul_binding * signat
   | SignatApp of signat * modul * signat (** SignatApp(f,m,n): n is the result of f(m) *)
@@ -105,10 +117,7 @@ and signatkind =
 
 and modul_binding = modul_name * signat
 
-and toplevel = 
-    Signatdef  of signat_name * signat
-  | TopComment of string
-  | TopModul   of modul_name  * signat
+and toplevel = signat_element list
     
 (****************************************)
 (* {3: Helper functions for the syntax} *)
@@ -491,6 +500,42 @@ and substModul ?occ sbst = function
     ModulName nm -> getModulvar sbst nm
   | ModulProj (mdl, nm) -> ModulProj (substModul ?occ sbst mdl, nm)
   | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, substModul ?occ sbst mdl2)
+  | ModulStruct mdldfs -> ModulStruct (substDefs ?occ sbst mdldfs)
+
+(* XXX: Actually, the first too "failwiths" are too pessimistic.  It's
+   actually OK in ML to have a term and a type with the same name. *)
+and substDefs ?occ sbst = function
+    [] -> []
+  | DefType(nm, ty) :: rest ->
+      if (List.mem nm (fvSubst sbst)) then
+	failwith "Outsyn.substDefs:  Can't avoid shadowing a type name"
+      else
+	DefType(nm, substTy ?occ sbst ty) ::
+	  substDefs ?occ (insertTyvar sbst nm (namedty nm)) rest
+  | DefTerm(nm, ty, trm) :: rest ->
+      if (List.mem nm (fvSubst sbst)) then
+	failwith "Outsyn.substDefs:  Can't avoid shadowing a term name"
+      else
+	DefTerm(nm, substTy ?occ sbst ty, substTerm ?occ sbst trm) ::
+	  substDefs ?occ (insertTermvar sbst nm (id nm)) rest
+  | DefModul(nm, signat, mdl) :: rest ->
+      if (List.mem nm (fvSubst sbst)) then
+	failwith "Outsyn.substDefs:  Can't avoid shadowing a modul name"
+      else
+	DefModul(nm, substSignat ?occ sbst signat, substModul ?occ sbst mdl) ::
+	  substDefs ?occ (insertModulvar sbst nm (ModulName nm)) rest
+  | DefSignat(nm, signat) :: rest ->
+      if (List.mem nm (fvSubst sbst)) then
+	failwith "Outsyn.substDefs:  Can't avoid shadowing a signature name"
+      else
+(* No signature renaming, as signatures always have fixed labels
+	DefSignat(nm, substSignat ?occ sbst signat) ::
+	  substDefs ?occ (insertSignatvar sbst nm (SignatName nm)) rest
+*)
+	DefSignat(nm, substSignat ?occ sbst signat) ::
+	  substDefs ?occ sbst rest
+
+	  
 
 and substProp ?occ sbst = function
     True -> True
@@ -649,22 +694,25 @@ and substSignat ?occ sbst = function
       SignatApp (substSignat ?occ sbst sgnt1,
 		 substModul ?occ sbst mdl,
 		 substSignat ?occ sbst sgnt2)
+  | SignatProj (mdl, nm) ->
+      SignatProj(substModul ?occ sbst mdl, nm)
+
+and substSpec ?occ sbst = function
+    ValSpec ty        -> ValSpec (substTy ?occ sbst ty)
+  | ModulSpec signat  -> ModulSpec (substSignat ?occ sbst signat)
+  | TySpec tyopt      -> TySpec (substTyOption ?occ sbst tyopt)
+  | SignatSpec signat -> SignatSpec (substSignat ?occ sbst signat)
 
 and substSignatElements ?occ sbst =
   let rec subst sbst = function
       [] -> []
-    | ValSpec (nm, ty, lst) :: rest ->
-	ValSpec (nm, substTy ?occ sbst ty, List.map (substAssertion ?occ sbst) lst) ::
+    | Spec(nm, spec, lst) :: rest ->
+	Spec (nm, substSpec ?occ sbst spec, 
+	     List.map (substAssertion ?occ sbst) lst) ::
 	  (subst (insertTermvar sbst nm (id nm)) rest)
-    | ModulSpec (mdlnm, sgnt) :: rest ->
-	ModulSpec (mdlnm, substSignat ?occ sbst sgnt) ::
-	  (subst (insertModulvar sbst mdlnm (ModulName mdlnm)) rest)
-    | AssertionSpec assr :: rest ->
-	AssertionSpec (substAssertion ?occ sbst assr) ::
+    | Assertion assr :: rest ->
+	Assertion (substAssertion ?occ sbst assr) ::
 	  (subst sbst rest)
-    | TySpec (tynm, ty, lst) :: rest ->
-	TySpec (tynm, substTyOption ?occ sbst ty, List.map (substAssertion ?occ sbst) lst) ::
-	  (subst (insertTyvar sbst tynm (namedty tynm)) rest)
     | (Comment _ as cmnt) :: rest ->
 	cmnt :: (subst sbst rest)
   in
@@ -691,12 +739,26 @@ let rec string_of_modul = function
     ModulName nm -> string_of_name nm
   | ModulProj (mdl, nm) -> (string_of_modul mdl) ^ "." ^ string_of_name nm
   | ModulApp (mdl1, mdl2) -> (string_of_modul mdl1) ^ "(" ^ (string_of_modul mdl2) ^ ")"
+  | ModulStruct mdldfs -> "struct\n" ^ string_of_defs mdldfs ^ "\nend"
 
-let rec string_of_ln = function
+and string_of_defs defs = 
+  String.concat "\n" (List.map string_of_def defs)
+
+and string_of_def = function
+    DefType(nm,ty) -> "type " ^ string_of_name nm ^ " = " ^ string_of_ty ty
+  | DefTerm(nm,ty,trm) -> "let " ^ string_of_name nm ^ " : " ^ 
+      string_of_ty ty ^ " = " ^ string_of_term trm
+  | DefModul(nm,signat,mdl) ->
+      "module " ^ string_of_name nm ^ " = " ^
+	string_of_modul mdl ^ " : " ^ string_of_signat signat
+  | DefSignat(nm,signat) ->
+      "module type " ^ string_of_name nm ^ " = " ^ string_of_signat signat
+
+and string_of_ln = function
     LN (None, nm) -> string_of_name nm
   | LN (Some mdl, nm) -> (string_of_modul mdl) ^ "."  ^ (string_of_name nm)
 
-let rec string_of_ty' level t =
+and string_of_ty' level t =
   let rec makeTupleTy = function
       []    -> "top"
     | [t]   -> string_of_ty' 1 t
@@ -728,14 +790,14 @@ let rec string_of_ty' level t =
     else
        str
 
-let string_of_ty t = string_of_ty' 999 t
+and string_of_ty t = string_of_ty' 999 t
 
-let string_of_infix t op u =
+and string_of_infix t op u =
   match op with
       LN(None, N(str,_)) -> t ^ " " ^ str ^ " " ^ u
     | ln -> (string_of_ln ln) ^ " " ^ t ^ " " ^ u
 
-let rec string_of_term' level t =
+and string_of_term' level t =
   let (level', str) = match t with
       Id ln -> (0, string_of_ln ln)
     | EmptyTuple -> (0, "()")
@@ -889,26 +951,30 @@ and string_of_bnd (n,t) =
 and string_of_bnds bnds : string =
     String.concat ", " (List.map string_of_bnd bnds)
 
-let string_of_assertion (nm, p) =
+and string_of_assertion (nm, p) =
   "(** Assertion " ^ nm ^ ":\n" ^ (string_of_proposition p) ^ "\n*)"
 
-let string_of_assertions assertions = 
+and string_of_assertions assertions = 
   (String.concat "\n" (List.map string_of_assertion assertions))
 
-let rec string_of_spec = function
-    ValSpec (nm, ty, assertions) ->
+and string_of_spec = function
+    Spec(nm, ValSpec ty, assertions) ->
       "val " ^ (string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
       ^ string_of_assertions assertions
-    | TySpec (nm, None, assertions) -> 
-	"type " ^ string_of_name nm ^ "\n" ^ string_of_assertions assertions
-    | TySpec (nm, Some ty, assertions) -> 
-	"type " ^ string_of_name nm ^ " = " ^ (string_of_ty ty) ^ "\n" ^ 
+  | Spec(nm, TySpec None, assertions) ->
+      "type " ^ string_of_name nm ^ "\n" ^ string_of_assertions assertions
+  | Spec(nm, TySpec (Some ty), assertions) -> 
+      "type " ^ string_of_name nm ^ " = " ^ (string_of_ty ty) ^ "\n" ^ 
 	string_of_assertions assertions
-    | AssertionSpec assertion ->
-	string_of_assertion assertion
-    | ModulSpec (nm, sgntr) ->
-	"module " ^ string_of_name nm ^ " : " ^ (string_of_signat sgntr)
-    | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
+  | Spec(nm, ModulSpec sgntr, assertions) ->
+      "module " ^ string_of_name nm ^ " : " ^ (string_of_signat sgntr) ^
+	string_of_assertions assertions
+  | Spec(nm, SignatSpec signat, assertions) ->
+      "signature " ^ string_of_name nm ^ " = " ^ (string_of_signat signat) ^
+	string_of_assertions assertions
+  | Assertion assertion ->
+      string_of_assertion assertion
+  | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"
 
 and string_of_signat = function
     SignatName nm -> string_of_name nm
@@ -922,13 +988,11 @@ and string_of_signat = function
 	(String.concat " " (List.map (fun m -> "(" ^ (string_of_modul m) ^ ")") args)) ^
 	" *) " ^
 	(string_of_signat res)
+  | SignatProj(mdl,nm) -> 
+      string_of_modul mdl ^ "." ^ string_of_name nm
 
-let string_of_toplevel = function
-    (Signatdef (s, signat)) ->
-      "module type " ^ string_of_name s ^ " =\n" ^ (string_of_signat signat) ^ "\n"
-  | TopComment cmmnt -> "(**" ^ cmmnt ^ "*)"
-  | TopModul (mdlnm, signat) ->
-      "module " ^ string_of_name mdlnm ^ " : " ^ string_of_signat signat
+let string_of_toplevel body = 
+      String.concat "\n\n" (List.map string_of_spec body)
 
 let display_subst sbst =
   let do_term nm trm = print_string ("[" ^ string_of_name nm ^ "~>" ^ 
