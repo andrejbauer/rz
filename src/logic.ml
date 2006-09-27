@@ -136,6 +136,7 @@ and theory =
     | TheoryLambda of model_binding * theory   (* Family of theories *)
     | TheoryArrow of model_binding * theory    (* Theory of a family of models *)
     | TheoryApp of theory * model
+    | TheoryProj of model * name
 	
 and theorykind =
     | ModelTheoryKind    (* Kind of theories that classify models,
@@ -410,6 +411,8 @@ and string_of_theory = function
       "TLambda " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
   | TheoryArrow (mbnd, thry) ->
       "TArrow " ^ string_of_mbnd mbnd ^ " . " ^ string_of_theory thry
+  | TheoryProj (mdl, nm) ->
+      string_of_model mdl ^ "." ^ string_of_name nm
 
 and string_of_theory_element = function
     Declaration(stnm, DeclSet(None, knd)) ->
@@ -642,6 +645,7 @@ and fnTheory = function
   | TheoryArrow((nm,thry1),thry2) ->
       NameSet.union (NameSet.remove nm (fnTheory thry1)) (fnTheory thry2)
   | Theory elems -> fnElems elems
+  | TheoryProj(mdl,nm) -> fnModel mdl
 
 and fnElems = function
     [] -> NameSet.empty
@@ -964,6 +968,8 @@ and substTheory sbst = function
   | TheoryApp (thry, mdl) ->
       TheoryApp (substTheory sbst thry,  
 		substModel sbst mdl)
+  | TheoryProj(mdl,nm) ->
+      TheoryProj(substModel sbst mdl, nm)
 
 and substTheoryKind sub = function
     ModelTheoryKind               -> ModelTheoryKind

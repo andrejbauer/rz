@@ -942,7 +942,6 @@ let rec annotateExpr cntxt orig_expr =
     | _ -> 
 	E.tyGenericErrors
 	  ("Caught unexpected exception" :: [E.inMsg orig_expr])
-
   (* ********End of annotateExpr ********* *)
 
 and annotateTerm cntxt surrounding_expr expr = 

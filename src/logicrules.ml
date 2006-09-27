@@ -248,11 +248,14 @@ let rec searchElems cntxt nm' mdl =
 		Some decl
 	      else 
 		loop subst rest
+	  | Declaration(nm, (DeclTheory _ as decl)) ->
+	      if (nm = nm') then
+		Some decl
+	      else 
+		loop subst rest
 	  | Comment _  -> 
 	      (** Comments cannot be searched for, currently *)
 	      loop subst rest
-	  | Declaration(_, (DeclTheory _)) ->
-	      failwith "SearchElems : DeclTheory"
   in
     loop emptysubst 
 
@@ -281,12 +284,23 @@ let rec hnfTheory cntxt = function
 	      in hnfTheory cntxt (substTheory subst thry2)
 	  | _ -> failwith "hnfTheory 2"
       end
+  | TheoryProj(mdl, nm) ->
+      begin
+	match hnfTheory cntxt (modelToTheory cntxt mdl) with
+	    Theory elems ->
+	      begin
+		match searchElems cntxt nm mdl elems with
+		    Some (DeclTheory (thry,_)) -> thry
+		  | _ -> failwith "hnfTheory 3"
+	      end
+	  | _ -> failwith "hnfTheory 4"
+      end
   | thry -> thry
 
 (* cntxt -> model -> theory *)
 (** Assumes that the given model is well-formed.
 *)
-let rec modelToTheory cntxt = function
+and modelToTheory cntxt = function
     ModelName nm ->
       begin
 	match (lookupId cntxt nm) with

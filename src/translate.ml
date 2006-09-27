@@ -899,6 +899,9 @@ and translateTheory ctx = function
 	   | CtxParam (m, sgnt', smmry') ->
 	       SignatApp (sgnt, modul, substSignat (insertModulvar emptysubst m modul) sgnt'),
 	       substMSummary m mdl smmry')
+  | L.TheoryProj(mdl, nm) ->
+      let modul = translateModel mdl in
+	SignatProj(modul,nm)  (* But what summary to return? *)
 		 
 let attachSignat s (ss, ctx) = s::ss, ctx
 
