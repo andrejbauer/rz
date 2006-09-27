@@ -1,31 +1,21 @@
 (** The theory of Kuratowski-style finite sets. *)
 
-theory ASet := thy Parameter s : Set. end
-
-theory Iterative(S : ASet) :=
+Definition Kuratowski (S : thy Parameter s : Set. end) :=
 thy
-  Parameter t : Set.
-  Parameter x : t.
-  Parameter f : S.s -> t -> t.
-end
+  Parameter s : Set.
+  Parameter elt : S.s -> s -> Prop.
+  Parameter emptyset : s.
+  Parameter add : S.s -> s -> s.
 
-(** First we define lists. *)
-theory List(S : ASet) :=
+  Axiom emptyest_is_empty:
+     forall x : S.s, not (elt x emptyset).
+
+  Axiom kuratowski_closure:
+    forall x : S.s, forall u : s,
+      elt x u <-> exists v : s, (u = add x v /\ not (elt x v)).
+end.
+
+Definition Finset (S : thy Parameter s : Set. end) :=
 thy
-  Parameter list : Set.
-  Parameter nil : list.
-  Parameter cons : S.s -> list -> list.
-
-  (* We would prefer to define the notion of a homomorphism of
-     iterative algebras first, but there seems to be no good way
-     of doing that. *)
-
-  (** This axiom expresses the fact that lists are    *)
-  (** an initial algebra for the functor t -> S.s * t *)
-  Axiom list_initial:
-    forall T : Iterative(S),
-    exists1 h : list -> T.t,
-        h nil = T.x /\
-        forall y : S.s, forall l : list,
-          h (cons y l) = T.f y (h l).
-end
+   Parameter K : Kuratowski(S).
+end.
