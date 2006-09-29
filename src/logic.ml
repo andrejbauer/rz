@@ -318,7 +318,7 @@ and string_of_term trm =
 	"let [" ^ string_of_bnd bnd ^ "] % " ^ string_of_prop prp1 ^ " = " ^
 	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ 
 	 ": " ^ string_of_set st ^ " end" 
-    | Subin(trm, set) -> "(" ^ toStr trm ^ " :> " ^ string_of_set set ^ ")"
+    | Subin(trm, bnd, prp) -> "(" ^ toStr trm ^ " :> {" ^ string_of_bnd bnd ^ " | " ^ string_of_prop prp ^ "})"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | Let(bnd,trm1,trm2,st) ->
 	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
@@ -556,7 +556,7 @@ and fnTerm = function
     EmptyTuple | Inj(_, None)-> NameSet.empty
   | Var(LN(None, nm)) -> NameSet.singleton nm
   | Var(LN(Some mdl, nm)) -> NameSet.add nm (fnModel mdl)
-  | Subin(trm, st) 
+  | Subin(trm, st)
   | Subout(trm, st) -> NameSet.union (fnTerm trm) (fnSet st) 
   | Tuple trms -> unionNameSetList (List.map fnTerm trms)
   | Proj(_, trm) 
