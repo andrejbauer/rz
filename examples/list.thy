@@ -1,6 +1,6 @@
 (** Finite lists *)
 
-Definition List(S : thy Parameter s : Set. end) :=
+Definition Make(S : thy Parameter s : Set. end) :=
 thy
   Parameter list : Set.
   Parameter nil : list.
