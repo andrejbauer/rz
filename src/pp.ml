@@ -483,6 +483,7 @@ and output_specs ppf = function
   | spec::specs -> 
       fprintf ppf "%a@, @,%a" output_spec spec output_specs specs
 
+(*
 and output_signat_no_sigapp ppf = function
     SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
@@ -508,6 +509,7 @@ and output_signat_sigapp ppf = function
          output_signat_sigapp sgnt1    output_modul mdl
   | SignatProj (mdl, nm) -> 
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
+*)
 
 and output_signat ppf = function
     SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
@@ -515,11 +517,14 @@ and output_signat ppf = function
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@ %a@]"
          (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
-  | (SignatApp _) as sgnt ->
-      if ( ! Flags.do_sigapp ) then
+  | (SignatApp (sgnt1,mdl)) (* as sgnt *) ->
+      fprintf ppf "@[%a(%a)@]"
+         output_signat sgnt1    output_modul mdl
+(*      if ( ! Flags.do_sigapp ) then
         output_signat_no_sigapp ppf sgnt
       else
         output_signat_sigapp ppf sgnt
+*)
   | SignatProj (mdl, nm) -> 
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 

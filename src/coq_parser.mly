@@ -111,9 +111,9 @@
 
 %nonassoc COLONEQUAL
 
-%nonassoc IFFSYMBOL
 %nonassoc COMMA DOUBLEARROW
 %nonassoc FORALL EXISTS UNIQUE THE NOT
+%nonassoc IFFSYMBOL
 %right ARROW
 %right ORSYMBOL
 %right ANDSYMBOL

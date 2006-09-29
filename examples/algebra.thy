@@ -6,47 +6,47 @@
 
 
 (** An algebraic structure without any operations is just a set. *)
-theory SimpleSet :=
+Definition SimpleSet :=
 thy
   Parameter s : Set.
-end
+end.
 
-theory Magma :=
+Definition Magma :=
 thy
   Parameter s : Set.
   Parameter mul : s -> s -> s.
-end
+end.
 
-theory CommutativeMagma :=
+Definition CommutativeMagma :=
 thy
   Parameter s : Set.
   Parameter add : s -> s -> s.
 
   Axiom commutative:
     forall x y : s, add x y = add y x.
-end
+end.
 
 (** A semigroup is an associative magma. *)
-theory Semigroup :=
+Definition Semigroup :=
 thy
   include Magma.
 
   Axiom mul_associative:
     forall x y z : s, mul (mul x y) z = mul x (mul y z).
-end
+end.
 
 
-theory CommutativeSemigroup :=
+Definition CommutativeSemigroup :=
 thy
   include CommutativeMagma.
 
   Axiom add_associative:
     forall x y z : s, add x (add y z) = add x (add y z).
-end
+end.
 
 
 (** A monoid is a semigroup with unit. *)
-theory Monoid :=
+Definition Monoid :=
 thy
   include Semigroup.
 
@@ -54,10 +54,10 @@ thy
 
   Axiom one_neutral:
     forall x : s, mul x one = x /\ mul one x = x.
-end
+end.
 
 
-theory CommutativeMonoid :=
+Definition CommutativeMonoid :=
 thy
   include CommutativeSemigroup.
 
@@ -65,11 +65,11 @@ thy
 
   Axiom zero_neutral:
     forall x : s, add x zero = x /\ add zero x = x.
-end
+end.
 
 
 (** A group is a monoid with inverses. *)
-theory Group :=
+Definition Group :=
 thy
   include Monoid.
 
@@ -77,11 +77,11 @@ thy
 
   Axiom inv_inverse:
     forall x : s, mul x (inv x) = one /\ mul (inv x) x = one.
-end
+end.
 
 
 (** Commutative groups are written additively. *)
-theory CommutativeGroup :=
+Definition CommutativeGroup :=
 thy
   include CommutativeMonoid.
 
@@ -89,11 +89,11 @@ thy
 
   Axiom neg_inverse:
     forall x : s, add x (neg x) = zero /\ add (neg x) x = zero.
-end
+end.
 
 
 (** We now combine semigroups and commutative groups to get rings. *)
-theory Ring :=
+Definition Ring :=
 thy
   include CommutativeGroup.
 
@@ -109,9 +109,9 @@ thy
     forall x y z : s,
       mul x (add y z) = add (mul x y) (mul x z) /\
       mul (add x y) z = add (mul x z) (mul y z).
-end
+end.
 
-theory RingWithUnit :=
+Definition RingWithUnit :=
 thy
   include CommutativeGroup.
 
@@ -127,9 +127,9 @@ thy
     forall x y z : s,
       mul x (add y z) = add (mul x y) (mul x z) /\
       mul (add x y) z = add (mul x z) (mul y z).
-end
+end.
 
-theory CommutativeRingWithUnit :=
+Definition CommutativeRingWithUnit :=
 thy
   include CommutativeGroup.
 
@@ -145,9 +145,9 @@ thy
     forall x y z : s,
       mul x (add y z) = add (mul x y) (mul x z) /\
       mul (add x y) z = add (mul x z) (mul y z).
-end
+end.
 
-theory RingHomSig := [S : Ring] -> [R : Ring] ->
+Definition RingHomSig := [S : Ring] -> [R : Ring] ->
 thy
   Definition homomorphism (f : S.s -> R.s) :=
     f S.zero = R.zero /\
@@ -155,6 +155,6 @@ thy
     (forall x y : S.s, f (S.add x y) = R.add (f x) (f y)).
 
   Definition s := {f : S.s -> R.s | homomorphism(f)}.
-end
+end.
 
-model RingHom : RingHomSig
+Parameter RingHom : RingHomSig.

@@ -867,7 +867,7 @@ and optSignat ctx = function
   | SignatApp(sg1,mdl) ->
       let sg1' = optSignat ctx sg1
       in let mdl' = optModul' ctx mdl
-	   SignatApp(sg1', mdl')
+      in SignatApp(sg1', mdl')
   | SignatProj(mdl, nm) ->
       let mdl' = optModul' ctx mdl
       in SignatProj(mdl',nm)
