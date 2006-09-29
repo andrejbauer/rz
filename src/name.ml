@@ -173,6 +173,9 @@ let freshName good bad occurs =
   in
     find good
 
+(** The new version of freshName. *)
+let newFresh good = gensym (List.map (fun s -> (s, Word)) good)
+
 (** [freshName2 good1 good2 bad occurs] generates two fresh names. *)
 let freshName2 good1 good2 bad occurs =
   let x1 = freshName good1 bad occurs in

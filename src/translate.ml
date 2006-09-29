@@ -6,6 +6,7 @@ let rec translateModel = function
     L.ModelName nm -> ModulName nm
   | L.ModelProj (mdl, nm) -> ModulProj (translateModel mdl, nm)
   | L.ModelApp (mdl1, mdl2) -> ModulApp (translateModel mdl1, translateModel mdl2)
+  | L.ModelOf _ -> failwith "Translate.translateModel: unimplemented"
 
 let translateLN = function
     L.LN (None, nm) -> LN (None, nm)
@@ -13,13 +14,13 @@ let translateLN = function
 
 let any = wildName
 
-let mk s = N(s, Word)
+let mk s = s
 
-let fresh good ?(bad=[]) = freshName good bad (occursCtx ctx)
-let fresh2 g1 g2 ?(bad=[]) = freshName2 g1 g2 bad (occursCtx ctx)
-let fresh3 g1 g2 g3 ?(bad=[]) = freshName3 g1 g2 g3 bad (occursCtx ctx)
-let fresh4 g1 g2 g3 g4 ?(bad=[]) = freshName4 g1 g2 g3 g4 bad (occursCtx ctx)
-let freshList gs ?(bad=[]) = freshNameList gs bad (occursCtx ctx)
+let fresh = newFresh
+let fresh2 g1 g2 = newFresh g1, newFresh g2
+let fresh3 g1 g2 g3 = newFresh g1, newFresh g2, newFresh g3
+let fresh4 g1 g2 g3 g4 = newFresh g1, newFresh g2, newFresh g3, newFresh g4
+let freshList gs = List.map newFresh gs
 
 let sbp nm t p = PLet (nm, t, p)
 let sbt nm t u = Let (nm, t, u)
@@ -62,8 +63,8 @@ let makeProp (x, t) p = (t, PLambda ((x,t), p))
 
 let isPredicate n ty binds =
   let xs = List.map fst binds in
-  let r = fresh [mk "r"; mk "u"] ~bad:xs in
-  let ys = Name.freshNameList (List.map (fun n -> [n]) xs) (r::xs) (failwith "foo!") in
+  let r = fresh [mk "r"; mk "u"] in
+  let ys = freshList (List.map (fun n -> [string_of_name n]) xs) in
     And [
 	nest_forall_ty binds
 	  (Forall ((r, ty), Imply (NamedProp (n, id r, List.map id xs),
@@ -140,7 +141,7 @@ let rec translateSet = function
 	{
 	  ty = v;
 	  tot = (
-	    let t = fresh [mk "t"; mk "u"; mk "v"] ~bad:nms in
+	    let t = fresh [mk "t"; mk "u"; mk "v"] in
 	      makeTot
 		(t, v)
 		(fst (List.fold_right
@@ -150,8 +151,8 @@ let rec translateSet = function
 		))
 	  );
 	  per = (
-	      let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] ~bad:nms in
-	      let nms' = Name.freshNameList (List.map (fun n -> [n]) nms) (t::u::nms) (failwith "bar!") in
+	      let t, u = fresh2 [mk "t"; mk "u"; mk "v"] [mk "u"; mk "v"; mk "w"] in
+	      let nms' = freshList (List.map (fun n -> [string_of_name n]) nms) in
 		makePer (t, u, v) 
 		  (fst (List.fold_right (fun nm (p,k) -> PLet (nm, Proj (k, id t), p), k-1) nms
 			 (
@@ -172,7 +173,7 @@ let rec translateSet = function
 	  [mk "x"; mk "y"; mk "z"]
 	  [mk "x"; mk "y"; mk "z"]
 	  [mk "f"; mk "g"; mk "h"]
-	  [mk "g"; mk "h"; mk "k"] ~bad:[nm]
+	  [mk "g"; mk "h"; mk "k"]
       in
 	{ ty = w;
 	  tot = makeTot (f, w)
@@ -249,7 +250,7 @@ let rec translateSet = function
 		   (function
 		       (lb, None) -> Equal (id x, Inj (lb, None))
 		     | (lb, Some {ty=u; tot=p}) ->
-			 let x' = fresh [x] ~bad:[x] in
+			 let x' = fresh [string_of_name x] in
 			   Cexists ((x', u), And [Equal (id x, Inj (lb, Some (id x'))); pApp p (id x')]))
 		   lst')
 	    );
@@ -258,7 +259,7 @@ let rec translateSet = function
 		   (function
 		       (lb, None) -> And [Equal (id y,  Inj (lb, None)); Equal (id y', Inj (lb, None))]
 		     | (lb, Some {ty=u; per=q}) ->
-			 let w, w' =  fresh2 [y] [y'] ~bad:[y;y'] in
+			 let w, w' =  fresh2 [string_of_name y] [string_of_name y'] in
 			   Cexists ((w,u),
 		           Cexists ((w',u),
 				    And [Equal (id y, Inj (lb, Some (id w)));
@@ -312,7 +313,7 @@ and translateTerm = function
   | L.The ((n, s), phi) ->
       let {ty=t; tot=p1; per=p2} = translateSet s in
       let (v,q) = translateProp phi in
-      let n', z, z' = fresh3 [n] [mk "x"; mk "y"; mk "z"] [mk "x"; mk "y"; mk "z"] ~bad:[n] in
+      let n', z, z' = fresh3 [string_of_name n] [mk "x"; mk "y"; mk "z"] [mk "x"; mk "y"; mk "z"] in
 	Obligation ([(n, t); (z,v)], 
 		   And [pApp p1 (id n);
 			pApp q (id z);
@@ -343,7 +344,7 @@ and translateTerm = function
   | L.RzChoose ((n, st1), t, u, st2) ->
       let {ty=ty1; per=p1} = translateSet st1 in
       let {per=p2} = translateSet st2 in
-      let n' = fresh [n] ~bad:[n] in
+      let n' = fresh [string_of_name n] in
       let v = translateTerm u in
       let v' = sbt n (id n') v in
 	Let (n, translateTerm t,
@@ -359,7 +360,7 @@ and translateTerm = function
       let {ty=ty1; per=p1} = translateSet st1 in
       let {per=p2} = translateSet st2 in
       let ty2, q = translateProp r in
-      let n' = fresh [n] ~bad:[n] in
+      let n' = fresh [string_of_name n] in
       let v = translateTerm u in
       let v' = sbt n (id n') v in
 	Let (n, translateTerm t,
@@ -375,7 +376,7 @@ and translateTerm = function
   | L.Subin (t, (x, s), p) ->
       let (ty, p') = translateProp p in
       let t' = translateTerm t in
-      let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] ~bad:((fvTerm t')) in
+      let y = fresh [mk "x"; mk "y"; mk "v"; mk "u"; mk "t"] in
 	Tuple[t'; Obligation ([(y, ty)], pApp (sbp x t' p') (id y), id y)]
 
   | L.Subout (t, _) -> Proj (0, translateTerm t)
@@ -452,7 +453,7 @@ and translateProp = function
 	 (Cor (
 	   List.map2
 		(fun lb (t,p) ->
-		   let x = fresh [mk "x"; mk "y"] ~bad:[u] in
+		   let x = fresh [mk "x"; mk "y"] in
 		     Cexists ((x,t), And [Equal(id u, Inj (lb, Some (id x))); pApp p (id x)]))
 		lbs lst'
 	 ))
@@ -460,14 +461,14 @@ and translateProp = function
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=q} = translateSet s in
       let (u, p') = translateProp p in
-      let f = fresh [mk "f"; mk "g"; mk "h"; mk "l"] ~bad:[n] in
+      let f = fresh [mk "f"; mk "g"; mk "h"; mk "l"] in
 	makeProp (f, ArrowTy (t, u))
 	  (Forall ((n, t), Imply (pApp q (id n), pApp p' (App (id f, id n)))))
 
   | L.Exists ((n, s), p) -> 
       let {ty=t; tot=q} = translateSet s in
       let (u, p') = translateProp p in
-      let w = fresh [mk "w"; mk "u"; mk "p"; mk "t"] ~bad:[n]
+      let w = fresh [mk "w"; mk "u"; mk "p"; mk "t"]
       in
 	makeProp (w, TupleTy [t; u])
 	 (And [pApp q (Proj (0, id w));
@@ -476,7 +477,7 @@ and translateProp = function
   | L.Unique ((n, s), p) -> 
       let {ty=t; tot=q; per=pr} = translateSet s in
       let (u, p') = translateProp p in
-      let w, w' = fresh2 [mk "w"; mk "u"; mk "p"; mk "t"] [mk "u"; mk "p"; mk "t"] ~bad:[n] in
+      let w, w' = fresh2 [mk "w"; mk "u"; mk "p"; mk "t"] [mk "u"; mk "p"; mk "t"] in
 	makeProp (w, TupleTy [t; u])
 	 (And [
 	     pApp q (Proj (0, id w));
@@ -519,7 +520,7 @@ and translateProp = function
 	    (lb, Some (n, s), p) ->
 	      let {ty=ty2; tot=q} = translateSet s in
 	      let (ty1, p') = translateProp p in
-	      let x = fresh [mk "r"; mk "q"; mk "s"] ~bad:[n] in
+	      let x = fresh [mk "r"; mk "q"; mk "s"] in
 		(lb, Some ty1)::tys, (lb, Some (x, ty1), Some (n, ty2),
 				     And [pApp q (id n); pApp p' (id x)])::arms
           | (lb, None, p) ->
@@ -596,8 +597,8 @@ and translateTheoryElement = function
       let binds = bindings_of_setkind knd in
       let ys = List.map fst binds in
       let idys = List.map id ys in
-      let x = fresh [mk "x"; mk "y"] ~bad:ys in
-      let y, y' = fresh2 [mk "y"; mk "z"; mk "w"] [mk "y"; mk "z"; mk "w"] ~bad:ys in
+      let x = fresh [mk "x"; mk "y"] in
+      let y, y' = fresh2 [mk "y"; mk "z"; mk "w"] [mk "y"; mk "z"; mk "w"] in
 	[Spec (n, TySpec (Some t),
              [(string_of_name n ^ "_def_total",
 	      nest_forall binds
@@ -630,7 +631,7 @@ and translateTheoryElement = function
 	    [Assertion    ("equiv_" ^ (string_of_name n),
 			    let bnds1, bnds2, s' = equiv_bindings_of_proptype pt in
 			    let xs = List.map fst bnds1 in
-			    let x, y = fresh2 [mk "x"; mk "y"; mk "z"] [mk "x"; mk "y"; mk "z"] ~bad:xs in
+			    let x, y = fresh2 [mk "x"; mk "y"; mk "z"] [mk "x"; mk "y"; mk "z"] in
 			    let p =
 			      PMLambda ((x,s'),
                               PMLambda ((y,s'),
@@ -647,7 +648,7 @@ and translateTheoryElement = function
       let binds = bindings_of_proptype pt in
       let ys = List.map fst binds in
       let idys = List.map id ys in
-      let r = fresh [mk "r"; mk "q"] ~bad:ys in
+      let r = fresh [mk "r"; mk "q"] in
 	[Spec (
 	    L.typename_of_name n,
 	    TySpec (Some ty),
@@ -692,7 +693,7 @@ and translateTheoryElement = function
   | L.Declaration(mdlnm, L.DeclModel (thr)) ->
       [ Spec (mdlnm, ModulSpec (translateTheory thr), []) ]
 
-  | L.Declaration(n, L.DeclTheory (thr,_)) :: rest ->
+  | L.Declaration(n, L.DeclTheory (thr,_)) ->
       [ Spec(n, SignatSpec (translateTheory thr), []) ]
 
 and translateSLN = function
@@ -702,8 +703,8 @@ and translateSLN = function
 and translateTheoryElements thy =
   List.fold_right (fun e elts -> translateTheoryElement e @ elts) thy []
 
-and translateModelBinding =
-  List.map (fun (m, thry) -> (n, translateTheory thry))
+and translateModelBinding bnd =
+  List.map (fun (m, thry) -> (m, translateTheory thry)) bnd
 
 and translateTheory = function
     L.Theory body -> Signat (translateTheoryElements body)

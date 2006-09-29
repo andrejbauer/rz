@@ -490,11 +490,10 @@ and output_signat_no_sigapp ppf = function
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
          (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
-  | SignatApp (sgnt1,mdl,sgnt2) ->
-      fprintf ppf "@[<v>(** %a(%a) *)@, %a@]"
+  | SignatApp (sgnt1,mdl) ->
+      fprintf ppf "@[<v>(** %a(%a) *)@, SHOULD OUTPUT SignatApp beta-reduced@]"
          output_signat_sigapp sgnt1
          output_modul mdl
-         output_signat_no_sigapp sgnt2
   | SignatProj (mdl, nm) -> 
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 
@@ -504,7 +503,7 @@ and output_signat_sigapp ppf = function
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@, @[<v>%a@]@]"
          (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
-  | SignatApp (sgnt1,mdl,sgnt2) ->
+  | SignatApp (sgnt1,mdl) ->
       fprintf ppf "@[%a(%a)@]"
          output_signat_sigapp sgnt1    output_modul mdl
   | SignatProj (mdl, nm) -> 

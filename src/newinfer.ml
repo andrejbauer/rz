@@ -80,6 +80,10 @@ let rec annotateExpr cntxt orig_expr =
 			  ResTerm(L.Var(L.LN(Some mdl, nm2)), ty)
 		      | Some (L.DeclModel thry) -> 
 			  ResModel(L.ModelProj(mdl,nm2), thry)
+(* XXX: is this ok? (Andrej)
+		      | Some (L.DeclTheory (thry, thryknd)) ->
+			  ResTheory(L.TheoryProj(mdl,nm2), thryknd)
+*)
 		      | None -> 
 			  E.badModelProjectionError nm2 orig_expr "Name not found"
 		      | _ -> 

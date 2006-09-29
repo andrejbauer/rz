@@ -93,8 +93,8 @@ let send_to_formatter ppf toplevels =
     that respects dependencies.
 *)
 let rec process = function
-    ([], _, _, _, _) -> ()
-  | (fn::fns, infer_state, translate_state, thin_state, opt_state) ->
+    ([], _, _, _) -> ()
+  | (fn::fns, infer_state, thin_state, opt_state) ->
       let basename = Filename.chop_extension fn in
 
       let thy_elts = read fn in
@@ -125,8 +125,8 @@ let rec process = function
              then print_string ("[Translating " ^ fn ^ "]\n") 
           else () in
 *)
-      let (spec,translate_state') = 
-	Translate.translateToplevel translate_state lthys in
+      let spec = 
+	Translate.translateToplevel lthys in
 
 (*      let _ = if (!Flags.do_print) 
              then print_string ("[Thinning " ^ fn ^ "]\n") 
@@ -180,7 +180,7 @@ let rec process = function
               else () 
 		
       in 
-	process (fns, infer_state', translate_state', thin_state', opt_state');;
+	process (fns, infer_state', thin_state', opt_state');;
 
 (** MAIN PROGRAM *)
 
@@ -204,7 +204,6 @@ try
   *)
   process (List.rev !filenames, 
 	   Logicrules.emptyContext, 
-	   Translate.emptyCtx, 
 	   Outsynrules.emptyContext,   (* Thin *)
 	   Outsynrules.emptyContext)   (* Opt *)
 with
