@@ -114,7 +114,7 @@ and term =
     | Quot     of term * proposition
     | Choose   of binding * proposition * term * term * set
     | Let      of binding * term * term * set  (* set is type of the whole let *)
-    | Subin    of term * set
+    | Subin    of term * binding * proposition (* [Subin(a,(x,t),p)] coerces [a] to [{x:t|p}] *)
     | Subout   of term * set
     | Assure   of binding option * proposition * term * set
 

@@ -21,7 +21,7 @@ module E = Error
         these we know there will never be a value specified for the variable.)
      3) A renaming mapping variables to variables.  The typechecker removes
         shadowing whenever possible by renaming bound variables, and this
-        mapping keeps track of what renamings are currently are being done.
+        mapping keeps track of what renamings are currently being done.
         If a bound variable is not in the domain of this mapping, it is not
         being renamed.
 *)

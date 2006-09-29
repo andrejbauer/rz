@@ -143,7 +143,7 @@ let rec getLongSet ctx ln =
     | L.SLN(Some mdl, nm) ->
 	(match normalizeModel ctx mdl with
 	     Ctx elems -> getSet nm elems
-	   | CtxParam _ -> failwith "getLong: cannot project from a functor")
+	   | CtxParam _ -> failwith "getLongSet: cannot project from a functor")
   in 
     find ln
 
@@ -551,7 +551,7 @@ and translateProp ctx = function
 
   | L.Atomic (ln, pt) ->
       let ty =
-	(if L.is_stable (getLong getProp ctx ln)
+	(if L.is_stable pt
 	  then TopTy
 	  else NamedTy (translateSLN (L.sln_of_ln ln)))
       in
