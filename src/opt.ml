@@ -864,11 +864,10 @@ and optSignat ctx = function
       let    ( (mdlnm, _) as arg', ctx'  ) = optStructBinding ctx arg
       in let body' = optSignat ctx' body
       in SignatFunctor ( arg', body' )
-  | SignatApp(sg1,mdl,sg2) ->
+  | SignatApp(sg1,mdl) ->
       let sg1' = optSignat ctx sg1
       in let mdl' = optModul' ctx mdl
-      in let sg2' = optSignat ctx sg2 in
-	   SignatApp(sg1', mdl', sg2')
+	   SignatApp(sg1', mdl')
   | SignatProj(mdl, nm) ->
       let mdl' = optModul' ctx mdl
       in SignatProj(mdl',nm)

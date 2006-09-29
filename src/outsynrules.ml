@@ -137,7 +137,14 @@ let applyModulRenaming cntxt nm =
 
 
 let rec hnfSignat cntxt = function
-    SignatApp(_,_,sg) -> hnfSignat cntxt sg
+    SignatApp(sg1,mdl2) -> 
+      begin
+	match hnfSignat cntxt sg1 with
+	    SignatFunctor((nm,_),sg1b) ->
+	      let sg' = substSignat (insertModulvar emptysubst nm mdl2) sg1b
+	      in hnfSignat cntxt sg'
+	  | _ -> failwith "Outsynrules.hnfSignat"
+      end
   | SignatName nm -> hnfSignat cntxt (lookupSignatVariable cntxt nm)
   | sg -> sg
       

@@ -466,9 +466,9 @@ and thinSignat ctx = function
       let    ( (mdlnm, _) as arg', ctx'  ) = thinStructBinding ctx arg
       in let body' = thinSignat ctx' body
       in SignatFunctor ( arg', body' )
-  | SignatApp(sgnt1,mdl,sgnt2) ->
-      let sgnt2' = thinSignat ctx sgnt2 in
-	SignatApp(thinSignat ctx sgnt1, mdl, sgnt2')
+  | SignatApp(sgnt1,mdl) ->
+	SignatApp(thinSignat ctx sgnt1, 
+		  thinModul' ctx mdl)
   | SignatProj(mdl, nm) ->
       SignatProj(thinModul' ctx mdl, nm)
 
