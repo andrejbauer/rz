@@ -556,7 +556,9 @@ and fnTerm = function
     EmptyTuple | Inj(_, None)-> NameSet.empty
   | Var(LN(None, nm)) -> NameSet.singleton nm
   | Var(LN(Some mdl, nm)) -> NameSet.add nm (fnModel mdl)
-  | Subin(trm, st)
+  | Subin(trm, (nm,st), prp) ->
+      NameSet.union (fnTerm trm) 
+         (NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp)))
   | Subout(trm, st) -> NameSet.union (fnTerm trm) (fnSet st) 
   | Tuple trms -> unionNameSetList (List.map fnTerm trms)
   | Proj(_, trm) 
@@ -806,7 +808,11 @@ let rec subst sbst =
                 sub t1, 
                 subst sbst' t2,
 		substSet sbst stopt2)
-    | Subin(trm,st) -> Subin(sub trm, substSet sbst st)
+    | Subin(trm,(y,st),prp) -> 
+	let (sbst', y') = updateBoundName sbst y in 
+	  Subin(sub trm,
+               (y',substSet sbst st),
+  	       substProp sbst' prp)
     | Subout(trm,st) -> Subout(sub trm, substSet sbst st)
     | Let((y,st1),t1,t2,st2) ->
 	let (sbst', y') = updateBoundName sbst y in
