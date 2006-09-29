@@ -18,22 +18,27 @@ type name = N of bare_name | G of gensym
 
 let gensym =
   let k = ref 0 in
-    fun lst -> incr k ; !k * lst
+    fun lst -> incr k ; G (!k, lst)
 
 (** mk_word: string -> name *)
 let mk_word str = N(str, Word)
 
 (** string_of_name: bare_name -> string
     [string_of_bare_name n] converts a bare name [n] to its string representation. *)
-let rec string_of_bare_name = function 
+let string_of_bare_name = function 
   | (n,   Wild) -> n
   | (str, Word) -> str
   | ("*"  ,_) -> "( * )"
-  |(str,_) -> "(" ^ str ^ ")"
+  | (str,_) -> "(" ^ str ^ ")"
 
+let string_of_name = function
+    N nm -> string_of_bare_name nm
+  | G (k, _) -> "gen" ^ string_of_int k
 
 (** capitalize_name: name -> name *)
-let capitalize_name  (N(nm, fxty)) = N(String.capitalize nm, fxty)
+let capitalize_name = function
+    N (nm, fxty) -> N (String.capitalize nm, fxty)
+  | G (k, lst) -> G (k, List.map (fun (nm, fxty) -> String.capitalize nm, fxty) lst)
 
 (** wildName:      unit -> name
     wildModelName: unit -> name 
@@ -153,6 +158,7 @@ let nextName = function
     N(nm, Word) -> N(nextString nm, Word)
   | N(_, Wild) -> N("wild", Word)
   | N(_, fixity) -> N(nextString "op", fixity)
+  | G (k, lst) -> gensym lst
 
 (** [freshName good bad occurs] generates a fresh name. It uses
     one of the names in list [good], possibly adding primes and

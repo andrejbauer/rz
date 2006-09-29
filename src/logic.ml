@@ -491,12 +491,16 @@ let rename = function
     end
 
 let typename_of_name = function
-    N(_, Word) as nm -> nm
-  | N(str, _) -> N(rename str, Word)
+    N (_, Word) as nm -> nm
+  | N (str, _) -> N (rename str, Word)
+  | G (k, lst) -> 
+      Name.gensym (List.map
+		    (function
+			(_, Word) as nm -> nm
+		      | (str, _) -> (rename str, Word))
+		    lst)
 
-let typename_of_ln = function
-    LN (_, N(_, Word)) as n -> n
-  | LN (mdl, N(p, _)) -> LN (mdl, N(rename p, Word))
+let typename_of_ln (LN (mdl, nm)) = LN (mdl, typename_of_name nm)
 
 let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
 
