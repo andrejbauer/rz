@@ -108,7 +108,7 @@ and signat =
   | SignatProj of modul * signat_name
   | Signat of signat_element list
   | SignatFunctor of modul_binding * signat
-  | SignatApp of signat * modul * signat (** SignatApp(f,m,n): n is the result of f(m) *)
+  | SignatApp of signat * modul
 
 and signatkind =
     | ModulSignatKind    (* Kind of theories that classify modules,
@@ -690,10 +690,9 @@ and substSignat ?occ sbst = function
   | SignatFunctor ((m,sgnt1), sgnt2) ->
       let sbst' = insertModulvar sbst m (ModulName m) in
 	SignatFunctor ((m, substSignat ?occ sbst sgnt1), substSignat ?occ sbst' sgnt2)
-  | SignatApp (sgnt1, mdl, sgnt2) ->
+  | SignatApp (sgnt1, mdl) ->
       SignatApp (substSignat ?occ sbst sgnt1,
-		 substModul ?occ sbst mdl,
-		 substSignat ?occ sbst sgnt2)
+		 substModul ?occ sbst mdl)
   | SignatProj (mdl, nm) ->
       SignatProj(substModul ?occ sbst mdl, nm)
 
@@ -730,10 +729,10 @@ and substBinding ?occ sbst (nm, ty) = (nm, substTy ?occ sbst ty)
 (**** SOMEWHAT OLD CODE OLD CODE OLD CODE OLD CODE IS STILL USED IS STILL USED *)
 
 let rec collectSignatApps = function
-    SignatApp (s, m, n) ->
-      let hd, args, _ = collectSignatApps s in
-	hd, args @ [m], n
-  | s -> s, [], s
+    SignatApp (s, m) ->
+      let hd, args = collectSignatApps s in
+	hd, args @ [m]
+  | s -> s, []
 
 let rec string_of_modul = function
     ModulName nm -> string_of_name nm
@@ -983,11 +982,11 @@ and string_of_signat = function
       "functor (" ^ string_of_name n ^ " : " ^ (string_of_signat t) ^ ") ->\n" ^
       (string_of_signat body) ^ "\n"
   | (SignatApp _) as s ->
-      let hd, args, res = collectSignatApps s in
+      let hd, args = collectSignatApps s in
 	"(** " ^ (string_of_signat hd) ^
 	(String.concat " " (List.map (fun m -> "(" ^ (string_of_modul m) ^ ")") args)) ^
 	" *) " ^
-	(string_of_signat res)
+	"XXX: SHOULD COMPUTE SIGNATURE APPLICATION HERE"
   | SignatProj(mdl,nm) -> 
       string_of_modul mdl ^ "." ^ string_of_name nm
 

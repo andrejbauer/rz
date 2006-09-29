@@ -6,27 +6,34 @@ type label = string
 
 type fixity = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4 | Wild
 
-type name = N of string * fixity
+type bare_name = string * fixity
+
+type gensym = int * bare_name list
+
+type name = N of bare_name | G of gensym
 
 (********************************)
 (** {2:Simple utility functions *)
 (********************************)
 
+let gensym =
+  let k = ref 0 in
+    fun lst -> incr k ; !k * lst
+
 (** mk_word: string -> name *)
 let mk_word str = N(str, Word)
 
-(** string_of_name: name -> string
-
-    [string_of_name n] converts a name [n] to its string representation. *)
-let rec string_of_name = function 
-  | N(n, Wild) -> n
-  | N(str,Word) -> str
-  | N("*",_) -> "( * )"
-  | N(str,_) -> "(" ^ str ^ ")"
+(** string_of_name: bare_name -> string
+    [string_of_bare_name n] converts a bare name [n] to its string representation. *)
+let rec string_of_bare_name = function 
+  | (n,   Wild) -> n
+  | (str, Word) -> str
+  | ("*"  ,_) -> "( * )"
+  |(str,_) -> "(" ^ str ^ ")"
 
 
 (** capitalize_name: name -> name *)
-let capitalize_name (N(nm, fxty)) = N(String.capitalize nm, fxty)
+let capitalize_name  (N(nm, fxty)) = N(String.capitalize nm, fxty)
 
 (** wildName:      unit -> name
     wildModelName: unit -> name 
