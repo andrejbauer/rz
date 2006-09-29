@@ -592,11 +592,12 @@ let rec typeOf cntxt trm =
 
     | Quot (trm, prp) -> Quotient(typeOf cntxt trm, prp)
 
+    | Subin (_, bnd, prp) -> Subset(bnd,prp)
+
     | Case(_, _, _, ty) -> ty
     | RzChoose (_, _, _, ty) -> ty
     | Choose (_, _, _, _, ty) -> ty
     | Let (_, _, _, ty) -> ty
-    | Subin (_, ty) -> ty
     | Subout(_, ty) -> ty
     | Assure(_, _, _, ty) -> ty
 
@@ -901,7 +902,7 @@ and eqProp cntxt prp1 prp2 =
 	    in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	    in let prp1' = substProp sub1 prp1
 	    in let prp2' = substProp sub2 prp2
-	    in let cntxt' = insertTermVariable cntxt nm1 st1 None
+	    in let cntxt' = insertTermVariable cntxt nm st1 None
 	    in let prereqs2 = eqProp cntxt' prp1' prp2'
 	    in let reqs2 = List.map (fForall (nm,st1)) prereqs2
 	    in reqs1 @ reqs2
@@ -990,7 +991,7 @@ and eqTerm cntxt trm1 trm2 =
 	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	  in let trm1' = subst sub1 trm1
 	  in let trm2' = subst sub2 trm2
-	  in let cntxt' = insertTermVariable cntxt nm1 ty1 None
+	  in let cntxt' = insertTermVariable cntxt nm ty1 None
 	  in let prereqs2 = eqTerm cntxt' trm1' trm2'
 	  in let reqs2 = List.map (fForall (nm,ty1)) prereqs2 
 	  in reqs1 @ reqs2
@@ -1000,7 +1001,7 @@ and eqTerm cntxt trm1 trm2 =
 	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	  in let prp1' = substProp sub1 prp1
 	  in let prp2' = substProp sub2 prp2
-	  in let cntxt' = insertTermVariable cntxt nm1 ty1 None
+	  in let cntxt' = insertTermVariable cntxt nm ty1 None
 	  in let prereqs2 = eqProp cntxt' prp1' prp2'
 	  in let reqs2 = List.map (fForall (nm,ty1)) prereqs2
 	  in reqs1 @ reqs2
@@ -1027,7 +1028,7 @@ and eqTerm cntxt trm1 trm2 =
 	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	  in let trm1b' = subst sub1 trm1b
 	  in let trm2b' = subst sub2 trm2b
-	  in let cntxt' = insertTermVariable cntxt nm1 ty1a None
+	  in let cntxt' = insertTermVariable cntxt nm ty1a None
 	  in let prereqs3 = eqTerm cntxt' trm1b' trm2b'
 	  in let reqs3 = List.map (fForall (nm, ty1a)) prereqs3
 	  in let reqs4 = eqSet cntxt ty1b ty2b
@@ -1045,18 +1046,27 @@ and eqTerm cntxt trm1 trm2 =
 	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2 
 	  in let trm1b' = subst sub1 trm1b
 	  in let trm2b' = subst sub2 trm2b
-	  in let cntxt' = insertTermVariable cntxt nm1 ty1a None
+	  in let cntxt' = insertTermVariable cntxt nm ty1a None
 	  in let prereqs4 = eqTerm cntxt' trm1b' trm2b' 
 	  in let reqs4 = List.map (fForall (nm,ty1a)) prereqs4
 	  in let reqs5 = eqSet cntxt ty1b ty2b
 	  in reqs1 @ reqs2 @ reqs3 @ reqs4 @ reqs5
 
-      | (Subin (trm1,st1), Subin (trm2,st2))
+      | (Subin (trm1,(nm1,ty1),prp1), Subin (trm2,(nm2,ty2),prp2)) ->
+	  let reqs1 = eqTerm cntxt trm1 trm2
+	  in let reqs2 = eqSet cntxt ty1 ty2
+	  in let (nm, sub1, sub2) = jointNameSubsts nm1 nm2
+	  in let prp1' = substProp sub1 prp1
+	  in let prp2' = substProp sub2 prp2
+	  in let cntxt' = insertTermVariable cntxt nm ty1 None
+	  in let reqs3 = eqProp cntxt' prp1' prp2'
+	  in reqs1 @ reqs2 @ reqs3
+
       | (Subout(trm1,st1), Subout(trm2,st2)) ->
 	  eqTerm cntxt trm1 trm2 @
 	    eqSet cntxt st1 st2
 
-(* hnfTerm removes Assures 
+(* hnfTerm removed Assures 
 
       | (Assure(Some(nm1, st1), prp1, trm1), 
 	 Assure(Some(nm2, st2), prp2, trm2)) ->
@@ -1450,7 +1460,7 @@ let rec coerce cntxt trm st1 st2 =
     in try       
 	match (trm, st1', st2') with
 	  | ( _, Subset ( ( _, st1'1 ) , _ ),
-            Subset ( ( _, st2'1 ) , _ ) ) -> 
+            Subset ( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
 	      begin
 		(** Try an implicit out-of-subset conversion *)
 		try
@@ -1460,7 +1470,7 @@ let rec coerce cntxt trm st1 st2 =
 		      into-subset conversion *)
 		  (* XXX Eventually we may add an assure here for the subin *)
 		  let trm' = coerce cntxt trm st1 st2'1
-		  in  Subin ( trm', st2 )
+		  in  Subin ( trm', bnd2', prp2'2 )
 	      end
 		
 	  | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
@@ -1468,10 +1478,10 @@ let rec coerce cntxt trm st1 st2 =
 	      (* XXX Eventually we may add an assure here for the subin *)
 	      coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
 		
-	  | ( _, _, Subset( ( _, st2'1 ), _ ) ) -> 
+	  | ( _, _, Subset( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
 	      (** Try an implicit into-subset conversion *)
 	      let trm' = coerce cntxt trm st1 st2'1
-	      in  Subin ( trm', st2 )
+	      in  Subin ( trm', bnd2', prp2'2 )
 		
 	  | ( Tuple trms, Product sts1, Product sts2 ) ->
 	      let rec loop subst2 = function 
