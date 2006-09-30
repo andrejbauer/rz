@@ -39,7 +39,7 @@ TARGETS = rz
 
 OPT_TARGETS = $(addsuffix .opt,$(TARGETS))
 
-default: $(TARGETS) rzinfer
+default: $(TARGETS) 
 
 all: $(TARGETS) $(OPT_TARGETS)
 	echo $(OPT_TARGETS); echo $(TARGETS)

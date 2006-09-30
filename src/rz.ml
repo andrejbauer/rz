@@ -1,8 +1,14 @@
-(** Top level
-      @see <http://caml.inria.fr/ocaml/htmlman/libref/Arg.html> for information on adding further command-line options.
-*)
+(** Top Level *)
 
 open Message
+
+(************************)
+(** Argument processing *)
+(************************)
+
+(** 
+      @see <http://caml.inria.fr/ocaml/htmlman/libref/Arg.html> for information on adding further command-line options.
+*)
 
 exception BadArgs;;
 
@@ -12,30 +18,30 @@ exception BadArgs;;
 let command_line_options = 
   let    fSet = ((fun x -> Arg.Set x), true)
   in let fClear = ((fun x -> Arg.Clear x), false)
-  in let flag_data = 
-    [("--opt", fSet, Flags.do_opt, "Turn on simplification optimations (requires trimming)");
-     ("--noopt", fClear, Flags.do_opt,"Turn off simplification optimizations");
-     ("--thin", fSet, Flags.do_thin, "Remove trivial realizers");
-     ("--nothin", fClear, Flags.do_thin, "Leave trivial realizers");
-     ("--show", fSet, Flags.do_print, "Show output on stdout");
-     ("--noshow", fClear, Flags.do_print, "No output to stdout");
-     ("--save", fSet, Flags.do_save, "Send output to .mli file");
-     ("--nosave", fClear, Flags.do_save, "No output to file");
-     ("--hoist", fSet, Flags.do_hoist, "Hoist all assurances");
-     ("--nohoist", fClear, Flags.do_hoist, "Don't hoist all assurances");
-     ("--sigapp", fSet, Flags.do_sigapp, "Retain signature applications");
-     ("--nosigapp", fClear, Flags.do_sigapp, "Expand away signature applications");
-     ("--dump_infer", fSet, Flags.do_dumpinfer, "Dump result of type inference");
+  in let booleanFlags = 
+    [("--opt",        fSet,   Flags.do_opt,       "Turn on simplification optimations (requires trimming)");
+     ("--noopt",      fClear, Flags.do_opt,       "Turn off simplification optimizations");
+     ("--thin",       fSet,   Flags.do_thin,      "Remove trivial realizers");
+     ("--nothin",     fClear, Flags.do_thin,      "Leave trivial realizers");
+     ("--show",       fSet,   Flags.do_print,     "Show output on stdout");
+     ("--noshow",     fClear, Flags.do_print,     "No output to stdout");
+     ("--save",       fSet,   Flags.do_save,      "Send output to .mli file");
+     ("--nosave",     fClear, Flags.do_save,      "No output to file");
+     ("--hoist",      fSet,   Flags.do_hoist,     "Hoist all assurances");
+     ("--nohoist",    fClear, Flags.do_hoist,     "Don't hoist all assurances");
+     ("--sigapp",     fSet,   Flags.do_sigapp,    "Retain signature applications");
+     ("--nosigapp",   fClear, Flags.do_sigapp,    "Expand away signature applications");
+     ("--dump_infer", fSet,   Flags.do_dumpinfer, "Dump result of type inference");
     ]
-  in let other_flags = 
+  in let otherFlags = 
      [
      ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
      ]
-  in let processFlag (flag, (action,result) , boolref, description) =
+  in let processBooleanFlag (flag, (action,result) , boolref, description) =
     (flag, action boolref, 
      description ^ (if (!boolref = result) then " (default)" else ""))
   in
-       (List.map processFlag flag_data) @ other_flags
+       (List.map processBooleanFlag booleanFlags) @ otherFlags
 
 (** One-line usage message
  *)
@@ -49,6 +55,21 @@ let filenames : string list ref = ref []
     of files to process *)
 let addFile strng = 
   filenames := strng :: !filenames
+
+
+
+type state = {infer_state    : Logicrules.context;
+               thin_state     : Outsynrules.context;
+               opt_state      : Outsynrules.context;
+	       files_read     : string list}
+
+let emptyState = {infer_state = Logicrules.emptyContext;
+		  thin_state = Outsynrules.emptyContext;
+		  opt_state = Outsynrules.emptyContext;
+		  files_read = []}
+
+
+
 
 (* Helper function:  parses a given filename *)
 let read fn =
@@ -83,49 +104,58 @@ let parse str = Coq_parser.toplevels Coq_lexer.token (Lexing.from_string str);;
 let send_to_formatter ppf toplevels =
    Pp.output_toplevel ppf toplevels
 
+let rec processOne (state : state) writeOutput filename =
+  (* First, check to see if we've already processed this file. *)
+  if List.mem filename state.files_read then
+    (* If so, do nothing. *)
+    state
+  else
+    (* Otherwise, read in the file, after recording that the file has been 
+       scheduled for reading (to avoid infinite require loops) *)
+    let state = { state with files_read = filename :: state.files_read }
 
-(** Main function for translating theories into code.  Takes a
-    filename and the current "states" (really the context obtained
-    at the end of) type inference, translation, and optimization.
-    Successively processes each file in turn, using each updated
-    state to process the following file.  Thus, dependencies between
-    files are allowed, as long filenames are given in an order
-    that respects dependencies.
-*)
-let rec process = function
-    ([], _, _, _) -> ()
-  | (fn::fns, infer_state, thin_state, opt_state) ->
-      let basename = Filename.chop_extension fn in
+    in let (requires,thy_elts) = read filename
 
-      let thy_elts = read fn in
-	
-      let thy = Syntax.Value(Syntax.Parameter,
+    (* Recursively (and silently, without emitting code) process the
+       requires so that we can add all their definitions to our state
+       (i.e., typing contexts) *)
+    in let rec processRequires state = function
+	[]    -> state
+      | r::rs -> 
+	  let filename = String.uncapitalize r ^ ".thy"
+	  in let state = processOne state false filename
+	  in processRequires state rs
+
+    in let state = processRequires state requires
+
+      
+    (** Following OCaml convention, wrap the input from file foobar.thy
+       in the implicit [Parameter Foobar: thy ... end.] *)
+    in let basename = Filename.chop_extension filename
+    in let thy = Syntax.Value(Syntax.Parameter,
 			     [([Name.mk_word(String.capitalize basename)],
 			      Syntax.Theory thy_elts)])
 
-      in let (infer_state', lthys) = 
-	try
-	  Newinfer.annotateTheoryElems infer_state [thy] 
-	with 
-	    Error.TypeError msgs -> 
-	      (Error.printErrors msgs;
-	       failwith "Typechecking failed.")
 
-      in let _ = 
-	(if (! Flags.do_dumpinfer) then
-	    (print_endline "----------------";
-	      print_endline "After Inference:";
-	      print_endline "----------------";
-	      print_endline (Logic.string_of_theory_elements lthys);
-	      print_string "\n\n\n";
-	      Error.printAndResetWarnings())
-	else ()) in
-(*
-      let _ = if (!Flags.do_print) 
-             then print_string ("[Translating " ^ fn ^ "]\n") 
-          else () in
-*)
-      let spec = 
+    in let (infer_state', lthys) = 
+      try
+	Newinfer.annotateTheoryElems state.infer_state [thy] 
+      with 
+	  Error.TypeError msgs -> 
+	    (Error.printErrors msgs;
+	     failwith "Typechecking failed.")
+
+    in let _ = 
+      (if writeOutput && (! Flags.do_dumpinfer) then
+	  (print_endline "----------------";
+	   print_endline "After Inference:";
+	   print_endline "----------------";
+	   print_endline (Logic.string_of_theory_elements lthys);
+	   print_string "\n\n\n";
+	   Error.printAndResetWarnings())
+	else ()) 
+
+    in let spec = 
 	Translate.translateToplevel lthys in
 
 (*      let _ = if (!Flags.do_print) 
@@ -134,7 +164,7 @@ let rec process = function
 *)
 
       let (spec, thin_state') =
-	try (Thin.thinToplevels thin_state spec) with
+	try (Thin.thinToplevels state.thin_state spec) with
 	    (Thin.Impossible s) as exn -> (print_endline s; raise exn) in
 
 (*      let _ = if (!Flags.do_print) 
@@ -142,7 +172,7 @@ let rec process = function
           else () in
 *)
       let (spec2,opt_state') = 
-	(try ( Opt.optToplevels opt_state spec ) with
+	(try ( Opt.optToplevels state.opt_state spec ) with
 	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
 
       let spec3 = 
@@ -156,7 +186,7 @@ let rec process = function
 
       (** Write the output file 
       *)
-      let _ = if (!Flags.do_save) then
+      let _ = if (writeOutput && !Flags.do_save) then
  	        let outb = Buffer.create 1024 in
 		let formatter = Format.formatter_of_buffer outb in
  		let outchan = open_out outfile in
@@ -167,7 +197,7 @@ let rec process = function
 	
       (** Optionally display to stdout as well.
       *)
-      let _ = if (!Flags.do_print) then
+      let _ = if (writeOutput && !Flags.do_print) then
 	       send_to_formatter Format.std_formatter spec3
               else ()  in
 
@@ -175,12 +205,24 @@ let rec process = function
           they are more likely to be seen. *)
 
       let _ = Error.printAndResetWarnings() in
-      let _ = if (!Flags.do_save) then
+      let _ = if (writeOutput && !Flags.do_save) then
                  print_string ("[Output saved in " ^ outfile ^ "]\n") 
               else () 
 		
       in 
-	process (fns, infer_state', thin_state', opt_state');;
+	{state with infer_state = infer_state';
+	  thin_state = thin_state';
+	  opt_state = opt_state'}
+	  
+let rec process state = function
+    [] -> ()
+  | filename::filenames  ->
+      let state = processOne state true filename
+      in process state filenames
+
+
+;;
+  
 
 (** MAIN PROGRAM *)
 
@@ -202,10 +244,9 @@ try
     command-line (which is the reverse of the order that they were
     stored).
   *)
-  process (List.rev !filenames, 
-	   Logicrules.emptyContext, 
-	   Outsynrules.emptyContext,   (* Thin *)
-	   Outsynrules.emptyContext)   (* Opt *)
+  process emptyState (List.rev !filenames)
+
 with
     Arg.Bad s
   | Arg.Help s -> prerr_endline s
+

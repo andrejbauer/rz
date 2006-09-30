@@ -30,6 +30,7 @@
       "not", NOT;
       "Parameter", PARAMETER;
       "Prop", PROP;
+      "Require", REQUIRE;
       "rz", RZ;
       "Set", SET;
       "Stable", STABLE;

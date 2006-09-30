@@ -85,6 +85,7 @@
 %token PROP
 %token RBRACE
 %token RBRACK
+%token REQUIRE
 %token RPAREN
 %token RZ
 %token SET
@@ -136,17 +137,16 @@
 /* Entry points */
 
 %start toplevels
-%type <Syntax.theory_element list> toplevels
+%type <string list * Syntax.theory_element list> toplevels
 
 %%
 
 toplevels:
-  | EOF                       { [] }
-  | theory_element toplevels      { $1 :: $2 }
+  | theory_elements EOF  { $1 }
 
 theory_elements:
-  |                            	   { [] }
-  | theory_element theory_elements { $1 :: $2 }
+  |                            	   { ([],[]) }
+  | theory_element theory_elements { (fst $1 @ fst $2, snd $1 @ snd $2) }
 
 parameter_decl:
   | PARAMETER                   { Parameter }
@@ -157,18 +157,19 @@ definition_decl:
   | DEFINITION      { () }
 
 theory_element:
+  | REQUIRE NAME PERIOD                               { ([$2],[]) }
   | definition_decl ident binderz decl COLONEQUAL expr PERIOD
-                                                      { Definition ($2, $4, makeLambda $3 $6) }
+                                                      { ([], [Definition ($2, $4, makeLambda $3 $6)]) }
 /*
   | definition_decl ident binderz decl COLONEQUAL expr error
                                                       { unclosed "Definition" 7 }
 */
-  | parameter_decl ident_list COLON expr PERIOD       { Value ($1, [($2, $4)]) }
-  | parameter_decl assums PERIOD                      { Value ($1, $2) }
-  | IMPLICIT TYPE ident_list COLON expr PERIOD        { Implicit ($3, $5) }
-  | INCLUDE expr PERIOD                               { Include $2 }
-  | COMMENT                                           { Comment ($1) }
-
+  | parameter_decl ident_list COLON expr PERIOD       { ([], [Value ($1, [($2, $4)])]) }
+  | parameter_decl assums PERIOD                      { ([], [Value ($1, $2)]) }
+  | IMPLICIT TYPE ident_list COLON expr PERIOD        { ([], [Implicit ($3, $5)] ) }
+  | INCLUDE expr PERIOD                               { ([], [Include $2]) }
+  | COMMENT                                           { ([], [Comment ($1)]) }
+						      
 decl:
   |                              { None }
   | COLON expr            { Some $2 }
@@ -246,7 +247,7 @@ simple_expr:
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
   | LBRACK sum_list RBRACK                    { Sum $2 }
 
-  | THY theory_elements END                   { Theory $2 }
+  | THY theory_elements END                   { Theory (snd $2) }
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
