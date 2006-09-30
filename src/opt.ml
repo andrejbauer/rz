@@ -797,7 +797,7 @@ and optModest ctx {ty=t; tot=p; per=q} =
    per = optProp ctx q}
 
 and optElems ctx orig_elems = 
-  try
+(*  try *)
     match orig_elems with
 	[] -> ([], emptyContext)
       |  Spec(name, ValSpec ty, assertions) :: rest ->
@@ -849,11 +849,11 @@ and optElems ctx orig_elems =
       |  Comment cmmnt :: rest -> 
 	   let rest', ctx' = optElems ctx rest in
 	     (Comment cmmnt :: rest', ctx')
-  with e ->
+(*  with e ->
     (print_endline ("\n\n...in " ^
 		       (String.concat "\n" (List.map string_of_spec orig_elems)));
      raise e)
-
+*)
 
 and optSignat ctx = function
     SignatName s -> SignatName s

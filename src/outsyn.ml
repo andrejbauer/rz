@@ -1850,6 +1850,12 @@ and reduceProp prp =
 	else
           prp
 
+    | PMApp(PMLambda((nm, _), prp2), trm1) ->
+	if (simpleTerm trm1) || (countProp nm prp2 < 2) then
+          reduceProp (substProp (termSubst nm trm1) prp2)
+	else
+          prp
+
   | PApp(PObligation(bnds,prp1,prp2), trm3) ->
       (* Complicated but short method of renaming bnds to
 	 avoid the free variables of trm3 *)
@@ -1868,14 +1874,6 @@ and reduceProp prp =
 	
   |  PObligation(bnds, prp1, prp2) -> 
        PObligation(bnds, prp1, reduceProp prp2)
-
-
-
-  | PMApp(PMLambda ((nm, _), prp1), trm2) as trm ->
-      if (simpleTerm trm2) then
-        reduceProp (substProp (termSubst nm trm2) prp1)
-      else
-        trm
 
   | (PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2)))) |
      PMLambda((nm1,_), PMApp(prp1, Id(LN(None,nm2)))))  ->
