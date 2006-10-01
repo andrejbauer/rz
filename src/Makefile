@@ -24,6 +24,7 @@ BYTE_OBJS = name.cmo \
         newinfer.cmo \
         outsyn.cmo \
 	outsynrules.cmo \
+	rename.cmo \
 	pp.cmo \
 	thin.cmo \
         opt.cmo \

@@ -602,28 +602,29 @@ and optProp ctx orig_prp =
 	      | (VoidTy, _) -> True
 	      | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
 		  if (LN(None,n) = n3) && (n1 = n2) then
-		    ForallTotal((n, NamedTy n1), p'')
+		    ForallTotal((n, n1), p'')
 		  else
 		    doForall(n, NamedTy n1, p')
 	      | (ty',_) -> doForall(n, ty', p'))
 	      
-	| ForallTotal((n,ty),p) ->
+	| ForallTotal((n,ln),p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n
-	    in let doForallTotal(nm1,ty1,prp2) =
+	    in let doForallTotal(nm1,ln1,prp2) =
 	      begin
 		match findEqPremise nm1 prp2 with
-		    None -> ForallTotal((nm1,ty1),prp2)
+		    None -> ForallTotal((nm1,ln1),prp2)
 		  | Some(trm,prp2') -> 
 		      optReduceProp ctx (PLet(n,trm,prp2'))
 	      end
-	    in let ctx' = insertTermVariable ctx n ty
+	    in let ctx' = insertTermVariable ctx n (NamedTy ln)
 	    in let ctx'' = ctx'  (* XXX Should insert fact that n is total! *)
 	    in let p' = optProp ctx'' p
-	    in (match (optTy ctx ty, p') with
+	    in (match (optTy ctx (NamedTy ln), p') with
 		(_, True) -> True
 	      | (UnitTy, _) -> optReduceProp ctx (PLet(n,EmptyTuple,p'))
 	      | (VoidTy, _) -> True
-	      | (ty',_) -> doForallTotal(n, ty', p'))
+	      | (NamedTy ln',_) -> doForallTotal(n, ln', p')
+	      | (_, _) -> failwith "XXX Andrej messed up here.")
 	      
 	| Cexists ((n, ty), p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n

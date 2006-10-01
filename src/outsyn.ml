@@ -75,7 +75,7 @@ and proposition =
   | Iff of proposition * proposition           (* equivalence *)
   | Not of proposition                         (* negation *)
   | Forall of binding * proposition            (* universal quantifier *)
-  | ForallTotal of binding * proposition       (* universal ranging over total elements *)
+  | ForallTotal of (name * longname) * proposition (* universal ranging over total elements *)
   | Cexists of binding * proposition           (* classical existential *)
   | PApp of proposition * term                 (* application of propositional function *)
   | PMApp of proposition * term                (* application of propositional function to a total element *)
@@ -559,9 +559,9 @@ and substProp ?occ sbst = function
   | Forall ((n, ty), q) ->
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
-  | ForallTotal ((n, ty), q) ->
+  | ForallTotal ((n, ln), q) ->
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
-	ForallTotal ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
+	ForallTotal ((n', substLN ?occ sbst ln), substProp ?occ (insertTermvar sbst n (id n')) q)
   | Cexists ((n, ty), q) ->
       let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
 	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
@@ -884,8 +884,8 @@ and string_of_prop level p =
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
     | Forall ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
-    | ForallTotal ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : ||" ^
-			      (string_of_ty ty) ^ "||) . " ^ (string_of_prop 14 p))
+    | ForallTotal ((n, ln), p) -> (14, "all (" ^ (string_of_name n) ^ " : ||" ^
+			      (string_of_ln ln) ^ "||) . " ^ (string_of_prop 14 p))
     | Cexists ((n, ty), p) -> (14, "some (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
     | PLambda ((n, ty), p) ->

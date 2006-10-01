@@ -191,8 +191,8 @@ and output_assertion_binds ppf lst =
 	output_loop ppf lst
 
 and output_totalbinds ppf lst =
-      let outputer ppf (n,t) = 
-	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ty t
+      let outputer ppf (n,ln) = 
+	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ln ln
       in let rec output_loop ppf = function
 	    [] -> ()
 	| [trm] -> outputer ppf trm
@@ -265,11 +265,11 @@ and output_prop_14 ppf = function
       in
 	fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
 	  output_binds alls   output_prop_14 prp'
-  | ForallTotal ((n, ty), p) as all_ty -> 
+  | ForallTotal ((n, ln), p) as all_ty -> 
       let rec extract_foralls = function
-	  (ForallTotal((nm,typ),prp)) ->
+	  (ForallTotal((nm,lnm),prp)) ->
 	    let (alls,prp') = extract_foralls prp
-	    in ((nm,typ) ::alls,prp')
+	    in ((nm,lnm) ::alls,prp')
 	| prp -> ([],prp)
       in let (alls, prp') = extract_foralls all_ty
       in

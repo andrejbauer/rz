@@ -296,11 +296,10 @@ and thinProp ctx orig_prp =
 	    | TopTy -> p'
 	    | _ -> Forall((n,ty'), p'))
 	    
-      | ForallTotal((n,ty),p) ->
-	  let ty' = thinTy ctx ty
-	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n ty) p
-	  in ForallTotal((n,ty'), p')
+      | ForallTotal((n,ln),p) ->
+	  let (ctx,n) = renameBoundTermVar ctx n
+	  in let p' = thinProp (insertTermVariable ctx n (NamedTy ln)) p
+	  in ForallTotal((n,ln), p')
 	    
       | Cexists ((n, ty), p) ->
 	  let ty' = thinTy ctx ty

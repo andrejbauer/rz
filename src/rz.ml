@@ -131,9 +131,10 @@ let rec processOne (state : state) writeOutput filename =
       
     (** Following OCaml convention, wrap the input from file foobar.thy
        in the implicit [Parameter Foobar: thy ... end.] *)
-    in let basename = Filename.chop_extension filename
+    in let thryname =
+	String.capitalize (Filename.chop_extension (Filename.basename filename))
     in let thy = Syntax.Value(Syntax.Parameter,
-			     [([Name.mk_word(String.capitalize basename)],
+			     [([Name.mk_word(thryname)],
 			      Syntax.Theory thy_elts)])
 
 
@@ -180,9 +181,13 @@ let rec processOne (state : state) writeOutput filename =
 	    [Outsyn.Spec(_, Outsyn.ModulSpec(Outsyn.Signat elts), _)] ->
 	      elts
 	  | _ -> failwith "Cannot unwrap translated code"
+      in
+
+      let spec4 = fst (Rename.renSignatElementList Rename.emptyRen spec3) in
+
 
       (** The output file replaces the .thr extension by .mli *)
-      in let outfile = basename ^ ".mli" in
+      let outfile = (Filename.chop_extension filename) ^ ".mli" in
 
       (** Write the output file 
       *)
@@ -190,7 +195,7 @@ let rec processOne (state : state) writeOutput filename =
  	        let outb = Buffer.create 1024 in
 		let formatter = Format.formatter_of_buffer outb in
  		let outchan = open_out outfile in
-		let _ = send_to_formatter formatter spec3 in
+		let _ = send_to_formatter formatter spec4 in
 		let _ = Buffer.output_buffer outchan outb in
 		close_out outchan
               else () in
@@ -198,7 +203,7 @@ let rec processOne (state : state) writeOutput filename =
       (** Optionally display to stdout as well.
       *)
       let _ = if (writeOutput && !Flags.do_print) then
-	       send_to_formatter Format.std_formatter spec3
+	       send_to_formatter Format.std_formatter spec4
               else ()  in
 
       (** We put these messages after any displayed code so that

@@ -173,8 +173,28 @@ let freshName good bad occurs =
   in
     find good
 
+let newFreshName good bad occurs =
+  let rec find g =
+    try
+      List.find (fun nm -> not (isWild nm || NameSet.mem nm bad || occurs nm)) g
+    with Not_found -> find (List.map nextName g)
+  in
+    find good
+
 (** The new version of freshName. *)
 let newFresh good = gensym (List.map (fun s -> (s, Word)) good)
+
+let refresh = function
+    N bnm -> gensym [bnm]
+  | G (_, lst) -> gensym lst
+
+let isForbidden = NameSet.mem
+
+let newRename bad = function
+    N _ as nm -> nm
+  | G (_, good) ->
+      newFreshName (List.map (fun nm -> N nm) good) bad (fun _ -> false)
+
 
 (** [freshName2 good1 good2 bad occurs] generates two fresh names. *)
 let freshName2 good1 good2 bad occurs =
