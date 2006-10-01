@@ -9,3 +9,4 @@ thy
    Axiom cons_commutative:
      forall x y : S.s, forall u : list, cons x (cons y u) = cons y (cons x u).
 end.
+

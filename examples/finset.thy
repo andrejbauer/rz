@@ -9,3 +9,4 @@ thy
    Axiom cons_idempotent:
      forall x : S.s, forall u : list, cons x (cons x u) = cons x u.
 end.
+
