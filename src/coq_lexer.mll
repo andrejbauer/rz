@@ -77,7 +77,7 @@ let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
 
 rule token = parse
-    '#' [^'\n']* '\n' { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
+    '#' [^'\n']* '\n'? { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
   | '\n'            { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
   | [' ' '\t' '\r']      { token lexbuf }
   | '='             { EQUAL }
