@@ -457,10 +457,21 @@ and output_assertions ppf = function
       in
 	fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
 
+and output_tyvars ppf = function
+    [] -> ()
+  | [nm] -> fprintf ppf "%a "   output_name nm
+  | nms  -> fprintf ppf "(%a) "   output_names nms
+
+and output_names ppf = function
+    [] -> ()
+  | [nm] -> fprintf ppf "%a"  output_name nm
+  | nm::nms -> fprintf ppf "%a,%a"  output_name nm   output_names nms
+
 and output_spec ppf = function
-    Spec(nm, ValSpec ty, assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
-      (Name.string_of_name nm)   output_ty ty  output_assertions assertions
+    Spec(nm, ValSpec (tyvars,ty), assertions) ->
+      fprintf ppf "@[<v>@[<hov 2>val %a%s : %a@]%a@]" 
+      output_tyvars tyvars   (Name.string_of_name nm)   
+	output_ty ty  output_assertions assertions
   | Spec(tynm, TySpec None, assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
 	(Name.string_of_name tynm)   output_assertions assertions

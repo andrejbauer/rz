@@ -158,28 +158,31 @@ let updateSubstForElem subst mdl = function
 
 let rec findModulvarInElems elts mdl nm =
   let rec loop subst = function
-      [] -> failwith ("Outsynrules.findModulInElems: " ^ string_of_name nm)
+      [] -> failwith ("Outsynrules.findModulvarInElems: " ^ string_of_name nm)
     | Spec(nm', ModulSpec sg, _) :: _ when nm=nm' -> substSignat subst sg
     | elem :: rest -> loop (updateSubstForElem subst mdl elem) rest
   in loop emptysubst elts
 
 let rec findTermvarInElems elts mdl nm =
   let rec loop subst = function
-      [] -> failwith ("Outsynrules.findModulInElems: " ^ string_of_name nm)
-    | Spec(nm', ValSpec ty, _) :: _ when nm=nm' -> substTy subst ty
+      [] -> failwith ("Outsynrules.findTermvarInElems: " ^ string_of_name nm)
+    | Spec(nm', ValSpec ([],ty), _) :: _ when nm=nm' -> substTy subst ty
+    | Spec(nm', ValSpec (_,ty), _) :: _ when nm=nm' -> 
+	failwith ("Outsynrules.findTermvarInelems: polymorphic valspec " ^ 
+	  string_of_name nm)
     | elem :: rest -> loop (updateSubstForElem subst mdl elem) rest
   in loop emptysubst elts
 
 let rec findTypevarInElems elts mdl nm =
   let rec loop subst = function
-      [] -> failwith ("Outsynrules.findModulInElems: " ^ string_of_name nm)
+      [] -> failwith ("Outsynrules.findTypevarInElems: " ^ string_of_name nm)
     | Spec(nm', TySpec tyopt, _) :: _ when nm=nm' -> substTyOption subst tyopt
     | elem :: rest -> loop (updateSubstForElem subst mdl elem) rest
   in loop emptysubst elts
 
 let rec findSignatvarInElems elts mdl nm =
   let rec loop subst = function
-      [] -> failwith ("Outsynrules.findModulInElems: " ^ string_of_name nm)
+      [] -> failwith ("Outsynrules.findSignatvarInElems: " ^ string_of_name nm)
     | Spec(nm', SignatSpec sg, _) :: _ when nm=nm' -> substSignat subst sg
     | elem :: rest -> loop (updateSubstForElem subst mdl elem) rest
   in loop emptysubst elts
@@ -207,7 +210,7 @@ let rec modulToSignat cntxt = function
       let rec loop cntxt = function
 	  [] -> []
 	| DefTerm(nm,ty,_) :: rest ->
-	    Spec(nm, ValSpec ty, []) :: 
+	    Spec(nm, ValSpec ([], ty), []) :: 
 	      loop (insertTermVariable cntxt nm ty) rest
 	| DefType(nm,ty) :: rest ->
 	    Spec(nm, TySpec (Some ty), []) :: 

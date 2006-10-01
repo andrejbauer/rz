@@ -800,13 +800,13 @@ and optElems ctx orig_elems =
 (*  try *)
     match orig_elems with
 	[] -> ([], emptyContext)
-      |  Spec(name, ValSpec ty, assertions) :: rest ->
+      |  Spec(name, ValSpec (tyvars,ty), assertions) :: rest ->
 	   let ty'  = optTy ctx ty in
 	   let ctx' = insertTermVariable ctx name ty in
 	   let assertions' = List.map (optAssertion ctx') assertions
 	   in let ctx' = insertFacts ctx' (List.map snd assertions')
 	   in let (rest', ctx'') = optElems ctx' rest in
-		(Spec (name, ValSpec ty', assertions') :: rest', 
+		(Spec (name, ValSpec (tyvars,ty'), assertions') :: rest', 
 		insertTermVariable ctx'' name ty')
 		  
       |  Assertion assertion  ::  rest ->

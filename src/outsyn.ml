@@ -98,7 +98,7 @@ and signat_element =
   | Comment   of string
 
 and spec =
-    ValSpec    of ty
+    ValSpec    of name list * ty
   | ModulSpec  of signat
   | TySpec     of ty option
   | SignatSpec of signat
@@ -502,7 +502,7 @@ and substModul ?occ sbst = function
   | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, substModul ?occ sbst mdl2)
   | ModulStruct mdldfs -> ModulStruct (substDefs ?occ sbst mdldfs)
 
-(* XXX: Actually, the first too "failwiths" are too pessimistic.  It's
+(* XXX: Actually, the first two "failwiths" are too pessimistic.  It's
    actually OK in ML to have a term and a type with the same name. *)
 and substDefs ?occ sbst = function
     [] -> []
@@ -697,7 +697,12 @@ and substSignat ?occ sbst = function
       SignatProj(substModul ?occ sbst mdl, nm)
 
 and substSpec ?occ sbst = function
-    ValSpec ty        -> ValSpec (substTy ?occ sbst ty)
+    ValSpec (tyvars, ty)        -> 
+      (* XXX: Does not detect shadowing  *)
+      let rec addTyvars sbst = function
+	  [] -> sbst
+	| tv::tvs -> insertTyvar (addTyvars sbst tvs) tv (NamedTy (LN (None,tv)))
+      in ValSpec (tyvars, substTy ?occ (addTyvars sbst tyvars) ty)
   | ModulSpec signat  -> ModulSpec (substSignat ?occ sbst signat)
   | TySpec tyopt      -> TySpec (substTyOption ?occ sbst tyopt)
   | SignatSpec signat -> SignatSpec (substSignat ?occ sbst signat)
@@ -956,9 +961,15 @@ and string_of_assertion (nm, p) =
 and string_of_assertions assertions = 
   (String.concat "\n" (List.map string_of_assertion assertions))
 
+and string_of_tyvars = function
+    [] -> ""
+  | [nm] -> string_of_name nm ^ " " 
+  | nms -> "(" ^ (String.concat "," (List.map string_of_name nms)) ^ ") "
+
 and string_of_spec = function
-    Spec(nm, ValSpec ty, assertions) ->
-      "val " ^ (string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
+    Spec(nm, ValSpec (tyvars, ty), assertions) ->
+      "val " ^ string_of_tyvars tyvars ^ 
+      (string_of_name nm) ^ " : " ^ (string_of_ty ty) ^ "\n"
       ^ string_of_assertions assertions
   | Spec(nm, TySpec None, assertions) ->
       "type " ^ string_of_name nm ^ "\n" ^ string_of_assertions assertions

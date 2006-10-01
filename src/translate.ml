@@ -664,11 +664,11 @@ and translateTheoryElement = function
   | L.Declaration(n, L.DeclTerm(Some t, s)) ->
       let {ty=u; per=q} = translateSet s in
       let t' = translateTerm t in
-	[ Spec(n, ValSpec u, [((string_of_name n) ^ "_def", pApp (pApp q (id n)) t')]) ]
+	[ Spec(n, ValSpec ([],u), [((string_of_name n) ^ "_def", pApp (pApp q (id n)) t')]) ]
 
   | L.Declaration(n, L.DeclTerm(None, s)) ->
       let {ty=t; tot=p} = translateSet s in
-	[ Spec (n, ValSpec t, [((string_of_name n) ^ "_total", pApp p (id n))]) ]
+	[ Spec (n, ValSpec ([],t), [((string_of_name n) ^ "_total", pApp p (id n))]) ]
 
   | L.Comment cmmnt ->
 	[ Comment cmmnt ]
@@ -678,7 +678,7 @@ and translateTheoryElement = function
 	let strctbind = translateModelBinding mdlbind in
 	let (typ, prp') = translateProp prp in
 	let elem =
-	  Spec (nm, ValSpec typ, [(string_of_name nm, pApp prp' (id nm))])
+	  Spec (nm, ValSpec ([],typ), [(string_of_name nm, pApp prp' (id nm))])
 	in
 	  if mdlbind = [] then
 	    elem

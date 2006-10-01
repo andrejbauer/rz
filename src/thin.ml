@@ -397,7 +397,7 @@ and thinElems ctx orig_elems =
   try
     match orig_elems with
 	[] -> ([], ctx)
-      | Spec(name, ValSpec ty, assertions) :: rest ->
+      | Spec(name, ValSpec (tyvars,ty), assertions) :: rest ->
 	   let ty'  = thinTy ctx ty in
 	   let ctx' = insertTermVariable ctx name ty in
 	   let assertions' = List.map (thinAssertion ctx') assertions
@@ -408,7 +408,7 @@ and thinElems ctx orig_elems =
 			  computational part is elided for being trivial *)
 		      List.map (fun a -> Assertion a) assertions' @ rest'
 		  | ty' ->
-		      Spec(name, ValSpec ty', assertions') :: rest'),
+		      Spec(name, ValSpec (tyvars,ty'), assertions') :: rest'),
 		ctx'')
 		  
       |  Assertion assertion  ::  rest ->
@@ -540,14 +540,14 @@ and thinDefs ctx = function
       end
   | DefTerm(nm,ty,trm)::defs ->
       begin
-	let spec = Spec(nm, ValSpec ty, [])
+	let spec = Spec(nm, ValSpec ([],ty), [])
 	in let ctx' = insertTermVariable ctx nm ty
 	in let (elems, defs', elems') = thinDefs ctx' defs
 	in let trm' = thinTerm' ctx trm
 	in match hnfTy ctx (thinTy ctx ty) with
 	    TopTy -> (spec::elems, defs', elems')
 	  | ty' -> (spec::elems, DefTerm(nm,ty',trm')::defs',
-		   Spec(nm, ValSpec ty', [])::elems')
+		   Spec(nm, ValSpec ([],ty'), [])::elems')
       end
   | DefModul(nm,sg,mdl)::defs ->
       begin
