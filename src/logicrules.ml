@@ -95,7 +95,8 @@ let insertModelVariable cntxt nm thry =
 let insertTheoryVariable cntxt nm thry tknd = 
   doInsert validTheoryName "theory" cntxt nm (DeclTheory (thry,tknd))
 
-
+let insertSentenceVariable cntxt nm mbnds prp =
+  doInsert validSentenceName "sentence" cntxt nm (DeclSentence(mbnds,prp))
 
 let rec updateContextForElem cntxt = function
     Declaration(nm, DeclSet(stopt, knd)) -> 
@@ -108,17 +109,8 @@ let rec updateContextForElem cntxt = function
       insertModelVariable cntxt nm thry
   | Declaration(nm, DeclTheory(thry,tknd)) ->
       insertTheoryVariable cntxt nm thry tknd
-  | Declaration(nm, DeclSentence _) ->
-      begin
-	(* We need to check for bound variable shadowing and appropriate
-	   capitalization (because axiom names appear in the final
-	   program code). *)
-	ignore (insertPropVariable cntxt nm Prop None); 
-	(* But the input langauge isn't allowed to refer to the
-	   names of axioms, so the axiom-name isn't bound in the
-	   context we return. *)
-	cntxt 
-      end 
+  | Declaration(nm, DeclSentence(mbnds,prp)) ->
+      insertSentenceVariable cntxt nm mbnds prp
   | Comment _   -> cntxt
 
 and updateContextForElems cntxt elems = 

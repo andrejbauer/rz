@@ -48,6 +48,7 @@ let rec annotateExpr cntxt orig_expr =
     match orig_expr with 	
 	Ident nm -> 
 	  begin
+	    (* The input is just a variable. *)
 	    let nm = LR.applyContextSubst cntxt nm 
 	    in
 	      match LR.lookupId cntxt nm with
@@ -61,7 +62,9 @@ let rec annotateExpr cntxt orig_expr =
 		    ResModel(L.ModelName(L.model_name_of_name nm), thry )
 		| Some(L.DeclTheory (thry, tk)) -> 
 		    ResTheory (L.TheoryName(L.theory_name_of_name nm), tk)
-		| Some(L.DeclSentence _ ) -> raise Impossible
+		| Some(L.DeclSentence _ ) -> 
+		    E.tyGenericError
+		      ("Cannot make use of an axiom in a theory.")
 		| None -> E.tyUnboundError nm
 	  end
 
@@ -82,12 +85,15 @@ let rec annotateExpr cntxt orig_expr =
 			  ResModel(L.ModelProj(mdl,nm2), thry)
 		      | Some (L.DeclTheory (thry, thryknd)) ->
 			  ResTheory(L.TheoryProj(mdl,nm2), thryknd)
+		      | Some (L.DeclSentence _) -> 
+			  E.badModelProjectionError nm2 orig_expr 
+			    "Axioms cannot be projected from a theory"
 		      | None -> 
-			  E.badModelProjectionError nm2 orig_expr "Name not found"
-		      | _ -> 
-			  E.badModelProjectionError nm2 orig_expr "Name not projectable"
+			  E.badModelProjectionError nm2 orig_expr 
+			    "Name not found"
 		  end
-	      | _ -> E.notWhatsExpectedInError expr1 "theory of a model" orig_expr
+	      | _ -> 
+		  E.notWhatsExpectedInError expr1 "theory of a model" orig_expr
 	  end
 
       | App(Label label, expr2) ->
@@ -96,14 +102,14 @@ let rec annotateExpr cntxt orig_expr =
 	  let (trm2', ty2') = annotateTerm cntxt orig_expr expr2
 	  in 
 	    ResTerm ( L.Inj(label, Some trm2'),
-		    L.Sum[ (label, Some ty2') ] )
+		      L.Sum[ (label, Some ty2') ] )
 
       | App (expr1, expr2) ->
 	  begin
 	    match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
 	      | (ResProp(prp1,pt1), ResTerm(trm2,ty2)) -> 
 		  begin
-		    (* Application of a predicate to a term *)
+		    (** Application of a predicate to a term *)
 		    match pt1 with
 			L.PropArrow(nm,domty,codpt) -> 
 			  (* Application of a predicate *)

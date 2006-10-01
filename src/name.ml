@@ -229,7 +229,11 @@ let validModelName = function
 
 let validTheoryName = validModelName
 
-
+let validSentenceName _ = 
+  (* Sentences might translate to terms or functors, so we let the user
+     use whatever capitalization they want and fix it later. *)
+  (* XXX: Make sure we really do fix this! *)
+  true
 
 (***********************)
 (** {2: Merging Names} *)
