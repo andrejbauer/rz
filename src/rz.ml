@@ -122,7 +122,9 @@ let rec processOne (state : state) writeOutput filename =
     in let rec processRequires state = function
 	[]    -> state
       | r::rs -> 
-	  let filename = String.uncapitalize r ^ ".thy"
+	  let directory = Filename.dirname filename
+	  in let basename' = String.uncapitalize r ^ ".thy"
+	  in let filename = Filename.concat directory basename'
 	  in let state = processOne state false filename
 	  in processRequires state rs
 
