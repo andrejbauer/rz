@@ -1,0 +1,408 @@
+\documentclass[11pt]{article}
+\usepackage{mathpartir,color,amsthm,fullpage}
+
+\newtheorem{lemma}{Lemma}
+
+\begin{document}
+
+\section{Raw Syntax}
+
+\newcommand{\I}{I}
+
+\renewcommand{\t}{t}
+\newcommand{\f}{f}
+\newcommand{\x}{x}
+\newcommand{\y}{y}
+\newcommand{\tFun}[3]{#1({#2}_1,\ldots,{#2}_{#3})}
+\newcommand{\tDesc}[3]{\iota #1.\, #3}
+
+\newcommand{\p}{\psi}
+\newcommand{\q}{\varphi}
+\renewcommand{\r}{\phi}
+\newcommand{\pTrue}{\top}
+\newcommand{\pFalse}{\bot}
+% \newcommand{\pNot}[1]{\lnot #1}
+\newcommand{\pExists}[3]{\exists #1.\, #3}
+\newcommand{\pForall}[3]{\forall #1.\, #3}
+\newcommand{\pAnd}[2]{#1 \wedge #2}
+\newcommand{\pOr}[2]{#1 \vee #2}
+\newcommand{\pImply}[2]{#1 \Rightarrow #2}
+
+\newcommand{\G}{\Gamma}
+\newcommand{\D}{\Delta}
+\newcommand{\emptyCtx}{\cdot}
+
+\renewcommand{\wp}[1]{\mathop{\mathsf{wp}}(#1)}
+
+\newcommand{\jwfterm}[3]{#1\ \vdash\ #2\ :\ #3}
+\newcommand{\jwfprop}[2]{#1\ \vdash\ #2\ :\ \mathsf{Prop}}
+\newcommand{\jpf}[2]{#1 \vdash #2}
+
+\newcommand{\wfterm}[4]{#1;#2\ \triangleright\ #3\ :\ #4}
+\newcommand{\wfprop}[3]{#1;#2\ \triangleright\ #3\ :\ \mathsf{Prop}}
+\newcommand{\pf}[3]{#1;#2 \triangleright #3}
+
+
+\[
+\begin{array}{rl}
+\t ::= & \x\ |\ \y\ |\ \cdots\\
+     | &\tFun{\f}{\t}{n}\\
+     | &\tDesc{\x}{\I}{\p}\\[10pt]
+
+\p,\q ::= &\pTrue\\
+| & \pFalse\\
+| & \pAnd{\p}{\p}\\
+| & \pOr{\p}{\p}\\
+| & \pImply{\p}{\p}\\
+| & \pForall{\x}{\I}{\p}\\
+| & \pExists{\x}{\I}{\p}\\[10pt]
+
+\G ::= & \emptyCtx\\
+       |& \G,\x{:}\I\\[10pt]
+
+\D ::= & \emptyCtx\\
+       |& \G,\p\\[10pt]
+
+\end{array}
+\]
+\section{Original JSL System}
+
+\subsection{Well-Formedness} 
+
+\begin{mathpar}
+\inferrule
+  {\x{:}\I \in \G}
+  { \jwfterm{\G}{\x}{\I} }
+
+\inferrule
+  { \jwfterm{\G}{\t_1}{\I}\\ \cdots \\ \jwfterm{\G}{\t_n}{\I} }
+  { \jwfterm{\G}{\tFun{\f}{\t}{n}}{\I} }
+
+\inferrule
+  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\G}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
+  { \jwfterm{\G}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
+\end{mathpar}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \jwfprop{\G}{\pTrue} }
+
+\inferrule
+  { }
+  { \jwfprop{\G}{\pFalse} }
+
+%\inferrule
+% { \jwfprop{\G}{\p} }
+% { \jwfprop{\G}{\pNot{\p}} }
+
+\inferrule
+ { \jwfprop{\G}{\p_1} \\ 
+   \jwfprop{\G,\p_1}{\p_2} }
+ { \jwfprop{\G}{\pAnd{\p_1}{\p_2}} }
+
+\inferrule
+ { \jwfprop{\G}{\p_1} \\ 
+   \jwfprop{\G,\p_1}{\p_2} }
+ { \jwfprop{\G}{\pImply{\p_1}{\p_2}} }
+
+\inferrule
+ { \jwfprop{\G}{\p_1} \\ 
+   \jwfprop{\G}{\p_2} }
+ { \jwfprop{\G}{\pOr{\p_1}{\p_2}} }
+
+\inferrule
+ { \jwfprop{\G,\x{:}\I}{\p} }
+ { \jwfprop{\G}{\pForall{\x}{\I}{\p}} }
+
+\inferrule
+ { \jwfprop{\G,\x{:}\I}{\p} }
+ { \jwfprop{\G}{\pExists{\x}{\I}{\p}} }
+
+\end{mathpar}
+
+
+\subsection{Provability}
+
+\begin{mathpar}
+\inferrule
+  {\jpf{\G}{\p} \\ \jpf{\G}{\q}}
+  {\jpf{\G}{\pAnd{\p}{\q}} }
+
+\inferrule
+  {\jpf{\G}{\pAnd{\p}{\q}} }
+  {\jpf{\G}{\p}}
+
+\inferrule
+  {\jpf{\G}{\pAnd{\p}{\q}} }
+  {\jpf{\G}{\q}}
+
+\inferrule
+  {\jwfprop{\G}{\p} \\ \jpf{\G}{\pFalse}}
+  {\jpf{\G}{\p}}
+
+\inferrule
+  { \jpf{\G}{\p} \\ \jwfprop{\G}{\q}}
+  { \jpf{\G}{\pOr{\p}{\q}} }
+
+\inferrule
+  { \jwfprop{\G}{\p} \\ \jpf{\G}{\q} }
+  { \jpf{\G}{\pOr{\p}{\q}} }
+
+\inferrule
+  { \jpf{\G}{\pOr{\p}{\q}} \\ \jpf{\G,\p}{\r} \\ \jpf{\G,\q}{\r} }
+  { \jpf{\G}{\r} }
+
+\iffalse
+\inferrule
+  { \jwfprop{\G}{\p} \\ \jpf{\G,
+\fi
+
+\inferrule
+  {\jwfprop{\G}{\p} \\ \jpf{\G,\p}{\q}}
+  {\jpf{\G}{\pImply{\p}{\q}}}
+
+\inferrule
+  { \jpf{\G}{\p} \\ \jpf{\G}{\pImply{\p}{\q}} }
+  { \jpf{\G}{\q} }
+
+\inferrule
+  { \jpf{\G,\x{:}\I}{\p(\x)} }
+  { \jpf{\G}{\pForall{\x}{\I}{\p(\x)}} }
+
+\inferrule
+  { \jpf{\G}{\pForall{\x}{\I}{\p(\x)}} \\ \jwfterm{\G}{\t}{\I} }
+  { \jpf{\G}{\p(\t)} }
+
+\inferrule
+  { \jwfprop{\G,\x{:}\I}{\p(\x)} \\ \jpf{\G}{\p(\t)} \\ \jwfterm{\G}{\t}{\I} }
+  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} }
+
+\inferrule
+  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\G,\x{:}\I,\p(\x)}{\q} }
+  { \jpf{\G}{\q} }
+
+\inferrule
+  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\G}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
+  { \jpf{\G}{\p(\tDesc{\x}{\I}{\p(\x)})} }
+
+\end{mathpar}
+
+\section{Lax System}
+
+\subsection{Well-Formedness} 
+
+
+\begin{mathpar}
+\inferrule
+  {\x{:}\I \in \G}
+  { \wfterm{\G}{\D}{\x}{\I} }
+
+\inferrule
+  { \wfterm{\G}{\D}{\t_1}{\I}\\ \cdots \\ \wfterm{\G}{\D}{\t_n}{\I} }
+  { \wfterm{\G}{\D}{\tFun{\f}{\t}{n}}{\I} }
+
+\inferrule
+  { \pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \pf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
+  { \wfterm{\G}{\D}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
+\end{mathpar}
+
+\begin{mathpar}
+\inferrule
+  { }
+  { \wfprop{\G}{\D}{\pTrue} }
+
+\inferrule
+  { }
+  { \wfprop{\G}{\D}{\pFalse} }
+
+%\inferrule
+% { \wfprop{\G}{\D}{\p} }
+% { \wfprop{\G}{\D}{\pNot{\p}} }
+
+\inferrule
+ { \wfprop{\G}{\D}{\p_1} \\ 
+   \wfprop{\G}{\D,\p_1}{\p_2} }
+ { \wfprop{\G}{\D}{\pAnd{\p_1}{\p_2}} }
+
+\inferrule
+ { \wfprop{\G}{\D}{\p_1} \\ 
+   \wfprop{\G}{\D,\p_1}{\p_2} }
+ { \wfprop{\G}{\D}{\pImply{\p_1}{\p_2}} }
+
+\fbox{
+\inferrule
+ { }
+ { \wfprop{\G}{\D}{\pOr{\p_1}{\p_2}} }
+}
+
+\inferrule
+ { \wfprop{\G,\x{:}\I}{\D}{\p} }
+ { \wfprop{\G}{\D}{\pForall{\x}{\I}{\p}} }
+
+\fbox{
+\inferrule
+ { }
+ { \wfprop{\G}{\D}{\pExists{\x}{\I}{\p}} }
+}
+
+\end{mathpar}
+
+
+\subsection{Provability}
+
+\begin{mathpar}
+\inferrule
+  {\pf{\G}{\D}{\p} \\ \pf{\G}{\D}{\q}}
+  {\pf{\G}{\D}{\pAnd{\p}{\q}} }
+
+\inferrule
+  {\pf{\G}{\D}{\pAnd{\p}{\q}} }
+  {\pf{\G}{\D}{\p}}
+
+\inferrule
+  {\pf{\G}{\D}{\pAnd{\p}{\q}} }
+  {\pf{\G}{\D}{\q}}
+
+\inferrule
+  {\wfprop{\G}{\D}{\p} \\ \pf{\G}{\D}{\pFalse}}
+  {\pf{\G}{\D}{\p}}
+
+\fbox{
+\inferrule
+  { \pf{\G}{\D}{\p} }
+  { \pf{\G}{\D}{\pOr{\p}{\q}} }
+}
+
+\fbox{
+\inferrule
+  { \pf{\G}{\D}{\q} }
+  { \pf{\G}{\D}{\pOr{\p}{\q}} }
+}
+
+\inferrule
+  { \pf{\G}{\D}{\pOr{\p}{\q}} \\ \pf{\G}{\D,\p}{\r} \\ \pf{\G}{\D,\q}{\r} }
+  { \pf{\G}{\D}{\r} }
+
+\iffalse
+\inferrule
+  { \wfprop{\G}{\D}{\p} \\ \pf{\G,
+\fi
+
+\inferrule
+  {\wfprop{\G}{\D}{\p} \\ \pf{\G}{\D,\p}{\q}}
+  {\pf{\G}{\D}{\pImply{\p}{\q}}}
+
+\inferrule
+  { \pf{\G}{\D}{\p} \\ \pf{\G}{\D}{\pImply{\p}{\q}} }
+  { \pf{\G}{\D}{\q} }
+
+\inferrule
+  { \pf{\G,\x{:}\I}{\D}{\p(\x)} }
+  { \pf{\G}{\D}{\pForall{\x}{\I}{\p(\x)}} }
+
+\inferrule
+  { \pf{\G}{\D}{\pForall{\x}{\I}{\p(\x)}} \\ \wfterm{\G}{\D}{\t}{\I} }
+  { \pf{\G}{\D}{\p(\t)} }
+
+\fbox{
+\inferrule
+  { \pf{\G}{\D}{\p(\t)} \\ \wfterm{\G}{\D}{\t}{\I} }
+  { \pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} }
+}
+
+\fbox{
+\inferrule
+  { \pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \pf{\G,\x{:}\I}{\D,\p(\x)}{\q} \\
+    \wfprop{\G}{\D}{\q} }
+  { \pf{\G}{\D}{\q} }
+}
+
+\inferrule
+  { \pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \pf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
+  { \pf{\G}{\D}{\p(\tDesc{\x}{\I}{\p(\x)})} }
+
+\end{mathpar}
+
+\section{The Well-Formedness Predicate}
+
+
+\[
+\begin{array}{lll}
+  \wp{\x} & := & \x{:}\I\\
+  \wp{\tFun{\f}{\t}{n}} & := & \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}\\
+  \wp{\tDesc{\x}{\I}{\p(\x)}} & := &
+       (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge
+       (\pExists{\x}{\I}{\p(\x)}) \wedge
+       (\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})\\[10pt]
+
+  \wp{\pTrue} & := & \pTrue\\
+  \wp{\pFalse} & := & \pTrue\\
+  \wp{\pAnd{\p}{\q}} & := & \wp{\p} \wedge (\pImply{\p}{\wp{\q}})\\
+  \wp{\pOr{\p}{\q}} & := & \pTrue\\
+  \wp{\pImply{\p}{\q}} & := & \wp{\p} \wedge (\pImply{\p}{\wp{\q}})\\
+  \wp{\pForall{\x}{\I}{\p(\x)}} & := & \pForall{\x}{\I}{\wp{\p(\x)}}\\
+  \wp{\pExists{\x}{\I}{\p(\x)}} & := & \pTrue\\
+\end{array}
+\]
+
+\section{Metatheory}
+
+\begin{lemma}
+\mbox{}
+  \begin{enumerate}
+  \item If $\jwfterm{\pFalse}{\t}{\I}$ then $\jwfprop{\emptyCtx}{\wp{\t}}$ and
+    $\jwfterm{\wp{\t}}{\t}{\I}$.
+  \item If $\jwfprop{\pFalse}{\p}$, we have
+    $\jwfprop{\emptyCtx}{\wp{\p}}$ and $\jwfprop{\wp{\p}}{\p}$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{proof}
+  \raggedright
+  By structural induction on $\t$ and $\p$.
+  \begin{itemize}
+  \item Case: $\t = \x$.  Then $\wp{\t} = \x{:}\I$,
+%    $\jwfprop{}{\pTrue}$, and $\jwfterm{\pTrue}{\x}{\I}$.
+  \item Case: $\t = \tFun{\f}{\t}{n}$.  Then $\wp{\t} =
+    \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.  By induction,
+    $\jwfprop{}{\wp{\t_1}}$, \ldots, $\jwfprop{}{\wp{\t_n}}$, so
+    $\jwfprop{}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    Similarly, $\wfterm{\wp{\t_1}}{\t_1}{\I}$, \ldots,
+    $\jwfterm{\wp{\t_n}}{\t_n}{\I}$.  By CUT FOR TERMS,
+    $\jwfterm{\wp{\t}}{\t_1}{\I}$, \ldots,
+    $\jwfterm{\wp{\t}}{\t_n}{\I}$.  Thus,
+    $\jwfterm{\wp{\t}}{\tFun{\f}{\t}{n}}{\I}$.
+  \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$. Then
+    $\wp{\t} = 
+       (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge$
+       $(\pExists{\x}{\I}{\p(\x)}) \wedge$
+       $(\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})$.
+    By the inductive hypothesis, $\jwfprop{}{\wp{\p(\x)}}$, so 
+    by WEAKENING $\jwfprop{\x{:}\I}{\wp{\p(\x)}}$ and hence
+    $\jwfprop{}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
+ 
+
+  \end{itemize}
+\end{proof}
+
+
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
