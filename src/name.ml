@@ -17,36 +17,25 @@ type name = N of bare_name | G of gensym
 (********************************)
 
 (** mk_word: string -> name *)
-let mk_word str = N(str, Word)
+let mk_word str = N (str, Word)
 
 let gensym =
   let k = ref 0 in
     function
 	[] ->  incr k; G (!k, [("gen", Word)])
-      | lst -> incr k ; G (!k, lst)
+      | lst -> incr k ; G (!k, lst)  
 
-let gensym' lst =
-  gensym (List.rev
-      (List.fold_right
-	(fun nm nms ->
-	  match nm with
-	      N bn -> bn :: nms
-	    | G (_, ns) -> ns @ nms)
-	lst
-	[]))
-  
-
-(** [string_of_bare_name n] converts a bare name [n] to its string representation. *)
-let string_of_bare_name = function 
-  | (n,   Wild) -> n
-  | (str, Word) -> str
-  | ("*"  ,_) -> "( * )"
-  | (str,_) -> "(" ^ str ^ ")"
-
-let string_of_name = function
-    N nm -> string_of_bare_name nm
-  | G (k, lst) -> "gen" ^ string_of_int k ^ " (* " ^
-      String.concat ", " (List.map string_of_bare_name lst) ^ " *)"
+let string_of_name =
+  let string_of_bare_name = function 
+    | (n,   Wild) -> n
+    | (str, Word) -> str
+    | ("*"  ,_) -> "( * )"
+    | (str,_) -> "(" ^ str ^ ")"
+  in
+    function
+	N nm -> string_of_bare_name nm
+      | G (k, lst) -> "gen" ^ string_of_int k ^ " (* " ^
+	  String.concat ", " (List.map string_of_bare_name lst) ^ " *)"
 
 (** capitalize_name: name -> name *)
 let capitalize_name = function
@@ -174,20 +163,11 @@ let nextName = function
   | N(_, fixity) -> N(nextString "op", fixity)
   | G (k, lst) -> gensym lst
 
-(** [freshName good bad occurs] generates a fresh name. It uses
+(** [freshName' good bad] generates a fresh name. It uses
     one of the names in list [good], possibly adding primes and
-    subscripts to it, it avoids names in the list [bad], and it makes sure
-    the [occurs] function returns [false] on it.
+    subscripts to it, it avoids names in the list [bad].
 *)
-(*let freshName good bad occurs =
-  let rec find g =
-    try
-      List.find (fun nm -> not (isWild nm || List.mem nm bad || occurs nm)) g
-    with Not_found -> find (List.map nextName g)
-  in
-    find good
-*)
-let newFreshName good bad =
+let freshName' good bad =
   let rec find g =
     try
       List.find (fun nm -> not (isBareWild nm || StringSet.mem (fst nm) bad)) g
@@ -195,21 +175,25 @@ let newFreshName good bad =
   in
     find good
 
-(** The new version of freshName. *)
-let newFresh good = gensym (List.map (fun s -> (s, Word)) good)
+(** [freshName lst] gensyms a fresh name with hints from [lst]. The hints must
+    be words, i.e., not infix operators and such. *)
+let freshName good = gensym (List.map (fun s -> (s, Word)) good)
 
+(** [refresh nm] gensyms a fresh name from [nm]. *)
 let refresh = function
     N bnm -> gensym [bnm]
   | G (_, lst) -> gensym lst
 
+(** [refreshList lst] refreshes a list of names. *)
+let rec refreshList nms = List.map refresh nms
+
 let isForbidden = NameSet.mem
 
-let newRename bad = function
+(** [rename lst nm] renames [nm], if necessary, while avoiding names
+    in [lst]. *)
+let rename bad = function
     N bn -> bn
-  | G (_, good) -> (newFreshName good bad)
-
-(** [freshNameList goods bad occurs] generates a list of fresh names. *)
-let rec freshNameList nms = List.map refresh nms
+  | G (_, good) -> freshName' good bad
 
 (*****************************)
 (** {2: Name Validity Tests} *)
@@ -262,9 +246,19 @@ let jointName nm1 nm2 =
       (* nm1 and nm2 should be the same "sort", so if nm1 is a model name
 	 we know that nm2 is too.
       *)
-      match validModelName nm1, validModelName nm2 with
-	  true, true   -> gensym' [nm1; nm2]
-	| true, false  -> gensym' [nm1]
-	| false, true  -> gensym' [nm2]
-	| false, false -> freshModelNameString
+      let gensym' lst =
+	gensym (List.rev
+		  (List.fold_right
+		     (fun nm nms ->
+			match nm with
+			    N bn -> bn :: nms
+			  | G (_, ns) -> ns @ nms)
+		     lst
+		     []))
+      in
+	match validModelName nm1, validModelName nm2 with
+	    true, true   -> gensym' [nm1; nm2]
+	  | true, false  -> gensym' [nm1]
+	  | false, true  -> gensym' [nm2]
+	  | false, false -> freshModelNameString
     end

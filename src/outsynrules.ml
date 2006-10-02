@@ -84,12 +84,6 @@ let insertSignatVariable cntxt nm ty =
 (** {3 Renaming of Bound Variables} *)
 (************************************)
 
-let rec findUnusedName map bad nm =
-  if (not (NameMap.mem nm map)) && (not (List.mem nm bad)) then
-    nm
-  else 
-    findUnusedName map bad (nextName nm)
-
 let addToRenaming map oldnm newnm =
 (*  if (oldnm = newnm) then 
     map
@@ -98,15 +92,15 @@ let addToRenaming map oldnm newnm =
 
 (* Stolen from logicrules.ml *)
 let renameBoundTermVar cntxt nm =
-  let nm' = findUnusedName cntxt.termvars [] nm in
+  let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.termrenaming nm nm'}, nm')
 
 let renameBoundTypeVar cntxt nm =
-  let nm' = findUnusedName cntxt.typevars [] nm in
+  let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.typerenaming nm nm'}, nm')
 
 let renameBoundModulVar cntxt nm =
-  let nm' = findUnusedName cntxt.modulvars [] nm in
+  let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.modulrenaming nm nm'}, nm')
 
 

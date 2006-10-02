@@ -22,7 +22,7 @@ let renList f ctx lst =
     lst, ctx
 
 let rec renName (ren, bad) nm =
-  let bn = newRename bad nm in
+  let bn = rename bad nm in
     N bn, (NameMap.add nm (N bn) ren, StringSet.add (fst bn) bad)
 
 and renNameList ctx nms = renList renName ctx nms

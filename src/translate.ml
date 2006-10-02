@@ -31,12 +31,12 @@ let rec good = function
 
 let rec goodRz = [mk "a"; mk "b"; mk "c"; mk "d"]
 
-let fresh ty = newFresh (good ty)
+let fresh ty = freshName (good ty)
 let fresh2 ty = fresh ty, fresh ty
 let fresh3 ty = fresh ty, fresh ty, fresh ty
 let fresh4 ty = fresh ty, fresh ty, fresh ty, fresh ty
 
-let freshRz = newFresh goodRz
+let freshRz = freshName goodRz
 let freshList tys = List.map fresh tys
 
 let sbp nm t p = PLet (nm, t, p)
