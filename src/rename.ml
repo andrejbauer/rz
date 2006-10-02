@@ -3,31 +3,23 @@
 open Name
 open Outsyn
 
-let emptyRen = (NameMap.empty, NameSet.empty)
+let emptyRen = (NameMap.empty, StringSet.empty)
 
-let forbid nm (ren, bad) = (ren, NameSet.add nm bad)
+let forbid nm (ren, bad) =
+  match nm with
+      N bn -> (ren, StringSet.add (fst bn) bad)
+    | G _ -> failwith "Rename.forbid: cannot forbid gensymed names."
 
-let insert nm1 nm2 (ren, bad) = (NameMap.add nm1 nm2 ren, NameSet.add nm2 bad)
+let insert nm1 nm2 (ren, bad) = (NameMap.add nm1 nm2 ren, StringSet.add (fst nm2) bad)
 
 let renBound (ren, bad) nm =
-  let nm' = newRename bad nm in
-    nm', (NameMap.add nm nm' ren, NameSet.add nm' bad)
+  let bn = newRename bad nm in
+    N bn, (NameMap.add nm (N bn) ren, StringSet.add (fst bn) bad)
 
 let renBoundModul (ren,bad) nm =
-  let nm' = newRename bad nm in
-    nm', (NameMap.add nm nm' ren, NameSet.add nm' bad)
+  let bn = newRename bad nm in
+    N bn, (NameMap.add nm (N bn) ren, StringSet.add (fst bn) bad)
     
-let renLN ctx = function
-    LN (Some _, _) as ln -> ln, ctx
-  | LN (None, nm) ->
-      begin try
-	LN (None, NameMap.find nm (fst ctx)), ctx
-      with
-	  Not_found ->
-	    let nm, ctx = renBound ctx nm in
-	      LN (None, nm), ctx
-      end
-
 let renBinding ctx (nm, ty) =
   let nm, ctx = renBound ctx nm in
     (nm, ty), ctx
@@ -38,7 +30,7 @@ let renBindingOpt ctx = function
       let bnd, ctx = renBinding ctx bnd in
 	Some bnd, ctx
 
-and renList f ctx lst =
+let renList f ctx lst =
   let lst, ctx =
     List.fold_right
       (fun t (ts, ct) -> let t, ct = f ct t in t::ts, ct)
@@ -47,7 +39,21 @@ and renList f ctx lst =
   in
     lst, ctx
 
-let rec renTerm ((ren, bad) as ctx) = function
+let rec renLN ctx = function
+    LN (Some mdl, nm) ->
+      let mdl, ctx = renModul ctx mdl in
+	LN (Some mdl, nm), ctx
+  | LN (None, nm) ->
+      begin try
+	LN (None, NameMap.find nm (fst ctx)), ctx
+      with
+	  Not_found ->
+	    let nm, ctx = renBound ctx nm in
+	      LN (None, nm), ctx
+      end
+
+
+and renTerm ((ren, bad) as ctx) = function
     (EmptyTuple | Dagger | Inj (_, None)) as t -> t, ctx
 
   | Id ln ->
@@ -116,10 +122,10 @@ and renTermList ctx lst = renList renTerm ctx lst
 and renProp ctx = function
     (True | False) as p -> p, ctx
 
-  | IsPer (tynm, lst) ->
-      let ctx = forbid tynm ctx in
+  | IsPer (nm, lst) ->
+      let ctx = forbid nm ctx in
       let lst, ctx = renTermList ctx lst in
-	IsPer (tynm, lst), ctx
+	IsPer (nm, lst), ctx
 
   | IsPredicate (nm, ty, lst) ->
       let ctx = forbid nm ctx in
@@ -260,13 +266,13 @@ and renModest ctx {ty=ty; tot=p; per=q} =
   let q, ctx = renProp ctx q in
     {ty=ty; tot=p; per=q}, ctx
 
-let renAssertion ctx (str, p) =
+and renAssertion ctx (str, p) =
   let p, _ = renProp ctx p in
     (str, p), ctx
 
-let renAssertionList = renList renAssertion
+and renAssertionList ctx lst = renList renAssertion ctx lst
 
-let rec renSpec ctx = function
+and renSpec ctx = function
     ValSpec _ as s -> s, ctx
   | ModulSpec sgnt ->
       let sgnt, ctx = renSignat ctx sgnt in
@@ -308,7 +314,9 @@ and renSignat ctx = function
 	SignatApp (sgnt, mdl), ctx
 
 and renModul ctx = function
-    ModulName nm -> ModulName nm, forbid nm ctx
+    ModulName nm ->
+      let nm, ctx = renBoundModul ctx nm in
+	ModulName nm, ctx
   | ModulProj (mdl, nm) ->
       let mdl, ctx = renModul ctx mdl in
 	ModulProj (mdl, nm), ctx

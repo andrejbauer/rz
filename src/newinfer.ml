@@ -13,7 +13,6 @@ module E = Error
 open Syntax 
 open Name
 
-exception Unimplemented
 exception Impossible
 
 (**********************)

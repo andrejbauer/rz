@@ -506,12 +506,17 @@ let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
 
 let longname_of_name nm = LN(None, nm)
 let set_longname_of_name nm = SLN(None, nm)
-let model_name_of_name = function
-    N(strng, Word) as nm -> nm
-  | nm -> (print_string "Cannot treat the name ";
-	   print_string (string_of_name nm);
-	   print_string " as a model name.";
-	   raise Impossible)
+
+let model_name_of_name nm =
+  if validModelName nm then
+    nm
+  else 
+    (print_string "Cannot treat the name ";
+     print_string (string_of_name nm);
+     print_string " as a model name.";
+     raise Impossible)
+
+
 let theory_name_of_name = model_name_of_name
 
 

@@ -16,15 +16,27 @@ type name = N of bare_name | G of gensym
 (** {2:Simple utility functions *)
 (********************************)
 
-let gensym =
-  let k = ref 0 in
-    fun lst -> incr k ; G (!k, lst)
-
 (** mk_word: string -> name *)
 let mk_word str = N(str, Word)
 
-(** string_of_name: bare_name -> string
-    [string_of_bare_name n] converts a bare name [n] to its string representation. *)
+let gensym =
+  let k = ref 0 in
+    function
+	[] ->  incr k; G (!k, [("gen", Word)])
+      | lst -> incr k ; G (!k, lst)
+
+let gensym' lst =
+  gensym (List.rev
+      (List.fold_right
+	(fun nm nms ->
+	  match nm with
+	      N bn -> bn :: nms
+	    | G (_, ns) -> ns @ nms)
+	lst
+	[]))
+  
+
+(** [string_of_bare_name n] converts a bare name [n] to its string representation. *)
 let string_of_bare_name = function 
   | (n,   Wild) -> n
   | (str, Word) -> str
@@ -33,7 +45,8 @@ let string_of_bare_name = function
 
 let string_of_name = function
     N nm -> string_of_bare_name nm
-  | G (k, _) -> "gen" ^ string_of_int k
+  | G (k, lst) -> "gen" ^ string_of_int k ^ " (* " ^
+      String.concat ", " (List.map string_of_bare_name lst) ^ " *)"
 
 (** capitalize_name: name -> name *)
 let capitalize_name = function
@@ -51,14 +64,14 @@ let (wildName, wildModelName) =
     ((fun () -> incr k; N ("__" ^ string_of_int !k, Wild)),
      (fun () -> incr k; N ("Z__" ^ string_of_int !k, Wild)))
 
+let isBareWild (_, fxty) = fxty = Wild
+
 (** isWild: name -> bool
 
     [isWild n] checks whether [n] is a wildcard variable. *)
 let isWild = function
-    N(_, Wild) -> true
-  | _          -> false
-
-
+    N bn -> isBareWild bn
+  | G (_, lst) -> List.for_all isBareWild lst
 
 (************************************)
 (** {2: Name-indexed Sets and Maps} *)
@@ -139,13 +152,9 @@ let nextString n =
 	)
 
 
-let (freshNameString, freshModelNameString) = 
-  let counter = ref 0
-  in
-     ((function () -> (incr counter;
-	               "___" ^ string_of_int (!counter))),
-     (function () -> (incr counter;
-		      "Z__" ^ string_of_int (!counter))))
+let freshNameString = gensym [("___1", Word)]
+
+let freshModelNameString = gensym [("Z__1", Word)]
 
 (*******************************)
 (** {2: Fresh Name Generation} *)
@@ -154,6 +163,11 @@ let (freshNameString, freshModelNameString) =
 
 (** [nextName n] computes a subtitute for name [n], just like
     [nextString] does for strings. *)
+let nextBareName = function
+    (nm, Word) -> (nextString nm, Word)
+  | (_, Wild) -> ("wild", Word)
+  | (_, fixity) -> (nextString "op", Word)
+
 let nextName = function
     N(nm, Word) -> N(nextString nm, Word)
   | N(_, Wild) -> N("wild", Word)
@@ -165,19 +179,19 @@ let nextName = function
     subscripts to it, it avoids names in the list [bad], and it makes sure
     the [occurs] function returns [false] on it.
 *)
-let freshName good bad occurs =
+(*let freshName good bad occurs =
   let rec find g =
     try
       List.find (fun nm -> not (isWild nm || List.mem nm bad || occurs nm)) g
     with Not_found -> find (List.map nextName g)
   in
     find good
-
-let newFreshName good bad occurs =
+*)
+let newFreshName good bad =
   let rec find g =
     try
-      List.find (fun nm -> not (isWild nm || NameSet.mem nm bad || occurs nm)) g
-    with Not_found -> find (List.map nextName g)
+      List.find (fun nm -> not (isBareWild nm || StringSet.mem (fst nm) bad)) g
+    with Not_found -> find (List.map nextBareName g)
   in
     find good
 
@@ -191,40 +205,11 @@ let refresh = function
 let isForbidden = NameSet.mem
 
 let newRename bad = function
-    N _ as nm -> nm
-  | G (_, good) ->
-      newFreshName (List.map (fun nm -> N nm) good) bad (fun _ -> false)
-
-
-(** [freshName2 good1 good2 bad occurs] generates two fresh names. *)
-let freshName2 good1 good2 bad occurs =
-  let x1 = freshName good1 bad occurs in
-  let x2 = freshName good2 (x1::bad) occurs in
-    x1, x2
-
-(** [freshName3 good1 good2 good3 bad occurs] generates three fresh names. *)
-let freshName3 good1 good2 good3 bad occurs =
-  let x1 = freshName good1 bad occurs in
-  let x2 = freshName good2 (x1::bad) occurs in
-  let x3 = freshName good3 (x1::x2::bad) occurs in
-    x1, x2, x3
-
-(** [freshName4 good1 good2 good3 good4 bad occurs] generates four fresh names. *)
-let freshName4 good1 good2 good3 good4 bad occurs =
-  let x1 = freshName good1 bad occurs in
-  let x2 = freshName good2 (x1::bad) occurs in
-  let x3 = freshName good3 (x1::x2::bad) occurs in
-  let x4 = freshName good4 (x1::x2::x3::bad) occurs in
-    x1, x2, x3, x4
+    N bn -> bn
+  | G (_, good) -> (newFreshName good bad)
 
 (** [freshNameList goods bad occurs] generates a list of fresh names. *)
-let rec freshNameList goods bad occurs =
-  match goods with
-      [] -> []
-    | g::gs ->
-	let n = freshName g bad occurs in
-	  n :: (freshNameList gs (n::bad) occurs)
-
+let rec freshNameList nms = List.map refresh nms
 
 (*****************************)
 (** {2: Name Validity Tests} *)
@@ -242,10 +227,14 @@ let validSetName = validTermName
 
 let validPropName = validTermName
 
-let validModelName = function
-    N(str, Word) -> (str = String.capitalize str)
-  | N(_, Wild)   -> true
-  | _            -> false
+let rec validModelName nm =
+ let valid (str, fxty) =
+   fxty = Wild ||
+   fxty = Word && (String.length str > 0 && 'A' <= str.[0] && str.[0] <= 'Z')
+ in
+   match nm with
+       N bn      -> valid bn
+     | G(_, lst) -> List.for_all valid lst
 
 let validTheoryName = validModelName
 
@@ -273,9 +262,9 @@ let jointName nm1 nm2 =
       (* nm1 and nm2 should be the same "sort", so if nm1 is a model name
 	 we know that nm2 is too.
       *)
-      match (isWild nm1 && isWild nm2, validModelName nm1) with
-	  (true, false)  -> wildName()
-	| (true, true)   -> wildModelName()
-	| (false, false) -> N(freshNameString(), Word)
-	| (false, true)  -> N(freshModelNameString(), Word)
+      match validModelName nm1, validModelName nm2 with
+	  true, true   -> gensym' [nm1; nm2]
+	| true, false  -> gensym' [nm1]
+	| false, true  -> gensym' [nm2]
+	| false, false -> freshModelNameString
     end

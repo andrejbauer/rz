@@ -315,9 +315,7 @@ let rec optTerm ctx orig_term =
 		  (** Turn a let of a tuple into a sequence of bindings
 		      of the components, if the tuple is never referred
 		      to as a whole *)
-		  let nms =
-		      freshNameList (List.map (fun _ -> [name1]) trms)
-			[] (isboundTermVariable ctx)
+		  let nms = freshNameList (List.map (fun _ -> name1) trms)
 		  in let trm'' = nested_let nms trms term2
 		  in optTerm' ctx trm'' (* if nothing else, remove shadowing *)
 	      | Let(nm1, (Obligation([(nm2,ty2)], prp2, 
@@ -711,9 +709,7 @@ and optProp ctx orig_prp =
 		  PLet(name1, Tuple trms, prp2) when opProp name1 prp2 ->
 		    (* Turn a let of a tuple into a sequence of lets, if
 		       the tuple is never referred to as a whole *)
-		    let nms = 
-		      freshNameList (List.map (fun _ -> [name1]) trms)
-			[] (isboundTermVariable ctx)
+		    let nms = freshNameList (List.map (fun _ -> name1) trms)
 		    in let subst = 
 		      insertTermvar emptysubst name1 (Tuple (List.map id nms))
 		    in let prp2' = substProp subst prp2

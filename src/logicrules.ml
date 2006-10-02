@@ -136,21 +136,8 @@ and updateContextForElems cntxt elems =
     unbound name.
 *)
 let renameBoundVar cntxt nm =
-  let rec findUnusedName nm =
-    if (isUnbound cntxt nm) then 
-      nm
-    else 
-      findUnusedName (nextName nm)
-  in let nm' = findUnusedName nm
-  in 
-       if (nm = nm') then
-	 (cntxt, nm)
-       else
-	 begin
-	   E.tyGenericWarning
-	     ("Shadowing of " ^ string_of_name nm ^ " detected.");
-	   ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
-	 end
+  let nm' = refresh nm in 
+    ({cntxt with renaming = NameMap.add nm nm' cntxt.renaming}, nm')
 
 (** Apply the context's renaming substitution to the given name.
 *)

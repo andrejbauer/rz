@@ -472,9 +472,6 @@ let occursSubstTyname sbst str =
 let occursSubstModulname sbst nm =
   try ignore (ModulNameMap.find nm sbst.moduls) ; true with Not_found -> false
 
-let freshVar good ?(bad=[]) ?(occ=(fun _ -> false)) sbst =
-  freshName good bad (fun n -> occ n || occursSubstName sbst n)
-
 (* These do not seem to be used anywhere
 let freshTyName good bad ?occ sbst =
   match occ with
@@ -557,21 +554,21 @@ and substProp ?occ sbst = function
   | Iff (p, q) -> Iff (substProp ?occ sbst p, substProp ?occ sbst q)
   | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | ForallTotal ((n, ln), q) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	ForallTotal ((n', substLN ?occ sbst ln), substProp ?occ (insertTermvar sbst n (id n')) q)
   | Cexists ((n, ty), q) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | PApp (p, t) -> PApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PMApp (p, t) -> PMApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PLambda ((n, s), p) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	PLambda ((n', s), substProp ?occ (insertTermvar sbst n (id n')) p)
   | PMLambda ((n, {ty=t; tot=p; per=q}), r) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	PMLambda ((n', {ty=substTy ?occ sbst t; tot=substProp ?occ sbst p; per=substProp ?occ sbst q}),
 		 substProp ?occ (insertTermvar sbst n (id n')) r)
   | PObligation (bnds, p, q) ->
@@ -583,7 +580,7 @@ and substProp ?occ sbst = function
 	PCase (substTerm ?occ sbst t1, substTerm ?occ sbst t2,
 	       substPCaseArms ?occ sbst lst)
   | PLet (n, t, p) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	PLet (n', substTerm ?occ sbst t, 
 	     substProp ?occ (insertTermvar sbst n (id n')) p)
 
@@ -591,7 +588,7 @@ and substPCaseArm ?occ sbst (lb, bnd1, bnd2, p) =
   let update_subst sbst0 = function
       None -> None, sbst0
     | Some (n, ty) ->
-	let n' =  freshVar [n] ?occ sbst0 in
+	let n' =  refresh n in
       	  Some (n', substTy ?occ sbst ty), insertTermvar sbst0 n (id n')
   in let bnd1', sbst1 = update_subst sbst  bnd1
   in let bnd2', sbst2 = update_subst sbst1 bnd2 
@@ -604,7 +601,7 @@ and renameBnds ?occ ?bad sbst = function
     [] -> (sbst, [])
   | (n,ty)::bnds -> 
       let bad' = match bad with None -> fvSubst sbst | Some b -> b
-      in let n' = freshVar [n] ?occ ~bad:bad' sbst
+      in let n' = refresh n
       in let bnd' = (n', substTy ?occ sbst ty)
       in let sbst' = insertTermvar sbst n (id n')
       in let (sbst'', bnds') = renameBnds ?occ ~bad:(n'::bad') sbst' bnds
@@ -617,10 +614,10 @@ and substTerm ?occ sbst = function
   | Dagger -> Dagger
   | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
   | Lambda ((n, ty), t) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = refresh n in
 	Lambda ((n', substTy ?occ sbst ty), substTerm ?occ (insertTermvar sbst n (id n')) t)
   | Let (n, t, u) ->
-      let n' = freshVar [n] ?occ sbst in
+      let n' = refresh n in
 	Let (n', substTerm ?occ sbst t, substTerm ?occ (insertTermvar sbst n (id n')) u)
   | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
   | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
@@ -637,7 +634,7 @@ and substTerm ?occ sbst = function
 and substCaseArm ?occ sbst = function
 			  (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
 			| (lb, Some (n, ty), t) ->
-			    let n' = freshVar [n] ?occ sbst in
+			    let n' = refresh n in
 			      (lb,
 			       Some (n', substTy ?occ sbst ty),
 			       substTerm ?occ (insertTermvar sbst n (id n')) t)
@@ -648,11 +645,11 @@ and substCaseArms ?occ sbst arms =
 and substProptype ?occ sbst = function
     Prop -> Prop
   | PropArrow((n,ty),pt) -> 
-      let n' = freshVar [n] ?occ sbst in
+      let n' = refresh n in
 	PropArrow((n', substTy ?occ sbst ty), 
 		 substProptype ?occ (insertTermvar sbst n (id n')) pt)
   | PropMArrow((n,m),pt) ->
-      let n' = freshVar [n] ~bad:(fvSubst sbst) ?occ sbst in
+      let n' = refresh n in
 	PropMArrow((n', substModest ?occ sbst m),
 		 substProptype ?occ (insertTermvar sbst n (id n')) pt)
 
@@ -1523,12 +1520,6 @@ and quantifyOb nm ty (bnd, prp) = (bnd, Forall((nm,ty), prp))
 
 and quantifyObTotal nm ty (bnd, prp) = (bnd, ForallTotal((nm,ty), prp))
   
-and substOb nm trm ((n,ty),p) =
-  let sbst = termSubst nm trm
-  in let n' = freshVar [n] sbst 
-  in let sbst' = insertTermvar sbst n (id n') 
-  in ((n', ty), substProp sbst' p)
-
 and hoistProp orig_prp =
   let ans = 
     match orig_prp with
@@ -1781,8 +1772,7 @@ and reduce trm =
 	reduce trm1
 
   | Let (nm1, Let (nm2, trm2a, trm2b), trm3) ->
-      let occur nm = List.mem nm (fvTerm trm3)
-      in let nm2' = freshName [nm2] [nm1] occur
+      let nm2' = refresh nm2
       in let trm2b' = substTerm (renaming nm2 nm2') trm2b
       in reduce (Let(nm2', trm2a, Let(nm1, trm2b', trm3)))
 
@@ -1850,8 +1840,7 @@ and reduceProp prp =
 	reduceProp (PLet(nm, trm2, prp1))
 
     | PLet (nm1, Let (nm2, trm2a, trm2b), prp3) ->
-	let occur nm = List.mem nm (fvProp prp3)
-	in let nm2' = freshName [nm2] [nm1] occur
+	let nm2' = refresh nm2
 	in let trm2b' = substTerm (renaming nm2 nm2') trm2b
 	in reduceProp (PLet(nm2', trm2a, PLet(nm1, trm2b', prp3)))
 	  
