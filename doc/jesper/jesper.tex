@@ -34,9 +34,9 @@
 
 \renewcommand{\wp}[1]{\mathop{\mathsf{wp}}(#1)}
 
-\newcommand{\jwfterm}[3]{#1\ \vdash\ #2\ :\ #3}
-\newcommand{\jwfprop}[2]{#1\ \vdash\ #2\ :\ \mathsf{Prop}}
-\newcommand{\jpf}[2]{#1 \vdash #2}
+\newcommand{\jwfterm}[4]{#1;#2\ \vdash\ #3\ :\ #4}
+\newcommand{\jwfprop}[3]{#1;#2\ \vdash\ #3\ :\ \mathsf{Prop}}
+\newcommand{\jpf}[3]{#1;#2 \vdash #3}
 
 \newcommand{\wfterm}[4]{#1;#2\ \triangleright\ #3\ :\ #4}
 \newcommand{\wfprop}[3]{#1;#2\ \triangleright\ #3\ :\ \mathsf{Prop}}
@@ -72,54 +72,54 @@
 \begin{mathpar}
 \inferrule
   {\x{:}\I \in \G}
-  { \jwfterm{\G}{\x}{\I} }
+  { \jwfterm{\G}{\D}{\x}{\I} }
 
 \inferrule
-  { \jwfterm{\G}{\t_1}{\I}\\ \cdots \\ \jwfterm{\G}{\t_n}{\I} }
-  { \jwfterm{\G}{\tFun{\f}{\t}{n}}{\I} }
+  { \jwfterm{\G}{\D}{\t_1}{\I}\\ \cdots \\ \jwfterm{\G}{\D}{\t_n}{\I} }
+  { \jwfterm{\G}{\D}{\tFun{\f}{\t}{n}}{\I} }
 
 \inferrule
-  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} \\
-    \jpf{\G}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
-  { \jwfterm{\G}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
+  { \jwfterm{\G}{\D}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
 \end{mathpar}
 
 \begin{mathpar}
 \inferrule
   { }
-  { \jwfprop{\G}{\pTrue} }
+  { \jwfprop{\G}{\D}{\pTrue} }
 
 \inferrule
   { }
-  { \jwfprop{\G}{\pFalse} }
+  { \jwfprop{\G}{\D}{\pFalse} }
 
 %\inferrule
-% { \jwfprop{\G}{\p} }
-% { \jwfprop{\G}{\pNot{\p}} }
+% { \jwfprop{\G}{\D}{\p} }
+% { \jwfprop{\G}{\D}{\pNot{\p}} }
 
 \inferrule
- { \jwfprop{\G}{\p_1} \\ 
-   \jwfprop{\G,\p_1}{\p_2} }
- { \jwfprop{\G}{\pAnd{\p_1}{\p_2}} }
+ { \jwfprop{\G}{\D}{\p_1} \\ 
+   \jwfprop{\G}{\D,\p_1}{\p_2} }
+ { \jwfprop{\G}{\D}{\pAnd{\p_1}{\p_2}} }
 
 \inferrule
- { \jwfprop{\G}{\p_1} \\ 
-   \jwfprop{\G,\p_1}{\p_2} }
- { \jwfprop{\G}{\pImply{\p_1}{\p_2}} }
+ { \jwfprop{\G}{\D}{\p_1} \\ 
+   \jwfprop{\G}{\D,\p_1}{\p_2} }
+ { \jwfprop{\G}{\D}{\pImply{\p_1}{\p_2}} }
 
 \inferrule
- { \jwfprop{\G}{\p_1} \\ 
-   \jwfprop{\G}{\p_2} }
- { \jwfprop{\G}{\pOr{\p_1}{\p_2}} }
+ { \jwfprop{\G}{\D}{\p_1} \\ 
+   \jwfprop{\G}{\D}{\p_2} }
+ { \jwfprop{\G}{\D}{\pOr{\p_1}{\p_2}} }
 
 \inferrule
- { \jwfprop{\G,\x{:}\I}{\p} }
- { \jwfprop{\G}{\pForall{\x}{\I}{\p}} }
+ { \jwfprop{\G,\x{:}\I}{\D}{\p} }
+ { \jwfprop{\G}{\D}{\pForall{\x}{\I}{\p}} }
 
 \inferrule
- { \jwfprop{\G,\x{:}\I}{\p} }
- { \jwfprop{\G}{\pExists{\x}{\I}{\p}} }
+ { \jwfprop{\G,\x{:}\I}{\D}{\p} }
+ { \jwfprop{\G}{\D}{\pExists{\x}{\I}{\p}} }
 
 \end{mathpar}
 
@@ -128,68 +128,72 @@
 
 \begin{mathpar}
 \inferrule
-  {\jpf{\G}{\p} \\ \jpf{\G}{\q}}
-  {\jpf{\G}{\pAnd{\p}{\q}} }
+  {\p\in\D}
+  {\jpf{\G}{\D}{\p}}
 
 \inferrule
-  {\jpf{\G}{\pAnd{\p}{\q}} }
-  {\jpf{\G}{\p}}
+  {\jpf{\G}{\D}{\p} \\ \jpf{\G}{\D}{\q}}
+  {\jpf{\G}{\D}{\pAnd{\p}{\q}} }
 
 \inferrule
-  {\jpf{\G}{\pAnd{\p}{\q}} }
-  {\jpf{\G}{\q}}
+  {\jpf{\G}{\D}{\pAnd{\p}{\q}} }
+  {\jpf{\G}{\D}{\p}}
 
 \inferrule
-  {\jwfprop{\G}{\p} \\ \jpf{\G}{\pFalse}}
-  {\jpf{\G}{\p}}
+  {\jpf{\G}{\D}{\pAnd{\p}{\q}} }
+  {\jpf{\G}{\D}{\q}}
 
 \inferrule
-  { \jpf{\G}{\p} \\ \jwfprop{\G}{\q}}
-  { \jpf{\G}{\pOr{\p}{\q}} }
+  {\jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D}{\pFalse}}
+  {\jpf{\G}{\D}{\p}}
 
 \inferrule
-  { \jwfprop{\G}{\p} \\ \jpf{\G}{\q} }
-  { \jpf{\G}{\pOr{\p}{\q}} }
+  { \jpf{\G}{\D}{\p} \\ \jwfprop{\G}{\D}{\q}}
+  { \jpf{\G}{\D}{\pOr{\p}{\q}} }
 
 \inferrule
-  { \jpf{\G}{\pOr{\p}{\q}} \\ \jpf{\G,\p}{\r} \\ \jpf{\G,\q}{\r} }
-  { \jpf{\G}{\r} }
+  { \jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D}{\q} }
+  { \jpf{\G}{\D}{\pOr{\p}{\q}} }
+
+\inferrule
+  { \jpf{\G}{\D}{\pOr{\p}{\q}} \\ \jpf{\G}{\D,\p}{\r} \\ \jpf{\G}{\D,\q}{\r} }
+  { \jpf{\G}{\D}{\r} }
 
 \iffalse
 \inferrule
-  { \jwfprop{\G}{\p} \\ \jpf{\G,
+  { \jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D,
 \fi
 
 \inferrule
-  {\jwfprop{\G}{\p} \\ \jpf{\G,\p}{\q}}
-  {\jpf{\G}{\pImply{\p}{\q}}}
+  {\jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D,\p}{\q}}
+  {\jpf{\G}{\D}{\pImply{\p}{\q}}}
 
 \inferrule
-  { \jpf{\G}{\p} \\ \jpf{\G}{\pImply{\p}{\q}} }
-  { \jpf{\G}{\q} }
+  { \jpf{\G}{\D}{\p} \\ \jpf{\G}{\D}{\pImply{\p}{\q}} }
+  { \jpf{\G}{\D}{\q} }
 
 \inferrule
-  { \jpf{\G,\x{:}\I}{\p(\x)} }
-  { \jpf{\G}{\pForall{\x}{\I}{\p(\x)}} }
+  { \jpf{\G,\x{:}\I}{\D}{\p(\x)} }
+  { \jpf{\G}{\D}{\pForall{\x}{\I}{\p(\x)}} }
 
 \inferrule
-  { \jpf{\G}{\pForall{\x}{\I}{\p(\x)}} \\ \jwfterm{\G}{\t}{\I} }
-  { \jpf{\G}{\p(\t)} }
+  { \jpf{\G}{\D}{\pForall{\x}{\I}{\p(\x)}} \\ \jwfterm{\G}{\D}{\t}{\I} }
+  { \jpf{\G}{\D}{\p(\t)} }
 
 \inferrule
-  { \jwfprop{\G,\x{:}\I}{\p(\x)} \\ \jpf{\G}{\p(\t)} \\ \jwfterm{\G}{\t}{\I} }
-  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} }
+  { \jwfprop{\G,\x{:}\I}{\D}{\p(\x)} \\ \jpf{\G}{\D}{\p(\t)} \\ \jwfterm{\G}{\D}{\t}{\I} }
+  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} }
 
 \inferrule
-  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} \\
-    \jpf{\G,\x{:}\I,\p(\x)}{\q} }
-  { \jpf{\G}{\q} }
+  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\G,\x{:}\I}{\D,\p(\x)}{\q} }
+  { \jpf{\G}{\D}{\q} }
 
 \inferrule
-  { \jpf{\G}{\pExists{\x}{\I}{\p(\x)}} \\
-    \jpf{\G}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
-  { \jpf{\G}{\p(\tDesc{\x}{\I}{\p(\x)})} }
+  { \jpf{\G}{\D}{\p(\tDesc{\x}{\I}{\p(\x)})} }
 
 \end{mathpar}
 
@@ -357,33 +361,39 @@
 \end{array}
 \]
 
+\clearpage
+
 \section{Metatheory}
 
 \begin{lemma}
 \mbox{}
   \begin{enumerate}
-  \item If $\jwfterm{\pFalse}{\t}{\I}$ then $\jwfprop{\emptyCtx}{\wp{\t}}$ and
-    $\jwfterm{\wp{\t}}{\t}{\I}$.
-  \item If $\jwfprop{\pFalse}{\p}$, we have
-    $\jwfprop{\emptyCtx}{\wp{\p}}$ and $\jwfprop{\wp{\p}}{\p}$.
+  \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
+    $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$ and
+    $\jwfterm{\G}{\wp{\t}}{\t}{\I}$.
+  \item If $\jwfprop{\G}{(\D,\pFalse)}{\p}$, we have
+    $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$ and $\jwfprop{\G}{\wp{\p}}{\p}$.
   \end{enumerate}
 \end{lemma}
 
 \begin{proof}
-  \raggedright
-  By structural induction on $\t$ and $\p$.
+  \raggedright Induction on the proof of
+  $\jwfterm{\G}{\pFalse}{\t}{\I}$ or $\jwfprop{\G}{\pFalse}{\p}$.
   \begin{itemize}
-  \item Case: $\t = \x$.  Then $\wp{\t} = \x{:}\I$,
-%    $\jwfprop{}{\pTrue}$, and $\jwfterm{\pTrue}{\x}{\I}$.
-  \item Case: $\t = \tFun{\f}{\t}{n}$.  Then $\wp{\t} =
+  \item Case: $\t = \x$ with $\x{:}\I\in\G$.  Then $\wp{\t} = \pTrue$ and
+    $\jwfprop{\G}{\emptyCtx}{\pTrue}$ and $\jwfterm{\G}{\pTrue}{\x}{\I}$.
+  \item Case: $\t = \tFun{\f}{\t}{n}$ with
+    $\jwfterm{\G}{(\D,\pFalse)}{\t_1}{\I}$, \ldots,
+    $\jwfterm{\G}{(\D,\pFalse)}{\t_n}{\I}$.  Then $\wp{\t} =
     \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.  By induction,
-    $\jwfprop{}{\wp{\t_1}}$, \ldots, $\jwfprop{}{\wp{\t_n}}$, so
-    $\jwfprop{}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    $\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$, \ldots,
+    $\jwfprop{\G}{\emptyCtx}{\wp{\t_n}}$, so
+    $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
     Similarly, $\wfterm{\wp{\t_1}}{\t_1}{\I}$, \ldots,
-    $\jwfterm{\wp{\t_n}}{\t_n}{\I}$.  By CUT FOR TERMS,
-    $\jwfterm{\wp{\t}}{\t_1}{\I}$, \ldots,
-    $\jwfterm{\wp{\t}}{\t_n}{\I}$.  Thus,
-    $\jwfterm{\wp{\t}}{\tFun{\f}{\t}{n}}{\I}$.
+    $\jwfterm{\G}{\wp{\t_n}}{\t_n}{\I}$.  By CUT FOR TERMS,
+    $\jwfterm{\G}{\wp{\t}}{\t_1}{\I}$, \ldots,
+    $\jwfterm{\G}{\wp{\t}}{\t_n}{\I}$.  Thus,
+    $\jwfterm{\G}{\wp{\t}}{\tFun{\f}{\t}{n}}{\I}$.  \iffalse
   \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$. Then
     $\wp{\t} = 
        (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge$
@@ -393,7 +403,7 @@
     By the inductive hypothesis, $\jwfprop{}{\wp{\p(\x)}}$, so 
     by WEAKENING $\jwfprop{\x{:}\I}{\wp{\p(\x)}}$ and hence
     $\jwfprop{}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
- 
+ \fi
 
   \end{itemize}
 \end{proof}
