@@ -1,39 +1,38 @@
 [Processing include.thy]
-module type A = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
-end
-
-module type B = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
-   
-  type b
-  (**  Assertion per_b =  PER(=b=)
-  *)
-end
-
-module type C = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
-   
-  type b
-  (**  Assertion per_b =  PER(=b=)
-  *)
-   
-  type d = a * b
-  (**  Assertion d_def_total = 
-         forall x:a * b,  x : ||d|| <-> pi0 x : ||a|| /\ pi1 x : ||b||
-        
-       Assertion d_def_per = 
-         forall y:a * b, z:a * b,  y =d= z <-> pi0 y =a= pi0 z /\ 
-           pi1 y =b= pi1 z
-  *)
-end
+module type A = sig
+                  type a
+                  (**  Assertion per_a =  PER(=a=)
+                  *)
+                end
+ 
+module type B =
+ sig
+   type a
+   (**  Assertion per_a =  PER(=a=)
+   *)
+    
+   type b
+   (**  Assertion per_b =  PER(=b=)
+   *)
+ end
+ 
+module type C =
+ sig
+   type a
+   (**  Assertion per_a =  PER(=a=)
+   *)
+    
+   type b
+   (**  Assertion per_b =  PER(=b=)
+   *)
+    
+   type d = a * b
+   (**  Assertion d_def_total = 
+          forall p:a * b,  p : ||d|| <-> pi0 p : ||a|| /\ pi1 p : ||b||
+         
+        Assertion d_def_per = 
+          forall p:a * b, q:a * b,  p =d= q <-> pi0 p =a= pi0 q /\ 
+            pi1 p =b= pi1 q
+   *)
+ end
 

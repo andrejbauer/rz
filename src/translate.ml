@@ -545,9 +545,6 @@ and translateProp = function
 	ty, PLet (n, translateTerm t, q)
       
 
-and translateBinding bind =
-  List.map (fun (n, s) -> n, (translateSet s).ty) bind
-
 and bindings_of_proptype = function
     L.Prop | L.StableProp -> []
   | L.EquivProp s ->
@@ -571,8 +568,9 @@ and equiv_bindings_of_proptype = function
 and bindings_of_setkind = function
     L.KindSet -> []
   | L.KindArrow (m, s, knd) ->
-      let m' = refresh m in
-	(m', translateSet s) :: (bindings_of_setkind knd)
+      let s' = translateSet s in
+      let m' = (if isWild m then fresh s'.ty else refresh m) in
+	(m', s') :: (bindings_of_setkind knd)
 
 and translateTheoryElement = function
   | L.Declaration(n, L.DeclSet (None, knd)) -> 

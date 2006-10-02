@@ -1,85 +1,85 @@
 [Processing modelapp.thy]
-module type A = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
-   
-  val c : a
-  (**  Assertion c_total =  c : ||a||
-  *)
-   
-  module E : sig
-               type e
-               (**  Assertion per_e =  PER(=e=)
-               *)
-                
-               type f = e
-               (**  Assertion f_def_total = 
-                      forall x:e,  x : ||f|| <-> x : ||e||
-                     
-                    Assertion f_def_per = 
-                      forall y:e, z:e,  y =f= z <-> y =e= z
-               *)
-             end
-end
-
-module type B = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
-   
-  type b = a
-  (**  Assertion b_def_total =  forall x:a,  x : ||b|| <-> x : ||a||
-        
-       Assertion b_def_per =  forall y:a, z:a,  y =b= z <-> y =a= z
-  *)
-   
-  type b'
-  (**  Assertion per_b' =  PER(=b'=)
-  *)
-   
-  val c : a
-  (**  Assertion c_total =  c : ||a||
-  *)
-   
-  val d : a
-  (**  Assertion d_total =  d : ||b||
-  *)
-   
-  module E : sig
-               type e = a
-               (**  Assertion e_def_total = 
-                      forall x:a,  x : ||e|| <-> x : ||a||
-                     
-                    Assertion e_def_per = 
-                      forall y:a, z:a,  y =e= z <-> y =a= z
-               *)
-                
-               type f = a
-               (**  Assertion f_def_total = 
-                      forall x:a,  x : ||f|| <-> x : ||b||
-                     
-                    Assertion f_def_per = 
-                      forall y:a, z:a,  y =f= z <-> y =b= z
-               *)
-             end
-end
-
-module type C = 
-sig
-  module BB : B
-   
-  module FF : functor (X : A) ->
+module type A =
+ sig
+   type a
+   (**  Assertion per_a =  PER(=a=)
+   *)
+    
+   val c : a
+   (**  Assertion c_total =  c : ||a||
+   *)
+    
+   module E : sig
+                type e
+                (**  Assertion per_e =  PER(=e=)
+                *)
+                 
+                type f = e
+                (**  Assertion f_def_total = 
+                       forall x:e,  x : ||f|| <-> x : ||e||
+                      
+                     Assertion f_def_per = 
+                       forall x:e, y:e,  x =f= y <-> x =e= y
+                *)
+              end
+ end
+ 
+module type B =
+ sig
+   type a
+   (**  Assertion per_a =  PER(=a=)
+   *)
+    
+   type b = a
+   (**  Assertion b_def_total =  forall x:a,  x : ||b|| <-> x : ||a||
+         
+        Assertion b_def_per =  forall x:a, y:a,  x =b= y <-> x =a= y
+   *)
+    
+   type b'
+   (**  Assertion per_b' =  PER(=b'=)
+   *)
+    
+   val c : a
+   (**  Assertion c_total =  c : ||a||
+   *)
+    
+   val d : a
+   (**  Assertion d_total =  d : ||b||
+   *)
+    
+   module E : sig
+                type e = a
+                (**  Assertion e_def_total = 
+                       forall x:a,  x : ||e|| <-> x : ||a||
+                      
+                     Assertion e_def_per = 
+                       forall x:a, y:a,  x =e= y <-> x =a= y
+                *)
+                 
+                type f = a
+                (**  Assertion f_def_total = 
+                       forall x:a,  x : ||f|| <-> x : ||b||
+                      
+                     Assertion f_def_per = 
+                       forall x:a, y:a,  x =f= y <-> x =b= y
+                *)
+              end
+ end
+ 
+module type C =
+ sig
+   module BB : B
+    
+   module FF : functor (X : A) ->
                A
-   
-  type a = FF(BB).a
-  (**  Assertion a_def_total = 
-         forall x:FF(BB).a,  x : ||a|| <-> x : ||FF(BB).a||
-        
-       Assertion a_def_per = 
-         forall y:FF(BB).a, z:FF(BB).a,  y =a= z <-> y =FF(BB).a= z
-  *)
-end
+    
+   type a = FF(BB).a
+   (**  Assertion a_def_total = 
+          forall x:FF(BB).a,  x : ||a|| <-> x : ||FF(BB).a||
+         
+        Assertion a_def_per = 
+          forall x:FF(BB).a, y:FF(BB).a,  x =a= y <-> x =FF(BB).a= y
+   *)
+ end
 

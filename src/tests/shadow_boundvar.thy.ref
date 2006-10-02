@@ -1,18 +1,12 @@
 [Processing shadow_boundvar.thy]
-module type T = 
-sig
-  type s
-  (**  Assertion per_s =  PER(=s=)
-  *)
-   
-  val shadow : s -> s
-  (**  Assertion shadow =  forall (x:||s||),  shadow x : ||s||
-  *)
-end
-
-
--------------------------------
-WARNING:
-Shadowing of x detected.
--------------------------------
+module type T =
+ sig
+   type s
+   (**  Assertion per_s =  PER(=s=)
+   *)
+    
+   val shadow : s -> s
+   (**  Assertion shadow =  forall (x:||s||),  shadow x : ||s||
+   *)
+ end
 

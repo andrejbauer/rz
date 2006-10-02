@@ -1,64 +1,63 @@
 [Processing theoryapp.thy]
-module type A = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
+module type A =
+ sig
+   type a
+   (**  Assertion per_a =  PER(=a=)
+   *)
+    
+   val n : a
+   (**  Assertion n_total =  n : ||a||
+   *)
+    
+   val m : a
+   (**  Assertion m_def =  m =a= n
+   *)
+    
    
-  val n : a
-  (**  Assertion n_total =  n : ||a||
-  *)
+   (**  Assertion q =  true
+   *)
+ end
+ 
+module type B =
+ sig
+   type a
+   (**  Assertion per_a =  PER(=a=)
+   *)
+    
+   val n : a
+   (**  Assertion n_total =  n : ||a||
+   *)
+    
+   val p : a
+   (**  Assertion p_total =  p : ||a||
+   *)
+    
    
-  val m : a
-  (**  Assertion m_def =  m =a= n
-  *)
-   
-  
-  (**  Assertion q =  true
-  *)
-end
-
-module type B = 
-sig
-  type a
-  (**  Assertion per_a =  PER(=a=)
-  *)
-   
-  val n : a
-  (**  Assertion n_total =  n : ||a||
-  *)
-   
-  val p : a
-  (**  Assertion p_total =  p : ||a||
-  *)
-   
-  
-  (**  Assertion q =  true
-  *)
-   
-  val m : a
-  (**  Assertion m_def =  m =a= n
-  *)
-end
-
-module type C = 
-functor (M : A) ->
+   (**  Assertion q =  true
+   *)
+    
+   val m : a
+   (**  Assertion m_def =  m =a= n
+   *)
+ end
+ 
+module type C =
+ functor (M : A) ->
  sig
    type b = M.a
    (**  Assertion b_def_total =  forall x:M.a,  x : ||b|| <-> x : ||M.a||
          
-        Assertion b_def_per =  forall y:M.a, z:M.a,  y =b= z <-> y =M.a= z
+        Assertion b_def_per =  forall x:M.a, y:M.a,  x =b= y <-> x =M.a= y
    *)
     
    type c = M.a
    (**  Assertion c_def_total =  forall x:M.a,  x : ||c|| <-> x : ||M.a||
          
-        Assertion c_def_per =  forall y:M.a, z:M.a,  y =c= z <-> y =M.a= z
+        Assertion c_def_per =  forall x:M.a, y:M.a,  x =c= y <-> x =M.a= y
    *)
  end
-
+ 
 module X : B
-
-module type D = 
-C(X)
+ 
+module type D = C(X)
 
