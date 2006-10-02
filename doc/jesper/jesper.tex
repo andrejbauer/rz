@@ -34,12 +34,12 @@
 
 \renewcommand{\wp}[1]{\mathop{\mathsf{wp}}(#1)}
 
-\newcommand{\jwfterm}[4]{#1;#2\ \vdash\ #3\ :\ #4}
-\newcommand{\jwfprop}[3]{#1;#2\ \vdash\ #3\ :\ \mathsf{Prop}}
+\newcommand{\jwfterm}[4]{#1;#2 \vdash #3\, :\, #4}
+\newcommand{\jwfprop}[3]{#1;#2 \vdash #3\, :\, \mathsf{Prop}}
 \newcommand{\jpf}[3]{#1;#2 \vdash #3}
 
-\newcommand{\wfterm}[4]{#1;#2\ \triangleright\ #3\ :\ #4}
-\newcommand{\wfprop}[3]{#1;#2\ \triangleright\ #3\ :\ \mathsf{Prop}}
+\newcommand{\wfterm}[4]{#1;#2 \triangleright #3\, :\, #4}
+\newcommand{\wfprop}[3]{#1;#2 \triangleright #3\,:\, \mathsf{Prop}}
 \newcommand{\pf}[3]{#1;#2 \triangleright #3}
 
 
@@ -379,33 +379,59 @@
 \begin{proof}
   \raggedright Induction on the proof of
   $\jwfterm{\G}{\pFalse}{\t}{\I}$ or $\jwfprop{\G}{\pFalse}{\p}$.
-  \begin{itemize}
-  \item Case: $\t = \x$ with $\x{:}\I\in\G$.  Then $\wp{\t} = \pTrue$ and
-    $\jwfprop{\G}{\emptyCtx}{\pTrue}$ and $\jwfterm{\G}{\pTrue}{\x}{\I}$.
+  \begin{enumerate}
+  \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
+    \begin{enumerate}
+      \item
+        Then $\wp{\t} = \pTrue$ 
+      \item
+        and $\jwfprop{\G}{\emptyCtx}{\pTrue}$ 
+      \item
+        and $\jwfterm{\G}{\pTrue}{\x}{\I}$.
+      \end{enumerate}
   \item Case: $\t = \tFun{\f}{\t}{n}$ with
     $\jwfterm{\G}{(\D,\pFalse)}{\t_1}{\I}$, \ldots,
-    $\jwfterm{\G}{(\D,\pFalse)}{\t_n}{\I}$.  Then $\wp{\t} =
-    \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.  By induction,
-    $\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$, \ldots,
-    $\jwfprop{\G}{\emptyCtx}{\wp{\t_n}}$, so
-    $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
-    Similarly, $\wfterm{\wp{\t_1}}{\t_1}{\I}$, \ldots,
-    $\jwfterm{\G}{\wp{\t_n}}{\t_n}{\I}$.  By CUT FOR TERMS,
-    $\jwfterm{\G}{\wp{\t}}{\t_1}{\I}$, \ldots,
-    $\jwfterm{\G}{\wp{\t}}{\t_n}{\I}$.  Thus,
-    $\jwfterm{\G}{\wp{\t}}{\tFun{\f}{\t}{n}}{\I}$.  \iffalse
-  \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$. Then
-    $\wp{\t} = 
-       (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge$
-       $(\pExists{\x}{\I}{\p(\x)}) \wedge$
-       $(\pForall{\x}{\I}{\pForall{\y}{\I}
-               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})$.
-    By the inductive hypothesis, $\jwfprop{}{\wp{\p(\x)}}$, so 
-    by WEAKENING $\jwfprop{\x{:}\I}{\wp{\p(\x)}}$ and hence
-    $\jwfprop{}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
- \fi
+    $\jwfterm{\G}{(\D,\pFalse)}{\t_n}{\I}$. 
+    \begin{enumerate}
+    \item
+      Then $\wp{\t} =
+      \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.  
+    \item By induction,
+      $\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$, \ldots,
+    $\jwfprop{\G}{\emptyCtx}{\wp{\t_n}}$, 
+    \item so
+    $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    \item 
+    Similarly, $\jwfterm{\G}{\wp{\t_1}}{\t_1}{\I}$, \ldots,
+    $\jwfterm{\G}{\wp{\t_n}}{\t_n}{\I}$.  
+    \item
+      By CUT FOR TERMS,
+      $\jwfterm{\G}{\wp{\t}}{\t_1}{\I}$, \ldots,
+      $\jwfterm{\G}{\wp{\t}}{\t_n}{\I}$.  
+    \item Thus,
+      $\jwfterm{\G}{\wp{\t}}{\tFun{\f}{\t}{n}}{\I}$.  
+    \end{enumerate}
+  \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
+  $\jpf{\G}{(\D,\pFalse)}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{\G}{(\D,\pFalse)}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
 
-  \end{itemize}
+    \begin{enumerate}
+      \item Then
+        $\wp{\t} = 
+        (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge$
+        $(\pExists{\x}{\I}{\p(\x)}) \wedge$
+        $(\pForall{\x}{\I}{\pForall{\y}{\I}
+          {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})$.
+      \item 
+        By the inductive hypothesis, $\jwfprop{\G}{\emptyCtx}{\wp{\pExists{\x}{\I}{\p(\x)}}}$.
+      \item 
+        so by WEAKENING $\jwfprop{\G,\x{:}\I}{\emptyCtx}{\wp{\p(\x)}}$ 
+      \item 
+        and hence $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
+      \end{enumerate}
+
+  \end{enumerate}
 \end{proof}
 
 
