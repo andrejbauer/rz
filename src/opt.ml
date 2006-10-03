@@ -3,9 +3,6 @@
 (********************************************************************)
 (** {1 Simplification}                                              *)
 (**                                                                 *)
-(** Precondition:  TopTy and Dagger have been completely eliminated *)
-(**   EXCEPT that Dagger may appear as the realizer for a named     *)
-(**   proposition.                                                  *)
 (********************************************************************)
 
 open Name
@@ -231,12 +228,7 @@ let rec optTerm ctx orig_term =
 	  (UnitTy, EmptyTuple)
 
       | Dagger -> 
-	  (** After thinning, daggers are only permitted as trivial
-              realizers (i.e., in a NamedProp).  That's handled
-              specially, so if we get this far we've found a dagger
-              that definitely shouldn't be here. *)
-	  (print_string "Is this a Dagger which I see before me?\n";
-	   raise (Impossible "Dagger found after thinning"))
+	  (TopTy, Dagger)
 
       | App(e1,e2) -> 
 	  begin

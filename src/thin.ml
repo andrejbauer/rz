@@ -82,6 +82,18 @@ let rec thinBinds ctx = function
 	   TopTy -> thinBinds ctx bnds
 	 | ty' -> (n,ty')::(thinBinds ctx bnds))
 
+let wrapObsTerm disappearingTerm wrapee =
+  let (obs, _) = hoist disappearingTerm
+  in foldObligation obs wrapee
+
+let wrapObsProp disappearingTerm wrapee =
+  let (obs, _) = hoist disappearingTerm
+  in foldPObligation obs wrapee
+
+let wrapPObsProp disappearingProp wrapee =
+  let (obs, _) = hoistProp disappearingProp
+  in foldPObligation obs wrapee
+
 (* thinTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
             e' is the thinimized version of e
@@ -97,7 +109,7 @@ let rec thinTerm ctx orig_term =
 	    let nm = applyTermRenaming ctx nm
 	    in let oldty = lookupTermVariable ctx nm
             in  match (thinTy ctx oldty) with
-		TopTy -> (oldty, Dagger, TopTy)
+		TopTy -> (oldty, wrapObsTerm orig_term Dagger, TopTy)
               | nonunit_ty -> (oldty, Id(LN(None,nm)), nonunit_ty)
 	  end
       | Id (LN(Some mdl, nm)) ->
@@ -108,7 +120,7 @@ let rec thinTerm ctx orig_term =
 		  Signat elems -> findTermvarInElems elems mdl nm
 		| _ -> failwith "Thin.thinTerm: invalid path"
 	    in match (thinTy ctx oldty) with
-		TopTy -> (oldty, Dagger, TopTy)
+		TopTy -> (oldty, wrapObsTerm orig_term Dagger, TopTy)
 	      | newty -> (oldty, Id(LN(Some mdl',nm)), newty)
 	  end
 
@@ -122,13 +134,13 @@ let rec thinTerm ctx orig_term =
 		(ArrowTy(ty2, oldty), e1', ty1') ->
 		  let (_, e2', ty2') = thinTerm ctx e2
 		  in let ty' = thinTy ctx oldty
+		  in let trm' = App(e1', e2')
 		  in (match (ty', hnfTy ctx ty2') with
 		      (TopTy, _) -> (* Application can be eliminated entirely *)
-			((oldty, Dagger, TopTy))
+			((oldty, wrapObsTerm trm' Dagger, TopTy))
 		    | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
-                        ((oldty, e1', ty1'))
-		    | (ty', _)    -> (* Both parts matter.
-					Eliminate trivial beta-redices, though. *)
+                        ((oldty, wrapObsTerm e2' e1', ty1'))
+		    | (ty', _)    -> (* Both parts matter. *)
 			((oldty, (App(e1', e2')), ty')))
 	      | (t1, _, _) -> (print_string "In application ";
 			       print_string (Outsyn.string_of_term (App(e1,e2)));
@@ -142,17 +154,20 @@ let rec thinTerm ctx orig_term =
 	    in let ctx' = insertTermVariable ctx name1 ty1
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
 	    in let oldty = ArrowTy(ty1,ty2)
+	    in let trm' = Lambda((name1,ty1'),term2')
 	    in match (hnfTy ctx ty1', hnfTy ctx ty2') with
-		(_,TopTy) -> (oldty, Dagger, TopTy)
+	      | (TopTy,TopTy) -> (oldty, wrapObsTerm term2' Dagger, TopTy)
+	      | (_,TopTy) -> (oldty, wrapObsTerm trm' Dagger, TopTy)
 	      | (TopTy,_) -> (oldty, term2', ty2')
-	      | (_,_)     -> (oldty, Lambda((name1,ty1'),term2'), ArrowTy(ty1',ty2')))
+	      | (_,_)     -> (oldty, trm', ArrowTy(ty1',ty2')))
       | Tuple es -> 
-	  let (ts, es', ts') = thinTerms ctx es
+	  let (ts, es', obs, ts') = thinTerms ctx es
 	  in let e' = 
-	    (match es' with
-		[] -> Dagger
-	      | [e] -> e
-	      | _ -> Tuple es')
+	    foldObligation obs
+	      (match es' with
+		  [] -> Dagger
+		| [e] -> e
+		| _ -> Tuple es')
 	  in (TupleTy ts, e', toptyize (TupleTy ts'))
       | Proj (n,e) as proj_code ->
 	  let (ty, e', ty') = thinTerm ctx e
@@ -167,7 +182,7 @@ let rec thinTerm ctx orig_term =
               (ty::tys, TopTy::tys', nonunits, index) ->
 		if index == n then
 		  (* The projection is unit-like and can be eliminated entirely *)
-		  (ty, Dagger, TopTy)
+		  (ty, wrapObsTerm e' Dagger, TopTy)
 		else
 		  loop(tys, tys', nonunits, index+1)
 	    | (ty::tys, ty'::tys', nonunits, index) ->
@@ -190,11 +205,14 @@ let rec thinTerm ctx orig_term =
 				     raise (Impossible "deep inside"))
 	  in 
                loop (tys, List.map (thinTy ctx) tys, 0, 0) 
-      | Inj (lbl, None) -> (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
+      | Inj (lbl, None) -> 
+	  (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
       | Inj (lbl, Some e) ->
 	  let (ty, e', ty') = thinTerm ctx e in
 	    if ty' = TopTy then
-	      (SumTy [(lbl,Some ty)], Inj (lbl, None), SumTy[(lbl, None)])
+	      (SumTy [(lbl,Some ty)], 
+	       wrapObsTerm e' (Inj (lbl, None)), 
+	       SumTy[(lbl, None)])
 	    else
 	      (SumTy [(lbl,Some ty)], Inj(lbl, Some e'), SumTy[(lbl, Some ty')])
       | Case (e, arms) ->
@@ -230,7 +248,7 @@ let rec thinTerm ctx orig_term =
 	    in let ctx' = insertTermVariable ctx name1 ty1
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
 	    in match ty1' with
-		TopTy -> (ty2, term2', ty2')
+		TopTy -> (ty2, wrapObsTerm term1' term2', ty2')
 	      | _ -> (ty2, Let(name1, term1', term2'), ty2')
 	  end
 
@@ -253,12 +271,14 @@ let rec thinTerm ctx orig_term =
      raise e)
 
 and thinTerms ctx = function 
-    [] -> ([], [], [])   
+    [] -> ([], [], [], [])   
   | e::es -> let (ty, e', ty') = thinTerm ctx e
-    in let (tys, es', tys') = thinTerms ctx es
+    in let (tys, es', obss, tys') = thinTerms ctx es
     in (match (hnfTy ctx ty') with
-        TopTy -> (ty :: tys, es', tys')
-      | _ -> (ty :: tys, e'::es', ty'::tys'))
+        TopTy -> 
+	  let (obs,_) = hoist e'
+	  in (ty :: tys, es', obs@obss, tys')
+      | _ -> (ty :: tys, e'::es', obss, ty'::tys'))
       
 
 and thinTerm' ctx e =
@@ -266,21 +286,29 @@ and thinTerm' ctx e =
   in e'      
 
 and thinTerms' ctx lst =
-  let (_, es, _) = thinTerms ctx lst in es
+  let (_, es, obs, _) = thinTerms ctx lst in (obs, es)
 
 and thinProp ctx orig_prp = 
   try
     match orig_prp with
 	True                    -> True
       | False                   -> False
-      | IsPer (nm, lst)         -> IsPer (nm, thinTerms' ctx lst)
+      | IsPer (nm, lst)         -> 
+	  let (obs, lst') = thinTerms' ctx lst
+	  in foldPObligation obs (IsPer (nm, lst'))
       | IsPredicate (nm, ty, lst) ->
 	  IsPredicate (nm, thinTyOption ctx ty, 
 		      List.map (fun (nm, ms) -> (nm, thinModest ctx ms)) lst)
       | IsEquiv (p, ms)         -> IsEquiv (thinProp ctx p, thinModest ctx ms)
-      | NamedTotal (n, lst)     -> NamedTotal (n, thinTerms' ctx lst)
-      | NamedPer (n, lst)       -> NamedPer (n, thinTerms' ctx lst)
-      | NamedProp (n, t, lst)   -> NamedProp (n, thinTerm' ctx t, thinTerms' ctx lst)
+      | NamedTotal (n, lst)     -> 
+	  let (obs, lst') = thinTerms' ctx lst
+	  in foldPObligation obs (NamedTotal (n, lst'))
+      | NamedPer (n, lst)       -> 
+	  let (obs, lst') = thinTerms' ctx lst
+	  in foldPObligation obs (NamedPer (n, lst'))
+      | NamedProp (n, t, lst)   -> 
+	  let (obs, lst') = thinTerms' ctx lst
+	  in foldPObligation obs (NamedProp (n, thinTerm' ctx t, lst'))
       | Equal(e1, e2) -> 
 	  let (_,e1',ty1') = thinTerm ctx e1
 	  in let e2' = thinTerm' ctx e2
@@ -380,7 +408,7 @@ and thinProp ctx orig_prp =
 	    in let ctx' = insertTermVariable ctx nm ty1
 	    in let prp2' = thinProp ctx' prp2
 	    in match ty1' with
-		TopTy -> prp2'
+		TopTy -> wrapObsProp trm1' prp2'
 	      | _ -> PLet(nm, trm1', prp2')
 	  end
   with e ->
@@ -493,6 +521,7 @@ and thinStructBindings ctx = function
 (* For now, at least, moduls never disappear completely, even if 
    their contents are entirely thinned away. *)
 and thinModul ctx orig_modul = 
+  try
   match orig_modul with
       ModulName nm -> 
 	let nm = applyModulRenaming ctx nm
@@ -523,6 +552,10 @@ and thinModul ctx orig_modul =
     | ModulStruct defs ->
 	let (elems, defs', elems') = thinDefs ctx defs
 	in (Signat elems, ModulStruct defs, Signat elems')
+  with e ->
+    (print_endline ("\n\n...in (thinModul) " ^
+		       (string_of_modul orig_modul));
+     raise e)
 	  
 and thinModul' ctx orig_modul =
   let (_, mdl, _) = thinModul ctx orig_modul
@@ -547,6 +580,7 @@ and thinDefs ctx = function
 	in let (elems, defs', elems') = thinDefs ctx' defs
 	in let trm' = thinTerm' ctx trm
 	in match hnfTy ctx (thinTy ctx ty) with
+	    (* XXX: Possibility of losing assertions in trm' ! *)
 	    TopTy -> (spec::elems, defs', elems')
 	  | ty' -> (spec::elems, DefTerm(nm,ty',trm')::defs',
 		   Spec(nm, ValSpec ([],ty'), [])::elems')
