@@ -1,15 +1,15 @@
 (** Finite lists *)
 
-Definition Make(S : thy Parameter s : Set. end) :=
+Definition Make(S : thy Parameter t : Set. end) :=
 thy
-  Parameter list : Set.
-  Parameter nil : list.
-  Parameter cons : S.s -> list -> list.
+  Parameter t : Set.
+  Parameter nil : t.
+  Parameter cons : S.t -> t -> t.
 
-  (* Induction principle for lists gives us "fold". *)
+  (* Induction principle for ts gives us "fold". *)
   Axiom induction:
-    forall M : thy Parameter p : list -> Prop. end,
+    forall M : thy Parameter p : t -> Prop. end,
       M.p nil ->
-      (forall x : S.s, forall lst : list, (M.p lst -> M.p (cons x lst))) ->
-      (forall lst : list, M.p lst).
+      (forall x : S.t, forall lst : t, (M.p lst -> M.p (cons x lst))) ->
+      (forall lst : t, M.p lst).
 end.

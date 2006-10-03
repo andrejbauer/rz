@@ -118,7 +118,12 @@ thy
   # It's a pity we cannot just "include Semiroup",
   # we can't because s would get shadowed.
 
+  Parameter one : s.
+
   Parameter mul : s -> s -> s.
+
+  Axiom one_mul_neutral:
+    forall x : s, mul one x = x /\ mul x one = x.
 
   Axiom mul_associative:
     forall x y z : s, mul (mul x y) z = mul x (mul y z).
@@ -133,7 +138,12 @@ Definition CommutativeRingWithUnit :=
 thy
   include CommutativeGroup.
 
+  Parameter one : s.
+
   Parameter mul : s -> s -> s.
+
+  Axiom one_mul_neutral:
+    forall x : s, mul one x = x /\ mul x one = x.
 
   Axiom mul_associative:
     forall x y z : s, mul (mul x y) z = mul x (mul y z).

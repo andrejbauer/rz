@@ -1,6 +1,4 @@
-(* Real numbers. *)
-
-Require Integer.
+(** The ring of integers. *)
 
 Parameter t : Set.
 
@@ -45,14 +43,7 @@ Axiom mul_commutative:
 Axiom distributivity:
   forall x y z, mul x (add y z) = add (mul x y) (mul x z).
 
-(* Field structure. *)
-
-Parameter inv : {x | not (x = zero)} -> t.
-
-Axiom field:
-  forall x, (not (x = zero)) -> mul x (inv x) = one.
-
-(* Linear order. *)
+(* Decidable order *)
 
 Parameter lt : t -> t -> Stable.
 
@@ -71,8 +62,8 @@ Axiom lt_transitive:
 Axiom lt_antisymmetric:
   forall x y, lt x y /\ lt y x -> x = y.
 
-Axiom lt_linear:
-  forall x y z, lt x y -> lt x z \/ lt z y.
+Axiom lt_dichotomy:
+  forall x y, lt x y \/ x = y \/ lt y x.
 
 Definition positive x := lt zero x.
 
@@ -84,11 +75,4 @@ Axiom order_add:
 
 Axiom order_mul:
   forall x y z, lt x y -> positive z -> lt (mul x z) (mul x z).
-
-Axiom order_inv:
-  forall x, positive x -> positive (inv x).
-
-(* Archimedean property. *)
-
-Parameter real_of_integer : Integer.t -> t.
 

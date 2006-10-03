@@ -9,7 +9,8 @@ Definition Preorder := thy
   Axiom transitive:  forall x y z, leq x y /\ leq y z -> leq x z.
 end.
 
-Definition Order := thy
+
+Definition PartialOrder := thy
   include Preorder.
 
   Implicit Type x y: s.
@@ -17,8 +18,16 @@ Definition Order := thy
   Axiom antisymmetric:  forall x y, (leq x y /\ leq y x) -> (x=y).
 end.
 
+
+Definition LinearOrder := thy
+  include PartialOrder.
+
+  Axiom linear: forall x y z, leq x y -> leq x z \/ leq z y.
+end.
+
+
 Definition Semilattice := thy
-  include Order.
+  include PartialOrder.
 
   Parameter join:  s -> s -> s.
 
