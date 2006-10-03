@@ -946,9 +946,10 @@ let rec annotateExpr cntxt orig_expr =
   with
       E.TypeError msgs ->
 	E.generalizeError msgs (E.inMsg orig_expr)
-    | _ -> 
+    | e -> 
 	E.tyGenericErrors
-	  ("Caught unexpected exception" :: [E.inMsg orig_expr])
+	  (("Caught unexpected exception " ^ Printexc.to_string e)
+	    :: [E.inMsg orig_expr])
   (* ********End of annotateExpr ********* *)
 
 and annotateTerm cntxt surrounding_expr expr = 

@@ -673,12 +673,14 @@ type subst = {terms: term NameMap.t;
               sets: set NameMap.t;
 	      props : proposition NameMap.t;
               models: model NameMap.t;
+	      theories : theory NameMap.t;
               capturablenames: NameSet.t}
 
 let emptysubst = {terms = NameMap.empty;
 		  props = NameMap.empty;
 		  sets = NameMap.empty;
 		  models = NameMap.empty;
+		  theories = NameMap.empty;
 		  capturablenames = NameSet.empty}
 
 let insertTermvar sbst nm trm =
@@ -697,11 +699,16 @@ let insertModelvar sbst strng mdl =
   {sbst with models = NameMap.add strng mdl sbst.models;
 	 capturablenames = NameSet.union sbst.capturablenames (fnModel mdl)}
 
+let insertTheoryvar sbst strng mdl =
+  {sbst with theories = NameMap.add strng mdl sbst.theories;
+	 capturablenames = NameSet.union sbst.capturablenames (fnTheory mdl)}
+
 let removeName sbst nm =
   {terms  = NameMap.remove nm sbst.terms;
    props  = NameMap.remove nm sbst.props;
    sets   = NameMap.remove nm sbst.sets;
    models = NameMap.remove nm sbst.models;
+   theories = NameMap.remove nm sbst.theories;
    capturablenames = sbst.capturablenames}  (* XXX Overly conservative? *)
 
 
@@ -720,6 +727,10 @@ let getSetvar sbst stnm knd =
 let getModelvar sbst mdlnm =
    try (NameMap.find mdlnm sbst.models) with 
        Not_found -> ModelName mdlnm
+
+let getTheoryvar sbst thrynm =
+   try (NameMap.find thrynm sbst.theories) with 
+       Not_found -> TheoryName thrynm
 
 let display_subst sbst =
   let do_term nm trm = print_string ("[" ^ string_of_name nm ^ "~>" ^ 
@@ -947,7 +958,7 @@ and substProptype sbst = function
 	  
 and substTheory sbst = function 
     Theory elts       -> Theory (substTheoryElts sbst elts)
-  | TheoryName thrynm -> TheoryName thrynm
+  | TheoryName thrynm -> getTheoryvar sbst thrynm
   | TheoryArrow ((y, thry1), thry2) ->
       let (sbst',y') = updateBoundName sbst y in
 	TheoryArrow((y, substTheory sbst thry1),

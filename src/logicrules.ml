@@ -231,7 +231,8 @@ let rec searchElems cntxt nm' mdl =
 	      if (nm = nm') then
 		Some decl
 	      else 
-		loop subst rest
+		loop (insertTheoryvar subst nm (TheoryProj(mdl,nm)))
+		  rest
 	  | Comment _  -> 
 	      (** Comments cannot be searched for, currently *)
 	      loop subst rest
@@ -253,7 +254,8 @@ let rec hnfTheory cntxt = function
       begin
 	match lookupId cntxt nm with
 	    Some(DeclTheory (thry, _)) -> hnfTheory cntxt thry
-	  | _ -> failwith "hnfTheory 1"
+	  | Some _ -> failwith ("hnfTheory 1a " ^ string_of_name nm)
+	  | None -> failwith ("hnfTheory 1b " ^ string_of_name nm)
       end
   | TheoryApp (thry, mdl) ->
       begin
