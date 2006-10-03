@@ -118,6 +118,11 @@ and renTerm ((ren, bad) as ctx) = function
       let t, ctx = renTerm ctx t in
 	Obligation (bnds, p, t), ctx
 
+  | PolyInst (trm, tys) ->
+      let trm, ctx = renTerm ctx trm in
+      let tys, ctx = renTyList ctx tys in
+	PolyInst(trm, tys), ctx
+
 and renTermList ctx lst = renList renTerm ctx lst
 
 and renTy ctx = function
@@ -141,6 +146,10 @@ and renTy ctx = function
       let ty1, ctx = renTy ctx ty1 in
       let ty2, ctx = renTy ctx ty2 in
 	ArrowTy (ty1, ty2), ctx
+  | PolyTy(nms, ty) ->
+      let nms, ctx = renNameList ctx nms in
+      let ty, ctx = renTy ctx ty in
+	PolyTy(nms, ty), ctx
 
 and renTyList ctx lst = renList renTy ctx lst
 

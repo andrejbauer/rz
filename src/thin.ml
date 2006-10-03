@@ -244,6 +244,9 @@ let rec thinTerm ctx orig_term =
 	  in let ty2, trm', ty2' = thinTerm ctx' trm
 	  in (ty2, Obligation(bnds''', prop', trm'), ty2')
 
+      | PolyInst _ ->
+	  failwith "Thin.thinTerm:  unexpected PolyInst"
+
   with e ->
     (print_endline ("\n\n...in (thin term) " ^
 		       string_of_term orig_term);

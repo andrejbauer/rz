@@ -1,8 +1,10 @@
-\documentclass[11pt]{article}
+\documentclass[10pt,a4paper]{article}
 \usepackage{mathpartir,color,amsthm,amssymb,fullpage}
 
-\newtheorem{lemma}{Lemma}
-\newtheorem{claim}{Claim}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{corollary}[theorem]{Corollary}
 
 \begin{document}
 
@@ -78,6 +80,8 @@
 
 \end{array}
 \]
+
+As usual, we consider two terms or propositions to be equal if they are identical modulo renaming of bound variables.
 \section{Original JSL System}
 
 \subsection{Well-Formedness} 
@@ -437,7 +441,286 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 \end{enumerate}
 \end{claim}
 
-\begin{lemma}[Correctness of $\wp{\cdot}$]
+\begin{lemma}[Well-formedness of  $\wp{\cdot}$]
+\mbox{}
+  \begin{enumerate}
+  \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
+    $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$.
+  \item If $\jwfprop{\G}{(\D,\pFalse)}{\p}$, we have
+    $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{proof}
+  \raggedright Induction on the proof of
+  $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ or $\jwfprop{\G}{(\D,\pFalse)}{\p}$.
+  \begin{itemize}
+  \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
+    \begin{enumerate}
+      \item
+        Here $\wp{\t} = \pTrue$.
+      \item
+        Then $\jwfprop{\G}{\emptyCtx}{\pTrue}$. 
+      \end{enumerate}
+  \item Case: $\t = \tFun{\f}{\t}{n}$ with
+    $\jwfterm{\G}{(\D,\pFalse)}{\t_i}{\I}$ for all $i\in1..n$.
+    \begin{enumerate}
+    \item
+      Here $\wp{\t} =
+      \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.
+    \item 
+    	By induction,
+      $\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$ for
+      all $i\in1..n$, 
+    \item 
+    	so
+    $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    \end{enumerate}
+        
+  \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
+  $\jpf{\G}{(\D,\pFalse)}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{\G}{(\D,\pFalse)}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
+
+    \begin{enumerate}
+      \item 
+        Then
+        $\wp{\t} = 
+        \pAnd
+          {(\pForall{\x}{\I}{\wp{\p(\x)}})}
+          {\pAnd
+            {(\pExists{\x}{\I}{\p(\x)})}
+            {(\pForall{\x}{\I}{\pForall{\y}{\I}
+              {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}}$.
+      \item 
+        By the inductive hypothesis, $\jwfprop{\G}{\emptyCtx}{\wp{\pExists{\x}{\I}{\p(\x)}}}$
+      \item 
+      	and
+        $\jwfprop{\G}{\emptyCtx}{\wp{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}$.
+      \item
+      	That is, 
+	$\jwfprop{\G}{\emptyCtx}
+	   {\pForall{\x}{\I}
+	      {\pForall{\y}{\I}
+	        {\pAnd
+	          {\bigl(\pAnd
+	             {\wp{\p(\x)}}
+	             {(\pImply{\p(\x)}{\wp{\p(\y)}})}\bigr)}
+	          {(\pImply
+	             {\pAnd{\p(\x)}{\p(\y)}}
+	             {\pAnd{\pTrue}{\pTrue}})} }}}$.
+	  \item
+	    By inversion, 
+	      $\jwfprop{(\G,\x{:}\I,\y{:}\I)}{\emptyCtx}{\wp{\p(\x)}}$,
+      \item 
+        so by Lemma~\ref{lemma:subst} we have 
+        $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\wp{\p(\x)}}$,
+      \item
+        and hence $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\wp{\p(x)}}}$.
+      \item
+        Thus, $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$.
+      \end{enumerate}
+      
+  \item Cases: $\p = \pTrue$, or $\p = \pFalse$, or $\p=(\pOr{\p_1}{\p_2})$,
+      or $\p=(\pExists{\x}{\I}{\q})$.
+      \begin{enumerate}
+      \item 
+      	Here $\wp{\p} = \pTrue$.
+      \item
+        Then $\jwfprop{\G}{\emptyCtx}{\pTrue}$.
+      \end{enumerate}
+            
+  \item Case: $\p = (\pAnd{\p_1}{\p_2})$ or $\p = (\pImply{\p_1}{\p_2})$ with
+       $\jwfprop{\G}{(\D,\pFalse)}{\p_1}$ and 
+              $\jwfprop{\G}{(\D,\pFalse,\p_1)}{\p_2}$.
+       \begin{enumerate}
+       \item 
+       		Then $\wp{\p} = \pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}$.
+       \item 
+       		By the inductive hypothesis,
+         	$\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
+         	and $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$.
+       \item 
+       		By Lemma~\ref{lemma:weaken} we have 
+			$\jwfprop{\G}{\p_1}{\wp{\p_2}}$,
+		\item
+			so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\wp{\p_2}})}$,
+		\item
+		 	and hence $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$.
+       \end{enumerate}
+  \item Case: $\p=(\pForall{\x}{\I}{\q})$, 
+        with $\jwfprop{(\G,\x{:}\I)}{(\D,\pFalse)}{\q}$.
+  	\begin{enumerate}
+	\item 
+		Here $\wp{\p} = \pForall{\x}{\I}{\wp{\q}}$.
+	\item 
+		By the inductive hypothesis,
+	   $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\wp{\q}}$.
+	\item 
+		Thus
+	   $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\wp{\q}}}$ as desired.
+	\end{enumerate}
+  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\G}{(\D,\pFalse)}{\t_1}{\I}$ and $\jwfterm{\G}{(\D,\pFalse)}{\t_2}{\I}$. 
+    	\begin{enumerate}
+	\item 
+		Here $\wp{\p} = \pAnd{\wp{\t_1}}{\wp{\t_2}}$.
+	\item 
+		By the inductive hypotheses,
+		$\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$ 
+	\item 
+		and $\jwfprop{\G}{\emptyCtx}{\wp{\t_2}}$.
+	\item
+		Thus $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t_1}}{\wp{\t_2}}}$.
+	\end{enumerate}
+  \end{itemize}
+\end{proof}
+
+\begin{corollary}
+\mbox{}
+\begin{enumerate}
+\item If $\jwfterm{\G}{\D}{\t}{\I}$ then
+  $\jwfprop{\G}{\D}{\wp{\t}}$.
+\item If $\jwfprop{\G}{\D}{\p}$ then
+  $\jwfprop{\G}{\D}{\wp{\p}}$.
+\end{enumerate}
+\end{corollary}
+
+\begin{proof}
+To be checked.
+\end{proof}
+
+\clearpage
+
+\begin{lemma}[Truth of $\wp{\cdot}$]
+\mbox{}
+  \begin{enumerate}
+  \item If $\jwfterm{\G}{\D}{\t}{\I}$ then
+    $\jpf{\G}{\D}{\wp{\t}}$.
+  \item If $\jwfprop{\G}{\D}{\p}$, we have
+    $\jpf{\G}{\D}{\wp{\p}}$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{proof}
+  \raggedright By induction on the proof of
+  $\jwfterm{\G}{\D}{\t}{\I}$ or $\jwfprop{\G}{\D}{\p}$.
+%  In all cases we have $\jwfprop{\G}{\D}{\wp{\t}}$ or
+%  $\jwfprop{\G}{\D}{\wp{\p}}$ as appropriate.
+  \begin{itemize}
+  \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
+    \begin{enumerate}
+      \item
+        Here $\wp{\t} = \pTrue$.
+      \item
+        Then $\jpf{\G}{\emptyCtx}{\pTrue}$ 
+      \end{enumerate}
+  \item Case: $\t = \tFun{\f}{\t}{n}$ with
+    $\jwfterm{\G}{\D}{\t_i}{\I}$ for all $i\in1..n$.
+    \begin{enumerate}
+    \item
+      Here $\wp{\t} =
+      \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.
+    \item 
+    	By induction,
+      $\jpf{\G}{\D}{\wp{\t_1}}$ for
+      all $i\in1..n$, 
+    \item 
+    	so
+    $\jpf{\G}{\D}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    \end{enumerate}
+    
+  \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
+  $\jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
+
+    \begin{enumerate}
+      \item 
+        Here
+        $\wp{\t} = 
+        \pAnd
+          {(\pForall{\x}{\I}{\wp{\p(\x)}})}
+          {\pAnd
+            {(\pExists{\x}{\I}{\p(\x)})}
+            {(\pForall{\x}{\I}{\pForall{\y}{\I}
+              {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}}$.
+      \item 
+        By the inductive hypothesis, 
+        $\jpf{\G}{\D}{\wp{\pForall{\x}{\I}{\pForall{\y}{\I}
+               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}$.
+      \item
+      	That is, 
+	$\jpf{\G}{\D}
+	   {\pForall{\x}{\I}
+	      {\pForall{\y}{\I}
+	        {\pAnd
+	          {\bigl(\pAnd
+	             {\wp{\p(\x)}}
+	             {(\pImply{\p(\x)}{\wp{\p(\y)}})}\bigr)}
+	          {(\pImply
+	             {\pAnd{\p(\x)}{\p(\y)}}
+	             {\pAnd{\pTrue}{\pTrue}})} }}}$.
+	  \item
+	    From this (and conjunction elimination and introduction/elimination
+	    for the universal quantifier) we can prove 
+	      $\jpf{\G}{\D}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
+      \item 
+        Thus, $\jpf{\G}{\D}{\wp{\t}}$.
+      \end{enumerate}
+      
+  \item Cases: $\p = \pTrue$, or $\p = \pFalse$, or $\p = (\pOr{\p_1}{\p_2})$, or $\p = (\pExists{\x}{\I}{\q})$.
+      \begin{enumerate}
+      \item 
+      	Then $\wp{\p} = \pTrue$,
+      \item
+        and $\jpf{\G}{\D}{\pTrue}$ 
+      \end{enumerate}
+            
+  \item Case: $\p = (\pAnd{\p_1}{\p_2})$ or $\p = (\pImply{\p_1}{\p_2})$ with
+       $\jwfprop{\G}{\D}{\p_1}$ and 
+              $\jwfprop{\G}{(\D,\p_1)}{\p_2}$.
+       \begin{enumerate}
+       \item Then $\wp{\p} = \pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}$.
+       \item By the inductive hypothesis,
+         $\jpf{\G}{\D}{\wp{\p_1}}$
+       \item 
+         and $\jpf{\G}{\D,\p_1}{\wp{\p_2}}$.
+       \item 
+         Thus $\jpf{\G}{\D}{\pImply{\p_1}{\wp{\p_2}}}$,
+       \item
+         so $\jpf{\G}{\D}{\wp{\p}}$.    
+       \end{enumerate}
+  \item Case: $\p=(\pForall{\x}{\I}{\q})$, 
+        with $\jwfprop{(\G,\x{:}\I)}{\D}{\q}$.
+  	\begin{enumerate}
+	\item 
+		Here $\wp{\p} = \pForall{\x}{\I}{\wp{\q}}$.
+	\item 
+		By the inductive hypothesis,
+	   $\jpf{(\G,\x{:}\I)}{\D}{\wp{\q}}$.
+	\item 
+		Thus
+	   $\jpf{\G}{\D}{\pForall{\x}{\I}{\wp{\q}}}$ as desired.
+	\end{enumerate}
+  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\G}{\D}{\t_1}{\I}$ and $\jwfterm{\G}{\D}{\t_2}{\I}$. 
+    	\begin{enumerate}
+	\item 
+		Here $\wp{\p} = \pAnd{\wp{\t_1}}{\wp{\t_2}}$.
+	\item 
+		By the inductive hypotheses,
+		$\jpf{\G}{\D}{\wp{\t_1}}$ 
+	\item 
+		and $\jpf{\G}{\D}{\wp{\t_2}}$.
+	\item
+		Thus $\jpf{\G}{\D}{\pAnd{\wp{\t_1}}{\wp{\t_2}}}$.
+	\end{enumerate}       
+  \end{itemize}
+\end{proof}
+
+\clearpage
+
+\begin{lemma}
 \mbox{}
   \begin{enumerate}
   \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
@@ -655,8 +938,6 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
        \end{enumerate}
   \end{itemize}
 \end{proof}
-
-
 
 \end{document}
 

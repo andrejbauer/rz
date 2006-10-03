@@ -395,6 +395,9 @@ let rec optTerm ctx orig_term =
 	  in 
 	       (ty2, doObligation (bnds'', prop', trm'))
 
+      | PolyInst _ ->
+	  failwith "Opt.opTerm:  unexpected PolyInst"
+
   with e ->
     (** If any exception is raised then either there's a bug in the
 	optimizer or the input was ill-formed.  Make sure we can

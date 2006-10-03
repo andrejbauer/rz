@@ -28,6 +28,7 @@ let rec good = function
   | ArrowTy (ArrowTy (ArrowTy _, _), _) -> [mk "alpha"; mk "beta"; mk "gamma"; mk "delta"]
   | ArrowTy (ArrowTy (_, _), _) -> [mk "phi"; mk "psi"; mk "xi"; mk "zeta"]
   | ArrowTy _ -> [mk "f"; mk "g"; mk "h"; mk "r"]
+  | PolyTy _ -> failwith "Translate.good:  unexpected PolyTy"
 
 let rec goodRz = [mk "a"; mk "b"; mk "c"; mk "d"]
 

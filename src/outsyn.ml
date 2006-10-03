@@ -171,7 +171,7 @@ let rec fvTerm' flt acc = function
   | EmptyTuple -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
-  | Lambda ((n, s), t) -> fvTerm' (n::flt) acc t
+  | Lambda ((n, s), t) -> fvTerm' (n::flt) (fvTy' flt acc s) t
   | Tuple lst -> List.fold_left (fun a t -> fvTerm' flt a t) acc lst
   | Proj (_, t) -> fvTerm' flt acc t
   | Inj (_, Some t) -> fvTerm' flt acc t
@@ -182,9 +182,19 @@ let rec fvTerm' flt acc = function
   | Obligation (bnds, p, t) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvTerm' flt' (fvProp' flt' acc p) t
+  | PolyInst(trm, tys) ->
+      fvTyList' flt (fvTerm' flt acc trm) tys
 
 and fvCaseArm' flt acc (_, bnd, t) =
-    fvTerm' (match bnd with None -> flt | Some (n, _) -> n::flt) acc t
+  begin
+    match bnd with
+	None ->
+	  fvTerm' flt acc t
+      | Some (n,s) ->
+	  fvTerm' (n::flt) (fvTy' flt acc s) t
+  end
+
+
 
 and fvCaseArms' flt acc arms =
     List.fold_left (fvCaseArm' flt) acc arms
@@ -212,7 +222,7 @@ and fvProp' flt acc = function
   | NamedProp (LN(Some _, _), t, lst) -> fvTerm' flt (fvTermList' flt acc lst) t
   | PApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
-  | PLambda ((n, _), p) -> fvProp' (n::flt) acc p
+  | PLambda ((n, s), p) -> fvProp' (n::flt) (fvTy' flt acc s) p
   | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
   | PObligation (bnds, p, q) -> 
       let flt' = (List.map fst bnds) @ flt
@@ -238,6 +248,25 @@ and fvTermList' flt acc = List.fold_left (fun a t -> fvTerm' flt a t) acc
 
 and fvModestList' flt acc = List.fold_left (fun a t -> fvModest' flt a (snd t)) acc
 
+and fvTyList' flt acc = List.fold_left (fvTy' flt) acc
+
+and fvTy' flt acc = function
+    NamedTy(LN(None,nm)) ->
+      if List.mem nm flt then acc else nm :: acc
+  | NamedTy(LN(Some _, _)) -> acc
+  | (UnitTy | VoidTy | TopTy) -> acc
+  | SumTy(sumarms) -> List.fold_left (fvSum' flt) acc sumarms
+  | TupleTy tys -> List.fold_left (fvTy' flt) acc tys
+  | ArrowTy(ty1,ty2) ->
+      fvTy' flt (fvTy' flt acc ty1) ty2
+  | PolyTy(nms,ty) ->
+      fvTy' (nms @ flt) acc ty
+
+and fvSum' flt acc (_,tyopt) = fvTyOpt' flt acc tyopt
+
+and fvTyOpt' flt acc = function
+    None -> acc
+  | Some ty -> fvTy' flt acc ty
 
 let fvTerm = fvTerm' [] []
 let fvProp = fvProp' [] []
@@ -246,6 +275,7 @@ let fvPCaseArm = fvPCaseArm' [] []
 let fvPCaseArms = fvPCaseArms' [] []
 let fvCaseArm = fvCaseArm' [] []
 let fvCaseArms = fvCaseArms' [] []
+let fvTy = fvTy' [] []
 
 (****************************)
 (** {2: Occurence Counting} *)
@@ -269,6 +299,8 @@ let rec countTerm x = function
 	0
       else
 	countProp x p + countTerm x t
+  | PolyInst (trm, tys) ->
+      List.fold_left (fun a ty -> a + countTy x ty) (countTerm x trm) tys
 
 and countTermList x lst =
   List.fold_left (fun a t -> a + countTerm x t) 0 lst
@@ -325,9 +357,11 @@ and countPropList x lst = List.fold_left (fun a p -> a + countProp x p) 0 lst
 
 and countModestList x lst = List.fold_left (fun a (_, m) -> a + countModest x m) 0 lst
 
-(****************************)
-(** {2: Occurence Counting} *)
-(****************************)
+and countTy x ty = 0 (* XXX *)
+
+(************************************)
+(** {2: Only-In-Projection Testing} *)
+(************************************)
 
 let rec opTerm x = function
   | Id (LN(None,nm))  -> x <> nm
@@ -348,6 +382,7 @@ let rec opTerm x = function
 	true
       else
 	opProp x p && opTerm x t
+  | PolyInst(trm, tys) -> opTerm x trm
 
 and opTermList x lst =
   List.fold_left (fun a t -> a && opTerm x t) true lst
@@ -632,6 +667,9 @@ and substTerm ?occ sbst = function
       let (sbst', bnds') = renameBnds ?occ sbst bnds
       in
 	Obligation (bnds', substProp ?occ sbst' p, substTerm ?occ sbst' trm)
+  | PolyInst(trm, tys) ->
+      PolyInst(substTerm ?occ sbst trm,
+	       List.map (substTy ?occ sbst) tys)
 
 and substCaseArm ?occ sbst = function
 			  (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
@@ -847,6 +885,12 @@ and string_of_term' level t =
 	(12,
 	 "assure " ^ (string_of_bnds bnds) ^ " . " ^
 	 (string_of_proposition p) ^ " in " ^ (string_of_term trm) ^ " end")
+    | PolyInst(trm,tys) ->
+	(4,
+	 string_of_term trm ^ 
+	 "(*[" ^
+	 (String.concat "," (List.map string_of_ty tys)) ^
+	 "]*)")
   in
     if level' > level then "(" ^ str ^ ")" else str
 
@@ -1423,6 +1467,10 @@ and hoist trm =
     | Inj(lbl, Some trm) ->
 	let (obs, trm') = hoist trm
 	in (obs, Inj(lbl, Some trm'))
+
+    | PolyInst(trm, tys) ->
+	let (obs, trm') = hoist trm
+	in (obs, PolyInst(trm', tys))
 
     | Case(trm,arms) ->
 	let (obs1, trm') = hoist trm
