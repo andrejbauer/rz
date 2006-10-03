@@ -32,6 +32,7 @@ and ty =
   | SumTy of (label * ty option) list      (* 1 *)
   | TupleTy of ty list                     (* 2 *)
   | ArrowTy of ty * ty                     (* 3 *)
+  | PolyTy of name list * ty
 
 (** Modest set, or a uniform family of modest sets. *)
 and modest = {
@@ -56,6 +57,7 @@ and term =
   | Case of term * (label * binding option * term) list
   | Let of name * term * term
   | Obligation of binding list * proposition * term
+  | PolyInst of term * ty list
 
 (** Propositional function *)
 and proposition =
@@ -158,6 +160,7 @@ let rec dagger_of_ty = function
   | SumTy _ -> failwith "Cannot make a dagger from SumTy"
   | TupleTy lst -> Tuple (List.map dagger_of_ty lst)
   | ArrowTy (t1, t2) -> Lambda ((wildName(), t1), Dagger)
+  | PolyTy _ -> failwith "Cannot make a dagger from PolyTy"
 
 
 (** ======== FREE VARIABLES ======= *)
@@ -670,6 +673,8 @@ and substTy ?occ sbst = function
 				    | (lbl, Some ty) -> (lbl, Some (substTy ?occ sbst ty))) lst)
   | TupleTy lst -> TupleTy (List.map (substTy ?occ sbst) lst)
   | ArrowTy (ty1, ty2) -> ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
+  | PolyTy (nms,ty) ->
+      PolyTy (nms, substTy ?occ (addTyvarsToSubst sbst nms) ty)  
 
 and substTyOption ?occ sbst = function
     None -> None
@@ -693,13 +698,15 @@ and substSignat ?occ sbst = function
   | SignatProj (mdl, nm) ->
       SignatProj(substModul ?occ sbst mdl, nm)
 
+and addTyvarsToSubst sbst = function
+    [] -> sbst
+  | tv::tvs -> 
+      (* XXX: Does not detect shadowing  *)
+      insertTyvar (addTyvarsToSubst sbst tvs) tv (NamedTy (LN (None,tv)))
+
 and substSpec ?occ sbst = function
     ValSpec (tyvars, ty)        -> 
-      (* XXX: Does not detect shadowing  *)
-      let rec addTyvars sbst = function
-	  [] -> sbst
-	| tv::tvs -> insertTyvar (addTyvars sbst tvs) tv (NamedTy (LN (None,tv)))
-      in ValSpec (tyvars, substTy ?occ (addTyvars sbst tyvars) ty)
+      ValSpec (tyvars, substTy ?occ (addTyvarsToSubst sbst tyvars) ty)
   | ModulSpec signat  -> ModulSpec (substSignat ?occ sbst signat)
   | TySpec tyopt      -> TySpec (substTyOption ?occ sbst tyopt)
   | SignatSpec signat -> SignatSpec (substSignat ?occ sbst signat)
@@ -784,6 +791,7 @@ and string_of_ty' level t =
 	  | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
           | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2))
+	  | PolyTy(t1,t2) -> (0, "POLYTY")
        )
   in
     if (level' > level) then 

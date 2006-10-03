@@ -810,6 +810,14 @@ and optElems ctx orig_elems =
 	   let assertion' = optAssertion ctx assertion in
 	   let (rest', ctx') = optElems ctx rest in
 	     (Assertion assertion' :: rest'), ctx'
+(*
+      |  Spec(name, ModulSpec 
+	   (SignatFunctor((nm1,Signat[Spec(nm2,TySpec None,assns2)]),
+			  Signat[Spec(nm3,ValSpec([],ty3),assns3)])),
+	     assns1) ->
+	   (* XXX What to do with the assertions? *)
+	   Spec(name, 
+*)	        
 
       |  Spec(name, ModulSpec signat, assertions) :: rest -> 
 	   let signat' = optSignat ctx signat

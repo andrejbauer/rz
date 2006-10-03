@@ -1,0 +1,52 @@
+[Processing hotheory.thy]
+module type T = sig
+                  type a
+                  (**  Assertion per_a =  PER(=a=)
+                  *)
+                end
+ 
+module type F = functor (M : T) ->
+                sig
+                  
+                end
+ 
+module type G = functor (M : T) ->
+                sig
+                  
+                end
+ 
+module type H =
+ functor (M : T) ->
+ sig
+   val x : M.a
+   (**  Assertion x_total =  x : ||M.a||
+   *)
+ end
+ 
+module M0 : T
+ 
+module G0 : G
+ 
+module H0 : H
+ 
+module type PSI = functor (X : G) ->
+                  sig
+                    
+                  end
+ 
+module type RHO = functor (X : H) ->
+                  sig
+                    
+                  end
+ 
+module type PHI = functor (X : G) ->
+                  sig
+                    
+                  end
+ 
+module Q : PSI(G0)
+ 
+module R : PSI(H0)
+ 
+module W : RHO(H0)
+
