@@ -125,8 +125,7 @@ and toplevel = signat_element list
 (* {3: Helper functions for the syntax} *)
 (****************************************)
 
-(* ln_of_name : nm -> longname
-*)
+(* ln_of_name : nm -> longname *)
 let ln_of_name nm = LN (None, nm)
 
 (* id: name -> term *)

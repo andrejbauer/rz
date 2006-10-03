@@ -608,7 +608,7 @@ and translateTheoryElement = function
       let spec =
 	isPredicate
 	  (ln_of_name n)
-	  (if L.is_stable pt then TopTy else NamedTy (ln_of_name n))
+	  (if L.is_stable pt then TopTy else NamedTy (ln_of_name (L.typename_of_name n)))
 	  binds
       in
 	(if L.is_stable pt then
@@ -687,8 +687,8 @@ and translateTheoryElement = function
       [ Spec(n, SignatSpec (translateTheory thr), []) ]
 
 and translateSLN = function
-    L.SLN (None, nm) -> LN (None, nm)
-  | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), nm)
+    L.SLN (None, nm) -> LN (None, L.typename_of_name nm)
+  | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), L.typename_of_name nm)
 
 and translateTheoryElements thy =
   List.fold_right (fun e elts -> translateTheoryElement e @ elts) thy []

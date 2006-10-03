@@ -195,6 +195,29 @@ let rename bad = function
     N bn -> bn
   | G (_, good) -> freshName' good bad
 
+(** [makeTypename str] computes a valid type name from [str]. *)
+let makeTypename = function
+  | "<" -> "ty_less"
+  | ">" -> "ty_greater"
+  | "<=" -> "ty_leq"
+  | ">=" -> "ty_geq"
+  | "=" -> "ty_equal"
+  | "<>" -> "ty_neq"
+  | str -> begin
+      let names =
+	[('!',"_bang"); ('$',"_dollar"); ('%',"_percent");
+	 ('&',"_and"); ('*',"_star"); ('+',"_plus");
+	 ('-',"_minus"); ('.',"_dot"); ('/',"_slash");
+	 (':',"_colon"); ('<',"_less"); ('=',"_equal");
+	 ('>',"_greater"); ('?',"_question"); ('@',"_at");
+	 ('^',"_carat"); ('|',"_vert"); ('~',"_tilde")] in
+      let n = String.length str in
+      let rec map i =
+	if i < n then (List.assoc str.[i] names) ^ (map (i+1)) else ""
+      in
+	try "ty" ^ map 0 with Not_found -> failwith "Name.makeTypename: unexpected character"
+    end
+
 (*****************************)
 (** {2: Name Validity Tests} *)
 (*****************************)

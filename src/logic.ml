@@ -466,38 +466,14 @@ let string_of_toplevel = function
       "model " ^ string_of_name mdlnm ^ " = " ^ string_of_theory thry
 
 
-(** *** *)
-
-let rename = function
-  | "<" -> "_less"
-  | ">" -> "_greater"
-  | "<=" -> "_leq"
-  | ">=" -> "_geq"
-  | "=" -> "_equal"
-  | "<>" -> "_neq"
-  | str -> begin
-      let names =
-	[('!',"_bang"); ('$',"_dollar"); ('%',"_percent");
-	 ('&',"_and"); ('*',"_star"); ('+',"_plus");
-	 ('-',"_minus"); ('.',"_dot"); ('/',"_slash");
-	 (':',"_colon"); ('<',"_less"); ('=',"_equal");
-	 ('>',"_greater"); ('?',"_question"); ('@',"_at");
-	 ('^',"_carat"); ('|',"_vert"); ('~',"_tilde")] in
-      let n = String.length str in
-      let rec map i =
-	if i < n then (List.assoc str.[i] names) ^ (map (i+1)) else ""
-      in
-	try map 0 with Not_found -> failwith "Logic.rename: unexpected character"
-    end
-
 let typename_of_name = function
     N (_, Word) as nm -> nm
-  | N (str, _) -> N (rename str, Word)
+  | N (str, _) -> N (makeTypename str, Word)
   | G (k, lst) -> 
       Name.gensym (List.map
 		    (function
 			(_, Word) as nm -> nm
-		      | (str, _) -> (rename str, Word))
+		      | (str, _) -> (makeTypename str, Word))
 		    lst)
 
 let typename_of_ln (LN (mdl, nm)) = LN (mdl, typename_of_name nm)
