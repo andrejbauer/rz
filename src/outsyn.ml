@@ -442,84 +442,87 @@ and opModestList x lst = List.fold_left (fun a (_, m) -> a && opModest x m) true
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
-module NameOrder =
+module TermOrder =
 struct
-  type t = name
+  type t = term
   let compare = Pervasives.compare
 end
 
-module ModulNameOrder =
+module TyOrder =
 struct
-  type t = modul_name
+  type t = ty
   let compare = Pervasives.compare
 end
 
-module NameMap = Map.Make(NameOrder)
+module ModulOrder =
+struct
+  type t = modul
+  let compare = Pervasives.compare
+end
 
-module ModulNameMap = Map.Make(ModulNameOrder)
+module TermMap  = Map.Make(TermOrder)
+module TyMap    = Map.Make(TyOrder)
+module ModulMap = Map.Make(ModulOrder)
 
-(** A substitution is a simultaneous map from names, type names and module names. *)
 
-type subst = {terms: term NameMap.t;
-              tys: ty NameMap.t;
-              moduls: modul ModulNameMap.t}
+(** A substitution is a simultaneous map from terms to terms,
+    types to types, and moduls to moduls.
 
-let emptysubst = {terms = NameMap.empty;
-		  tys = NameMap.empty;
-		  moduls = ModulNameMap.empty}
+    Note that substitutions do *not* check for alpha-equivalence;
+    exact matches are required.
 
-let fvSubst {terms=ts} = NameMap.fold (fun _ t acc -> fvTerm' [] acc t) ts []
+    Fortunately, the primary uses of these functions are replacing
+    variables, and occasionally replacing paths, and neither of these
+    contain bound variables.
+*)
 
-let insertTermvar sbst nm trm =
-  {sbst with terms = NameMap.add nm trm sbst.terms}
+type subst = {terms : term TermMap.t;
+              tys   :  ty TyMap.t;
+              moduls:  modul ModulMap.t}
 
-let insertTyvar sbst nm ty =
-  {sbst with tys = NameMap.add nm ty sbst.tys}
+let emptysubst = {terms = TermMap.empty;
+		  tys   = TyMap.empty;
+		  moduls = ModulMap.empty}
 
-let insertModulvar sbst strng mdl =
-  {sbst with moduls = ModulNameMap.add strng mdl sbst.moduls}
+let fvSubst subst = 
+  let acc = TermMap.fold (fun _ x a -> fvTerm' [] a x) subst.terms []
+  in let acc = TyMap.fold (fun _ x a -> fvTy' [] a x) subst.tys acc
+(*  in let acc = ModulMap.fold (fun _ x a -> fvModul' [] a x) subst.tys acc *)
+  in acc
+
+let insertTermvar sbst nm trm' =
+  {sbst with terms = TermMap.add (id nm) trm' sbst.terms}
+
+let insertTerm sbst trm trm' =
+  {sbst with terms = TermMap.add trm trm' sbst.terms}
+
+let insertTyvar sbst nm ty' =
+  {sbst with tys = TyMap.add (namedty nm) ty' sbst.tys}
+
+let insertTy sbst ty ty' =
+  {sbst with tys = TyMap.add ty ty' sbst.tys}
+
+let insertModulvar sbst nm mdl =
+  {sbst with moduls = ModulMap.add (ModulName nm) mdl sbst.moduls}
 
 let termsSubst lst =
   List.fold_left (fun sbst (nm,trm) -> insertTermvar sbst nm trm) emptysubst lst
 
 let termSubst nm trm = insertTermvar emptysubst nm trm
 
-let getTermvar sbst nm =
-   try (NameMap.find nm sbst.terms) with Not_found -> Id (ln_of_name nm)
+let getTerm sbst trm =
+   try Some (TermMap.find trm sbst.terms) with 
+       Not_found -> None
 
-let getTyvar sbst tynm =
-   try (NameMap.find tynm sbst.tys) with Not_found -> NamedTy (ln_of_name tynm)
+let getTy sbst ty =
+   try Some (TyMap.find ty sbst.tys) with 
+       Not_found -> None
 
-let getModulvar sbst mdlnm =
-   try (ModulNameMap.find mdlnm sbst.moduls) with Not_found -> ModulName mdlnm
+let getModul sbst mdl =
+   try Some (ModulMap.find mdl sbst.moduls) with 
+       Not_found -> None
 
 (** see also display_subst below *)
-
-exception FoundName
-let occursSubstName sbst nm =
-  try
-    ignore (NameMap.find nm sbst.terms) ;
-    true
-  with
-      Not_found -> false
-
-let occursSubstTyname sbst str =
-  try ignore (NameMap.find str sbst.tys) ; true with Not_found -> false
-
-let occursSubstModulname sbst nm =
-  try ignore (ModulNameMap.find nm sbst.moduls) ; true with Not_found -> false
-
-(* These do not seem to be used anywhere
-let freshTyName good bad ?occ sbst =
-  match occ with
-      None -> freshName good bad (occursSubstTyname sbst)
-    | Some occ -> freshName good bad (fun n -> occ n || occursSubstTyname sbst n)
-
-let freshModulName good bad ?occ sbst =
-  match occ with
-      None -> freshName good bad (occursSubstModulname sbst)
-    | Some occ -> freshName good bad (fun n -> occ n || occursSubstModulname sbst n)
-*)
 
 (** The substitution functions accept an optional occ argument which
     is used for extra occur checks (for example in a context). The occ
@@ -530,11 +533,16 @@ let rec substLN ?occ sbst = function
     (LN (None, _)) as ln -> ln
   | LN (Some mdl, nm) -> LN (Some (substModul ?occ sbst mdl), nm)
 
-and substModul ?occ sbst = function
-    ModulName nm -> getModulvar sbst nm
-  | ModulProj (mdl, nm) -> ModulProj (substModul ?occ sbst mdl, nm)
-  | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, substModul ?occ sbst mdl2)
-  | ModulStruct mdldfs -> ModulStruct (substDefs ?occ sbst mdldfs)
+and substModul ?occ sbst orig_mdl =
+  match (getModul sbst orig_mdl) with
+      Some mdl' -> mdl'
+    | None -> 
+	match orig_mdl with
+	    ModulName nm -> ModulName nm
+	  | ModulProj (mdl, nm)   -> ModulProj (substModul ?occ sbst mdl, nm)
+	  | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, 
+					       substModul ?occ sbst mdl2)
+	  | ModulStruct mdldfs -> ModulStruct (substDefs ?occ sbst mdldfs)
 
 (* XXX: Actually, the first two "failwiths" are too pessimistic.  It's
    actually OK in ML to have a term and a type with the same name. *)
@@ -644,41 +652,48 @@ and renameBnds ?occ ?bad sbst = function
       in let (sbst'', bnds') = renameBnds ?occ ~bad:(n'::bad') sbst' bnds
       in (sbst'', bnd'::bnds')
 
-and substTerm ?occ sbst = function
-    Id (LN (None, nm)) -> getTermvar sbst nm
-  | Id (LN (Some mdl, nm)) -> Id (LN (Some (substModul ?occ sbst mdl), nm))
-  | EmptyTuple -> EmptyTuple
-  | Dagger -> Dagger
-  | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
-  | Lambda ((n, ty), t) ->
-      let n' = refresh n in
-	Lambda ((n', substTy ?occ sbst ty), substTerm ?occ (insertTermvar sbst n (id n')) t)
-  | Let (n, t, u) ->
-      let n' = refresh n in
-	Let (n', substTerm ?occ sbst t, substTerm ?occ (insertTermvar sbst n (id n')) u)
-  | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
-  | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
-  | Inj (k, None) -> Inj (k, None)
-  | Inj (k, Some t) -> Inj (k, Some (substTerm ?occ sbst t))
-  | Case (t, lst) -> 
-      Case (substTerm ?occ sbst t,
-	    substCaseArms ?occ sbst lst)
-  | Obligation (bnds, p, trm) ->
-      let (sbst', bnds') = renameBnds ?occ sbst bnds
-      in
-	Obligation (bnds', substProp ?occ sbst' p, substTerm ?occ sbst' trm)
-  | PolyInst(trm, tys) ->
-      PolyInst(substTerm ?occ sbst trm,
-	       List.map (substTy ?occ sbst) tys)
-
+and substTerm ?occ sbst orig_term = 
+  match (getTerm sbst orig_term) with
+      Some trm' -> trm'
+    | None ->
+	match orig_term with
+	    Id (LN (None, nm)) -> orig_term
+	  | Id (LN (Some mdl, nm)) -> 
+	      Id (LN (Some (substModul ?occ sbst mdl), nm))
+	  | EmptyTuple -> EmptyTuple
+	  | Dagger     -> Dagger
+	  | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
+	  | Lambda ((n, ty), t) ->
+	      let n' = refresh n in
+		Lambda ((n', substTy ?occ sbst ty), 
+		        substTerm ?occ (insertTermvar sbst n (id n')) t)
+	  | Let (n, t, u) ->
+	      let n' = refresh n in
+		Let (n', substTerm ?occ sbst t,
+		     substTerm ?occ (insertTermvar sbst n (id n')) u)
+	  | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
+	  | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
+	  | Inj (k, None) -> Inj (k, None)
+	  | Inj (k, Some t) -> Inj (k, Some (substTerm ?occ sbst t))
+	  | Case (t, lst) -> 
+	      Case (substTerm ?occ sbst t,
+		   substCaseArms ?occ sbst lst)
+	  | Obligation (bnds, p, trm) ->
+	      let (sbst', bnds') = renameBnds ?occ sbst bnds
+	      in
+		Obligation (bnds', substProp ?occ sbst' p, substTerm ?occ sbst' trm)
+	  | PolyInst(trm, tys) ->
+	      PolyInst(substTerm ?occ sbst trm,
+		      List.map (substTy ?occ sbst) tys)
+		
 and substCaseArm ?occ sbst = function
-			  (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
-			| (lb, Some (n, ty), t) ->
-			    let n' = refresh n in
-			      (lb,
-			       Some (n', substTy ?occ sbst ty),
-			       substTerm ?occ (insertTermvar sbst n (id n')) t)
-		     
+    (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
+  | (lb, Some (n, ty), t) ->
+      let n' = refresh n in
+	(lb,
+	Some (n', substTy ?occ sbst ty),
+	substTerm ?occ (insertTermvar sbst n (id n')) t)
+	  
 and substCaseArms ?occ sbst arms = 
    List.map (substCaseArm ?occ sbst) arms
 
@@ -699,20 +714,24 @@ and substPropList ?occ sbst = List.map (substProp ?occ sbst)
 
 and substModestList ?occ sbst = List.map (substModest ?occ sbst)
 
-and substTy ?occ sbst = function
-    NamedTy (LN (None, tynm)) -> getTyvar sbst tynm
-  | NamedTy (LN (Some mdl, tynm)) -> NamedTy (LN (Some (substModul ?occ sbst mdl), tynm))
-  | UnitTy -> UnitTy
-  | VoidTy -> VoidTy
-  | TopTy -> TopTy
-  | SumTy lst -> SumTy (List.map (function
-				      (lbl, None) -> (lbl, None)
-				    | (lbl, Some ty) -> (lbl, Some (substTy ?occ sbst ty))) lst)
-  | TupleTy lst -> TupleTy (List.map (substTy ?occ sbst) lst)
-  | ArrowTy (ty1, ty2) -> ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
-  | PolyTy (nms,ty) ->
-      PolyTy (nms, substTy ?occ (addTyvarsToSubst sbst nms) ty)  
-
+and substTy ?occ sbst orig_type = 
+  match (getTy sbst orig_type) with
+      Some ty' -> ty'
+    | None ->
+	match orig_type with
+	    NamedTy (LN (None, tynm)) -> orig_type
+	  | NamedTy (LN (Some mdl, tynm)) -> NamedTy (LN (Some (substModul ?occ sbst mdl), tynm))
+	  | UnitTy -> UnitTy
+	  | VoidTy -> VoidTy
+	  | TopTy -> TopTy
+	  | SumTy lst -> SumTy (List.map (function
+		(lbl, None) -> (lbl, None)
+	      | (lbl, Some ty) -> (lbl, Some (substTy ?occ sbst ty))) lst)
+	  | TupleTy lst -> TupleTy (List.map (substTy ?occ sbst) lst)
+	  | ArrowTy (ty1, ty2) -> ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
+	  | PolyTy (nms,ty) ->
+	      PolyTy (nms, substTy ?occ (addTyvarsToSubst sbst nms) ty)  
+		
 and substTyOption ?occ sbst = function
     None -> None
   | Some ty -> Some ( substTy ?occ sbst ty )
@@ -722,7 +741,7 @@ and substModest ?occ sbst {ty=ty; tot=p; per=q} =
     tot = substProp ?occ sbst p;
     per = substProp ?occ sbst q
   }
-
+    
 and substSignat ?occ sbst = function
     SignatName nm -> SignatName nm
   | Signat lst -> Signat (substSignatElements ?occ sbst lst)
@@ -731,7 +750,7 @@ and substSignat ?occ sbst = function
 	SignatFunctor ((m, substSignat ?occ sbst sgnt1), substSignat ?occ sbst' sgnt2)
   | SignatApp (sgnt1, mdl) ->
       SignatApp (substSignat ?occ sbst sgnt1,
-		 substModul ?occ sbst mdl)
+		substModul ?occ sbst mdl)
   | SignatProj (mdl, nm) ->
       SignatProj(substModul ?occ sbst mdl, nm)
 
@@ -769,6 +788,9 @@ and substSignatElement ?occ sbst elem =
 and substAssertion ?occ sbst (nm, prop) = (nm, substProp ?occ sbst prop)
 
 and substBinding ?occ sbst (nm, ty) = (nm, substTy ?occ sbst ty)
+
+
+
 
 
 
@@ -1053,18 +1075,18 @@ let string_of_toplevel body =
       String.concat "\n\n" (List.map string_of_spec body)
 
 let display_subst sbst =
-  let do_term nm trm = print_string ("[" ^ string_of_name nm ^ "~>" ^ 
-					  string_of_term trm ^ "]")
-  in let do_ty tynm ty = print_string ("[" ^ string_of_name tynm ^ "~>" ^ 
-					string_of_ty ty ^ "]")
-  in let do_modul mdlnm mdl = print_string ("[" ^ string_of_name mdlnm ^ "~>" ^ 
-					    string_of_modul mdl ^ "]")
+  let do_term trm trm' = print_string ("[" ^ string_of_term trm ^ "~>" ^ 
+					  string_of_term trm' ^ "]")
+  in let do_ty ty ty' = print_string ("[" ^ string_of_ty ty ^ "~>" ^ 
+					string_of_ty ty' ^ "]")
+  in let do_modul mdl mdl' = print_string ("[" ^ string_of_modul mdl ^ "~>" ^ 
+					    string_of_modul mdl' ^ "]")
   in  (print_string "Terms: ";
-       NameMap.iter do_term sbst.terms;
+       TermMap.iter do_term sbst.terms;
        print_string "\nTypes: ";
-       NameMap.iter do_ty sbst.tys;
+       TyMap.iter do_ty sbst.tys;
        print_string "\nModuls: ";
-       ModulNameMap.iter do_modul sbst.moduls)
+       ModulMap.iter do_modul sbst.moduls)
 
 
 
@@ -1940,8 +1962,9 @@ and reduceProp prp =
       else
 	reduceProp prp1)
 
-(* We don't eta-reduce NamedProp's because (according to Andrej)
-   they are supposed to always be fully-applied to arguments.
+(* We don't eta-reduce NamedProp's because
+   they are supposed to be fully-applied.
+
   | PMLambda((nm1,_), NamedProp(n, Dagger, lst))
   | PLambda((nm1,_), NamedProp(n, Dagger, lst)) ->
       begin

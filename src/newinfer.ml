@@ -1258,9 +1258,13 @@ and annotateTheoryElem cntxt elem =
 			     | ResSentence(mbnds, prp) ->
 				 L.DeclSentence(mbnds, prp)
 			     | ResSet _ | ResTerm _ | ResProp _ 
-			     | ResModel _ | ResTheory _ -> 
+			     | ResModel _ -> 
 				 E.tyGenericError 
-				   ("Invalid classifier for " ^ string_of_name nm ^
+				   ("Model is an invalid classifier for " ^ string_of_name nm ^
+				       " in " ^ string_of_theory_element orig_elem)
+			     | ResTheory _ -> 
+				 E.tyGenericError 
+				   ("Parameterized theory is an invalid classifier for " ^ string_of_name nm ^
 				       " in " ^ string_of_theory_element orig_elem))
 	    end
 	  in let rec loop cntxt = function

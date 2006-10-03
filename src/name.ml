@@ -19,6 +19,14 @@ type name = N of bare_name | G of gensym
 (** mk_word: string -> name *)
 let mk_word str = N (str, Word)
 
+let tyvarize = function
+    N(str,Word) -> N("'" ^ str, Word)
+  | _ -> failwith "Name.tyvarize"
+
+let uncapitalize = function
+    N(str,Word) -> N(String.uncapitalize str, Word)
+  | _ -> failwith "Name.uncapitalize"
+
 let gensym =
   let k = ref 0 in
     function

@@ -458,9 +458,7 @@ and output_assertions ppf = function
 	fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
 
 and output_tyvars ppf = function
-    [] -> ()
-  | [nm] -> fprintf ppf "%a "   output_name nm
-  | nms  -> fprintf ppf "(%a) "   output_names nms
+    _ -> ()   (* OCaml doesn't let you bind type variables in a val *)
 
 and output_names ppf = function
     [] -> ()

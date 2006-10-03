@@ -151,10 +151,28 @@ and findEqPremise nm = function
       end
   | _ -> None
 
+(************************************)
+(** {2: Polymorphization functions} *)
+(***********************************)
 
-(********************************)
-(** Main Optimization functions *)
-(********************************)
+let tryPolymorph ctx nm signat =
+  match (hnfSignat ctx signat) with
+      SignatFunctor((nm1,Signat[Spec(nm2,TySpec None,assns2)]),
+		    Signat[Spec(nm3,ValSpec([],ty3),assns3)]) ->
+	let nm2' = tyvarize nm2
+	in let subst = 
+	  insertTy emptysubst (NamedTy(LN(Some(ModulName nm1),nm2)))
+	    (NamedTy(LN(None,nm2')))
+	in
+	  Some(ValSpec([nm2'], substTy subst ty3))
+    | _ -> None
+
+    
+
+
+(*************************************)
+(** {2: Main Optimization functions} *)
+(*************************************)
 
 
 
@@ -828,8 +846,13 @@ and optElems ctx orig_elems =
 	   in let (rest', ctx'') = optElems ctx' rest 
 	   in let assertions' = List.map (optAssertion ctx') assertions
 	   in let ctx''' = insertFacts ctx'' (List.map snd assertions')
-	   in (Spec(name, ModulSpec signat', assertions') :: rest',
-	      ctx''')
+	   in let spec' = Spec(name, ModulSpec signat', assertions')
+	   in begin
+	       match tryPolymorph ctx name signat' with
+		   None -> spec' :: rest', ctx'''
+		 | Some decl' -> Spec(uncapitalize name, 
+				     decl', assertions')::rest', ctx'''
+	     end
 
       |  Spec(nm, TySpec None, assertions) :: rest -> 
 	   let ctx' = insertTypeVariable ctx nm None
