@@ -2,7 +2,8 @@
 module type HoistTerms =
  sig
    type s
-   (**  Assertion per_s =  PER(=s=)
+   (**  Assertion per_s = 
+          (forall x:s, y:s, z:s,  y =s= z /\ x =s= y -> x =s= z)
    *)
     
    val a : s
@@ -19,9 +20,9 @@ module type HoistTerms =
     
    type p
    (**  Assertion predicate_p = 
-          (forall z:s, b:p,  b |= p z -> z : ||s||) /\ 
           (forall (x:||s||, y:||s||), 
-             forall a:p,  x =s= y -> a |= p x -> a |= p y)
+             forall d:p,  x =s= y -> d |= p x -> d |= p y) /\ 
+          (forall x:s, d:p,  d |= p x -> x : ||s||)
    *)
     
    val f : s -> s
@@ -36,22 +37,20 @@ module type HoistTerms =
    (**  Assertion var_def =  var =s= a
    *)
     
-   val tuple : (s * p) * s * (s * p)
+   val tuple : (p * s) * s * (p * s)
    (**  Assertion tuple_def = 
-          let q = assure x:s, a:p.
-                      (x : ||s|| /\ a |= p x /\ 
-                       (forall (x':||s||), 
-                          forall b:p,  b |= p x' -> x =s= x')) in (x,a)
-          in let t = assure x'':s, c:p.
-                         (x'' : ||s|| /\ c |= p (f x'') /\ 
-                          (forall (x_1:||s||), 
-                             forall a':p,  a' |= p (f x_1) -> x'' =s= x_1))
-                       in (x'',c)
-             in pi1 (pi0 tuple) |= p (pi0 (pi0 tuple)) /\ 
-             pi1 q |= p (pi0 q) /\ pi0 (pi0 tuple) =s= pi0 q /\ 
-             pi1 tuple =s= b /\ 
+          let q = assure x:s, d:p.
+                      ((forall (x':||s||), 
+                          forall a':p,  a' |= p x' -> x =s= x') /\ 
+                       d |= p x /\ x : ||s||) in (d,x)
+          in let t = assure x:s, d:p.
+                         ((forall (x':||s||), 
+                             forall a':p,  a' |= p (f x') -> x =s= x') /\ 
+                          d |= p (f x) /\ x : ||s||) in (d,x)
+             in pi0 (pi2 tuple) =s= pi0 t /\ pi1 t |= p (f (pi0 t)) /\ 
              pi1 (pi2 tuple) |= p (f (pi0 (pi2 tuple))) /\ 
-             pi1 t |= p (f (pi0 t)) /\ pi0 (pi2 tuple) =s= pi0 t
+             pi1 tuple =s= b /\ pi0 (pi0 tuple) =s= pi0 q /\ 
+             pi1 q |= p (pi0 q) /\ pi1 (pi0 tuple) |= p (pi0 (pi0 tuple))
    *)
     
    val proj : s
@@ -60,81 +59,73 @@ module type HoistTerms =
     
    val g : (s -> s) -> s
    (**  Assertion g_def = 
-          forall f:s -> s, h:s -> s, 
-            (forall x:s, y:s,  x =s= y -> f x =s= h y) ->
-            g f =s= h
-                      (assure x':s, a:p.
-                           (x' : ||s|| /\ a |= p x' /\ 
-                            (forall (x'':||s||), 
-                               forall b:p,  b |= p x'' -> x' =s= x'')) in x')
+          forall h:s -> s, r:s -> s, 
+            (forall x:s, y:s,  x =s= y -> h x =s= r y) ->
+            g h =s= r
+                      (assure x:s, d:p.
+                           ((forall (x':||s||), 
+                               forall a':p,  a' |= p x' -> x =s= x') /\ 
+                            d |= p x /\ x : ||s||) in x)
    *)
     
    val application : s
    (**  Assertion application_def = 
           application =s= (assure h:(s -> s) -> s.
-                               ((forall r'':s -> s, f_1:s -> s, 
-                                   (forall w':s, t':s,  w' =s= t' ->
-                                      r'' w' =s= f_1 t') -> h r'' =s= 
-                                   h f_1) /\ 
-                                (forall g'':s -> s, h'':s -> s, 
-                                   (forall y':s, z':s,  y' =s= z' ->
-                                      g'' y' =s= h'' z') -> g g'' =s= 
-                                   h h'') /\ 
-                                (forall h':(s -> s) -> s, 
-                                   (forall f:s -> s, g:s -> s, 
+                               ((forall h':(s -> s) -> s, 
+                                   (forall r:s -> s, f':s -> s, 
                                       (forall x:s, y:s,  x =s= y ->
-                                         f x =s= g y) -> h' f =s= h' g) ->
-                                   (forall f':s -> s, g':s -> s, 
-                                      (forall z:s, w:s,  z =s= w ->
-                                         f' z =s= g' w) -> g f' =s= h' g') ->
-                                   forall r':s -> s, f'':s -> s, 
-                                     (forall t:s, x':s,  t =s= x' ->
-                                        r' t =s= f'' x') -> h r' =s= 
-                                     h' f''))
+                                         r x =s= f' y) -> h' r =s= h' f') ->
+                                   (forall r:s -> s, f':s -> s, 
+                                      (forall x:s, y:s,  x =s= y ->
+                                         r x =s= f' y) -> g r =s= h' f') ->
+                                   forall r:s -> s, f':s -> s, 
+                                     (forall x:s, y:s,  x =s= y ->
+                                        r x =s= f' y) -> h r =s= h' f') /\ 
+                                (forall r:s -> s, f':s -> s, 
+                                   (forall x:s, y:s,  x =s= y -> r x =s= f' y) ->
+                                   g r =s= h f') /\ 
+                                (forall r:s -> s, f':s -> s, 
+                                   (forall x:s, y:s,  x =s= y -> r x =s= f' y) ->
+                                   h r =s= h f'))
                              in h
-                                  (fun x'' : s =>
-                                   assure y'':s, a:p.
-                                       (y'' : ||s|| /\ a |= p y'' /\ 
-                                        (forall (y_1:||s||), 
-                                           forall b:p,  b |= p y_1 ->
-                                             y'' =s= y_1)) in y''))
+                                  (fun x : s =>
+                                   assure y:s, d:p.
+                                       ((forall (y':||s||), 
+                                           forall a':p,  a' |= p y' ->
+                                             y =s= y') /\ d |= p y /\ 
+                                        y : ||s||) in y))
    *)
     
-   val description : s * p
+   val description : p * s
    (**  Assertion description_def = 
-          let z = assure x:s, a:p.
-                      (x : ||s|| /\ 
-                       a |= p (assure y'':s.
-                                   (y'' : ||s|| /\ y'' =s= x /\ 
-                                    (forall (y_1:||s||),  y_1 =s= x ->
-                                       y'' =s= y_1)) in y'') /\ 
-                       (forall (x':||s||), 
-                          forall b:p, 
-                            b |= p (assure y:s.
-                                        (y : ||s|| /\ y =s= x' /\ 
-                                         (forall (y':||s||),  y' =s= x' ->
-                                            y =s= y')) in y) -> x =s= x'))
-                    in (x,a)
-          in pi1 description |= p (assure y_4:s.
-                                       (y_4 : ||s|| /\ 
-                                        y_4 =s= pi0 description /\ 
-                                        (forall (y_5:||s||), 
-                                           y_5 =s= pi0 description ->
-                                           y_4 =s= y_5)) in y_4) /\ 
-          pi1 z |= p (assure y_2:s.
-                          (y_2 : ||s|| /\ y_2 =s= pi0 z /\ 
-                           (forall (y_3:||s||),  y_3 =s= pi0 z -> y_2 =s= y_3))
-                        in y_2) /\ 
-          pi0 description =s= pi0 z
+          let x = assure x:s, d:p.
+                      ((forall (x':||s||), 
+                          forall a':p, 
+                            a' |= p (assure y:s.
+                                         ((forall (y':||s||),  y' =s= x' ->
+                                             y =s= y') /\ y =s= x' /\ 
+                                          y : ||s||) in y) -> x =s= x') /\ 
+                       d |= p (assure y:s.
+                                   ((forall (y':||s||),  y' =s= x -> y =s= y') /\ 
+                                    y =s= x /\ y : ||s||) in y) /\ x : ||s||)
+                    in (d,x)
+          in pi0 description =s= pi0 x /\ 
+          pi1 x |= p (assure y:s.
+                          ((forall (y':||s||),  y' =s= pi0 x -> y =s= y') /\ 
+                           y =s= pi0 x /\ y : ||s||) in y) /\ 
+          pi1 description |= p (assure y:s.
+                                    ((forall (y':||s||), 
+                                        y' =s= pi0 description -> y =s= y') /\ 
+                                     y =s= pi0 description /\ y : ||s||) in y)
    *)
     
    val cases : s
    (**  Assertion cases_def = 
-          let y = assure ((forall (Z__1:||s||),  b =s= c))
+          let x = assure ((forall (Z__1:||s||),  b =s= c))
                     in assure x:s.
-                           (x : ||s|| /\ x =s= b /\ 
-                            (forall (x':||s||),  x' =s= b -> x =s= x')) in x
-          in cases =s= b /\ y =s= b /\ cases =s= y
+                           ((forall (x':||s||),  x' =s= b -> x =s= x') /\ 
+                            x =s= b /\ x : ||s||) in x
+          in cases =s= x /\ x =s= b /\ cases =s= b
    *)
     
    val r : s
@@ -149,73 +140,69 @@ module type HoistTerms =
    (**  Assertion rzchoose_def = 
           rzchoose =s= (assure (forall x:s, 
                                   (assure q:s. (q : ||s||) in q) =s= 
-                                  (assure q':s. (q' : ||s||) in q'))
-                          in assure q'':s. (q'' : ||s||) in q'')
+                                  (assure q:s. (q : ||s||) in q))
+                          in assure q:s. (q : ||s||) in q)
    *)
     
-   
+   type eq = top
    (**  Assertion predicate_eq = 
-          (forall t:s, x':s,  eq t x' -> t : ||s|| /\ x' : ||s||) /\ 
-          (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
-             y =s= w -> eq x y -> eq z w)
+          (forall (x:||s||, y:||s||, z:||s||, w:||s||),  y =s= w /\ 
+             x =s= z -> eq y x -> eq w z) /\ 
+          (forall x:s, y:s,  eq y x -> y : ||s|| /\ x : ||s||)
    *)
     
    
-   (**  Assertion equiv_eq =  (forall (x':||s||),  eq x' x') /\ 
-          (forall (w:||s||, t:||s||),  eq w t -> eq t w) /\ 
-          (forall (x:||s||, y:||s||, z:||s||),  eq x y /\ eq y z -> eq x z)
+   (**  Assertion equiv_eq = 
+          (forall (x:||s||, y:||s||, z:||s||),  eq z y /\ eq y x -> eq z x) /\ 
+          (forall (x:||s||, y:||s||),  eq y x -> eq x y) /\ 
+          (forall (x:||s||),  eq x x)
    *)
     
    val quot : s
    (**  Assertion quot_def = 
-          eq quot (assure x:s.
-                       (x : ||s|| /\ x =s= a /\ 
-                        (forall (x':||s||),  x' =s= a -> x =s= x')) in x)
+          eq (assure x:s.
+                  ((forall (x':||s||),  x' =s= a -> x =s= x') /\ x =s= a /\ 
+                   x : ||s||) in x) quot
    *)
     
    val choose_term : s
    (**  Assertion choose_term_def = 
           let x = assure w:s.
-                      (w : ||s|| /\ eq w quot /\ 
-                       (forall (w':||s||),  eq w' quot -> eq w w')) in w
-          in eq choose_term (assure (forall x':s,  eq x x' ->
-                                       eq (assure y'':s.
-                                               (y'' : ||s|| /\ x =s= y'' /\ 
-                                                (forall (y_1:||s||), 
-                                                   x =s= y_1 -> y'' =s= y_1))
-                                             in y'') (assure y:s.
-                                                          (y : ||s|| /\ 
-                                                           x' =s= y /\ 
-                                                           (forall (y':||s||), 
-                                                              x' =s= y' ->
-                                                              y =s= y')) in y))
-                               in assure y_2:s.
-                                      (y_2 : ||s|| /\ x =s= y_2 /\ 
-                                       (forall (y_3:||s||),  x =s= y_3 ->
-                                          y_2 =s= y_3)) in y_2)
+                      ((forall (w':||s||),  eq quot w' -> eq w' w) /\ 
+                       eq quot w /\ w : ||s||) in w
+          in eq (assure (forall x':s,  eq x' x ->
+                           eq (assure y:s.
+                                   ((forall (y':||s||),  x' =s= y' ->
+                                       y =s= y') /\ x' =s= y /\ y : ||s||)
+                                 in y) (assure y:s.
+                                            ((forall (y':||s||),  x =s= y' ->
+                                                y =s= y') /\ x =s= y /\ 
+                                             y : ||s||) in y))
+                   in assure y:s.
+                          ((forall (y':||s||),  x =s= y' -> y =s= y') /\ 
+                           x =s= y /\ y : ||s||) in y) choose_term
    *)
     
    val let_term : s * s
    (**  Assertion let_term_def = 
-          let x'' = assure x:s.
-                        (x : ||s|| /\ x =s= a /\ 
-                         (forall (x':||s||),  x' =s= a -> x =s= x')) in x
-          in pi0 let_term =s= x'' /\ 
-          pi1 let_term =s= (assure y:s.
-                                (y : ||s|| /\ x'' =s= y /\ 
-                                 (forall (y':||s||),  x'' =s= y' -> y =s= y'))
-                              in y)
+          let x = assure x:s.
+                      ((forall (x':||s||),  x' =s= a -> x =s= x') /\ 
+                       x =s= a /\ x : ||s||) in x
+          in pi1 let_term =s= (assure y:s.
+                                   ((forall (y':||s||),  x =s= y' -> y =s= y') /\ 
+                                    x =s= y /\ y : ||s||) in y) /\ 
+          pi0 let_term =s= x
    *)
     
-   val subin : s * p
-   (**  Assertion subin_def =  pi1 subin |= p (pi0 subin) /\ 
-          (assure b:p. (b |= p a) in b) |= p a /\ pi0 subin =s= a
+   val subin : p * s
+   (**  Assertion subin_def =  pi0 subin =s= a /\ 
+          (assure d:p. (d |= p a) in d) |= p a /\ pi1 subin |= p (pi0 subin)
    *)
     
    (** fishy *)
     
-   val d : s * p
-   (**  Assertion d_total =  pi0 d : ||s|| /\ pi1 d |= p (pi0 d)
+   val d : p * s
+   (**  Assertion d_total =  pi1 d |= p (pi0 d) /\ pi0 d : ||s||
    *)
     
    val subout : s

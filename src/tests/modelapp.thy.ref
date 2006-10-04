@@ -2,7 +2,8 @@
 module type A =
  sig
    type a
-   (**  Assertion per_a =  PER(=a=)
+   (**  Assertion per_a = 
+          (forall x:a, y:a, z:a,  y =a= z /\ x =a= y -> x =a= z)
    *)
     
    val c : a
@@ -11,7 +12,8 @@ module type A =
     
    module E : sig
                 type e
-                (**  Assertion per_e =  PER(=e=)
+                (**  Assertion per_e = 
+                       (forall x:e, y:e, z:e,  y =e= z /\ x =e= y -> x =e= z)
                 *)
                  
                 type f = e
@@ -27,7 +29,8 @@ module type A =
 module type B =
  sig
    type a
-   (**  Assertion per_a =  PER(=a=)
+   (**  Assertion per_a = 
+          (forall x:a, y:a, z:a,  y =a= z /\ x =a= y -> x =a= z)
    *)
     
    type b = a
@@ -37,7 +40,8 @@ module type B =
    *)
     
    type b'
-   (**  Assertion per_b' =  PER(=b'=)
+   (**  Assertion per_b' = 
+          (forall x:b', y:b', z:b',  y =b'= z /\ x =b'= y -> x =b'= z)
    *)
     
    val c : a

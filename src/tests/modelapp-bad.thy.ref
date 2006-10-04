@@ -113,3 +113,7 @@ end.
 -------------------------------
 
 Fatal error: exception Failure("Typechecking failed.")
+Raised at file "pervasives.ml", line 22, characters 22-33
+Called from file "rz.ml", line 149, characters 6-37
+Called from file "rz.ml", line 227, characters 18-48
+Called from file "rz.ml", line 254, characters 2-42

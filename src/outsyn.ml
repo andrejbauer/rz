@@ -63,10 +63,6 @@ and term =
 and proposition =
   | True                                       (* truth *)
   | False                                      (* falsehood *)
-  | IsPer of ty_name * term list               (* the fact that a type is equipped with a per *)
-  | IsPredicate of name * ty option * (name * modest) list
-                                               (* [name] is a (parametrized) predicate  *)
-  | IsEquiv of proposition * modest            (* is a stable equivalence relation *)
   | NamedTotal of longname * term list         (* totality of a term *)
   | NamedPer of longname * term list           (* extensional equality of terms *)
   | NamedProp of longname * term * term list   (* basic proposition with a realizer *)
@@ -202,9 +198,6 @@ and fvCaseArms' flt acc arms =
 and fvProp' flt acc = function
     True -> acc
   | False -> acc
-  | IsPer (_, lst) -> fvTermList' flt acc lst
-  | IsPredicate (_, _, lst) -> fvModestList' flt acc lst
-  | IsEquiv (r, {tot=p; per=q}) -> fvProp' flt (fvProp' flt (fvProp' flt acc p) q) r
   | NamedTotal (_, lst) -> fvTermList' flt acc lst
   | NamedPer (_, lst) -> fvTermList' flt acc lst
   | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -278,7 +271,7 @@ let fvCaseArms = fvCaseArms' [] []
 let fvTy = fvTy' [] []
 
 (****************************)
-(** {2: Occurence Counting} *)
+(** {2: Occurence Counting is now obsolete} *)
 (****************************)
 
 let rec countTerm x = function
@@ -312,9 +305,6 @@ and countCaseArm x = function
 and countProp x = function
     True -> 0
   | False -> 0
-  | IsPer (_, lst) -> countTermList x lst
-  | IsPredicate (_, _, lst) -> countModestList x lst
-  | IsEquiv (r, {tot=p; per=q}) -> countProp x r + countProp x p + countProp x q
   | NamedTotal (_, lst) -> countTermList x lst
   | NamedPer (_, lst) -> countTermList x lst
   | Equal (u, v) -> countTerm x u + countTerm x v
@@ -394,9 +384,6 @@ and opCaseArm x = function
 and opProp x = function
     True -> true
   | False -> true
-  | IsPer (_, lst) -> opTermList x lst
-  | IsPredicate (_, _, lst) -> opModestList x lst
-  | IsEquiv (r, {tot=p; per=q}) -> opProp x r && opProp x p && opProp x q
   | NamedTotal (_, lst) -> opTermList x lst
   | NamedPer (_, lst) -> opTermList x lst
   | Equal (u, v) -> opTerm x u && opTerm x v
@@ -582,13 +569,6 @@ and substDefs ?occ sbst = function
 and substProp ?occ sbst = function
     True -> True
   | False -> False
-  | IsPer (nm, lst) -> IsPer (nm, substTermList ?occ sbst lst)
-  | IsPredicate (n, ty, lst) ->
-      IsPredicate (n, substTyOption ?occ sbst ty, lst)
-	(* XXX: Broken, because it should substitute also in the binding list lst. *)
-  | IsEquiv (r, {ty=t; tot=p; per=q}) ->
-      IsEquiv (substProp ?occ sbst r,
-	      {ty = substTy ?occ sbst t; tot = substProp ?occ sbst p; per = substProp ?occ sbst q})
   | NamedTotal (tln, lst) -> NamedTotal (substLN ?occ sbst tln, substTermList ?occ sbst lst)
   | NamedPer (tln, lst) -> NamedPer (substLN ?occ sbst tln, substTermList ?occ sbst lst)
   | NamedProp (ln, t, lst) -> NamedProp (substLN ?occ sbst ln, substTerm ?occ sbst t, substTermList ?occ sbst lst)
@@ -932,13 +912,6 @@ and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
-    | IsPer (t, lst) -> (0, "PER(=_" ^ string_of_name_app (string_of_name t) lst ^ ")")
-    | IsPredicate (p, None, _) ->
-	(0, "PREDICATE(" ^ string_of_name p ^ ", ...)")
-    | IsPredicate (p, Some ty, _) ->
-	(0, "PREDICATE(" ^ string_of_name p ^ "," ^ string_of_ty ty ^ ", ...)")
-    | IsEquiv (p, ms) ->
-	(0, "EQUIVALENCE(" ^ string_of_prop 0 p ^ ", " ^ string_of_modest ms ^ ")")
     | NamedTotal (n, []) -> (0, "||" ^ (string_of_ln n) ^ "||")
     | NamedTotal (n, lst) -> (0, "||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
     | NamedPer (n, lst) -> (0, "(=" ^ string_of_name_app (string_of_ln n) lst ^"=)")
@@ -1603,156 +1576,130 @@ and hoistProp orig_prp =
 	True
       | False -> ([], orig_prp)
 	  
-      | IsPer(nm, trms) ->
+      | NamedTotal(nm, trms) ->
 	  let (obs, trms') = hoistTerms trms
-	    (* XXX: is it correct that the obligations never refer to nm? *)
-	  (* Check to make sure *)
-	in if (List.mem nm (fvTerm (Tuple trms'))) then
-	    failwith "Outsyn: hoistProp: IsPer "
-	  else
-	    (obs, IsPer(nm, trms'))
-	      
-    | IsPredicate(nm, tyopt, nmmods) ->
-	let process_nmmod(nm, modest) =
-	  let (obs,modest') = hoistModest modest
-	  in (obs, (nm,modest'))
-	    (* XXX: is it correct that the obligations never refer to nm?
-               or to tyopt or to bound variables in nmmods? *)
-	in let (obss, nmmods') = List.split (List.map process_nmmod nmmods)
-	in let obs = List.flatten obss
-	in (obs, IsPredicate(nm, tyopt, nmmods'))
-
-    | IsEquiv(prp,modest) ->
-	let (obs1, prp') = hoistProp prp
-	in let (obs2, modest') = hoistModest modest
-	in let (obs', prp'', modest'') = 
-	  merge2ObsPropModest obs1 obs2 prp' modest'
-	in (obs', IsEquiv(prp'',modest''))
-
-    | NamedTotal(nm, trms) ->
-	let (obs, trms') = hoistTerms trms
-	in (obs, NamedTotal(nm,trms'))
-
-    | NamedPer(nm, trms) ->
-	let (obs, trms') = hoistTerms trms
-	in (obs, NamedPer(nm,trms'))
-
-    | NamedProp(lnm, trm, trms) ->
-	let (obs1, trm') = hoist trm
-	in let (obs2, trms') = hoistTerms trms
-	in let (obs', trm'', trms'') = merge2ObsTermTerms obs1 obs2 trm' trms'
-	in (obs', NamedProp(lnm, trm'', trms''))
-
-    | Equal(trm1, trm2) ->
-	let (obs1, trm1') = hoist trm1
-	in let (obs2, trm2') = hoist trm2
-	in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
-	in (obs', Equal(trm1'', trm2''))
-
-    | And prps ->
-	let (obs, prps') = hoistProps prps
-	in (obs, And prps')
-
-    | Cor prps ->
-	let (obs, prps') = hoistProps prps
-	in (obs, Cor prps')
-
-    | Imply(prp1, prp2) ->
-	let (obs1, prp1') = hoistProp prp1
-	in let (obs2, prp2') = hoistProp prp2
-	in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
-	in (obs', Imply(prp1'', prp2''))
-
-    | Iff(prp1, prp2) ->
-	let (obs1, prp1') = hoistProp prp1
-	in let (obs2, prp2') = hoistProp prp2
-	in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
-	in (obs', Iff(prp1'', prp2''))
-
-    | Not prp ->
-	let (obs, prp') = hoistProp prp
-	in (obs, Not prp')
-
-    | Forall((nm,ty),prp) ->
-	let (obs, prp') = hoistProp prp
-	in let obs' = List.map (quantifyOb nm ty) obs
-	in (obs', Forall((nm,ty), prp') )
-
-    | ForallTotal((nm,ty),prp) ->
-	let (obs, prp') = hoistProp prp
-	in let obs' = List.map (quantifyObTotal nm ty) obs
-	in (obs', ForallTotal((nm,ty), prp') )
-
-    | Cexists((nm,ty), prp) ->
-	let (obs, prp') = hoistProp prp
-	in let obs' = List.map (quantifyOb nm ty) obs
-	in (obs', Cexists((nm,ty), prp') )
-
-    | PLambda((nm,ty), prp) ->
-	let (obs, prp') = hoistProp prp
-	in let obs' = List.map (quantifyOb nm ty) obs
-	in (obs', PLambda((nm,ty), prp') )
-
-    | PMLambda((nm,ty), prp) ->
-	let (obs, prp') = hoistProp prp
-(*	in let obs' = List.map (quantifyMOb nm ty) obs *)
-	in let rec check = function
-	    [] -> true
-	  | (_,prp)::rest -> 
-	      not (List.mem nm (fvProp prp)) && check rest
-	in if check obs then
-	    (obs, PMLambda((nm,ty), prp') )
-	  else
-	    failwith "Outsyn.hoistProp: PMLambda"
-
-    | PApp(prp, trm) ->
-	let (obs1, prp') = hoistProp prp
-	in let (obs2, trm') = hoist trm
-	in let (obs', prp'', trm'') = 
-	  merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
-	in (obs', PApp(prp'', trm''))
-
-    | PMApp(prp, trm) ->
-	let (obs1, prp') = hoistProp prp
-	in let (obs2, trm') = hoist trm
-	in let (obs', prp'', trm'') = 
-	  merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
-	in (obs', PMApp(prp'', trm''))
-
-    | PCase(trm1, trm2, arms) -> 
-	let (obs1, trm1') = hoist trm1
-	in let (obs2, trm2') = hoist trm2
-	in let (obs3, arms') = hoistPCaseArms arms
-	in let (obs', trm1'', trm2'', arms'') =
-	     merge3Obs fvTerm fvTerm fvPCaseArms
-                       substTerm substTerm substPCaseArms
-                       obs1 obs2 obs3 trm1' trm2' arms'
-	in (obs', PCase(trm1', trm2', arms''))
-
-    | PObligation(bnd, prp1, prp2) ->
-        (* For justification of this code, see the comments for 
-           the Obligation case of the hoist function. *)
-	let (obsp, prp1') = hoistProp prp1
-	in let obs1 = [(bnd, foldPObligation obsp prp1')]
+	  in (obs, NamedTotal(nm,trms'))
+	    
+      | NamedPer(nm, trms) ->
+	  let (obs, trms') = hoistTerms trms
+	  in (obs, NamedPer(nm,trms'))
+	    
+      | NamedProp(lnm, trm, trms) ->
+	  let (obs1, trm') = hoist trm
+	  in let (obs2, trms') = hoistTerms trms
+	  in let (obs', trm'', trms'') = merge2ObsTermTerms obs1 obs2 trm' trms'
+	  in (obs', NamedProp(lnm, trm'', trms''))
+	    
+      | Equal(trm1, trm2) ->
+	  let (obs1, trm1') = hoist trm1
+	  in let (obs2, trm2') = hoist trm2
+	  in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
+	  in (obs', Equal(trm1'', trm2''))
+	    
+      | And prps ->
+	  let (obs, prps') = hoistProps prps
+	  in (obs, And prps')
+	    
+      | Cor prps ->
+	  let (obs, prps') = hoistProps prps
+	  in (obs, Cor prps')
+	    
+      | Imply(prp1, prp2) ->
+	  let (obs1, prp1') = hoistProp prp1
+	  in let (obs2, prp2') = hoistProp prp2
+	  in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
+	  in (obs', Imply(prp1'', prp2''))
+	    
+      | Iff(prp1, prp2) ->
+	  let (obs1, prp1') = hoistProp prp1
+	  in let (obs2, prp2') = hoistProp prp2
+	  in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
+	  in (obs', Iff(prp1'', prp2''))
+	    
+      | Not prp ->
+	  let (obs, prp') = hoistProp prp
+	  in (obs, Not prp')
+	    
+      | Forall((nm,ty),prp) ->
+	  let (obs, prp') = hoistProp prp
+	  in let obs' = List.map (quantifyOb nm ty) obs
+	  in (obs', Forall((nm,ty), prp') )
+	    
+      | ForallTotal((nm,ty),prp) ->
+	  let (obs, prp') = hoistProp prp
+	  in let obs' = List.map (quantifyObTotal nm ty) obs
+	  in (obs', ForallTotal((nm,ty), prp') )
+	    
+      | Cexists((nm,ty), prp) ->
+	  let (obs, prp') = hoistProp prp
+	  in let obs' = List.map (quantifyOb nm ty) obs
+	  in (obs', Cexists((nm,ty), prp') )
+	    
+      | PLambda((nm,ty), prp) ->
+	  let (obs, prp') = hoistProp prp
+	  in let obs' = List.map (quantifyOb nm ty) obs
+	  in (obs', PLambda((nm,ty), prp') )
+	    
+      | PMLambda((nm,ty), prp) ->
+	  let (obs, prp') = hoistProp prp
+	    (*	in let obs' = List.map (quantifyMOb nm ty) obs *)
+	  in let rec check = function
+	      [] -> true
+	    | (_,prp)::rest -> 
+		not (List.mem nm (fvProp prp)) && check rest
+	  in if check obs then
+	      (obs, PMLambda((nm,ty), prp') )
+	    else
+	      failwith "Outsyn.hoistProp: PMLambda"
+		
+      | PApp(prp, trm) ->
+	  let (obs1, prp') = hoistProp prp
+	  in let (obs2, trm') = hoist trm
+	  in let (obs', prp'', trm'') = 
+	    merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
+	  in (obs', PApp(prp'', trm''))
+	    
+      | PMApp(prp, trm) ->
+	  let (obs1, prp') = hoistProp prp
+	  in let (obs2, trm') = hoist trm
+	  in let (obs', prp'', trm'') = 
+	    merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
+	  in (obs', PMApp(prp'', trm''))
+	    
+      | PCase(trm1, trm2, arms) -> 
+	  let (obs1, trm1') = hoist trm1
+	  in let (obs2, trm2') = hoist trm2
+	  in let (obs3, arms') = hoistPCaseArms arms
+	  in let (obs', trm1'', trm2'', arms'') =
+	    merge3Obs fvTerm fvTerm fvPCaseArms
+              substTerm substTerm substPCaseArms
+              obs1 obs2 obs3 trm1' trm2' arms'
+	  in (obs', PCase(trm1', trm2', arms''))
+	    
+      | PObligation(bnd, prp1, prp2) ->
+          (* For justification of this code, see the comments for 
+             the Obligation case of the hoist function. *)
+	  let (obsp, prp1') = hoistProp prp1
+	  in let obs1 = [(bnd, foldPObligation obsp prp1')]
 	in let (obs2, prp2') = hoistProp prp2
 	in (obs1 @ obs2, prp2') 
-
+	  
     | PLet(nm, trm, prp) ->
 	(* BEFORE (assuming only assure is in body):
-	      let nm = (assure m:t.q(m) in trm(m)) 
+	   let nm = (assure m:t.q(m) in trm(m)) 
                 in (assure n:t.p(n,nm) in prp(n,nm))
-
+	   
            AFTER:
-              assure m':t. q(m')
-              assure n':t. let nm = trm'(m'[!]) in p(n',nm)
+           assure m':t. q(m')
+           assure n':t. let nm = trm'(m'[!]) in p(n',nm)
            &
-              let nm = trm'(m') in prp(n',nm)
-
+           let nm = trm'(m') in prp(n',nm)
+	   
         *)
-
+	
 	let (obs1, trm') = hoist trm
 	in let (preobs2, prp') = hoistProp prp
-
+	  
 	in let (obs1', preobs2', trm'', prp'') = 
 	  merge2Obs' ~bad:[nm] fvTerm fvProp substTerm substProp
              obs1 preobs2 trm' prp'

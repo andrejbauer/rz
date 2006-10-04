@@ -478,11 +478,6 @@ and optProp ctx orig_prp =
       match orig_prp with
 	  True                      -> True
 	| False                     -> False
-	| IsPer (nm, lst)           -> IsPer (nm, optTerms' ctx lst)
-	| IsPredicate (nm, ty, lst) ->
-	    IsPredicate (nm, optTyOption ctx ty,
-			List.map (fun (nm, ms) -> (nm, optModest ctx ms)) lst)
-	| IsEquiv (p, ms)           -> IsEquiv (optProp ctx p, optModest ctx ms)
 	| PApp(PApp(NamedPer(n,lst),t1),t2) when optTerm ctx t1 = optTerm ctx t2 ->
 	    (** The comparision   trm =set= trm   can be simplified
                 to   trm : ||set||. *)

@@ -375,18 +375,6 @@ and output_prop_0 ppf = function
   | NamedPer (ln, lst) ->
       fprintf ppf "=(%a %a)="
 	output_ln ln   output_term_apps lst
-  | IsPer (stnm, []) -> fprintf ppf "PER(=%s=)" (Name.string_of_name stnm)
-  | IsPer (stnm, lst) -> fprintf ppf "PER(=%s %a=)"
-      (Name.string_of_name stnm)   output_term_apps lst
-  | IsPredicate (nm, None, _) ->
-      fprintf ppf "@[PREDICATE(@[<hov>%s@])@]"
-        (Name.string_of_name nm)
-  | IsPredicate (nm, Some ty, _) ->
-      fprintf ppf "@[PREDICATE(@[<hov>%s, %a@])@]"
-        (Name.string_of_name nm)   output_ty ty
-  | IsEquiv (p, {ty=t}) ->
-      fprintf ppf "@[EQUIV(@[<hov>%a, %a@])@]"
-	output_prop_11 p    output_ty t
   | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_ln ln
   | NamedTotal (ln, lst) ->
       fprintf ppf "||%a %a||"

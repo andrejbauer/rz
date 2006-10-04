@@ -52,16 +52,16 @@ let rec map3 f lst1 lst2 lst3 =
 let pApp p t = match p with
     PLambda ((n, _), q) -> sbp n t q
   | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ -> PApp (p, t)
-  | PMLambda _ | True | False | IsPer _ | IsPredicate _ | IsEquiv _ | Equal _ | And _
+  | PMLambda _ | True | False | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let pMApp p t = match p with
     PMLambda ((n, _), q) -> sbp n t q
-  | IsPer _ | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ ->
+  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ ->
       PMApp (p, t)
   | PLambda _ -> failwith ("bad propositional application on " ^ string_of_proposition p)
-  | True | False | IsPredicate _ | IsEquiv _ | Equal _ | And _
+  | True | False | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _   | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
       failwith ("bad propositional application 2 on " ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
@@ -93,6 +93,22 @@ let isPredicate n ty binds =
 		   Imply (And (List.map2 (fun (x,s) y -> pApp (pApp s.per (id x)) (id y)) binds ys),
 			 Imply (NamedProp (n, id r, List.map id xs),
 			       NamedProp (n, id r, List.map id ys))))))]
+
+let isPer n binds =
+  let ty = NamedTy n in
+  let x, y, z = fresh3 ty in
+  let p = 
+    let p0 = NamedPer (n, List.map (fun (x, _) -> id x) binds) in
+      fun t1 t2 -> PApp (PApp (p0, t1), t2)
+  in
+    nest_forall binds
+      (And [
+	  Forall ((x,ty), Forall ((y,ty), Imply(p (id x) (id y), p (id y) (id x))));
+	  Forall ((x,ty),
+		 Forall ((y,ty),
+			Forall ((z,ty),
+			       Imply (And [p (id x) (id y); p (id y) (id z)], p (id x) (id z)))))
+      ])
 
 let isEquiv p s =
   let q u v = pApp (pMApp (pMApp p (id u)) (id v)) Dagger in
@@ -305,17 +321,17 @@ and translateTerm = function
   | L.The ((n, s), phi) ->
       let {ty=t; tot=p1; per=p2} = translateSet s in
       let (v,q) = translateProp phi in
-      let n' = refresh n in
+      let m, m' = refresh n, refresh n in
       let z, z' = freshRz, freshRz in
-	Obligation ([(n, t); (z,v)], 
-		   And [pApp p1 (id n);
-			pApp q (id z);
-			Forall ((n',t),
-			       Imply (pApp p1 (id n'),
+	Obligation ([(m, t); (z,v)], 
+		   And [pApp p1 (id m);
+			pApp (sbp n (id m) q) (id z);
+			Forall ((m',t),
+			       Imply (pApp p1 (id m'),
 				     Forall ((z',v),
-					    Imply (pApp (sbp n (id n') q) (id z'),
-						  pApp (pApp p2 (id n)) (id n')))))],
-		   Tuple [id n; id z]
+					    Imply (pApp (sbp n (id m') q) (id z'),
+						  pApp (pApp p2 (id m)) (id m')))))],
+		   Tuple [id m; id z]
 		   )
 
   | L.Inj (lb, None) -> Inj (lb, None)
@@ -578,10 +594,8 @@ and translateTheoryElement = function
       [Spec (n,
 	   TySpec None,
 	   [("per_" ^ string_of_name n,
-	    (let binds = bindings_of_setkind knd in
-	       nest_forall binds
-		 (IsPer (n, (List.map (fun (y,_) -> id y) binds)))
-	    ))])]
+	    (let binds = bindings_of_setkind knd in isPer (ln_of_name n) binds))
+	   ])]
 
   | L.Declaration(n, L.DeclSet(Some s, knd)) ->
       let {ty=t; tot=p; per=q} = translateSet s in

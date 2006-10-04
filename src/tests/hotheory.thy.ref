@@ -1,9 +1,11 @@
 [Processing hotheory.thy]
-module type T = sig
-                  type a
-                  (**  Assertion per_a =  PER(=a=)
-                  *)
-                end
+module type T =
+ sig
+   type a
+   (**  Assertion per_a = 
+          (forall x:a, y:a, z:a,  y =a= z /\ x =a= y -> x =a= z)
+   *)
+ end
  
 module type F = functor (M : T) ->
                 sig

@@ -293,13 +293,6 @@ and thinProp ctx orig_prp =
     match orig_prp with
 	True                    -> True
       | False                   -> False
-      | IsPer (nm, lst)         -> 
-	  let (obs, lst') = thinTerms' ctx lst
-	  in foldPObligation obs (IsPer (nm, lst'))
-      | IsPredicate (nm, ty, lst) ->
-	  IsPredicate (nm, thinTyOption ctx ty, 
-		      List.map (fun (nm, ms) -> (nm, thinModest ctx ms)) lst)
-      | IsEquiv (p, ms)         -> IsEquiv (thinProp ctx p, thinModest ctx ms)
       | NamedTotal (n, lst)     -> 
 	  let (obs, lst') = thinTerms' ctx lst
 	  in foldPObligation obs (NamedTotal (n, lst'))
