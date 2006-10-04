@@ -428,12 +428,6 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 \begin{claim}
 \mbox{}
 \begin{enumerate}
-  \item If $\wfterm{\G}{\D}{\t}{\I}$ then
-    $\jwfterm{\G}{\trans{\D}}{\trans{\t}}{\I}$.
-  \item If $\wfprop{\G}{\D}{\p}$ then
-    $\jwfprop{\G}{\trans{\D}}{\trans{\p}}$.
-  \item If $\pf{\G}{\D}{\p}$ then
-    $\jpf{\G}{\trans{\D}}{\trans{\p}}$.
   \item If $\jwfprop{\G}{\D}{\p}$ then
     $\jpf{\G}{\D}{\pIff{\p}{\trans{\p}}}$.
   \item If $\jwfprop{\G}{\D}{\p}$ and $\pf{\G}{\D}{\p}$ then
@@ -937,6 +931,125 @@ To be checked.
 	        $\jwfprop{\G}{\wp{\p}}{\p}$.    
        \end{enumerate}
   \end{itemize}
+\end{proof}
+
+\begin{lemma}
+  \label{lemma:l42}
+  \mbox{}
+  \begin{enumerate}
+  \item If $\wfterm{\G}{\D}{\t}{\I}$ then
+    $\jwfterm{\G}{\pFalse}{\t}{\I}$.
+  \item If $\wfprop{\G}{\D}{\p}$ then
+    $\jwfprop{\G}{\pFalse}{\p}$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{lemma}
+  \label{lemma:wfproofs}
+\mbox{}
+\begin{enumerate}
+\item If ``$D$ is well-formed'' and $\jpf{\G}{\D}{\p}$ then
+  $\jwfprop{\G}{\D}{\p}$.
+\item If ``$D$ is well-formed'' and $\pf{\G}{\D}{\p}$ then
+  $\jwfprop{\G}{\D}{\p}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+  To be checked. 
+\end{proof}
+
+\begin{lemma}
+  \label{lemma:l41}
+  \mbox{}
+  \begin{enumerate}
+  \item If $\wfterm{\G}{\D}{\t}{\I}$ then
+    $\jwfterm{\G}{\trans{\D}}{\trans{\t}}{\I}$.
+  \item If $\wfprop{\G}{\D}{\p}$ then
+    $\jwfprop{\G}{\trans{\D}}{\trans{\p}}$.
+  \item If $\pf{\G}{\D}{\p}$ then
+    $\jpf{\G}{\trans{\D}}{\trans{\p}}$.
+  \end{enumerate}
+\end{lemma}
+
+\begin{proof}
+\mbox{}
+
+\begin{enumerate}
+\item % Part 1 
+  \begin{itemize}
+  \item Case: $\t = \x$ with $\x{:}\I\in\G$.
+    \begin{enumerate}
+    \item 
+      Here $\trans{\t} = x$.
+    \item 
+      Then $\jwfterm{\G}{\trans{\D}}{\x}{\I}$.
+    \end{enumerate}
+  \item Case: $\t = \tFun{\f}{\t}{n}$ with $\wfterm{\G}{\D}{\t_i}{\I}$ for every $i\in1..n$.
+    \begin{enumerate}
+    \item 
+      Here $\trans{\t} = \f(\trans{\t_1},\ldots,\trans{\t_n})$.
+    \item 
+      By the induction hypothesis, $\jwfterm{\G}{\trans{\D}}{\trans{\t_i}}{\I}$ for every $i\in1..n$.
+    \item 
+      Thus, $\jwfterm{\G}{\trans{\D}}{\f(\trans{\t_1},\ldots,\trans{\t_n})}{\I}$.
+    \end{enumerate}
+  \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
+     $\pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}}$ and
+     $\pf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\p(\x)}{\p(\y)})}{\pEqual{\x}{\y}}}}}$.
+     \begin{enumerate}
+     \item 
+       \label{lemma:l41:proofline:a2}
+       By the inductive hypothesis, 
+     $\jpf{\G}{\trans{\D}}{\pExists{\x}{\I}{\pAnd{\wp{\p(\x)}}{\p(\x)}}}$
+     \item
+       and
+       $\jpf{\G}{\trans{\D}}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\trans{\p(\x)}}{\trans{\p(\y)}})}{\pEqual{\x}{\y}}}}}$.
+     \item 
+       FOR SOME REASON, ``$\D$ will be well-formed''.
+     \item 
+       Hence by Lemma~\ref{lemma:wfproofs} we have
+       $\jwfprop{\G}{\trans{\D}}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\trans{\p(\x)}}{\trans{\p(\y)}})}{\pEqual{\x}{\y}}}}}$.
+     \item 
+       By inversion,
+       $\jwfprop{\G,\x{:}\I,\y{:}\I}{\trans{\D}}{\trans{\p(\x)}}$
+       where $\y$ does is not free in $\D$.
+     \item
+       By Lemma~\ref{lemma:subst} we have
+       $\jwfprop{\G,\x{:}\I}{\trans{\D}}{\trans{\p(\x)}}$.
+     \item
+       \label{lemma:l41:proofline:a1}
+       Thus, $\wfprop{\G}{\trans{\D}}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
+\smallskip
+
+     \item 
+       Now 
+       $\jpf{\G,\x{:}\I}{(\trans\D,\pAnd{\wp{\p(\x)}}{\trans{\p(\x)}})}{\trans{\p(\x)}}$
+     \item
+       and
+       $\jwfterm{\G,\x{:}\I}{(\trans\D,\pAnd{\wp{\p(\x)}}{\trans{\p(\x)}})}{\x}{\I}$
+     \item 
+       \label{lemma:l41:proofline:a3}
+       so by existential introduction we have 
+       $\jpf{\G,\x{:}\I}{(\trans\D,\pAnd{\wp{\p(\x)}}{\trans{\p(\x)}})}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
+     \item
+       Then by existential elimination 
+       applied to lines~\ref{lemma:l41:proofline:a1}, \ref{lemma:l41:proofline:a2}, and \ref{lemma:l41:proofline:a3}, 
+       we have
+       $\jpf{\G}{\trans\D}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
+
+       
+
+     \end{enumerate}
+  \end{itemize}
+\item % Part 2
+
+
+\item % Part 3
+
+
+
+\end{enumerate}
 \end{proof}
 
 \end{document}
