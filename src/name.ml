@@ -42,8 +42,7 @@ let string_of_name =
   in
     function
 	N nm -> string_of_bare_name nm
-      | G (k, lst) -> "gen" ^ string_of_int k ^ " (* " ^
-	  String.concat ", " (List.map string_of_bare_name lst) ^ " *)"
+      | G (k, lst) -> "gen" ^ string_of_int k
 
 (** capitalize_name: name -> name *)
 let capitalize_name = function
