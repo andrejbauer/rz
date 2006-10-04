@@ -435,6 +435,7 @@ and output_ty_1 ppf = function
 and output_ty_0 ppf = function
     NamedTy ln -> output_ln ppf ln
   | UnitTy     -> fprintf ppf "unit"
+  | VoidTy     -> fprintf ppf "void"
   | TopTy      -> fprintf ppf "top"
   | TupleTy [] -> fprintf ppf "top"
   | SumTy []   -> fprintf ppf "void"

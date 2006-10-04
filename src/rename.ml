@@ -7,23 +7,28 @@ let emptyRen = (NameMap.empty, StringSet.empty)
 
 let forbid nm (ren, bad) =
   match nm with
-      N bn -> (ren, StringSet.add (fst bn) bad)
+      N (str,_) -> (ren, StringSet.add str bad)
     | G _ -> failwith "Rename.forbid: cannot forbid gensymed names."
 
-let insert nm1 nm2 (ren, bad) = (NameMap.add nm1 nm2 ren, StringSet.add (fst nm2) bad)
+let free nm (ren, bad) =
+  try
+    let bn = NameMap.find nm ren in
+      (NameMap.remove nm ren, StringSet.remove (fst bn) bad)
+  with
+      Not_found -> (ren, bad)
 
 let renList f ctx lst =
   let lst, ctx =
-    List.fold_right
-      (fun t (ts, ct) -> let t, ct = f ct t in t::ts, ct)
-      lst
+    List.fold_left
+      (fun (ts, ct) t -> let t, ct = f ct t in t::ts, ct)
       ([], ctx)
+      lst
   in
-    lst, ctx
+    List.rev lst, ctx
 
 let rec renName (ren, bad) nm =
   let bn = rename bad nm in
-    N bn, (NameMap.add nm (N bn) ren, StringSet.add (fst bn) bad)
+    N bn, (NameMap.add nm bn ren, StringSet.add (fst bn) bad)
 
 and renNameList ctx nms = renList renName ctx nms
     
@@ -46,7 +51,7 @@ and renLN ctx = function
 	LN (Some mdl, nm), ctx
   | LN (None, nm) ->
       begin try
-	LN (None, NameMap.find nm (fst ctx)), ctx
+	LN (None, N (NameMap.find nm (fst ctx))), ctx
       with
 	  Not_found ->
 	    let nm, ctx = renName ctx nm in
@@ -69,7 +74,7 @@ and renTerm ((ren, bad) as ctx) = function
   | Lambda (bnd, t) ->
       let bnd, ctx = renBinding ctx bnd in
       let t, ctx = renTerm ctx t in
-	Lambda (bnd, t), ctx
+	Lambda (bnd, t), free (fst bnd) ctx
 
   | Tuple lst ->
       let lst, ctx = renTermList ctx lst in
@@ -95,7 +100,7 @@ and renTerm ((ren, bad) as ctx) = function
 	       | (lb, Some bnd, t) ->
 		   let bnd, ct = renBinding ct bnd in
 		   let t, ct = renTerm ct t in
-		     (lb, Some bnd, t)::ts, ct)
+		     (lb, Some bnd, t)::ts, free (fst bnd) ct)
 	  ([], ctx)
 	  lst
       in
@@ -105,18 +110,14 @@ and renTerm ((ren, bad) as ctx) = function
       let t1, ctx = renTerm ctx t1 in
       let nm, ctx = renName ctx nm in
       let t2, ctx = renTerm ctx t2 in
-	Let (nm, t1, t2), ctx
+	Let (nm, t1, t2), free nm ctx
 
   | Obligation (bnds, p, t) ->
-      let bnds, ctx =
-	List.fold_left
-	  (fun (bs, ct) bnd -> let bnd, ct = renBinding ct bnd in (bnd::bs, ct))
-	  ([], ctx)
-	  bnds
-      in
+      let bnds, ctx = renBindingList ctx bnds in
       let p, ctx = renProp ctx p in
       let t, ctx = renTerm ctx t in
-	Obligation (bnds, p, t), ctx
+	(Obligation (bnds, p, t),
+        List.fold_left (fun ct (nm,_) -> free nm ct) ctx bnds)
 
   | PolyInst (trm, tys) ->
       let trm, ctx = renTerm ctx trm in
@@ -233,18 +234,18 @@ and renProp ctx = function
   | Forall (bnd, p) ->
       let bnd, ctx = renBinding ctx bnd in
       let p, ctx = renProp ctx p in
-	Forall (bnd, p), ctx
+	Forall (bnd, p), free (fst bnd) ctx
 
   | ForallTotal ((nm, ln), p) ->
       let ln, ctx = renLN ctx ln in
       let nm, ctx = renName ctx nm in
       let p, ctx = renProp ctx p in
-	ForallTotal ((nm, ln), p), ctx
+	ForallTotal ((nm, ln), p), free nm ctx
 
   | Cexists (bnd, p) ->
       let bnd, ctx = renBinding ctx bnd in
       let p, ctx = renProp ctx p in
-	Cexists (bnd, p), ctx
+	Cexists (bnd, p), free (fst bnd) ctx
 
   | PApp (p, t) ->
       let p, ctx = renProp ctx p in
@@ -259,19 +260,20 @@ and renProp ctx = function
   | PLambda (bnd, p) ->
       let bnd, ctx = renBinding ctx bnd in
       let p, ctx = renProp ctx p in
-	PLambda (bnd, p), ctx
+	PLambda (bnd, p), free (fst bnd) ctx
 
   | PMLambda ((nm, ms), p) ->
       let ms, ctx = renModest ctx ms in
       let nm, ctx = renName ctx nm in
       let p, ctx = renProp ctx p in
-	PMLambda ((nm, ms), p), ctx
+	PMLambda ((nm, ms), p), free nm ctx
 
   | PObligation (bnds, p1, p2) ->
       let bnds, ctx = renBindingList ctx bnds in
       let p1, ctx = renProp ctx p1 in
       let p2, ctx = renProp ctx p2 in
-	PObligation (bnds, p1, p2), ctx
+	(PObligation (bnds, p1, p2),
+	List.fold_left (fun ct (nm,_) -> free nm ct) ctx bnds)
 
   | PCase (t1, t2, lst) ->
       let t1, ctx = renTerm ctx t1 in
@@ -282,6 +284,8 @@ and renProp ctx = function
 	     let b1, ct = renBindingOpt ct b1 in
 	     let b2, ct = renBindingOpt ct b2 in
 	     let p, ct = renProp ct p in
+	     let ct = (match b1 with None -> ct | Some (nm, _) -> free nm ct) in
+	     let ct = (match b2 with None -> ct | Some (nm, _) -> free nm ct) in
 	       ((lb, b1, b2, p), ct)
 	  )
 	  ctx lst
@@ -292,7 +296,7 @@ and renProp ctx = function
       let t, ctx = renTerm ctx t in
       let nm, ctx = renName ctx nm in
       let p, ctx = renProp ctx p in
-	PLet (nm, t, p), ctx
+	PLet (nm, t, p), free nm ctx
 
 and renPropList ctx lst = renList renProp ctx lst
 
@@ -302,6 +306,7 @@ and renModest ctx {ty=ty; tot=p; per=q} =
     {ty=ty; tot=p; per=q}, ctx
 
 and renAssertion ctx (str, p) =
+  let ctx = forbid (mk_word str) ctx in
   let p, _ = renProp ctx p in
     (str, p), ctx
 
@@ -326,11 +331,10 @@ and renSignatElement ctx = function
     Spec (nm, spc, lst) ->
       let spc, ctx = renSpec ctx spc in
       let ctx = forbid nm ctx in
-      let spc, _ = renSpec ctx spc in
-      let lst, _ = renAssertionList ctx lst in
+      let lst, ctx = renAssertionList ctx lst in
 	Spec (nm, spc, lst), ctx
   | Assertion a ->
-      let a, _ = renAssertion ctx a in
+      let a, ctx = renAssertion ctx a in
 	Assertion a, ctx
   | Comment _ as c -> c, ctx
 
@@ -345,9 +349,9 @@ and renSignat ctx = function
       let lst, ctx = renSignatElementList ctx lst in
 	Signat lst, ctx
   | SignatFunctor ((nm, sgnt1), sgnt2) ->
-      let sgnt1, _ = renSignat ctx sgnt1 in
-      let nm, ctx' = renName ctx nm in
-      let sgnt2, _ = renSignat ctx' sgnt2 in
+      let sgnt1, ctx = renSignat ctx sgnt1 in
+      let nm, ctx = renName ctx nm in
+      let sgnt2, ctx = renSignat ctx sgnt2 in
 	SignatFunctor ((nm, sgnt1), sgnt2), ctx
   | SignatApp (sgnt, mdl) ->
       let sgnt, ctx = renSignat ctx sgnt in
@@ -357,7 +361,7 @@ and renSignat ctx = function
 and renModul ctx = function
     ModulName nm ->
       begin try
-	ModulName (NameMap.find nm (fst ctx)), ctx
+	ModulName (N (NameMap.find nm (fst ctx))), ctx
       with
 	  Not_found ->
 	    let nm, ctx = renName ctx nm in

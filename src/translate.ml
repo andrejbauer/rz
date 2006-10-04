@@ -612,12 +612,9 @@ and translateTheoryElement = function
 	  (if L.is_stable pt then TopTy else NamedTy (ln_of_name (L.typename_of_name n)))
 	  binds
       in
-	(if L.is_stable pt then
-	   Assertion ("predicate_" ^ (string_of_name n), spec)
-	 else
-	   (Spec (L.typename_of_name n,
-		    TySpec None,
-		    [("predicate_" ^ (string_of_name n), spec)]))
+	(Spec (L.typename_of_name n,
+	      TySpec (if L.is_stable pt then Some TopTy else None),
+	      [("predicate_" ^ (string_of_name n), spec)])
 	) :: (if L.is_equiv pt then
 	    [Assertion    ("equiv_" ^ (string_of_name n),
 			    let bnds1, bnds2, s' = equiv_bindings_of_proptype pt in
