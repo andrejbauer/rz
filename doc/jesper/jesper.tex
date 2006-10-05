@@ -528,12 +528,25 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
          	$\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
          	and $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$.
        \item 
-       		By Lemma~\ref{lemma:weaken} we have 
-			$\jwfprop{\G}{\p_1}{\wp{\p_2}}$,
-		\item
-			so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\wp{\p_2}})}$,
-		\item
-		 	and hence $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$.
+         By Lemma~\ref{lemma:weaken} we have 
+         $\jwfprop{\G}{\p_1}{\wp{\p_2}}$,
+       \item so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\wp{\p_2}})}$,
+
+
+         {\bf Oops...this doesn't follow!  We didn't (and in
+           general can't) show that $\jwfprop{\G}{\emptyCtx}{\p_1}$.
+         Maybe we should define 
+\[
+\begin{array}{lll}
+\wp{\pAnd{\p}{\q}} &:=& \pAnd{\wp{\p}}{(\pImply{\trans\p}{\wp\q})}\\
+\wp{\pImply{\p}{\q}} &:=& \pAnd{\wp{\p}}{(\pImply{\trans\p}{\wp\q})}\\
+\end{array}
+\]
+instead?
+}
+         
+       \item
+         and hence $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$.
        \end{enumerate}
   \item Case: $\p=(\pForall{\x}{\I}{\q})$, 
         with $\jwfprop{(\G,\x{:}\I)}{(\D,\pFalse)}{\q}$.
@@ -726,9 +739,7 @@ To be checked.
       \item
         Here $\wp{\t} = \pTrue$ and $\trans{\t} = \x$.
       \item
-        Then $\jwfprop{\G}{\emptyCtx}{\pTrue}$ 
-      \item
-        and $\jwfterm{\G}{\pTrue}{\x}{\I}$.
+        Then $\jwfterm{\G}{\pTrue}{\x}{\I}$.
       \end{enumerate}
   \item Case: $\t = \tFun{\f}{\t}{n}$ with
     $\jwfterm{\G}{(\D,\pFalse)}{\t_i}{\I}$ for all $i\in1..n$.
@@ -739,14 +750,12 @@ To be checked.
       and $\trans{\t} = \f(\trans{\t_1},\ldots,\trans{\t_n})$.
     \item 
     	By induction,
-      $\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$ for
-      all $i\in1..n$, 
-    \item 
-    	so
-    $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
-    \item 
-    Similarly, $\jwfterm{\G}{\wp{\t_i}}{\trans{\t_i}}{\I}$ for
+        $\jwfterm{\G}{\wp{\t_i}}{\trans{\t_i}}{\I}$ for
       all $i\in1..n$.  
+    \item 
+      By Lemma~\ref{lemma:weaken} we have
+      $\jwfterm{\G}{(\wp{\t},\wp{\t_i})}{\trans{\t_i}}{\I}$
+      for all $i\in1..n$.
     \item
       By Lemma~\ref{lemma:cut} we have
       $\jwfterm{\G}{\wp{\t}}{\trans{\t_i}}{\I}$ for
@@ -774,37 +783,9 @@ To be checked.
               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}}$.
       \item
         and 
-        	$\trans{\t} = \tDesc{\x}{\I}{\trans{\p(\x)}}$.
+        $\trans{\t} = \tDesc{\x}{\I}{\trans{\p(\x)}}$.
       \item 
-        By the inductive hypothesis, $\jwfprop{\G}{\emptyCtx}{\wp{\pExists{\x}{\I}{\p(\x)}}}$
-      \item 
-      	and
-        $\jwfprop{\G}{\emptyCtx}{\wp{\pForall{\x}{\I}{\pForall{\y}{\I}
-               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}$.
-      \item
-      	That is, 
-	$\jwfprop{\G}{\emptyCtx}
-	   {\pForall{\x}{\I}
-	      {\pForall{\y}{\I}
-	        {\pAnd
-	          {\bigl(\pAnd
-	             {\wp{\p(\x)}}
-	             {(\pImply{\p(\x)}{\wp{\p(\y)}})}\bigr)}
-	          {(\pImply
-	             {\pAnd{\p(\x)}{\p(\y)}}
-	             {\pAnd{\pTrue}{\pTrue}})} }}}$.
-	  \item
-	    By inversion, 
-	      $\jwfprop{(\G,\x{:}\I,\y{:}\I)}{\emptyCtx}{\wp{\p(\x)}}$,
-      \item 
-        so by Lemma~\ref{lemma:subst} we have 
-        $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\wp{\p(\x)}}$,
-      \item
-        and hence $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\wp{\p(x)}}}$.
-      \item
-        Thus, $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$.
-      \item
-        Also by the inductive hypothesis
+        By the inductive hypothesis
         $\jwfprop{\G}{\pTrue}
           {\pExists{\x}{\I}{\pAnd{\wp{\p(\x)}}{\trans{\p(\x)}}}}$
       \item
@@ -816,6 +797,7 @@ To be checked.
 	                                    {\pAnd{\pTrue}{\pTrue}})}}}}
             {(\pForall{\x}{\I}{\pForall{\y}{\I}
               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}$.
+        \item \ldots
       \end{enumerate}
       
   \item Cases: $\p = \pTrue$ or $\p = \pFalse$.
@@ -833,33 +815,31 @@ To be checked.
               $\jwfprop{\G}{(\D,\pFalse)}{\p_2}$.
       	\begin{enumerate}
 		\item
-			Here $\wp{\p} = \pAnd{\wp{\p_1}}{\wp{\p_2}}$.
+                  Here $\wp{\p} = \pTrue$
+                \item 
+                  and $\trans{\p} = 
+                  \pOr{(\pAnd{\wp{\p_1}}{\trans{\p_1}})}{(\pAnd{\wp{\p_2}}{\trans{\p_2}})}$.
 		\item
-			By the inductive hypothesis
-			$\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
-		\item	
-			and $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$.
+                  By the inductive hypothesis and \ref{lemma:weaken}
+                  $\jwfprop{\G}{(\pTrue,\wp{\p_1})}{\trans{\p_2}}$ 
+                \item
+                  and
+                  $\jwfprop{\G}{(\pTrue,\wp{\p_2})}{\trans{\p_2}}$ 
 		\item
-		    By Lemma~\ref{lemma:weaken},
-		    	$\jwfprop{\G}{\wp{\p_1}}{\wp{\p_2}}$.
+                  By Lemmas~\ref{lemma:wfwp} and \ref{lemma:weaken},
+                  $\jwfprop{\G}{\pTrue}{\wp{\p_1}}$
+                \item
+                  and
+                  $\jwfprop{\G}{\pTrue}{\wp{\p_2}}$.
 		\item
-			Thus, 
-			$\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\p_1}}{\wp{\p_2}}}$.
+                  Thus, 
+                  $\jwfprop{\G}{\pTrue}{\pAnd{\wp{\p_1}}{\trans{\p_1}}}$
+                \item
+                  and 
+                  $\jwfprop{\G}{\pTrue}{\pAnd{\wp{\p_2}}{\trans{\p_2}}}$
 		\item
-			Again by the inductive hypothesis,
-			$\jwfprop{\G}{\wp{\p_1}}{\p_1}$
-		\item
-			and
-			$\jwfprop{\G}{\wp{\p_2}}{\p_2}$.
-		\item
-			By Lemmas~\ref{lemma:weaken} and \ref{lemma:cut} we have
-			$\jwfprop{\G}{(\pAnd{\wp{\p_1}}{\wp{\p_2}})}{\p_1}$
-		\item
-			and
-			$\jwfprop{\G}{(\pAnd{\wp{\p_1}}{\wp{\p_2}})}{\p_2}$.
-		\item
-			Therefore,
-			$\jwfprop{\G}{(\pAnd{\wp{\p_1}}{\wp{\p_2}})}{\pOr{\p_1}{\p_2}}$.
+                  Therefore,
+                  $\jwfprop{\G}{\wp{\p}}{\trans{\p}}$.
 		\end{enumerate}    
       
       
@@ -1130,12 +1110,6 @@ To be checked.
 \end{enumerate}
 \end{proof}
 
-\end{document}
-
-%%% Local Variables: 
-%%% mode: latex
-%%% TeX-master: t
-%%% End: 
 
 \begin{claim}
 \mbox{}
@@ -1163,3 +1137,11 @@ To be checked.
 \end{enumerate}
 \end{claim}
 
+
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 

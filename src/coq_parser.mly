@@ -76,6 +76,7 @@
 %token <string> NAME
 %token NOT
 %token ORSYMBOL
+%token ORSYMBOL2
 %token PARAMETER
 %token PERCENT
 %token PERIOD
@@ -117,9 +118,10 @@
 %nonassoc FORALL EXISTS UNIQUE THE NOT
 %nonassoc IFFSYMBOL
 %right ARROW
-%right ORSYMBOL
-%right ANDSYMBOL
-%nonassoc ANDSYMBOL2
+%left ORSYMBOL
+%left ORSYMBOL2
+%left ANDSYMBOL
+%left ANDSYMBOL2
 
 %nonassoc LET IN CHOOSE FROM
 %nonassoc PERIOD PERIOD_LPAREN MPROJECT
@@ -261,8 +263,8 @@ apply_expr:
 expr:
 /*  | simple_expr                               { $1 }  */
   | apply_expr                                { $1 }
-  | or_list %prec ORSYMBOL                    { Or $1 }
-  | and_list %prec ANDSYMBOL                  { And $1 }
+  | or_list                                   { Or $1 }
+  | and_list                                  { And $1 }
   | expr EQUAL expr                           { Equal ($1, $3) }
   | NOT expr                                  { Not $2 }
   | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
@@ -299,12 +301,12 @@ expr:
   /* Also need cases for binary relations inside modules */
 
 and_list:
-  | expr ANDSYMBOL expr                       { [$1; $3] }
-  | expr ANDSYMBOL and_list   { $1 :: $3 }
+  | expr ANDSYMBOL expr  %prec ANDSYMBOL2    { [$1; $3] }
+  | and_list ANDSYMBOL expr  { $1 @ [$3] }
 
 or_list:
-  | expr ORSYMBOL expr                 { [$1; $3] }
-  | or_list ORSYMBOL expr              { $1 @ [$3] }
+  | expr ORSYMBOL expr  %prec ORSYMBOL2 { [$1; $3] }
+  | or_list ORSYMBOL expr               { $1 @ [$3] }
 
 expr_list:
   | expr COMMA expr                   { [$1; $3] }
