@@ -90,5 +90,12 @@ Axiom order_inv:
 
 (* Archimedean property. *)
 
-Parameter real_of_integer : Integer.t -> t.
+Parameter of_integer : Integer.t -> t.
 
+Definition foo := Integer.zero.
+
+(*Axiom integer_embedding:
+  of_integer Integer.zero = zero /\
+  of_integer Integer.one = one /\
+  (forall i j : Integer.t, of_integer (Integer.add i j) = add (of_integer i) (of_integer j)) /\	
+  (forall i j : Integer.t, of_integer (Integer.mul i j) = mul (of_integer i) (of_integer j)).*)

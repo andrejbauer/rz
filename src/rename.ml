@@ -46,7 +46,7 @@ let renList f ctx lst =
   in
     List.rev lst, ctx
 
-let renList' f ctx lst = List.fold_left (fun ts t -> f ctx t :: ts) [] lst
+let renList' f ctx lst = List.rev (List.fold_left (fun ts t -> f ctx t :: ts) [] lst)
 
 let rec renName (ren, bad) nm =
   let bn = rename bad nm in
