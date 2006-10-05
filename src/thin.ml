@@ -15,6 +15,95 @@ open Outsynrules
 exception Unimplemented
 exception Impossible of string
 
+
+(**************************)
+(** {2: Thinning Context} *)
+(**************************)
+
+(** As originally written, this code maintained a single typing
+    context --- tracking only the *unthinned*
+    types/signatures/definitions of variables.  Then, if the thinned
+    type/signature/definition of a variable were needed, we'd just
+    rerun thinning on that definition.
+
+    Unfortunately, this turned out not to work completely.  In the
+    presence of dependencies and type definitions we must avoid
+    shadowing, and if you have a model whose signature declares a type
+    n, and then later you have a local variable "n", and then still
+    later you use that model, re-running thinning on the signature at
+    that point, which now already contains the local n, is treated as
+    un-avoidable shadowing and the code aborts.
+
+    So, we give in, and maintain two contexts: the unthinned context and
+    the thinned context.
+
+    We only use the renamings in the first (unthinned) context!
+
+*)
+
+module OR = Outsynrules
+
+(** Unthinned and thinned contexts *)
+type context = OR.context * OR.context
+
+let emptyContext = (OR.emptyContext, OR.emptyContext)
+
+let wrapLookup lookupFn (ctx,tctx) nm = 
+  (lookupFn ctx nm, lookupFn tctx nm)
+
+let lookupTermVariable = wrapLookup OR.lookupTermVariable
+let lookupTypeVariable = wrapLookup OR.lookupTypeVariable
+let lookupModulVariable = wrapLookup OR.lookupModulVariable
+let lookupSignatVariable = wrapLookup OR.lookupSignatVariable
+
+let wrapInsert insertFn (ctx,tctx) nm (ty,tty) =
+  (insertFn ctx nm ty, insertFn tctx nm tty)
+
+let insertTermVariable = wrapInsert OR.insertTermVariable
+let insertTypeVariable = wrapInsert OR.insertTypeVariable
+let insertModulVariable = wrapInsert OR.insertModulVariable
+let insertSignatVariable = wrapInsert OR.insertSignatVariable
+
+let hnfSignats (ctx, tctx) (sg,sg') =
+  (hnfSignat ctx sg, hnfSignat tctx sg')
+
+let hnfSignat(ctx, _) sg = hnfSignat ctx sg
+let hnfTy (ctx, _) ty = OR.hnfTy ctx ty
+let hnfTy' (_, tctx) ty' = OR.hnfTy tctx ty'
+
+
+let wrapRename renameFn (ctx, tctx) nm =
+  let (ctx', nm') = renameFn ctx nm
+  in ((ctx', tctx), nm')
+
+let renameBoundTermVar pctx = wrapRename OR.renameBoundTermVar pctx
+let renameBoundTypeVar pctx = wrapRename OR.renameBoundTypeVar pctx
+let renameBoundModulVar pctx = wrapRename OR.renameBoundModulVar pctx
+
+(* We completely re-do this one function, rather than wrap
+   OR.renameTermBindings, because we need to make sure that the
+   bindings are added to *both* contexts *)
+let rec renameTermBindings cntxt bnds bnds' = 
+  match (bnds, bnds') with
+      ([],[]) -> (cntxt, [])
+    | ((nm,ty)::bnds, (nm',ty')::bnds') when nm = nm' -> 
+	let (cntxt', nm') = renameBoundTermVar cntxt nm
+	in let cntxt'' = insertTermVariable cntxt' nm' (ty,ty')
+	in let (cntxt''', bnds') = renameTermBindings cntxt'' bnds bnds'
+	in (cntxt''', (nm',ty')::bnds')
+    | _ -> failwith "Thin.renameTermBindings"
+	    
+let wrapApply applyFn (ctx, _) nm =
+  applyFn ctx nm
+
+let applyTermRenaming pctx = wrapApply OR.applyTermRenaming pctx
+let applyTypeRenaming pctx = wrapApply OR.applyTypeRenaming pctx
+let applyModulRenaming pctx = wrapApply OR.applyModulRenaming pctx
+
+let joinTy (ctx,_) s1 s2 = OR.joinTy ctx s1 s2
+let joinTy' (_, tctx) s1 s2 = OR.joinTy tctx s1 s2
+
+  
 (*******************)
 (** Set operations *)
 (*******************)
@@ -42,7 +131,7 @@ let toptyize = function
 
      Never returns TupleTy [] or TupleTy[_]
  *)
-let rec thinTy ctx ty = 
+let rec thinTy (ctx: context) ty = 
   let ans = match (hnfTy ctx ty) with
     ArrowTy (ty1, ty2) -> 
       (match (thinTy ctx ty1, thinTy ctx ty2) with
@@ -101,27 +190,29 @@ let wrapPObsProp disappearingProp wrapee =
 
       Never returns Tuple [] or Tuple [x]
 *)       
-let rec thinTerm ctx orig_term = 
+let rec thinTerm (ctx : context) orig_term = 
   try
     match orig_term with
 	Id (LN(None,nm)) ->
 	  begin
 	    let nm = applyTermRenaming ctx nm
-	    in let oldty = lookupTermVariable ctx nm
-            in  match (thinTy ctx oldty) with
+	    in let (oldty, newty) = lookupTermVariable ctx nm
+            in  match newty with
 		TopTy -> (oldty, wrapObsTerm orig_term Dagger, TopTy)
-              | nonunit_ty -> (oldty, Id(LN(None,nm)), nonunit_ty)
+              | _     -> (oldty, Id(LN(None,nm)), newty)
 	  end
       | Id (LN(Some mdl, nm)) ->
 	  begin
-	    let (sg, mdl', _) = thinModul ctx mdl
-	    in let oldty = 
-	      match hnfSignat ctx sg with
-		  Signat elems -> findTermvarInElems elems mdl nm
+	    let (sg, mdl', sg') = thinModul ctx mdl
+	    in let (oldty,newty) = 
+	      match hnfSignats ctx (sg,sg') with
+		  (Signat elems, Signat elems') -> 
+		    (findTermvarInElems elems mdl nm,
+		     findTermvarInElems elems' mdl' nm)
 		| _ -> failwith "Thin.thinTerm: invalid path"
-	    in match (thinTy ctx oldty) with
+	    in match newty with
 		TopTy -> (oldty, wrapObsTerm orig_term Dagger, TopTy)
-	      | newty -> (oldty, Id(LN(Some mdl',nm)), newty)
+	      | _     -> (oldty, Id(LN(Some mdl',nm)), newty)
 	  end
 
       | EmptyTuple -> (UnitTy, EmptyTuple, UnitTy)
@@ -135,7 +226,7 @@ let rec thinTerm ctx orig_term =
 		  let (_, e2', ty2') = thinTerm ctx e2
 		  in let ty' = thinTy ctx oldty
 		  in let trm' = App(e1', e2')
-		  in (match (ty', hnfTy ctx ty2') with
+		  in (match (ty', hnfTy' ctx ty2') with
 		      (TopTy, _) -> (* Application can be eliminated entirely *)
 			((oldty, wrapObsTerm trm' Dagger, TopTy))
 		    | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
@@ -151,15 +242,15 @@ let rec thinTerm ctx orig_term =
       | Lambda((name1, ty1), term2) ->
 	  (let    ty1' = thinTy ctx ty1
 	    in let (ctx,name1) = renameBoundTermVar ctx name1
-	    in let ctx' = insertTermVariable ctx name1 ty1
+	    in let ctx' = insertTermVariable ctx name1 (ty1,ty1')
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
 	    in let oldty = ArrowTy(ty1,ty2)
 	    in let trm' = Lambda((name1,ty1'),term2')
-	    in match (hnfTy ctx ty1', hnfTy ctx ty2') with
-	      | (TopTy,TopTy) -> (oldty, wrapObsTerm term2' Dagger, TopTy)
-	      | (_,TopTy) -> (oldty, wrapObsTerm trm' Dagger, TopTy)
-	      | (TopTy,_) -> (oldty, term2', ty2')
-	      | (_,_)     -> (oldty, trm', ArrowTy(ty1',ty2')))
+	    in match (hnfTy' ctx ty1', hnfTy' ctx ty2') with
+	      | (TopTy, TopTy) -> (oldty, wrapObsTerm term2' Dagger, TopTy)
+	      | (_,     TopTy) -> (oldty, wrapObsTerm trm' Dagger, TopTy)
+	      | (TopTy, _    ) -> (oldty, term2', ty2')
+	      | (_,     _    ) -> (oldty, trm', ArrowTy(ty1',ty2')))
       | Tuple es -> 
 	  let (ts, es', obs, ts') = thinTerms ctx es
 	  in let e' = 
@@ -221,7 +312,7 @@ let rec thinTerm ctx orig_term =
 	      (lbl, Some (name2,ty2),  e3) -> 
 		let ty2' = thinTy ctx ty2 
 		in let (ctx,name2) = renameBoundTermVar ctx name2
-		in let ctx' = insertTermVariable ctx name2 ty
+		in let ctx' = insertTermVariable ctx name2 (ty,ty')
 		in let (ty3, e3', ty3') = thinTerm ctx' e3
 		in (ty3, (lbl, Some (name2, ty2'), e3'), ty3')
 	    | (lbl, None,  e3) -> 
@@ -235,9 +326,7 @@ let rec thinTerm ctx orig_term =
               in let (tyarms, arms', tyarms') = doArms arms
 	      in (joinTy ctx tyarm tyarms,
 		 arm' :: arms',
-		 (* XXX: doublecheck invariant that the 
-		    thinned type never has a toplevel defn. *)
-		 joinTy emptyContext tyarm' tyarms')
+		 joinTy' ctx tyarm' tyarms')
 	  in let (tyarms, arms', tyarms') = doArms arms
 	  in (tyarms, Case(e',arms'), tyarms')
 
@@ -245,7 +334,7 @@ let rec thinTerm ctx orig_term =
 	  begin
 	    let    (ty1, term1', ty1') = thinTerm ctx term1
 	    in let (ctx,name1) = renameBoundTermVar ctx name1
-	    in let ctx' = insertTermVariable ctx name1 ty1
+	    in let ctx' = insertTermVariable ctx name1 (ty1,ty1')
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
 	    in match ty1' with
 		TopTy -> (ty2, wrapObsTerm term1' term2', ty2')
@@ -256,7 +345,7 @@ let rec thinTerm ctx orig_term =
 	  let (names,tys) = List.split bnds
 	  in let tys'  = List.map (thinTy ctx) tys
 	  in let bnds' = List.combine names tys'
-	  in let (ctx', bnds'') = renameTermBindings ctx bnds'
+	  in let (ctx', bnds'') = renameTermBindings ctx bnds bnds'
 	  in let bnds''' = List.filter (fun (n,t) -> t <> TopTy) bnds''
 	  in let prop' = thinProp ctx' prop
 	  in let ty2, trm', ty2' = thinTerm ctx' trm
@@ -270,7 +359,7 @@ let rec thinTerm ctx orig_term =
 		       string_of_term orig_term);
      raise e)
 
-and thinTerms ctx = function 
+and thinTerms (ctx : context) = function 
     [] -> ([], [], [], [])   
   | e::es -> let (ty, e', ty') = thinTerm ctx e
     in let (tys, es', obss, tys') = thinTerms ctx es
@@ -281,14 +370,14 @@ and thinTerms ctx = function
       | _ -> (ty :: tys, e'::es', obss, ty'::tys'))
       
 
-and thinTerm' ctx e =
+and thinTerm' (ctx: context) e =
   let (_,e',_) = thinTerm ctx e 
   in e'      
 
-and thinTerms' ctx lst =
+and thinTerms' (ctx: context) lst =
   let (_, es, obs, _) = thinTerms ctx lst in (obs, es)
 
-and thinProp ctx orig_prp = 
+and thinProp (ctx: context) orig_prp = 
   try
     match orig_prp with
 	True                    -> True
@@ -315,21 +404,23 @@ and thinProp ctx orig_prp =
       | Forall((n,ty), p) ->
 	  let ty' = thinTy ctx ty
 	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n ty) p
-	  in (match ty' with
+	  in let p' = thinProp (insertTermVariable ctx n (ty,ty')) p
+	  in (match hnfTy' ctx ty' with
 	    | TopTy -> p'
 	    | _ -> Forall((n,ty'), p'))
 	    
       | ForallTotal((n,ln),p) ->
-	  let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n (NamedTy ln)) p
+	  let ty = NamedTy ln
+	  in let ty' = thinTy ctx ty
+	  in let (ctx,n) = renameBoundTermVar ctx n
+	  in let p' = thinProp (insertTermVariable ctx n (ty,ty')) p
 	  in ForallTotal((n,ln), p')
 	    
       | Cexists ((n, ty), p) ->
 	  let ty' = thinTy ctx ty
 	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n ty) p in
-	    (match ty' with
+	  in let p' = thinProp (insertTermVariable ctx n (ty,ty')) p in
+	    (match hnfTy' ctx ty' with
 	      | TopTy -> p'
 	      | _ -> Cexists((n, ty'), p'))
 
@@ -337,7 +428,7 @@ and thinProp ctx orig_prp =
 	  let (names,tys) = List.split bnds
 	  in let tys'  = List.map (thinTy ctx) tys
 	  in let bnds' = List.combine names tys'
-	  in let (ctx', bnds'') = renameTermBindings ctx bnds'
+	  in let (ctx', bnds'') = renameTermBindings ctx bnds bnds'
 	  in let bnds''' = List.filter (fun (n,t) -> t <> TopTy) bnds''
 	  in let p' = thinProp ctx' p
 	  in let q' = thinProp ctx' q
@@ -348,7 +439,7 @@ and thinProp ctx orig_prp =
       | PMLambda ((n, ms), p) ->
 	  let ms' = thinModest ctx ms
 	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n ms.ty) p
+	  in let p' = thinProp (insertTermVariable ctx n (ms.ty,ms'.ty)) p
 	  in 
 	    PMLambda ((n,ms'), p')
 
@@ -359,11 +450,11 @@ and thinProp ctx orig_prp =
 	  begin
 	    let ty' = thinTy ctx ty
 	    in let (ctx,n) = renameBoundTermVar ctx n
-	    in let p' = thinProp (insertTermVariable ctx n ty) p
+	    in let p' = thinProp (insertTermVariable ctx n (ty,ty')) p
 	    in 
-		 match ty' with
+		 match hnfTy' ctx ty' with
 		     TopTy -> p'
-		   | _ -> PLambda((n,ty'), p')
+		   | _     -> PLambda((n,ty'), p')
 	  end
 	    
       | PApp (p, t) -> 
@@ -371,9 +462,9 @@ and thinProp ctx orig_prp =
 	    let p' = thinProp ctx p
 	    in let (_,t',ty') = thinTerm ctx t
 	    in 
-		 match ty' with
-		     TopTy -> p'
-		   | _ -> PApp(p', t')
+		 match hnfTy' ctx ty' with
+		     TopTy -> wrapObsProp t p'
+		   | _     -> PApp(p', t')
 	  end
 
       | PCase (e1, e2, arms) ->
@@ -383,9 +474,10 @@ and thinProp ctx orig_prp =
 		let ty' = thinTy ctx ty
 		in let (ctx0, nm) = renameBoundTermVar ctx0 nm
 		in 
-		     (match ty' with
+		     (match hnfTy' ctx0 ty' with
 			 TopTy -> None, ctx0
-		       | _ -> Some (nm, ty'), insertTermVariable ctx0 nm ty)
+		       | _ -> (Some (nm, ty'), 
+			      insertTermVariable ctx0 nm (ty,ty')))
 	  in let doArm (lbl, bnd1, bnd2, p) =
 	    let bnd1', ctx1 = doBind ctx  bnd1 in
 	    let bnd2', ctx2 = doBind ctx1 bnd2 in
@@ -398,33 +490,35 @@ and thinProp ctx orig_prp =
 	  begin
 	    let    (ty1, trm1', ty1') = thinTerm ctx trm1
 	    in let (ctx,nm) = renameBoundTermVar ctx nm
-	    in let ctx' = insertTermVariable ctx nm ty1
+	    in let ctx' = insertTermVariable ctx nm (ty1,ty1')
 	    in let prp2' = thinProp ctx' prp2
 	    in match ty1' with
 		TopTy -> wrapObsProp trm1' prp2'
-	      | _ -> PLet(nm, trm1', prp2')
+	      | _     -> PLet(nm, trm1', prp2')
 	  end
   with e ->
     (print_endline ("\n\n...in (thin) " ^
 		       string_of_proposition orig_prp);
      raise e)
       
-and thinAssertion ctx (name, prop) = (name, thinProp ctx prop)
+and thinAssertion ctx (name, annots, prop) = (name, annots, thinProp ctx prop)
 
 and thinModest ctx {ty=t; tot=p; per=q} =
-  {ty = thinTy ctx t;
+  {ty  = thinTy ctx t;
    tot = thinProp ctx p;
    per = thinProp ctx q}
 
-and thinElems ctx orig_elems = 
+and thinElems (ctx : context) orig_elems = 
   try
     match orig_elems with
 	[] -> ([], ctx)
       | Spec(name, ValSpec (tyvars,ty), assertions) :: rest ->
 	   let ty'  = thinTy ctx ty in
-	   let ctx' = insertTermVariable ctx name ty in
+	   let ctx' = insertTermVariable ctx name (ty,ty') in
 	   let assertions' = List.map (thinAssertion ctx') assertions
-	   in let (rest',ctx'') = thinElems (insertTermVariable ctx name ty) rest in
+	   in let (rest',ctx'') = 
+	     thinElems (insertTermVariable ctx name (ty,ty')) rest
+	   in
 		((match ty' with
   		    TopTy -> 
 		      (** Keep the (non-computational) assertions even if the 
@@ -442,7 +536,7 @@ and thinElems ctx orig_elems =
 
       |  Spec(name, ModulSpec signat, assertions) :: rest -> 
 	   let signat' = thinSignat ctx signat
-	   in let ctx' = insertModulVariable ctx name signat
+	   in let ctx' = insertModulVariable ctx name (signat,signat')
 	   in let assertions' = List.map (thinAssertion ctx') assertions
 	   in let (rest', ctx'') = thinElems ctx' rest 
 	   in 
@@ -450,21 +544,21 @@ and thinElems ctx orig_elems =
 
       |  Spec(name, SignatSpec signat, assertions) :: rest -> 
 	   let signat' = thinSignat ctx signat
-	   in let ctx' = insertSignatVariable ctx name signat
+	   in let ctx' = insertSignatVariable ctx name (signat, signat')
 	   in let assertions' = List.map (thinAssertion ctx') assertions
 	   in let (rest', ctx'') = thinElems ctx' rest 
 	   in 
 		(Spec(name, SignatSpec signat', assertions') :: rest', ctx'')
 
       |  Spec(nm, TySpec None, assertions) :: rest -> 
-	   let ctx' = insertTypeVariable ctx nm None
+	   let ctx' = insertTypeVariable ctx nm (None,None)
 	   in let assertions' = List.map (thinAssertion ctx') assertions 
 	   in let (rest', ctx'') = thinElems ctx' rest in
 		(Spec(nm, TySpec None, assertions') :: rest', ctx'')
 
       |  Spec(nm, TySpec (Some ty), assertions) :: rest ->
 	   let ty' = thinTy ctx ty 
-	   in let ctx' = insertTypeVariable ctx nm (Some ty)  
+	   in let ctx' = insertTypeVariable ctx nm (Some ty, Some ty')  
 	   in let assertions' = List.map (thinAssertion ctx') assertions 
 	   in let (rest', ctx'') = thinElems ctx'  rest 
 	   in
@@ -501,7 +595,7 @@ and thinSignat ctx = function
 and thinStructBinding ctx (m, signat) =
   let signat' = thinSignat ctx signat in
     ( (m, signat'),
-    insertModulVariable ctx m signat )
+    insertModulVariable ctx m (signat,signat') )
 
 and thinStructBindings ctx = function
     [] -> [], ctx
@@ -509,7 +603,7 @@ and thinStructBindings ctx = function
       let signat' = thinSignat ctx signat in
       let bnd', ctx'' = thinStructBindings ctx bnd in
 	( (m, signat') :: bnd',
-	insertModulVariable ctx'' m signat )
+	insertModulVariable ctx'' m (signat,signat') )
 
 (* For now, at least, moduls never disappear completely, even if 
    their contents are entirely thinned away. *)
@@ -518,8 +612,7 @@ and thinModul ctx orig_modul =
   match orig_modul with
       ModulName nm -> 
 	let nm = applyModulRenaming ctx nm
-	in let sg = lookupModulVariable ctx nm
-	in let sg' = thinSignat ctx sg
+	in let (sg,sg') = lookupModulVariable ctx nm
 	in (sg, orig_modul, sg')
     | ModulProj (mdl1, nm) -> 
 	begin
@@ -559,9 +652,10 @@ and thinDefs ctx = function
   | DefType(nm,ty)::defs ->
       begin
 	let spec = Spec(nm, TySpec (Some ty), [])
-	in let ctx' = insertTypeVariable ctx nm (Some ty)
+	in let ty' = thinTy ctx ty
+	in let ctx' = insertTypeVariable ctx nm (Some ty, Some ty')
 	in let (elems, defs', elems') = thinDefs ctx' defs
-	in match hnfTy ctx (thinTy ctx ty) with
+	in match hnfTy' ctx ty' with
 	    TopTy -> (spec::elems, defs', elems')
 	  | ty' -> (spec::elems, DefType(nm,ty')::defs',
 		   Spec(nm, TySpec (Some ty'), [])::elems')
@@ -569,31 +663,32 @@ and thinDefs ctx = function
   | DefTerm(nm,ty,trm)::defs ->
       begin
 	let spec = Spec(nm, ValSpec ([],ty), [])
-	in let ctx' = insertTermVariable ctx nm ty
+	in let ty' = thinTy ctx ty
+	in let ctx' = insertTermVariable ctx nm (ty,ty')
 	in let (elems, defs', elems') = thinDefs ctx' defs
 	in let trm' = thinTerm' ctx trm
-	in match hnfTy ctx (thinTy ctx ty) with
+	in match hnfTy' ctx ty' with
 	    (* XXX: Possibility of losing assertions in trm' ! *)
 	    TopTy -> (spec::elems, defs', elems')
-	  | ty' -> (spec::elems, DefTerm(nm,ty',trm')::defs',
-		   Spec(nm, ValSpec ([],ty'), [])::elems')
+	  | ty'   -> (spec::elems, DefTerm(nm,ty',trm')::defs',
+		     Spec(nm, ValSpec ([],ty'), [])::elems')
       end
   | DefModul(nm,sg,mdl)::defs ->
       begin
 	let spec = Spec(nm, ModulSpec sg, [])
 	in let sg' = thinSignat ctx sg
 	in let mdl' = thinModul' ctx mdl
-	in let ctx' = insertModulVariable ctx nm sg
+	in let ctx' = insertModulVariable ctx nm (sg,sg')
 	in let (elems, defs', elems') = thinDefs ctx' defs
 	in 
 	     (spec::elems, DefModul(nm,sg',mdl')::defs',
-		   Spec(nm, ModulSpec sg', [])::elems')
+	     Spec(nm, ModulSpec sg', [])::elems')
       end
   | DefSignat(nm,sg)::defs ->
       begin
 	let spec = Spec(nm, SignatSpec sg, [])
 	in let sg' = thinSignat ctx sg
-	in let ctx' = insertSignatVariable ctx nm sg
+	in let ctx' = insertSignatVariable ctx nm (sg,sg')
 	in let (elems, defs', elems') = thinDefs ctx' defs
 	in 
 	     (spec::elems, DefSignat(nm,sg')::defs',

@@ -425,17 +425,9 @@ To be checked.
 By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 \end{proof}
 
-\begin{claim}
-\mbox{}
-\begin{enumerate}
-  \item If $\jwfprop{\G}{\D}{\p}$ then
-    $\jpf{\G}{\D}{\pIff{\p}{\trans{\p}}}$.
-  \item If $\jwfprop{\G}{\D}{\p}$ and $\pf{\G}{\D}{\p}$ then
-    $\jpf{\G}{\D}{\p}$.
-\end{enumerate}
-\end{claim}
 
 \begin{lemma}[Well-formedness of  $\wp{\cdot}$]
+\label{lemma:wfwp}
 \mbox{}
   \begin{enumerate}
   \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
@@ -715,13 +707,13 @@ To be checked.
 \clearpage
 
 \begin{lemma}
+\label{lemma:l9}
 \mbox{}
   \begin{enumerate}
   \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
-    $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$ and
     $\jwfterm{\G}{\wp{\t}}{\trans{\t}}{\I}$.
-  \item If $\jwfprop{\G}{(\D,\pFalse)}{\p}$, we have
-    $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$ and $\jwfprop{\G}{\wp{\p}}{\trans{\p}}$.
+  \item If $\jwfprop{\G}{(\D,\pFalse)}{\p}$, then
+    $\jwfprop{\G}{\wp{\p}}{\trans{\p}}$.
   \end{enumerate}
 \end{lemma}
 
@@ -1037,13 +1029,99 @@ To be checked.
        applied to lines~\ref{lemma:l41:proofline:a1}, \ref{lemma:l41:proofline:a2}, and \ref{lemma:l41:proofline:a3}, 
        we have
        $\jpf{\G}{\trans\D}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
-
-       
-
      \end{enumerate}
   \end{itemize}
 \item % Part 2
-
+  \begin{itemize}
+  \item Cases: $\p = \pTrue$ or $\p = \pFalse$.
+    \begin{enumerate}
+    \item 
+      Here $\trans{\p} = \p$ 
+    \item
+      and $\jpf{\G}{\trans\D}{\p}$.
+    \end{enumerate}
+  \item Case: $\p = \pOr{\p_1}{\p_2}$ with
+    $\wfprop{\G}{(\D,\pFalse)}{\p_1}$ and
+    $\wfprop{\G}{(\D,\pTrue)}{\p_2}$.
+    \begin{enumerate}
+    \item 
+      Here $\trans\p = 
+      \pOr{(\pAnd{\wp{\p_1}}{\trans{\p_1}})}{(\pAnd{\wp{\p_2}}{\trans{\p_2}})}$.
+    \item 
+      By Lemma~\ref{lemma:l42},
+      $\jwfprop{\G}{(\D,\pFalse)}{\p_1}$ 
+    \item 
+      and
+      $\jwfprop{\G}{(\D,\pTrue)}{\p_2}$.
+    \item
+      Then by Lemma~\ref{lemma:wfwp} we have
+      $\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
+    \item 
+      and 
+      $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$,
+    \item 
+      and by Lemma~\ref{lemma:l9} we have
+      $\jwfprop{\G}{\wp{\p_1}}{\trans{\p_1}}$
+    \item 
+      and
+      $\jwfprop{\G}{\wp{\p_2}}{\trans{\p_2}}$.
+    \item 
+      Thus,
+      $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\p_1}}{\trans{\p_1}}}$
+    \item 
+      and
+      $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\p_2}}{\trans{\p_2}}}$,
+    \item 
+      and hence
+      $\jwfprop{\G}{\emptyCtx}{\trans{\p}}$.
+    \item
+      The desired result then follows by Lemma~\ref{lemma:weaken}.
+    \end{enumerate}
+  \item Cases: $\p = \pAnd{\p_1}{\p_2}$ or $\p = \pImply{\p_1}{\p_2}$, with
+    $\wfprop{\G}{\D}{\p_1}$ and $\wfprop{\G}{\D,\p_1}{\p_2}$.
+    \begin{enumerate}
+    \item 
+      By the inductive hypothesis we have
+      $\jwfprop{\G}{\trans\D}{\trans{\p_1}}$
+    \item
+      and
+      $\jwfprop{\G}{\trans\D,\trans{\p_1}}{\trans{\p_2}}$.
+    \item 
+      Thus $\jwfprop{\G}{\trans\D}{\pAnd{\trans{\p_1}}{\trans{\p_2}}}$
+      or $\jwfprop{\G}{\trans\D}{\pImply{\trans{\p_1}}{\trans{\p_2}}}$, as
+      appropriate.
+    \item
+      That is,
+      $\jwfprop{\G}{\trans\D}{\trans\p}$.
+    \end{enumerate}
+  \item Case: $\p = \pExists{\x}{\I}{\q}$, with
+    $\wfprop{(\G,\x{:}\I)}{(\D,\pFalse)}{\q}$.
+    \begin{enumerate}
+   \item 
+      Here $\trans\p = 
+      \pExists{\x}{\I}{\pAnd{\wp{\q}}{\trans{\q}}}$.
+    \item 
+      By Lemma~\ref{lemma:l42},
+      $\jwfprop{\G}{(\D,\pFalse)}{\q}$. 
+    \item
+      Then by Lemma~\ref{lemma:wfwp} we have
+      $\jwfprop{\G}{\emptyCtx}{\wp{\q}}$
+    \item 
+      and by Lemma~\ref{lemma:l9} we have
+      $\jwfprop{\G}{\wp{\q}}{\trans{\q}}$.
+    \item 
+      Thus 
+      $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\pAnd{\wp{\q}}{\trans\q}}$,
+    \item 
+      so
+      $\jwfprop{\G}{\emptyCtx}{\pExists{\x}{\I}{\pAnd{\wp{\q}}{\trans\q}}}$.
+    \item
+      That is,
+      $\jwfprop{\G}{\emptyCtx}{\trans{\p}}$.
+    \item
+      The desired result follows by Lemma~\ref{lemma:weaken}.
+    \end{enumerate}
+  \end{itemize}
 
 \item % Part 3
 
@@ -1058,3 +1136,30 @@ To be checked.
 %%% mode: latex
 %%% TeX-master: t
 %%% End: 
+
+\begin{claim}
+\mbox{}
+\begin{enumerate}
+  \item If $\jwfprop{\G}{\D}{\p}$ then
+    $\jpf{\G}{\D}{\pImply{\pAnd{\wp{\p}}{\trans{\p}}}{\p}}$.
+  \item If $\jwfprop{\G}{\D}{\p}$ then
+    $\jpf{\G}{\D}{\pImply{\p}{\pAnd{\wp{\p}}{\trans{\p}}}}$.
+\end{enumerate}
+\end{claim}
+
+\begin{proof}
+  \begin{enumerate}
+  \item Should be easy induction, with the premise strictly stronger
+    than the conclusion.
+  \item This is the tricky part!
+  \end{enumerate}
+\end{proof}
+
+\begin{claim}
+\mbox{}
+\begin{enumerate}
+  \item If $\jwfprop{\G}{\D}{\p}$ and $\pf{\G}{\D}{\p}$ then
+    $\jpf{\G}{\D}{\p}$.
+\end{enumerate}
+\end{claim}
+

@@ -430,8 +430,13 @@ and output_ty_0 ppf = function
   | typ        -> ((* print_string (string_of_ty typ); *)
 		   fprintf ppf "(%a)"  output_ty typ)
 
-and output_assertion ppf (nm, p) =
-  fprintf ppf "@[<hov 2>Assertion %s = @ %a@]"  nm   output_prop p
+and output_annots ppf = function
+    [] -> ()
+  | Annot_NoOpt::rest -> fprintf ppf "[Definitional] %a"  output_annots rest
+
+and output_assertion ppf (nm, annots, p) =
+  fprintf ppf "@[<hov 2>Assertion %s %a= @ %a@]"  
+    nm   output_annots annots   output_prop p
 
 and output_assertions ppf = function
     [] -> ()

@@ -59,12 +59,12 @@ let addFile strng =
 
 
 type state = {infer_state    : Logicrules.context;
-               thin_state     : Outsynrules.context;
+               thin_state     : Thin.context;
                opt_state      : Outsynrules.context;
 	       files_read     : string list}
 
 let emptyState = {infer_state = Logicrules.emptyContext;
-		  thin_state = Outsynrules.emptyContext;
+		  thin_state = Thin.emptyContext;
 		  opt_state = Outsynrules.emptyContext;
 		  files_read = []}
 

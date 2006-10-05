@@ -287,6 +287,9 @@ let rec checkFact ({facts = facts} as ctx) prp =
 	  checkFact ctx (Imply(prp1,prp2)) &&
 	    checkFact ctx (Imply(prp2,prp1))
       | Not(Not(prp)) ->
+	  (** We are guaranteed that all propositions/assertions
+	      are classically valid; the "constructive" parts have
+	      already been removed. *)
 	  checkFact ctx prp
       | Equal(t1,t2) ->
 	  (* Don't call checkFact recursively here, or we'll

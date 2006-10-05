@@ -2,8 +2,9 @@
 module type HoistTerms =
  sig
    type s
-   (**  Assertion per_s = 
-          (forall x:s, y:s, z:s,  y =s= z /\ x =s= y -> x =s= z)
+   (**  Assertion per_s [Definitional] = 
+          (forall x:s, y:s, z:s,  y =s= z /\ x =s= y -> x =s= z) /\ 
+          (forall x:s, y:s,  x =s= y -> y =s= x)
    *)
     
    val a : s

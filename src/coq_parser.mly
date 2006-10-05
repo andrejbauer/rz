@@ -32,6 +32,7 @@
 /* Tokens */
 
 %token ANDSYMBOL
+%token ANDSYMBOL2
 %token ARROW
 %token AXIOM
 %token BAR
@@ -118,6 +119,7 @@
 %right ARROW
 %right ORSYMBOL
 %right ANDSYMBOL
+%nonassoc ANDSYMBOL2
 
 %nonassoc LET IN CHOOSE FROM
 %nonassoc PERIOD PERIOD_LPAREN MPROJECT
@@ -297,8 +299,8 @@ expr:
   /* Also need cases for binary relations inside modules */
 
 and_list:
-  | expr ANDSYMBOL expr                { [$1; $3] }
-  | and_list ANDSYMBOL expr            { $1 @ [$3] }
+  | expr ANDSYMBOL expr                       { [$1; $3] }
+  | expr ANDSYMBOL and_list   { $1 :: $3 }
 
 or_list:
   | expr ORSYMBOL expr                 { [$1; $3] }

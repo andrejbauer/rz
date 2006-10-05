@@ -228,9 +228,9 @@ and renPropList ctx lst = renList' renProp ctx lst
 and renModest ctx {ty=ty; tot=p; per=q} =
   {ty = renTy ctx ty; tot = renProp ctx p; per = renProp ctx q}
 
-and renAssertion ctx (str, p) =
+and renAssertion ctx (str, annots, p) =
   let ctx = forbid (mk_word str) ctx in
-    (str, renProp ctx p), ctx
+    (str, annots, renProp ctx p), ctx
 
 and renAssertionList ctx lst = renList renAssertion ctx lst
 

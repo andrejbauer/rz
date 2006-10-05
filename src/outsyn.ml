@@ -88,7 +88,9 @@ and proptype =
     | PropArrow of binding * proptype
     | PropMArrow of mbinding * proptype 
 
-and assertion = string * proposition
+and assertionAnnot = Annot_NoOpt
+
+and assertion = string * assertionAnnot list * proposition
 
 and signat_element =
     Spec      of name * spec * assertion list
@@ -765,7 +767,8 @@ and substSignatElements ?occ sbst =
 and substSignatElement ?occ sbst elem =
   List.hd (substSignatElements ?occ sbst [elem])
 
-and substAssertion ?occ sbst (nm, prop) = (nm, substProp ?occ sbst prop)
+and substAssertion ?occ sbst (nm, annots, prop) = 
+  (nm, annots, substProp ?occ sbst prop)
 
 and substBinding ?occ sbst (nm, ty) = (nm, substTy ?occ sbst ty)
 
@@ -998,8 +1001,13 @@ and string_of_bnd (n,t) =
 and string_of_bnds bnds : string =
     String.concat ", " (List.map string_of_bnd bnds)
 
-and string_of_assertion (nm, p) =
-  "(** Assertion " ^ nm ^ ":\n" ^ (string_of_proposition p) ^ "\n*)"
+and string_of_annots = function
+    [] -> ""
+  | Annot_NoOpt::rest -> "[Definitional] " ^ (string_of_annots rest) 
+
+and string_of_assertion (nm, annots, p) =
+  "(** Assertion " ^ nm ^ " " ^ string_of_annots annots ^ ":\n" ^ 
+    (string_of_proposition p) ^ "\n*)"
 
 and string_of_assertions assertions = 
   (String.concat "\n" (List.map string_of_assertion assertions))
