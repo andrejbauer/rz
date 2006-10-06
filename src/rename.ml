@@ -8,7 +8,7 @@ let emptyRen = (NameMap.empty, StringSet.empty)
 let forbid nm (ren, bad) =
   match nm with
       N (str,_) -> (ren, StringSet.add str bad)
-    | G _ -> failwith "Rename.forbid: cannot forbid gensymed names."
+    | G _ -> (ren, bad)
 
 let rec forbidFromSignat ctx = function
     SignatName nm -> forbid nm ctx
