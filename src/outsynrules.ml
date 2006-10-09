@@ -24,6 +24,12 @@ let emptyContext =
    signatvars = NameMap.empty;
    facts = []}
 
+let displayContext cntxt = 
+  (NameMap.iter (fun nm ty -> print_endline("val " ^ string_of_name nm ^ ":" ^ string_of_ty ty)) cntxt.termvars;
+   NameMap.iter (fun nm tyopt -> print_endline("type " ^ string_of_name nm ^ (match tyopt with None -> "" | Some ty -> "=" ^ string_of_ty ty))) cntxt.typevars;
+   NameMap.iter (fun nm sg -> print_endline("module " ^ string_of_name nm ^ " : " ^ string_of_signat sg)) cntxt.modulvars;
+   NameMap.iter (fun nm sg -> print_endline("signature " ^ string_of_name nm ^ " = " ^ string_of_signat sg)) cntxt.signatvars;)
+
 
 (***************)
 (** {3 Lookup} *)

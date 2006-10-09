@@ -807,16 +807,16 @@ and optModest ctx {ty=t; tot=p; per=q} =
 and optElems ctx orig_elems = 
 (*  try *)
     match orig_elems with
-	[] -> ([], emptyContext)
+	[] -> ([], ctx)
       |  Spec(name, ValSpec (tyvars,ty), assertions) :: rest ->
 	   let ty'  = optTy ctx ty in
-	   let ctx' = insertTermVariable ctx name ty in
+	   let ctx' = insertTermVariable ctx name ty' in
 	   let assertions' = List.map (optAssertion ctx') assertions
 	   in let ctx' = 
 	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
 	   in let (rest', ctx'') = optElems ctx' rest in
 		(Spec (name, ValSpec (tyvars,ty'), assertions') :: rest', 
-		insertTermVariable ctx'' name ty')
+		ctx'')
 		  
       |  Assertion assertion  ::  rest ->
 	   let assertion' = optAssertion ctx assertion in
@@ -834,24 +834,28 @@ and optElems ctx orig_elems =
       |  Spec(name, ModulSpec signat, assertions) :: rest -> 
 	   let signat' = optSignat ctx signat
 	   in let ctx' = insertModulVariable ctx name signat'
-	   in let (rest', ctx'') = optElems ctx' rest 
 	   in let assertions' = List.map (optAssertion ctx') assertions
-	   in let ctx''' = 
-	     insertFacts ctx'' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx'' = 
+	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let (rest', ctx''') = optElems ctx'' rest 
 	   in let spec' = Spec(name, ModulSpec signat', assertions')
+	   in 
+	      spec' :: rest', ctx'''
+(*
 	   in begin
 	       match tryPolymorph ctx name signat' with
-		   None -> spec' :: rest', ctx'''
+		   None -> 
 		 | Some decl' -> Spec(uncapitalize name, 
 				     decl', assertions')::rest', ctx'''
 	     end
+*)
 
       |  Spec(nm, TySpec None, assertions) :: rest -> 
 	   let ctx' = insertTypeVariable ctx nm None
 	   in let assertions' = List.map (optAssertion ctx') assertions 
-	   in let rest', ctx'' = optElems ctx' rest 
-	   in let ctx''' = 
-	     insertFacts ctx'' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx'' = 
+	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let rest', ctx''' = optElems ctx'' rest 
 	   in
 		(Spec (nm, TySpec None, assertions') :: rest'), ctx'''
 
@@ -859,9 +863,9 @@ and optElems ctx orig_elems =
 	   let ty' = optTy ctx ty 
 	   in let ctx' = insertTypeVariable ctx nm (Some ty) 
 	   in let assertions' = List.map (optAssertion ctx') assertions 
-	   in let rest', ctx'' = optElems ctx' rest 
-	   in let ctx''' = 
-	     insertFacts ctx'' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx'' = 
+	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let rest', ctx''' = optElems ctx'' rest 
 	   in
 	     (Spec(nm, TySpec(Some ty'), assertions') :: rest', 
 	     ctx''')
@@ -869,10 +873,10 @@ and optElems ctx orig_elems =
       | Spec(nm, SignatSpec sg, assertions) :: rest ->
 	  let sg' = optSignat ctx sg
 	  in let ctx' = insertSignatVariable ctx nm sg
-	  in let (rest', ctx'') = optElems ctx' rest 
 	  in let assertions' = List.map (optAssertion ctx') assertions
-	  in let ctx''' = 
-	    insertFacts ctx'' (List.map (fun (_,_,p)->p) assertions')
+	  in let ctx'' = 
+	    insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	  in let (rest', ctx''') = optElems ctx'' rest 
 	  in (Spec(nm, SignatSpec sg', assertions') :: rest',
 	     ctx''')
 

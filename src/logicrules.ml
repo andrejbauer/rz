@@ -34,6 +34,9 @@ let emptyContext = {bindings = NameMap.empty;
 		    implicits = NameMap.empty;
 		    renaming = NameMap.empty}
 
+let displayContext cntxt = 
+  NameMap.iter (fun n decl -> print_endline(string_of_theory_element(Declaration(n,decl)))) cntxt.bindings
+
 (**************)
 (* {3 Lookup} *)
 (**************)
