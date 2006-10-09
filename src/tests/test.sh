@@ -2,7 +2,7 @@
 
 RZ=../rz
 
-DIFF="diff --side-by-side -W200 -w"
+DIFF="diff --side-by-side -W160 -w"
 
 BASENAME=basename
 

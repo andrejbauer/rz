@@ -1,4 +1,4 @@
-[Processing empty.thy]
+[Processing ./empty.thy]
 module type Empty = sig
                       
                     end

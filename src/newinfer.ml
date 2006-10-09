@@ -1066,9 +1066,7 @@ and annotateBinding cntxt surrounding_expr binders =
 				 doTypeBinding ty
 			     | ResTheory (thry, L.ModelTheoryKind) ->
 				 doTheoryBinding thry
-			     | _ -> E.illegalBindingError n 
-				 ("annotated ("  ^ string_of_expr expr ^ ")")
-				   surrounding_expr
+			     | _ -> E.illegalBindingError n expr surrounding_expr
 			 end
  		   end
 	in let (cntxt'', mbnds, lbnds) = nLoop nms

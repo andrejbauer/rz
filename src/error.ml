@@ -45,6 +45,9 @@ let noEqPropWarning prp1 prp2 context_expr =
 (** {3 Type Errors} *)
 (********************)
 
+let newline = Str.regexp "[\n]+"
+let splitByLine msg = List.rev (Str.split newline msg)
+
 (** The TypeError exception is raised by all type errors 
  *)
 exception TypeError of string list
@@ -52,34 +55,54 @@ exception TypeError of string list
 let printErrors msgs =
   let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
   in let error_footer = "-------------------------------\n\n"
-  in let printError msg = (print_endline msg)
+  in let printed_long_msg = ref false
+  in let lines_to_be_long = 3
+  in let isLong str = (List.length (splitByLine str) >= lines_to_be_long)
+  in let printError msg = 
+    let doPrint() = (print_endline msg; print_endline "")
+    in
+       if isLong msg then
+	 if !printed_long_msg then
+	   ()
+	 else
+	   (printed_long_msg := true;
+	    doPrint())
+       else
+	 doPrint()
   in
-       (printAndResetWarnings();
-	print_string error_header; 
-	List.iter printError (List.rev msgs);
-	print_string error_footer)
+  (printAndResetWarnings();
+   print_string error_header; 
+   List.iter printError (List.rev msgs);
+   print_string error_footer)
 
 let tyGenericErrors msgs =
   raise (TypeError msgs)
 
-let newline = Str.regexp "[\n]"
-let splitByLine msg = List.rev (Str.split newline msg)
+let indent msg = 
+  let lines = (Str.split newline msg)
+  in let lines' = List.map (fun s -> "        " ^ s) lines
+  in let msg' = String.concat "\n" lines'
+  in msg'
+
 
 let addSpecifically msgs =
-  let msgs' = List.rev msgs
-  in let msgs'' = ("Specifically:  " ^ List.hd msgs') :: (List.tl msgs')
-  in List.rev msgs''
+  match (List.rev msgs) with
+    [] -> []
+  | (msg::msgs) ->
+      let lines = Str.split newline msg
+      in let lines' = ("Specifically: " ^ List.hd lines) :: List.tl lines
+      in let msg' = String.concat "\n" lines'
+      in List.rev (msg' :: msgs)
 
 let tyGenericError msg = 
-  let msgs = splitByLine msg
-  in tyGenericErrors ("" :: msgs)
+  tyGenericErrors [msg]
 
 let generalizeError msgs msg =
-  tyGenericErrors ("" :: (splitByLine msg) @ msgs)
+  tyGenericErrors (msg ::  msgs)
 
 let specificateError msgs msg =
   let msgs' = addSpecifically msgs
-  in let msgs'' = List.map (fun s -> "        " ^ s) msgs'
+  in let msgs'' = List.map indent msgs'
   in
      tyGenericErrors (msgs'' @ [msg])
 
@@ -273,11 +296,12 @@ let innerModelBindingError context_expr =
 
 
 let illegalBindingMsg nm where_type_came_from =
-    ("The " ^ where_type_came_from ^ " type of " ^ string_of_name nm ^
-	" is not suitable for a binding")
+    ("The annotation " ^ (S.string_of_expr where_type_came_from) 
+        ^ " for " ^ string_of_name nm ^
+	" is the wrong sort of entity to appear in a binding")
 
-let illegalBindingError nm where_type_came_from context_expr =
-  tyGenericError (illegalBindingMsg nm where_type_came_from)
+let illegalBindingError nm annot_expr context_expr =
+  tyGenericError (illegalBindingMsg nm annot_expr)
 
  
 let illegalNameMsg nm what_kind_its_supposed_to_be =
