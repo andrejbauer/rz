@@ -105,7 +105,17 @@ let send_to_formatter ppf toplevels =
    Pp.output_toplevel ppf toplevels
 
 let rec processOne (state : state) writeOutput filename =
-  (* First, check to see if we've already processed this file. *)
+  (* Normalize the filename; otherwise foo.thy and ./foo.thy
+     get treated as different files.  
+
+     XXX Doesn't distinguish between relative and absolute names
+     for the same file, but I don't see any easy way to do this
+     in OCaml at the moment. *)
+  let filename = Filename.concat (Filename.dirname filename) 
+                                 (Filename.basename filename)
+  in
+
+  (* Now check to see if we've already processed this file. *)
   if List.mem filename state.files_read then
     (* If so, do nothing. *)
     state
@@ -193,7 +203,7 @@ let rec processOne (state : state) writeOutput filename =
 
       (** Write the output file 
       *)
-      let _ = if (writeOutput && !Flags.do_save) then
+      let _ = if (!Flags.do_save) then
  	        let outb = Buffer.create 1024 in
 		let formatter = Format.formatter_of_buffer outb in
  		let outchan = open_out outfile in
@@ -212,7 +222,7 @@ let rec processOne (state : state) writeOutput filename =
           they are more likely to be seen. *)
 
       let _ = Error.printAndResetWarnings() in
-      let _ = if (writeOutput && !Flags.do_save) then
+      let _ = if (!Flags.do_save) then
                  print_string ("[Output saved in " ^ outfile ^ "]\n") 
               else () 
 		
