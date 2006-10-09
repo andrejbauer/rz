@@ -620,8 +620,9 @@ and optProp ctx orig_prp =
 	      | (UnitTy, _) -> optReduceProp ctx (PLet(n,EmptyTuple,p'))
 	      | (VoidTy, _) -> True
 	      | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
-		  if (LN(None,n) = n3) && (n1 = n2) then
-		    ForallTotal((n, n1), p'')
+		  if (n3 = LN(None,n)) && 
+		    (hnfTy ctx (NamedTy n1) = hnfTy ctx (NamedTy n2)) then
+		    ForallTotal((n, n2), p'')
 		  else
 		    doForall(n, NamedTy n1, p')
 	      | (ty',_) -> doForall(n, ty', p'))
