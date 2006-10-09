@@ -136,17 +136,6 @@ let applyModulRenaming cntxt nm =
 
 
 
-let rec hnfSignat cntxt = function
-    SignatApp(sg1,mdl2) -> 
-      begin
-	match hnfSignat cntxt sg1 with
-	    SignatFunctor((nm,_),sg1b) ->
-	      let sg' = substSignat (insertModulvar emptysubst nm mdl2) sg1b
-	      in hnfSignat cntxt sg'
-	  | _ -> failwith "Outsynrules.hnfSignat"
-      end
-  | SignatName nm -> hnfSignat cntxt (lookupSignatVariable cntxt nm)
-  | sg -> sg
       
 
 let updateSubstForElem subst mdl = function
@@ -188,7 +177,25 @@ let rec findSignatvarInElems elts mdl nm =
   in loop emptysubst elts
 
 
-let rec modulToSignat cntxt = function
+let rec hnfSignat cntxt = function
+    SignatApp(sg1,mdl2) -> 
+      begin
+	match hnfSignat cntxt sg1 with
+	    SignatFunctor((nm,_),sg1b) ->
+	      let sg' = substSignat (insertModulvar emptysubst nm mdl2) sg1b
+	      in hnfSignat cntxt sg'
+	  | _ -> failwith "Outsynrules.hnfSignat 1"
+      end
+  | SignatName nm -> hnfSignat cntxt (lookupSignatVariable cntxt nm)
+  | SignatProj (mdl, nm) ->
+       begin
+	 match hnfSignat cntxt (modulToSignat cntxt mdl) with
+             Signat elts -> findSignatvarInElems elts mdl nm
+	   | _ -> failwith "Outsynrules.hnfSignat 2"
+       end
+  | sg -> sg
+
+and modulToSignat cntxt = function
     ModulName nm        -> 
       let nm = applyModulRenaming cntxt nm
       in lookupModulVariable cntxt nm
@@ -246,7 +253,9 @@ let rec hnfTy cntxt orig_ty =
 		    None -> orig_ty
 		  | Some ty -> hnfTy cntxt ty
 	      end
-	    | _ -> failwith "hnfTy"
+	    | sg' -> (print_endline "Found unprojectable signature:";
+		      print_endline (string_of_signat sg');
+		      failwith "hnfTy")
 	end
     | _ -> orig_ty
 
