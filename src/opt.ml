@@ -532,15 +532,28 @@ and optProp ctx orig_prp =
 		is known to be false.  We also remember the truth of
 		each term when optimizing the remaining terms; in
 		addition to the normal benefits, this has the nice
-		side-effect of deleting exact duplicates. *)
-	    let rec loop ctx = function
+		side-effect of deleting exact duplicates. 
+	        Also, if we see two Implies that are converses
+	        of each other, combine them into a single Iff. *)
+	    let rec extendRaccum p = function
+		[] -> [p]
+	      | r::rs ->
+		  begin
+		    match (p,r) with
+		      (Imply(q1,q2), Imply(q1',q2')) when (q1=q2') && (q2=q1') ->
+			Iff(q1,q2) :: rs
+		    | _ -> p :: r :: rs
+		  end
+		
+	    in let rec loop ctx = function
               | ([], []) -> True
 	      | ([], raccum) -> And (List.rev raccum)
 	      | (p::ps, raccum) -> 
 		  (match optProp ctx p with
 		      True -> loop ctx (ps,raccum)
 		    | False -> False
-		    | p' -> loop (insertFact ctx p') (ps, p' :: raccum))
+		    | p' -> loop (insertFact ctx p') 
+			      (ps, extendRaccum p' raccum))
 	    in loop ctx (ps,[])
 
 	| Cor ps ->
