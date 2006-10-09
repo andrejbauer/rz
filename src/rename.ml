@@ -230,6 +230,14 @@ and renModest ctx {ty=ty; tot=p; per=q} =
 
 and renAssertion ctx (str, annots, p) =
   let ctx = forbid (mk_word str) ctx in
+  let ctx = List.fold_left
+    (fun ctx ->
+       function
+	   Annot_NoOpt -> ctx
+	 | Annot_Declare n -> forbid n ctx)
+    ctx
+    annots
+  in
     (str, annots, renProp ctx p), ctx
 
 and renAssertionList ctx lst = renList renAssertion ctx lst

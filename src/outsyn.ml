@@ -88,7 +88,9 @@ and proptype =
     | PropArrow of binding * proptype
     | PropMArrow of mbinding * proptype 
 
-and assertionAnnot = Annot_NoOpt
+and assertionAnnot =
+    Annot_NoOpt
+  | Annot_Declare of name
 
 and assertion = string * assertionAnnot list * proposition
 
@@ -1003,7 +1005,8 @@ and string_of_bnds bnds : string =
 
 and string_of_annots = function
     [] -> ""
-  | Annot_NoOpt::rest -> "[Definitional] " ^ (string_of_annots rest) 
+  | Annot_NoOpt::rest -> "[Definitional] " ^ (string_of_annots rest)
+  | Annot_Declare _::rest -> string_of_annots rest
 
 and string_of_assertion (nm, annots, p) =
   "(** Assertion " ^ nm ^ " " ^ string_of_annots annots ^ ":\n" ^ 

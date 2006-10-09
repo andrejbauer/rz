@@ -626,9 +626,15 @@ and translateTheoryElement = function
 	  (if L.is_stable pt then TopTy else NamedTy (ln_of_name (L.typename_of_name n)))
 	  binds
       in
-	(Spec (L.typename_of_name n,
-	      TySpec (if L.is_stable pt then Some TopTy else None),
-	      [("predicate_" ^ (string_of_name n), [], spec)])
+	(if L.is_stable pt then
+	   Assertion ("predicate_" ^ (string_of_name n),
+		      [Annot_Declare n],
+		      spec
+		     )
+	 else
+	   Spec (L.typename_of_name n,
+		 TySpec None,
+		 [("predicate_" ^ (string_of_name n), [], spec)])
 	) :: (if L.is_equiv pt then
 	    [Assertion    ("equiv_" ^ (string_of_name n), [],
 			    let bnds1, bnds2, s' = equiv_bindings_of_proptype pt in
@@ -651,17 +657,17 @@ and translateTheoryElement = function
       let ys = List.map fst binds in
       let idys = List.map id ys in
       let r = freshRz in
-	[Spec (
-	    L.typename_of_name n,
-	    TySpec (Some ty),
-            [((string_of_name n) ^ "_def", [],
-	     nest_forall binds
-	       (Forall ((r, ty),
-		       Iff (
-			   NamedProp (ln_of_name n, id r, idys),
-			   pApp (List.fold_left pMApp p' idys) (id r)
-		       )))
-	    )])]
+	[Spec (L.typename_of_name n,
+	       TySpec (Some ty),
+	       [((string_of_name n) ^ "_def",
+		 [],
+		 nest_forall binds
+		   (Forall ((r, ty),
+			    Iff (
+			      NamedProp (ln_of_name n, id r, idys),
+			      pApp (List.fold_left pMApp p' idys) (id r)
+			    )))
+		)])]
 
   | L.Declaration(n, L.DeclTerm(Some t, s)) ->
       let {ty=u; per=q} = translateSet s in
