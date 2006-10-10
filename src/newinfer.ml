@@ -888,9 +888,16 @@ let rec annotateExpr cntxt orig_expr =
 	  begin
 	    let    (trm1, ty1) = annotateTerm cntxt orig_expr expr1
 	    in let (trm2, ty2) = annotateTerm cntxt orig_expr expr2
-	    in let (ty, reqs) = LR.joinTypes cntxt [ty1; ty2]
+	    (** Equality in subsets is just equality of the underlying
+	        value, so it makes sense to allow equality of a value
+                and a subtype value, or two values in different subtypes
+                of the same type.  Since joinTypes won't coerce from subsets
+                we do it ourselves here. *)
+	    in let (trm1',ty1') = LR.coerceFromSubset cntxt trm1 ty1
+	    in let (trm2',ty2') = LR.coerceFromSubset cntxt trm2 ty2
+	    in let (ty, reqs) = LR.joinTypes cntxt [ty1'; ty2']
 	    in 
-		 ResProp( L.maybePAssure reqs (L.Equal(ty, trm1, trm2)),
+		 ResProp( L.maybePAssure reqs (L.Equal(ty, trm1', trm2')),
 			L.StableProp )
 	  end
 

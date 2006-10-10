@@ -252,12 +252,12 @@ simple_expr:
   | LBRACK sum_list RBRACK                    { Sum $2 }
 
   | THY theory_elements END                   { Theory (snd $2) }
+  | simple_expr PROJECT                       { Proj ($2, $1) }
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
   | RZ simple_expr                            { Rz $2 }
   | EQUIV simple_expr                         { Equiv $2 }
-  | simple_expr PROJECT                       { Proj ($2, $1) }
   | simple_expr                               { $1 } 
 
 expr:

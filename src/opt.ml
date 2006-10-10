@@ -274,7 +274,7 @@ let rec optTerm ctx orig_term =
 			   print_endline (Outsyn.string_of_term orig_term);
 			   raise (Impossible "Proj"))
 	  in 
-               (List.nth tys n, optReduce ctx (Proj(n,e')))
+               (List.nth tys n, reduce (Proj(n,e')))
 
       | Inj (lbl, None) -> 
 	  (** Non-value-carrying injections are as simple as possible. *)
