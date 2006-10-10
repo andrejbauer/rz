@@ -1494,8 +1494,13 @@ let rec coerce cntxt trm st1 st2 =
 	    (* Provide a less confusing error message, since some of
 	       the things we tried may have made no sense. *)
 	    E.tyGenericError ("No implicit coercion from  type " ^ 
-				 string_of_set st1 ^ " to type " ^ 
-				 string_of_set st2)
+				 string_of_set st1 ^ 
+			         (if st1 = st1' then "" else
+                                     "=" ^ string_of_set st1') ^
+			         " to type " ^ 
+			         string_of_set st2 ^ 
+			         (if st2 = st2' then "" else
+                                     "=" ^ string_of_set st2'))
 
 (* XXX Should this be accumulating and returning assurances? *)
 let rec coerceFromSubset cntxt trm st = 

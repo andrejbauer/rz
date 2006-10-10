@@ -109,6 +109,8 @@ thy
 
 Parameter real : Set.
 
+Definition t := real.  (* By convention, we always have the type t *)
+
 Implicit Type x y z : real.
 
 (* Ring structure *)

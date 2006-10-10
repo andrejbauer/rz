@@ -1,11 +1,17 @@
 Require Number.
 Require Sets.
 
+Definition Space := 
+thy
+  Parameter t : Set.
+end.
+
 Definition Metric :=
 fun (I : Number.Integer) =>
 fun (R : Number.Real I) =>
+fun (U : Space) =>
 thy
-  Parameter s : Set.
+  Definition s := U.t.
   Parameter d : s -> s -> R.real.
 
   Implicit Type x y z : s.
@@ -39,8 +45,9 @@ end.
 Definition CompleteMetric :=
 fun (I : Number.Integer) =>
 fun (R : Number.Real I) =>
+fun (U : Space) =>
 thy
-  include Metric I R.
+  include Metric I R U.
 
   Axiom complete:
     forall (a : I.nat -> s), cauchy a -> exists x : s, limit a x.
@@ -49,12 +56,17 @@ end.
 Definition CompactMetric :=
 fun (I : Number.Integer) =>
 fun (R : Number.Real I) =>
+fun (U : Space) => 
 thy
-  include CompleteMetric I R.
+  include CompleteMetric I R U.
 
-  Definition net (epsilon : R.positiveReal) (u : Sets.Finite(??)) :=
-    forall x : s, exists y : carrier u, R.lt (d x y) epsilon.
+  Parameter FinitePointSets : Sets.Finite(U).
+
+  Definition net (epsilon : R.positiveReal) (u : FinitePointSets.t) :=
+    forall x : s, exists y : FinitePointSets.carrier u, R.lt (d x y) epsilon.
 
   Axiom totally_bounded:
-    forall epsilon : R.positiveReal, exists u : Sets.Finite(??), net epsilon u.
+    forall epsilon : R.positiveReal, exists u : FinitePointSets.t,
+	 net epsilon u.
+
 end.
