@@ -1,16 +1,7 @@
-coq_parser.cmi: syntax.cmo 
-coq_lexer.cmo: message.cmo coq_parser.cmi 
-coq_lexer.cmx: message.cmx coq_parser.cmx 
-coq_parser.cmo: syntax.cmo name.cmo message.cmo coq_parser.cmi 
-coq_parser.cmx: syntax.cmx name.cmx message.cmx coq_parser.cmi 
 error.cmo: syntax.cmo name.cmo logic.cmo 
 error.cmx: syntax.cmx name.cmx logic.cmx 
 infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
 infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
-lexer.cmo: message.cmo 
-lexer.cmx: message.cmx 
-load.cmo: coq_parser.cmi coq_lexer.cmo 
-load.cmx: coq_parser.cmx coq_lexer.cmx 
 logic.cmo: syntax.cmo name.cmo 
 logic.cmx: syntax.cmx name.cmx 
 logicrules.cmo: name.cmo logic.cmo error.cmo 
@@ -23,22 +14,20 @@ outsyn.cmo: name.cmo logic.cmo
 outsyn.cmx: name.cmx logic.cmx 
 outsynrules.cmo: outsyn.cmo name.cmo 
 outsynrules.cmx: outsyn.cmx name.cmx 
-possibility.cmo: logic.cmo 
-possibility.cmx: logic.cmx 
 pp.cmo: outsyn.cmo name.cmo 
 pp.cmx: outsyn.cmx name.cmx 
 rename.cmo: outsyn.cmo name.cmo 
 rename.cmx: outsyn.cmx name.cmx 
 rzinfer.cmo: newinfer.cmo message.cmo logicrules.cmo logic.cmo flags.cmo \
-    error.cmo coq_parser.cmi coq_lexer.cmo 
+    error.cmo 
 rzinfer.cmx: newinfer.cmx message.cmx logicrules.cmx logic.cmx flags.cmx \
-    error.cmx coq_parser.cmx coq_lexer.cmx 
+    error.cmx 
 rz.cmo: translate.cmo thin.cmo syntax.cmo rename.cmo pp.cmo outsynrules.cmo \
     outsyn.cmo opt.cmo newinfer.cmo name.cmo message.cmo logicrules.cmo \
-    logic.cmo flags.cmo error.cmo coq_parser.cmi coq_lexer.cmo 
+    logic.cmo flags.cmo error.cmo 
 rz.cmx: translate.cmx thin.cmx syntax.cmx rename.cmx pp.cmx outsynrules.cmx \
     outsyn.cmx opt.cmx newinfer.cmx name.cmx message.cmx logicrules.cmx \
-    logic.cmx flags.cmx error.cmx coq_parser.cmx coq_lexer.cmx 
+    logic.cmx flags.cmx error.cmx 
 syntax.cmo: name.cmo 
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 

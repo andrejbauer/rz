@@ -8,9 +8,9 @@ OCAMLYFLAGS = -v
 
 INCLUDES =
 
-OCAMLFLAGS = $(INCLUDES) -g
+OCAMLFLAGS = $(INCLUDES) -g # -p a
 OCAMLCPFLAGS = 
-OCAMLOPTFLAGS =  $(INCLUDES) -unsafe -inline 5 
+OCAMLOPTFLAGS =  $(INCLUDES) -unsafe -p -inline 0 # -inline 5
 
 BYTE_OBJS = name.cmo \
 	syntax.cmo \
@@ -61,31 +61,22 @@ vtest: $(TARGETS)
 
 coq_parser.cmo: coq_parser.ml coq_parser.cmi
 
-coq_parser.cmi: coq_parser.mli syntax.cmo name.cmo
+coq_parser.cmx: coq_parser.ml coq_parser.cmi
+
+coq_parser.cmi: coq_parser.mli 
 	$(OCAMLC) $(OCAMLFLAGS) -c coq_parser.mli
 
-coq_lexer.ml: coq_lexer.mll syntax.cmo name.cmo
+coq_lexer.ml: coq_lexer.mll 
 	$(OCAMLLEX) coq_lexer.mll
+
+coq_parser.ml coq_parser.mli: coq_parser.mly
+	$(OCAMLYACC) $(OCAMLYFLAGS) coq_parser.mly
 
 $(TARGETS): %: $(BYTE_OBJS) %.cmo
 	$(OCAMLC) -o rz $(OCAMLFLAGS) $(LIB_OBJS) $+ 
 
 $(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx 
 	$(OCAMLOPT) -o rz.opt $(OCAMLOPTFLAGS) $(LIB_OPT_OBJS) $+
-
-rzinfer: name.cmo \
-	syntax.cmo \
-	message.cmo \
-	coq_parser.cmo \
-	coq_lexer.cmo \
-	flags.cmo \
-	logic.cmo \
-	error.cmo \
-	possibility.cmo \
-	logicrules.cmo \
-        newinfer.cmo \
-	rzinfer.cmo	
-	$(OCAMLC) -o rzinfer $(OCAMLFLAGS) $(LIB_OBJS) $+ 
 
 # Suffixes.
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
@@ -108,9 +99,12 @@ rzinfer: name.cmo \
 # Clean.
 clean:
 	rm -f $(TARGETS) $(OPT_TARGETS) *.cm[iox] *.o *~ *.dvi *.ps *.log *.aux
+	rm -f coq_parser.ml
+	rm -f coq_lexer.ml
+	rm -f coq_parser.mli
 
 # Depend.
-depend:
+depend: clean
 	$(OCAMLDEP) $(INCLUDES) *.mli *.ml > .depend
 
 .PHONY: clean depend
