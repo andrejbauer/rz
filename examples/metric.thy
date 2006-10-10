@@ -65,12 +65,12 @@ thy
 	 net epsilon u.
 end.
 
-Definition SeparableMetric :=
+Definition CompleteSeparableMetric :=
 fun (I : Number.Integer) =>
 fun (R : Number.Real I) =>
 fun (U : Sets.Space) =>
 thy
-  include Metric I R U.
+  include CompleteMetric I R U.
 
   Parameter CountableSets : Sets.Countable I U.
 
