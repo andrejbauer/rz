@@ -599,6 +599,7 @@ and translateTheoryElement = function
 
   | L.Declaration(n, L.DeclSet(Some s, knd)) ->
       let {ty=t; tot=p; per=q} = translateSet s in
+      let tyname = NamedTy (ln_of_name (L.typename_of_name n)) in
       let binds = bindings_of_setkind knd in
       let ys = List.map fst binds in
       let idys = List.map id ys in
@@ -607,13 +608,13 @@ and translateTheoryElement = function
 	[Spec (n, TySpec (Some t),
              [(string_of_name n ^ "_def_total", [],
 	      nest_forall binds
-		(Forall((x, NamedTy (ln_of_name (L.typename_of_name n))),
+		(Forall((x, tyname),
 		       Iff (PApp (NamedTotal (ln_of_name n, idys), id x),
 			   pApp (List.fold_left (pMApp) p idys) (id x)))));
 	      (string_of_name n ^ "_def_per", [],
 	      nest_forall binds
-		(Forall ((y,t),
-			Forall ((y',t),
+		(Forall ((y,tyname),
+			Forall ((y',tyname),
 			       Iff (PApp (PApp (NamedPer (ln_of_name n, idys), id y), id y'),
 				   pApp (pApp (List.fold_left (pMApp) q idys) (id y)) (id y'))))))]
 	)]
@@ -653,6 +654,7 @@ and translateTheoryElement = function
 
   | L.Declaration(n, L.DeclProp(Some p, pt)) ->
       let (ty, p') = translateProp p in
+      let tyname = NamedTy (ln_of_name (L.typename_of_name n)) in
       let binds = bindings_of_proptype pt in
       let ys = List.map fst binds in
       let idys = List.map id ys in
@@ -662,7 +664,7 @@ and translateTheoryElement = function
 	       [((string_of_name n) ^ "_def",
 		 [],
 		 nest_forall binds
-		   (Forall ((r, NamedTy (ln_of_name (L.typename_of_name n))),
+		   (Forall ((r, tyname),
 			    Iff (
 			      NamedProp (ln_of_name n, id r, idys),
 			      pApp (List.fold_left pMApp p' idys) (id r)

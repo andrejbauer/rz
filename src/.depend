@@ -2,6 +2,8 @@ error.cmo: syntax.cmo name.cmo logic.cmo
 error.cmx: syntax.cmx name.cmx logic.cmx 
 infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
 infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
+lexer.cmo: message.cmo 
+lexer.cmx: message.cmx 
 logic.cmo: syntax.cmo name.cmo 
 logic.cmx: syntax.cmx name.cmx 
 logicrules.cmo: name.cmo logic.cmo error.cmo 
