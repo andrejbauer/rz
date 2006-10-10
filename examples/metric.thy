@@ -1,6 +1,9 @@
 Require Number.
+Require Sets.
 
-Definition Metric := fun (I : Number.Integer) => fun (R : Number.Real I) =>
+Definition Metric :=
+fun (I : Number.Integer) =>
+fun (R : Number.Real I) =>
 thy
   Parameter s : Set.
   Parameter d : s -> s -> R.real.
@@ -30,9 +33,28 @@ thy
         forall m n : I.nat,
           I.leq k m /\ I.leq k n -> R.lt (d (a m) (a n)) epsilon.
 
-  Definition complete :=
-    forall (a : I.nat -> s), cauchy a -> exists x, limit a x.
+  Definition ball (x : s) (r : R.real) := {y : s | R.lt (d x y) r}.
+end.
 
+Definition CompleteMetric :=
+fun (I : Number.Integer) =>
+fun (R : Number.Real I) =>
+thy
+  include Metric I R.
 
+  Axiom complete:
+    forall (a : I.nat -> s), cauchy a -> exists x : s, limit a x.
+end.
 
+Definition CompactMetric :=
+fun (I : Number.Integer) =>
+fun (R : Number.Real I) =>
+thy
+  include CompleteMetric I R.
+
+  Definition net (epsilon : R.positiveReal) (u : Sets.Finite(??)) :=
+    forall x : s, exists y : carrier u, R.lt (d x y) epsilon.
+
+  Axiom totally_bounded:
+    forall epsilon : R.positiveReal, exists u : Sets.Finite(??), net epsilon u.
 end.
