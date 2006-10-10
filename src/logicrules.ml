@@ -1279,6 +1279,9 @@ and eqTheory cntxt thry1 thry2 =
 (* Inputs must be a well-formed logical model, its inferred theory, and
    some other theory *)
 and checkModelConstraint cntxt mdl1 thry1 thry2 = 
+  if thry1 = thry2 then
+    []
+  else
   try
     match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
 	(TheoryArrow ((nm1, thry1a), thry1b), 
