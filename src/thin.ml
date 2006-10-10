@@ -109,15 +109,17 @@ let joinTy' (_, tctx) s1 s2 = OR.joinTy tctx s1 s2
 (*******************)
 
 
-let nonTopTy = function
-      TopTy -> false
-    | _ -> true
+let nonTopTy ctx ty =
+  match hnfTy' ctx ty with
+    TopTy -> false
+  | _     -> true
 
-let toptyize = function
-      TupleTy [] -> TopTy
-    | TupleTy [ty] -> ty
-    | ty -> ty
-
+let toptyize ctx orig_type = 
+  match hnfTy ctx orig_type with
+      TupleTy []            -> TopTy
+    | TupleTy [ty]          -> ty
+    | SumTy   []            -> VoidTy
+    | _                     -> orig_type
  
 
 
@@ -129,31 +131,50 @@ let toptyize = function
 
 (* thinTy : ty -> ty
 
-     Never returns TupleTy [] or TupleTy[_]
+     Never returns 
+       TupleTy []
+       TupleTy[_]
+       SumTy   []
  *)
-let rec thinTy (ctx: context) ty = 
-  let ans = match (hnfTy ctx ty) with
+let rec thinTy (ctx: context) orig_type = 
+  match orig_type with
     ArrowTy (ty1, ty2) -> 
-      (match (thinTy ctx ty1, thinTy ctx ty2) with
-        (TopTy, ty2')  -> ty2'
+      let ty1' = thinTy ctx ty1
+      in let ty2' = thinTy ctx ty2
+      in
+      (match (hnfTy' ctx ty1', hnfTy' ctx ty2') with
+        (TopTy, _)     -> ty2'
       | (_,     TopTy) -> TopTy
-      | (ty1',  ty2')  -> ArrowTy(ty1', ty2'))
+      | _              -> ArrowTy(ty1', ty2'))
 
     | TupleTy tys -> 
-	let tys' = List.filter nonTopTy (List.map (thinTy ctx) tys)
-	in toptyize (TupleTy tys')
+	let tys' = List.filter (nonTopTy ctx) (List.map (thinTy ctx) tys)
+	in toptyize ctx (TupleTy tys')
 	  
     | SumTy lst ->
-	SumTy (List.map (function
-	 		 (lbl, None) ->    (lbl, None)
-		       | (lbl, Some ty) -> (lbl, match thinTy ctx ty with
-			                           TopTy -> None
- 			                         | ty' -> Some ty')) 
-                      lst)
+	let rec filterArms = function
+	    [] -> []
+	  | (lbl,None) :: rest -> (lbl,None) :: filterArms rest
+	  | (lbl, Some ty) :: rest ->
+	      let ty' = thinTy ctx ty
+	      in match hnfTy' ctx ty' with
+	      | TopTy  -> (lbl, None) :: filterArms rest
+	      | _      -> (lbl, Some ty') :: filterArms rest
+	in
+	   toptyize ctx (SumTy (filterArms lst))
 
-    | nonunit_ty -> nonunit_ty
-  in
-    hnfTy ctx ans
+    | _ ->
+
+	(** Normally when the input is a type abbreviation with a
+	definition , then we can just return that type abbreviation
+	unchanged because its definition would have been thinned.
+	However, if a type is just an abbreviation for top it might
+	disappear completely, in which case we should return TopTy
+	instead. *)
+	(match hnfTy ctx orig_type with
+	  TopTy -> TopTy
+	| _ -> orig_type)
+
 
 let rec thinTyOption ctx = function
     None    -> None
@@ -167,9 +188,10 @@ let rec thinTyOption ctx = function
 let rec thinBinds ctx = function
     [] -> []
   | (n,ty) :: bnds ->
-      (match thinTy ctx ty with
-	   TopTy -> thinBinds ctx bnds
-	 | ty' -> (n,ty')::(thinBinds ctx bnds))
+      let ty' = thinTy ctx ty
+      in match hnfTy' ctx ty' with
+	TopTy -> thinBinds ctx bnds
+      | _     -> (n,ty')::(thinBinds ctx bnds)
 
 let wrapObsTerm disappearingTerm wrapee =
   let (obs, _) = hoist disappearingTerm
@@ -188,7 +210,8 @@ let wrapPObsProp disappearingProp wrapee =
             e' is the thinimized version of e
             t' is the thinimized type (i.e., the type of e')
 
-      Never returns Tuple [] or Tuple [x]
+      Never returns Tuple [] or Tuple [x] or an injection into a
+      single-element sum.
 *)       
 let rec thinTerm (ctx : context) orig_term = 
   try
@@ -197,7 +220,7 @@ let rec thinTerm (ctx : context) orig_term =
 	  begin
 	    let nm = applyTermRenaming ctx nm
 	    in let (oldty, newty) = lookupTermVariable ctx nm
-            in  match newty with
+            in  match hnfTy' ctx newty with
 		TopTy -> (oldty, wrapObsTerm orig_term Dagger, TopTy)
               | _     -> (oldty, Id(LN(None,nm)), newty)
 	  end
@@ -210,7 +233,7 @@ let rec thinTerm (ctx : context) orig_term =
 		    (findTermvarInElems elems mdl nm,
 		     findTermvarInElems elems' mdl' nm)
 		| _ -> failwith "Thin.thinTerm: invalid path"
-	    in match newty with
+	    in match hnfTy' ctx newty with
 		TopTy -> (oldty, wrapObsTerm orig_term Dagger, TopTy)
 	      | _     -> (oldty, Id(LN(Some mdl',nm)), newty)
 	  end
@@ -226,12 +249,15 @@ let rec thinTerm (ctx : context) orig_term =
 		  let (_, e2', ty2') = thinTerm ctx e2
 		  in let ty' = thinTy ctx oldty
 		  in let trm' = App(e1', e2')
-		  in (match (ty', hnfTy' ctx ty2') with
-		      (TopTy, _) -> (* Application can be eliminated entirely *)
+		  in (match (hnfTy' ctx ty', hnfTy' ctx ty2') with
+		      (TopTy, _) -> 
+                        (* Application can be eliminated entirely *)
 			((oldty, wrapObsTerm trm' Dagger, TopTy))
-		    | (_, TopTy) -> (* Argument is dagger and can be eliminated *)
+		    | (_, TopTy) -> 
+                        (* Argument is dagger and can be eliminated *)
                         ((oldty, wrapObsTerm e2' e1', ty1'))
-		    | (ty', _)    -> (* Both parts matter. *)
+		    | (ty', _)    -> 
+                        (* Both parts matter. *)
 			((oldty, (App(e1', e2')), ty')))
 	      | (t1, _, _) -> (print_string "In application ";
 			       print_string (Outsyn.string_of_term (App(e1,e2)));
@@ -259,7 +285,7 @@ let rec thinTerm (ctx : context) orig_term =
 		  [] -> Dagger
 		| [e] -> e
 		| _ -> Tuple es')
-	  in (TupleTy ts, e', toptyize (TupleTy ts'))
+	  in (TupleTy ts, e', toptyize ctx (TupleTy ts'))
       | Proj (n,e) as proj_code ->
 	  let (ty, e', ty') = thinTerm ctx e
 	  in let tys = 
@@ -280,7 +306,8 @@ let rec thinTerm (ctx : context) orig_term =
 		if index = n then
 		  (* The projection returns some interesting value.
 		     Check if it's the only interesting value in the tuple. *)
-		  if (nonunits = 0 && List.length(List.filter nonTopTy tys')=0) then
+		  if (nonunits = 0 && 
+		      List.length(List.filter (nonTopTy ctx) tys')=0) then
 		    (* Yes; there were no non-unit types before or after. *)
 		    (ty, e', ty')
 		  else
@@ -299,13 +326,18 @@ let rec thinTerm (ctx : context) orig_term =
       | Inj (lbl, None) -> 
 	  (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
       | Inj (lbl, Some e) ->
-	  let (ty, e', ty') = thinTerm ctx e in
-	    if ty' = TopTy then
-	      (SumTy [(lbl,Some ty)], 
-	       wrapObsTerm e' (Inj (lbl, None)), 
-	       SumTy[(lbl, None)])
-	    else
-	      (SumTy [(lbl,Some ty)], Inj(lbl, Some e'), SumTy[(lbl, Some ty')])
+	  begin
+	    let (ty, e', ty') = thinTerm ctx e
+	    in match (hnfTy' ctx ty') with
+	      TopTy -> 
+		(SumTy [(lbl,Some ty)], 
+		 wrapObsTerm e' (Inj (lbl, None)), 
+		 SumTy[(lbl, None)])
+	    | _ -> 
+		(SumTy [(lbl,Some ty)], 
+		 Inj(lbl, Some e'), 
+		 SumTy[(lbl, Some ty')])
+	  end
       | Case (e, arms) ->
 	  let (ty, e', ty') = thinTerm ctx e
 	  in let doArm = function
@@ -336,7 +368,7 @@ let rec thinTerm (ctx : context) orig_term =
 	    in let (ctx,name1) = renameBoundTermVar ctx name1
 	    in let ctx' = insertTermVariable ctx name1 (ty1,ty1')
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
-	    in match ty1' with
+	    in match hnfTy' ctx ty1' with
 		TopTy -> (ty2, wrapObsTerm term1' term2', ty2')
 	      | _ -> (ty2, Let(name1, term1', term2'), ty2')
 	  end
