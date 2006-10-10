@@ -74,17 +74,7 @@ let insertTypeVariable cntxt nm ty =
   else
   { cntxt with typevars = NameMap.add nm ty cntxt.typevars }
 
-let insertModulVariable cntxt nm ty =
-  if NameMap.mem nm cntxt.modulvars then
-    failwith ("Outsyn: shadowing of modul variable " ^ (string_of_name nm))
-  else
-  { cntxt with modulvars = NameMap.add nm ty cntxt.modulvars }
-
-let insertSignatVariable cntxt nm ty =
-  if NameMap.mem nm cntxt.signatvars then
-    failwith ("Outsyn: shadowing of signat variable " ^ (string_of_name nm))
-  else
-  { cntxt with signatvars = NameMap.add nm ty cntxt.signatvars }
+(** Other functions later *)
 
 (************************************)
 (** {3 Renaming of Bound Variables} *)
@@ -230,6 +220,22 @@ and modulToSignat cntxt = function
 	      loop (insertSignatVariable cntxt nm sg) rest
       in Signat (loop cntxt defs)
 
+
+and insertModulVariable cntxt nm sg =
+  if NameMap.mem nm cntxt.modulvars then
+    failwith ("Outsyn: shadowing of modul variable " ^ (string_of_name nm))
+  else
+    let sg' =  hnfSignat cntxt sg
+    in
+    { cntxt with modulvars = NameMap.add nm sg' cntxt.modulvars }
+
+and insertSignatVariable cntxt nm sg =
+  if NameMap.mem nm cntxt.signatvars then
+    failwith ("Outsyn: shadowing of signat variable " ^ (string_of_name nm))
+  else
+    let sg' =  hnfSignat cntxt sg
+    in
+    { cntxt with signatvars = NameMap.add nm sg' cntxt.signatvars }
 
 (***********************************)
 (** {2 Utility functions for types *)

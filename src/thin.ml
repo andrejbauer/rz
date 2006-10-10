@@ -166,19 +166,25 @@ let rec thinTy (ctx: context) orig_type =
 	      | _      -> (lbl, Some ty') :: filterArms rest
 	in
 	   toptyize ctx (SumTy (filterArms lst))
-
-    | NamedTy _ ->
+    | _ ->
 	(** Normally when the input is a type abbreviation with a
 	definition , then we can just return that type abbreviation
 	unchanged because its definition would have been thinned.
-	However, if a type is just an abbreviation for top it might
-	disappear completely, in which case we should return TopTy
-	instead. *)
-	(match hnfTy ctx orig_type with
-	  TopTy -> TopTy
-	| _ -> orig_type)
+	However, if a type is just an abbreviation for top (or something
+	isomorphic to top) it might disappear completely, in which case 
+	we should return TopTy instead. But we don't want to go into
+        an infinite loop...*)
+	let ty' = hnfTy ctx orig_type
+	in
+	if (orig_type <> ty') then
+	  (* It must have been a type abbreviation *)
+	  (match thinTy ctx ty' with
+	    TopTy -> TopTy
+	  | _ -> orig_type)
+	else
+	  orig_type
 
-    | _ -> orig_type
+
 
 
 let rec thinTyOption ctx = function
@@ -249,26 +255,27 @@ let rec thinTerm (ctx : context) orig_term =
 
       | App(e1,e2) -> 
 	  begin
-	    match thinTerm ctx e1 with
-		(ArrowTy(ty2, oldty), e1', ty1') ->
-		  let (_, e2', ty2') = thinTerm ctx e2
-		  in let ty' = thinTy ctx oldty
-		  in let trm' = App(e1', e2')
-		  in (match (ty', ty2') with
-		      (TopTy, _) -> 
-                        (* Application can be eliminated entirely *)
-			((oldty, wrapObsTerm trm' Dagger, TopTy))
-		    | (_, TopTy) -> 
-                        (* Argument is dagger and can be eliminated *)
-                        ((oldty, wrapObsTerm e2' e1', ty1'))
-		    | (ty', _)    -> 
-                        (* Both parts matter. *)
-			((oldty, (App(e1', e2')), ty')))
-	      | (t1, _, _) -> (print_string "In application ";
-			       print_string (Outsyn.string_of_term (App(e1,e2)));
-			       print_string " the operator has type ";
-			       print_endline (Outsyn.string_of_ty t1);
-			       raise (Impossible "App"))
+	    let (ty1, e1', ty1') = thinTerm ctx e1
+	    in match hnfTy ctx ty1 with
+	      ArrowTy(ty2, oldty) ->
+		let (_, e2', ty2') = thinTerm ctx e2
+		in let ty' = thinTy ctx oldty
+		in let trm' = App(e1', e2')
+		in (match (ty', ty2') with
+		  (TopTy, _) -> 
+                    (* Application can be eliminated entirely *)
+		    ((oldty, wrapObsTerm trm' Dagger, TopTy))
+		| (_, TopTy) -> 
+                    (* Argument is dagger and can be eliminated *)
+                    ((oldty, wrapObsTerm e2' e1', ty1'))
+		| (ty', _)    -> 
+                    (* Both parts matter. *)
+		    ((oldty, (App(e1', e2')), ty')))
+	    | _ -> (print_string "In application ";
+		    print_string (Outsyn.string_of_term (App(e1,e2)));
+		    print_string " the operator has type ";
+		    print_endline (Outsyn.string_of_ty ty1);
+		    raise (Impossible "App"))
 	  end
       | Lambda((name1, ty1), term2) ->
 	  (let    ty1' = thinTy ctx ty1
