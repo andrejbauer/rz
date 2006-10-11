@@ -284,7 +284,7 @@ let rec translateSet = function
 	  tot = p;
 	  per = 
 	    let x, x' = freshRz, freshRz in
-	      makePer (x, x',t) (Equal (id x, id x'));
+	      makePer (x, x',t) (And [pApp p (id x); Equal (id x, id x')]);
 	}
 
   | L.SApp (s, t) ->
