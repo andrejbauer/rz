@@ -40,8 +40,8 @@ let fresh4 ty = fresh ty, fresh ty, fresh ty, fresh ty
 let freshRz = freshName goodRz
 let freshList tys = List.map fresh tys
 
-let sbp nm t p = PLet (nm, t, p)
-let sbt nm t u = Let (nm, t, u)
+let sbp nm t p = PLet ([nm], t, p)
+let sbt nm t u = Let ([nm], t, u)
 
 let rec map3 f lst1 lst2 lst3 =
   match lst1, lst2, lst3 with
@@ -161,7 +161,7 @@ let rec translateSet = function
 	      makeTot
 		(t, v)
 		(fst (List.fold_right
-		       (fun nm (p,k) -> PLet (nm, Proj (k, id t), p), k-1)
+		       (fun nm (p,k) -> PLet ([nm], Proj (k, id t), p), k-1)
 		       nms
 		       (And (List.map2 (fun nm w -> pApp w.tot (id nm)) nms ws), n)
 		))
@@ -170,9 +170,9 @@ let rec translateSet = function
 	      let t, u = fresh2 v in
 	      let nms' = List.map refresh nms in
 		makePer (t, u, v) 
-		  (fst (List.fold_right (fun nm (p,k) -> PLet (nm, Proj (k, id t), p), k-1) nms
+		  (fst (List.fold_right (fun nm (p,k) -> PLet ([nm], Proj (k, id t), p), k-1) nms
 			 (
-			   (fst (List.fold_right (fun nm (p,k) -> PLet (nm, Proj (k, id u), p), k-1) nms'
+			   (fst (List.fold_right (fun nm (p,k) -> PLet ([nm], Proj (k, id u), p), k-1) nms'
 				  (And (map3 (fun nm nm' w -> pApp (pApp w.per (id nm)) (id nm')) nms nms' ws), n))
 			   ), n)
 		  ))
@@ -356,7 +356,7 @@ and translateTerm = function
       let n' = refresh n in
       let v = translateTerm u in
       let v' = sbt n (id n') v in
-	Let (n, translateTerm t,
+	Let ([n], translateTerm t,
 	     Obligation ([],
 			 Forall ((n', ty1),
 				 Imply (pApp (pApp p1 (id n)) (id n'),
@@ -372,7 +372,7 @@ and translateTerm = function
       let n' = refresh n in
       let v = translateTerm u in
       let v' = sbt n (id n') v in
-	Let (n, translateTerm t,
+	Let ([n], translateTerm t,
 	     Obligation ([],
 			 Forall ((n', ty1), Imply (
 				   pApp (pMApp (pMApp q (id n)) (id n')) (dagger_of_ty ty2),
@@ -380,7 +380,7 @@ and translateTerm = function
 			 v))
 
   | L.Let ((n, s), u, v, _) ->
-      Let (n, translateTerm u, translateTerm v)
+      Let ([n], translateTerm u, translateTerm v)
 
   | L.Subin (t, (x, s), p) ->
       let (ty, p') = translateProp p in
@@ -559,7 +559,7 @@ and translateProp = function
 
   | L.PLet ((n,s), t, p) ->
       let ty, q = translateProp p in
-	ty, PLet (n, translateTerm t, q)
+	ty, PLet ([n], translateTerm t, q)
       
 
 and bindings_of_proptype = function

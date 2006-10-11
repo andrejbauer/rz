@@ -86,10 +86,18 @@ let addToRenaming map oldnm newnm =
   else *)
     NameMap.add oldnm newnm map
 
+let addListToRenaming map oldnms newnms =
+  List.fold_left2 addToRenaming map oldnms newnms
+
 (* Stolen from logicrules.ml *)
 let renameBoundTermVar cntxt nm =
   let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.termrenaming nm nm'}, nm')
+
+let renameBoundTermVars cntxt nms =
+  let nms' = refreshList nms in
+    ({cntxt with termrenaming = 
+        addListToRenaming cntxt.termrenaming nms nms'}, nms')
 
 let renameBoundTypeVar cntxt nm =
   let nm' = refresh nm in
@@ -147,7 +155,7 @@ let rec findTermvarInElems elts mdl nm =
       [] -> failwith ("Outsynrules.findTermvarInElems: " ^ string_of_name nm)
     | Spec(nm', ValSpec ([],ty), _) :: _ when nm=nm' -> substTy subst ty
     | Spec(nm', ValSpec (_,ty), _) :: _ when nm=nm' -> 
-	failwith ("Outsynrules.findTermvarInelems: polymorphic valspec " ^ 
+	failwith ("Outsynrules.findTermvarInElems: polymorphic valspec " ^ 
 	  string_of_name nm)
     | elem :: rest -> loop (updateSubstForElem subst mdl elem) rest
   in loop emptysubst elts
@@ -237,6 +245,8 @@ and insertSignatVariable cntxt nm sg =
     in
     { cntxt with signatvars = NameMap.add nm sg' cntxt.signatvars }
 
+
+
 (***********************************)
 (** {2 Utility functions for types *)
 (***********************************)
@@ -265,6 +275,16 @@ let rec hnfTy cntxt orig_ty =
 	end
     | _ -> orig_ty
 
+
+let insertTermVariableLet ctx nms ty =
+  match nms with
+    [nm] -> insertTermVariable ctx nm ty
+  | nms -> 
+      match hnfTy ctx ty with
+	TupleTy tys ->
+	  List.fold_left2 insertTermVariable ctx nms tys
+      | _ -> failwith "Outsynrules.insertTermVariableLet"
+  
 
 let joinTy ctx s1 s2 = 
    if (s1 = s2) then
@@ -335,3 +355,63 @@ and insertFact ({facts=facts} as ctx) prp =
 
 and insertFacts ctx prps =
   List.fold_left insertFact ctx prps
+
+
+let rec typeOf ctx = function
+  | Id(LN(None,nm)) -> 
+      let nm = applyTermRenaming ctx nm
+      in lookupTermVariable ctx nm
+  | Id(LN(Some mdl, nm)) ->
+       begin
+	 match hnfSignat ctx (modulToSignat ctx mdl) with
+             Signat elts -> findTermvarInElems elts mdl nm
+	   | _ -> failwith "Outsynrules.typeOf: Id"
+       end
+  | EmptyTuple -> UnitTy
+  | Dagger -> TopTy
+  | App(trm1, _) ->
+      begin
+	match hnfTy ctx (typeOf ctx trm1) with
+	  ArrowTy(_,ty) -> ty
+	| _ -> failwith "Outsynrules.typeOf App"
+      end
+  | Lambda((nm,ty1),trm2) -> 
+      let ctx' = insertTermVariable ctx nm ty1
+      in ArrowTy(ty1, typeOf ctx' trm2)
+  | Tuple trms ->
+      TupleTy (List.map (typeOf ctx) trms)
+  | Proj(n, trm) ->
+      begin
+	match (hnfTy ctx (typeOf ctx trm)) with
+	  TupleTy tys -> List.nth tys n
+	| _ -> failwith "Outsynrules.typeOf: Proj"
+      end
+  | Inj(lbl, None) -> SumTy([(lbl,None)])
+  | Inj(lbl, Some trm) -> SumTy([(lbl, Some (typeOf ctx trm))])
+  | Case(_, arms) ->
+      begin
+	let typeOfArm = function
+	    (_,Some (nm,ty),trm) ->
+	      let ctx' = insertTermVariable ctx nm ty
+	      in typeOf ctx' trm
+	  | (_,None,trm) -> typeOf ctx trm
+	in let armTys = List.map typeOfArm arms
+	in match armTys with
+	  [] -> VoidTy
+	| (ty::tys) -> List.fold_left (joinTy ctx) ty tys
+      end
+  | Let([nm],trm1,trm2) ->
+      let ctx' = insertTermVariable ctx nm (typeOf ctx trm1)
+      in typeOf ctx' trm2
+  | Let(nms,trm1,trm2) ->
+      let ctx' = insertTermVariableLet ctx nms (typeOf ctx trm1)
+      in typeOf ctx' trm2
+  | Obligation(bnds,_,trm) ->
+      let insertTermBnd ctx (nm,ty) = insertTermVariable ctx nm ty
+      in let ctx' = List.fold_left insertTermBnd ctx bnds 
+      in typeOf ctx' trm
+  | PolyInst (trm,tys) ->
+      failwith "Outsynrules.typeOf PolyInst unimplemented"
+
+
+

@@ -36,9 +36,13 @@ and output_term_13 ppf = function
 	  fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]]" 
 	    output_term_13 t  output_arms lst)
 
-    | Let (n, t, u) ->
+    | Let ([n], t, u) ->
 	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
             output_name n  output_term_12 t  output_term_13 u
+
+    | Let (ns, t, u) ->
+	fprintf ppf "@[let (%a) = @[<hov>%a@]@ in %a@]"
+            output_names ns  output_term_12 t  output_term_13 u
 
     | trm -> output_term_12 ppf trm
 
@@ -313,9 +317,13 @@ and output_prop_14 ppf = function
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
         output_binds bnds   output_prop_13 p   output_prop_14 q
 
-  | PLet (n, t, u) ->
+  | PLet ([n], t, u) ->
 	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
             output_name n  output_term_12 t  output_prop_14 u
+
+  | PLet (ns, t, u) ->
+	fprintf ppf "@[let (%a) = @[<hov>%a@]@ in %a@]"
+            output_names ns  output_term_12 t  output_prop_14 u
 
   | prp -> output_prop_13 ppf prp
     

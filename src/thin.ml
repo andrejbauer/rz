@@ -374,7 +374,7 @@ let rec thinTerm (ctx : context) orig_term =
 	  in let (tyarms, arms', tyarms') = doArms arms
 	  in (tyarms, Case(e',arms'), tyarms')
 
-      | Let(name1, term1, term2) ->
+      | Let([name1], term1, term2) ->
 	  begin
 	    let    (ty1, term1', ty1') = thinTerm ctx term1
 	    in let (ctx,name1) = renameBoundTermVar ctx name1
@@ -382,8 +382,11 @@ let rec thinTerm (ctx : context) orig_term =
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
 	    in match ty1' with
 		TopTy -> (ty2, wrapObsTerm term1' term2', ty2')
-	      | _ -> (ty2, Let(name1, term1', term2'), ty2')
+	      | _ -> (ty2, Let([name1], term1', term2'), ty2')
 	  end
+
+      | Let _ ->
+	  failwith "Thinning doesn't support pattern-matching in lets...yet"
 
       | Obligation(bnds, prop, trm) ->
 	  let (names,tys) = List.split bnds
@@ -530,7 +533,7 @@ and thinProp (ctx: context) orig_prp =
 	  in
 	       PCase (thinTerm' ctx e1, thinTerm' ctx e2, List.map doArm arms)
 
-      | PLet(nm, trm1, prp2) ->
+      | PLet([nm], trm1, prp2) ->
 	  begin
 	    let    (ty1, trm1', ty1') = thinTerm ctx trm1
 	    in let (ctx,nm) = renameBoundTermVar ctx nm
@@ -538,8 +541,12 @@ and thinProp (ctx: context) orig_prp =
 	    in let prp2' = thinProp ctx' prp2
 	    in match ty1' with
 		TopTy -> wrapObsProp trm1' prp2'
-	      | _     -> PLet(nm, trm1', prp2')
+	      | _     -> PLet([nm], trm1', prp2')
 	  end
+
+      | PLet _ ->
+	  failwith "Thinning doesn't support pattern-matching in lets...yet"
+
   with e ->
     (print_endline ("\n\n...in (thin) " ^
 		       string_of_proposition orig_prp);

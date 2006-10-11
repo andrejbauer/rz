@@ -113,10 +113,10 @@ and renTerm ctx = function
 	     ctx
 	     lst)
 
-  | Let (nm, t1, t2) ->
+  | Let (nms, t1, t2) ->
       let t1 = renTerm ctx t1 in
-      let nm, ctx = renName ctx nm in
-	Let (nm, t1, renTerm ctx t2)
+      let nms, ctx = renNameList ctx nms in
+	Let (nms, t1, renTerm ctx t2)
 	  
   | Obligation (bnds, p, t) ->
       let bnds, ctx = renBindingList ctx bnds in
@@ -218,10 +218,10 @@ and renProp ctx = function
 	    lst
       )
 
-  | PLet (nm, t, p) ->
+  | PLet (nms, t, p) ->
       let t = renTerm ctx t in
-      let nm, ctx = renName ctx nm in
-	PLet (nm, t, renProp ctx p)
+      let nms, ctx = renNameList ctx nms in
+	PLet (nms, t, renProp ctx p)
 
 and renPropList ctx lst = renList' renProp ctx lst
 
