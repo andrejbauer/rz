@@ -74,6 +74,20 @@ and renBindingOpt ctx = function
       let bnd, ctx = renBinding ctx bnd in
 	Some bnd, ctx
 
+and renPat ctx pat = 
+  match pat with
+    WildPat -> (pat, ctx)
+  | VarPat nm -> 
+      let nm, ctx = renName ctx nm in
+      (VarPat nm, ctx)
+  | TuplePat pats -> 
+      let pats', ctx = renList renPat ctx pats in
+      TuplePat pats', ctx
+  | ConstrPat (_, None) -> (pat, ctx)
+  | ConstrPat (lb, Some bnd) ->
+      let bnd, ctx = renBinding ctx bnd in
+      ConstrPat(lb, Some bnd), ctx
+
 and renLN ctx = function
     LN (Some mdl, nm) ->
       let mdl = renModul ctx mdl in
@@ -103,20 +117,17 @@ and renTerm ctx = function
   | Inj (lb, Some t) -> Inj (lb, Some (renTerm ctx t))
       
   | Case (t, lst) ->
+      let renArm ct (pat, t) =
+	let pat, ct = renPat ct pat in
+	(pat, renTerm ct t)
+      in
       Case (renTerm ctx t,
-	   renList'
-	     (fun ct -> function
-		 (lb, None, t) -> (lb, None, renTerm ct t)
-	       | (lb, Some bnd, t) ->
-		   let bnd, ct = renBinding ct bnd in
-		     (lb, Some bnd, renTerm ct t))
-	     ctx
-	     lst)
-
-  | Let (nms, t1, t2) ->
+	    renList' renArm ctx lst)
+	
+  | Let (pat, t1, t2) ->
       let t1 = renTerm ctx t1 in
-      let nms, ctx = renNameList ctx nms in
-	Let (nms, t1, renTerm ctx t2)
+      let pat, ctx = renPat ctx pat in
+	Let (pat, t1, renTerm ctx t2)
 	  
   | Obligation (bnds, p, t) ->
       let bnds, ctx = renBindingList ctx bnds in
@@ -205,23 +216,18 @@ and renProp ctx = function
       let bnds, ctx = renBindingList ctx bnds in
 	PObligation (bnds, renProp ctx p1, renProp ctx p2)
 
-  | PCase (t1, t2, lst) ->
-      PCase (
-	  renTerm ctx t1,
-	  renTerm ctx t2,
-	  renList'
-	    (fun ct (lb, b1, b2, p) ->
-	      let b1, ct = renBindingOpt ct b1 in
-	      let b2, ct = renBindingOpt ct b2 in
-		(lb, b1, b2, renProp ct p))
-	    ctx
-	    lst
-      )
+  | PCase (t, lst) ->
+      let renPArm ct (pat, p) =
+	let pat, ct = renPat ct pat in
+	(pat, renProp ct p)
+      in
+      PCase (renTerm ctx t,
+	     renList' renPArm ctx lst)
 
-  | PLet (nms, t, p) ->
+  | PLet (pat, t, p) ->
       let t = renTerm ctx t in
-      let nms, ctx = renNameList ctx nms in
-	PLet (nms, t, renProp ctx p)
+      let pat, ctx = renPat ctx pat in
+	PLet (pat, t, renProp ctx p)
 
 and renPropList ctx lst = renList' renProp ctx lst
 

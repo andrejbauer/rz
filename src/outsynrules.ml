@@ -107,7 +107,6 @@ let renameBoundModulVar cntxt nm =
   let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.modulrenaming nm nm'}, nm')
 
-
 let rec renameTermBindings cntxt = function
     [] -> (cntxt, [])
   | (nm,ty)::bnds -> 
@@ -116,6 +115,27 @@ let rec renameTermBindings cntxt = function
       in let (cntxt''', bnds') = renameTermBindings cntxt'' bnds
       in (cntxt''', (nm',ty)::bnds')
 
+
+let rec renamePattern ctx pat = 
+  match pat with
+    WildPat -> (ctx, pat)
+  | VarPat nm -> 
+      failwith "Outsynrules.renamePattern: cannot infer type for VarPat"
+  | TuplePat pats ->
+      let (ctx', pats') = renamePatterns ctx pats
+      in (ctx', TuplePat pats)
+  | ConstrPat(_, None) -> (ctx, pat)
+  | ConstrPat(lbl, Some (nm,ty)) ->
+      let (ctx', nm') = renameBoundTermVar ctx nm
+      in let ctx'' = insertTermVariable ctx nm ty
+      in (ctx'', ConstrPat(lbl, Some(nm', ty)))
+
+and renamePatterns ctx = function
+    [] -> (ctx, [])
+  | pat::pats ->
+      let (ctx', pat') = renamePattern ctx pat
+      in let (ctx'', pats') = renamePatterns ctx' pats
+      in (ctx'', pat'::pats')
 
 let applyRenaming map nm = 
   if (NameMap.mem nm map) then
@@ -276,14 +296,19 @@ let rec hnfTy cntxt orig_ty =
     | _ -> orig_ty
 
 
-let insertTermVariableLet ctx nms ty =
-  match nms with
-    [nm] -> insertTermVariable ctx nm ty
-  | nms -> 
-      match hnfTy ctx ty with
-	TupleTy tys ->
-	  List.fold_left2 insertTermVariable ctx nms tys
-      | _ -> failwith "Outsynrules.insertTermVariableLet"
+let rec insertTermVariableLet ctx pat ty =
+  match pat with
+    WildPat       -> ctx
+  | VarPat nm     -> insertTermVariable ctx nm ty
+  | TuplePat pats -> 
+      begin
+	match hnfTy ctx ty with
+	  TupleTy tys ->
+	    List.fold_left2 insertTermVariableLet ctx pats tys
+	| _ -> failwith "Outsynrules.insertTermVariableLet 1"
+      end
+  | ConstrPat _ -> failwith "Outsynrules.insertTermVariableLet 2"
+
   
 
 let joinTy ctx s1 s2 = 
@@ -356,6 +381,15 @@ and insertFact ({facts=facts} as ctx) prp =
 and insertFacts ctx prps =
   List.fold_left insertFact ctx prps
 
+let rec insertPattern ctx = function
+    WildPat  -> ctx
+  | VarPat _ -> 
+      failwith "Outsynrules.insertPattern: Can't infer type of pattern"
+  | TuplePat pats -> 
+      List.fold_left insertPattern ctx pats
+  | ConstrPat(lbl, None) -> ctx
+  | ConstrPat(lbl, Some(nm,ty)) ->
+      insertTermVariable ctx nm ty
 
 let rec typeOf ctx = function
   | Id(LN(None,nm)) -> 
@@ -390,21 +424,16 @@ let rec typeOf ctx = function
   | Inj(lbl, Some trm) -> SumTy([(lbl, Some (typeOf ctx trm))])
   | Case(_, arms) ->
       begin
-	let typeOfArm = function
-	    (_,Some (nm,ty),trm) ->
-	      let ctx' = insertTermVariable ctx nm ty
+	let typeOfArm (pat,trm) =
+	      let ctx' = insertPattern ctx pat
 	      in typeOf ctx' trm
-	  | (_,None,trm) -> typeOf ctx trm
 	in let armTys = List.map typeOfArm arms
 	in match armTys with
 	  [] -> VoidTy
 	| (ty::tys) -> List.fold_left (joinTy ctx) ty tys
       end
-  | Let([nm],trm1,trm2) ->
-      let ctx' = insertTermVariable ctx nm (typeOf ctx trm1)
-      in typeOf ctx' trm2
-  | Let(nms,trm1,trm2) ->
-      let ctx' = insertTermVariableLet ctx nms (typeOf ctx trm1)
+  | Let(pat,trm1,trm2) ->
+      let ctx' = insertTermVariableLet ctx pat (typeOf ctx trm1)
       in typeOf ctx' trm2
   | Obligation(bnds,_,trm) ->
       let insertTermBnd ctx (nm,ty) = insertTermVariable ctx nm ty

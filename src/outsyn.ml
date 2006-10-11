@@ -45,6 +45,12 @@ and binding = name * ty
 
 and mbinding = name * modest
 
+and pattern =
+  | WildPat 
+  | VarPat of name
+  | TuplePat of pattern list
+  | ConstrPat of label * binding option
+
 and term =
     Id of longname
   | EmptyTuple
@@ -54,8 +60,8 @@ and term =
   | Tuple of term list
   | Proj of int * term
   | Inj of label * term option
-  | Case of term * (label * binding option * term) list
-  | Let of name list * term * term
+  | Case of term * (pattern * term) list
+  | Let of pattern * term * term   (* Should be an irrefutable pattern *)
   | Obligation of binding list * proposition * term
   | PolyInst of term * ty list
 
@@ -80,8 +86,9 @@ and proposition =
   | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
   | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
-  | PCase of term * term * (label * binding option * binding option * proposition) list (* propositional case *)
-  | PLet of name list * term * proposition          (* Local term-binding *)
+  | PCase of term * (pattern * proposition) list (* propositional case *)
+  | PLet of pattern * term * proposition          (* Local term-binding *)
+	(* PLet should only have irrefutable patterns *)
 
 and proptype = 
     | Prop
@@ -146,10 +153,16 @@ let nested_lambda args trm =
   List.fold_right (fun b t -> Lambda (b, t)) args trm
 
 let nested_let names defns trm =
-  List.fold_right2 (fun n t1 t2 -> Let ([n], t1, t2)) names defns trm
+  List.fold_right2 (fun n t1 t2 -> Let (VarPat n, t1, t2)) names defns trm
 
 let nested_plet names defns prp =
-  List.fold_right2 (fun n t1 p2 -> PLet ([n], t1, p2)) names defns prp
+  List.fold_right2 (fun n t1 p2 -> PLet (VarPat n, t1, p2)) names defns prp
+
+let nested_let' pats defns trm =
+  List.fold_right2 (fun pat t1 t2 -> Let (pat, t1, t2)) pats defns trm
+
+let nested_plet' pats defns prp =
+  List.fold_right2 (fun pat t1 p2 -> PLet (pat, t1, p2)) pats defns prp
 
 let rec dagger_of_ty = function
     NamedTy _ -> Dagger (* XXX: suspicous, should unfold definition? *)
@@ -161,8 +174,13 @@ let rec dagger_of_ty = function
   | ArrowTy (t1, t2) -> Lambda ((wildName(), t1), Dagger)
   | PolyTy _ -> failwith "Cannot make a dagger from PolyTy"
 
+let fLet(a,b,c) = Let(a,b,c)
+let fPLet(a,b,c) = PLet(a,b,c)
 
 (** ======== FREE VARIABLES ======= *)
+
+let fvList' fvFn' flt acc lst =
+  List.fold_left (fvFn' flt) acc lst
 
 let rec fvTerm' flt acc = function
   | Id (LN(None,nm)) -> 
@@ -178,26 +196,36 @@ let rec fvTerm' flt acc = function
   | Inj (_, None) -> acc
   | Case (t, lst) ->
       fvCaseArms' flt (fvTerm' flt acc t) lst
-  | Let (ns, t1, t2) -> fvTerm' flt (fvTerm' (ns@flt) acc t2) t1
+  | Let (pat, t1, t2) -> 
+      fvPat' flt (fvTerm' flt (fvTerm' (bvPat pat@flt) acc t2) t1) pat
   | Obligation (bnds, p, t) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvTerm' flt' (fvProp' flt' acc p) t
   | PolyInst(trm, tys) ->
       fvTyList' flt (fvTerm' flt acc trm) tys
 
-and fvCaseArm' flt acc (_, bnd, t) =
-  begin
-    match bnd with
-	None ->
-	  fvTerm' flt acc t
-      | Some (n,s) ->
-	  fvTerm' (n::flt) (fvTy' flt acc s) t
-  end
+and fvPat' flt acc = function
+    WildPat -> acc
+  | VarPat nm -> if List.mem nm acc then acc else nm :: acc
+  | TuplePat lst -> fvPatList' flt acc lst
+  | ConstrPat (_,None) -> acc
+  | ConstrPat (_,Some(nm,ty)) -> fvTy' (nm::flt) acc ty
+
+and bvPat = function
+    WildPat -> []
+  | VarPat nm -> [nm]
+  | TuplePat lst -> List.concat (List.map bvPat lst)
+  | ConstrPat (_,None) -> []
+  | ConstrPat (_,Some(nm,_)) -> [nm]
+
+and fvPatList' flt acc lst = fvList' fvPat' flt acc lst
+
+and fvCaseArm' flt acc (pat, trm) =
+  fvTerm' ((bvPat pat)@flt) (fvPat' flt acc pat) trm
 
 
+and fvCaseArms' flt acc arms = fvList' fvCaseArm' flt acc arms
 
-and fvCaseArms' flt acc arms =
-    List.fold_left (fvCaseArm' flt) acc arms
 
 and fvProp' flt acc = function
     True -> acc
@@ -225,27 +253,25 @@ and fvProp' flt acc = function
       let flt' = (List.map fst bnds) @ flt
       in fvProp' flt' (fvProp' flt' acc p) q
 
-  | PCase (t1, t2, lst) ->
-	fvPCaseArms' flt (fvTerm' flt (fvTerm' flt acc t1) t2) lst
-  | PLet (ns, t, p) -> fvProp' (ns@flt) (fvTerm' flt acc t) p
+  | PCase (t, lst) ->
+	fvPCaseArms' flt (fvTerm' flt acc t) lst
+  | PLet (pat, t, p) -> 
+      fvPat' flt (fvProp' ((bvPat pat)@flt) (fvTerm' flt acc t) p) pat
 
-and fvPCaseArm' flt acc (_, bnd1, bnd2, t) = 
-  let flt1 = match bnd1 with None -> flt | Some (n, _) -> n::flt in
-  let flt2 = match bnd2 with None -> flt | Some (n, _) -> n::flt1 in
-    fvProp' flt2 acc t
+and fvPCaseArm' flt acc (pat,prp) = 
+  fvProp' ((bvPat pat)@flt) (fvPat' flt acc pat) prp  
 
-and fvPCaseArms' flt acc arms =
-      List.fold_left (fvPCaseArm' flt) acc arms
+and fvPCaseArms' flt acc arms = fvList' fvPCaseArm' flt acc arms
 
 and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
-and fvPropList' flt acc = List.fold_left (fun a t -> fvProp' flt a t) acc
+and fvPropList' flt acc lst = fvList' fvProp' flt acc lst
 
-and fvTermList' flt acc = List.fold_left (fun a t -> fvTerm' flt a t) acc
+and fvTermList' flt acc lst = fvList' fvTerm' flt acc lst
 
 and fvModestList' flt acc = List.fold_left (fun a t -> fvModest' flt a (snd t)) acc
 
-and fvTyList' flt acc = List.fold_left (fvTy' flt) acc
+and fvTyList' flt acc lst = fvList' fvTy' flt acc lst
 
 and fvTy' flt acc = function
     NamedTy(LN(None,nm)) ->
@@ -326,7 +352,8 @@ let rec countTerm (x: countPred) trm =
     | Inj (_, Some t) -> countTerm x t
     | Inj (_, None) -> 0
     | Case (t, lst) -> List.fold_left (fun a arm -> a + countCaseArm x arm) (countTerm x t) lst
-    | Let (ns, t1, t2) -> 
+    | Let (_, t1, t2) -> 
+	(* XXX : Ignores types in patterns *)
 	countTerm x t1 + countTerm x t2
     | Obligation (bnds, p, t) ->
 	countProp x p + countTerm x t
@@ -336,7 +363,7 @@ let rec countTerm (x: countPred) trm =
 and countTermList x lst = countList countTerm x lst
 
 and countCaseArm x = function
-    (_, _, t) -> countTerm x t
+    (_, t) -> countTerm x t   (*** XXX: Ignores types in patterns *)
 
 and countProp x prp =
     if x.propPred prp then
@@ -365,20 +392,14 @@ and countProp x prp =
       | PObligation (bnds, p, q) -> 
 	  countProp x p + countProp x q
 
-  | PCase (t1, t2, lst) ->
-      List.fold_left
-      (fun a arm -> a + countPCaseArm x arm)
-      (countTerm x t1 + countTerm x t2) lst
+  | PCase (t, lst) ->
+      (countTerm x t) + (countList countPCaseArm x lst)
 
-  | PLet (ns, t, p) ->
+  | PLet (_, t, p) ->
+      (* XXX: Ignores types in patterns *)
       countTerm x t + countProp x p
 
-and countPCaseArm x (_, bnd1, bnd2, p) = 
-  match bnd1, bnd2 with
-      None, None -> countProp x p
-    | Some (n, _), None
-    | None, Some (n, _) -> countProp x p
-    | Some (n, _), Some (n', _) -> countProp x p
+and countPCaseArm x (_, p) = countProp x p
 
 and countModest x {tot=p; per=q} = countProp x p + countProp x q
 
@@ -413,88 +434,6 @@ and countTys x lst = countList countTy x lst
 
 and countModul x _ = 0 (* XXX wrong if we ever use explicit modul defs *)
 
-
-(************************************)
-(** {2: Only-In-Projection Testing} *)
-(************************************)
-
-(*
-
-OBSOLETE
-
-let rec opTerm x = function
-  | Id (LN(None,nm))  -> x <> nm
-  | Id (LN(Some _, _)) -> true
-  | EmptyTuple -> true
-  | Dagger -> true
-  | App (u, v) -> opTerm x u && opTerm x v
-  | Lambda ((n, s), t) -> if x = n then true else opTerm x t
-  | Tuple lst -> opTermList x lst
-  | Proj (_, Id _) -> true
-  | Proj (_, t) -> opTerm x t
-  | Inj (_, Some t) -> opTerm x t
-  | Inj (_, None) -> true
-  | Case (t, lst) -> List.fold_left (fun a arm -> a && opCaseArm x arm) (opTerm x t) lst
-  | Let (ns, t1, t2) -> opTerm x t1 && (List.mem x ns || opTerm x t2)
-  | Obligation (bnds, p, t) ->
-      if List.exists (fun (n,_) -> n = x) bnds then
-	true
-      else
-	opProp x p && opTerm x t
-  | PolyInst(trm, tys) -> opTerm x trm
-
-and opTermList x lst =
-  List.fold_left (fun a t -> a && opTerm x t) true lst
-
-and opCaseArm x = function
-    (_, Some (n, _), t) -> if x = n then true else opTerm x t
-  | (_, None, t)        -> opTerm x t
-
-and opProp x = function
-    True -> true
-  | False -> true
-  | NamedTotal (_, lst) -> opTermList x lst
-  | NamedPer (_, lst) -> opTermList x lst
-  | Equal (u, v) -> opTerm x u && opTerm x v
-  | And lst -> opPropList x lst
-  | Cor lst -> opPropList x lst
-  | Imply (u, v) -> opProp x u && opProp x v
-  | Forall ((n, _), p) -> if x = n then true else opProp x p
-  | ForallTotal ((n, _), p) -> if x = n then true else opProp x p
-  | Cexists ((n, _), p) -> if x = n then true else opProp x p
-  | Not p -> opProp x p
-  | Iff (p, q) -> opProp x p && opProp x q
-  | NamedProp (_, t, lst) -> opTerm x t && opTermList x lst
-  | PApp (p, t) -> opProp x p && opTerm x t
-  | PMApp (p, t) -> opProp x p && opTerm x t
-  | PLambda ((n, _), p) -> if x = n then true else opProp x p
-  | PMLambda ((n, {tot=p; per=q}), r) ->
-      opProp x p && opProp x q && (if x = n then true else opProp x r)
-  | PObligation (bnds, p, q) -> 
-      opProp x p &&
-      (if List.exists (fun (n,_) -> n = x) bnds then true else opProp x q)
-
-  | PCase (t1, t2, lst) ->
-      List.fold_left
-      (fun a arm -> a && opPCaseArm x arm)
-      (opTerm x t1 && opTerm x t2) lst
-
-  | PLet (ns, t, p) ->
-      opTerm x t && (List.mem x ns || opProp x p)
-
-and opPCaseArm x (_, bnd1, bnd2, p) = 
-  match bnd1, bnd2 with
-      None, None -> opProp x p
-    | Some (n, _), None
-    | None, Some (n, _) -> if x = n then true else opProp x p
-    | Some (n, _), Some (n', _) -> if x = n || x = n' then true else opProp x p
-
-and opModest x {tot=p; per=q} = opProp x p && opProp x q
-
-and opPropList x lst = List.fold_left (fun a p -> a && opProp x p) true lst
-
-and opModestList x lst = List.fold_left (fun a (_, m) -> a && opModest x m) true lst
-*)
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
@@ -679,26 +618,48 @@ and substProp ?occ sbst = function
       in 
 	PObligation (bnds', substProp ?occ sbst' p, substProp ?occ sbst' q)
 
-  | PCase (t1, t2, lst) -> 
-	PCase (substTerm ?occ sbst t1, substTerm ?occ sbst t2,
+  | PCase (trm, lst) -> 
+	PCase (substTerm ?occ sbst trm,
 	       substPCaseArms ?occ sbst lst)
-  | PLet (ns, t, p) ->
-      let ns' = refreshList ns in
-      let sbst' = renamingList' sbst ns ns'
+  | PLet (pat, t, p) ->
+      let (pat', sbst') = substPat ?occ sbst pat
       in
-	PLet (ns', substTerm ?occ sbst t, 
+	PLet (pat', substTerm ?occ sbst t, 
 	     substProp ?occ sbst' p)
 
-and substPCaseArm ?occ sbst (lb, bnd1, bnd2, p) =
-  let update_subst sbst0 = function
-      None -> None, sbst0
-    | Some (n, ty) ->
-	let n' =  refresh n in
-      	  Some (n', substTy ?occ sbst ty), insertTermvar sbst0 n (id n')
-  in let bnd1', sbst1 = update_subst sbst  bnd1
-  in let bnd2', sbst2 = update_subst sbst1 bnd2 
-  in (lb, bnd1', bnd2', substProp ?occ sbst2 p)
+and substPat' ?occ (sbst : subst) (pat:pattern) : pattern * (name*name) list = 
+  match pat with
+    WildPat -> (pat, [])
+  | VarPat n ->
+      let n' = refresh n in
+      (VarPat n', [(n,n')])
+  | TuplePat pats -> 
+      let (pats', pairs) = substPats' ?occ sbst pats
+      in (TuplePat pats', pairs)
+  | ConstrPat(_,None) -> (pat, [])
+  | ConstrPat(lbl, Some(n,ty)) -> 
+      let n' =  refresh n in
+      (ConstrPat(lbl, Some (n', substTy ?occ sbst ty)),
+       [(n,n')])
 
+and substPats' ?occ (sbst : subst) pats = 
+  let (pats', pairlists) = List.split (List.map (substPat' ?occ sbst) pats)
+  in (pats', List.concat pairlists)
+
+and substPat ?occ (sbst : subst) (pat : pattern) : pattern * subst =
+  (* Substitute into all the whole pattern first *)
+  let (pat', pairs) = substPat' ?occ sbst pat
+  (* ...and then add the renamed variables to the substitution,
+     in parallel. *)
+  in let (ns,ns') = List.split pairs
+  in let sbst' = renamingList' sbst ns ns'
+  in (pat', sbst')
+	  
+
+and substPCaseArm ?occ sbst (pat, p) =
+  let (pat', sbst') = substPat ?occ sbst pat
+  in (pat', substProp ?occ sbst' p)
+    
 and substPCaseArms ?occ sbst arms =
   List.map (substPCaseArm ?occ sbst) arms
 
@@ -727,11 +688,11 @@ and substTerm ?occ sbst orig_term =
 	      let n' = refresh n in
 		Lambda ((n', substTy ?occ sbst ty), 
 		        substTerm ?occ (insertTermvar sbst n (id n')) t)
-	  | Let (ns, t, u) ->
-	      let ns' = refreshList ns in
-	      let sbst' = renamingList' sbst ns ns'
+	  | Let (pat, t, u) ->
+	      let (pat', sbst') = substPat ?occ sbst pat
 	      in
-		Let (ns', substTerm ?occ sbst t, substTerm ?occ sbst' u)
+	      Let (pat', substTerm ?occ sbst t, 
+		   substTerm ?occ sbst' u)
 	  | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
 	  | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
 	  | Inj (k, None) -> Inj (k, None)
@@ -747,13 +708,9 @@ and substTerm ?occ sbst orig_term =
 	      PolyInst(substTerm ?occ sbst trm,
 		      List.map (substTy ?occ sbst) tys)
 		
-and substCaseArm ?occ sbst = function
-    (lb, None, t) -> (lb, None, substTerm ?occ sbst t)
-  | (lb, Some (n, ty), t) ->
-      let n' = refresh n in
-	(lb,
-	Some (n', substTy ?occ sbst ty),
-	substTerm ?occ (insertTermvar sbst n (id n')) t)
+and substCaseArm ?occ sbst (pat, t) =
+  let (pat', sbst') = substPat ?occ sbst pat
+  in  (pat', substTerm ?occ sbst' t)
 	  
 and substCaseArms ?occ sbst arms = 
    List.map (substCaseArm ?occ sbst) arms
@@ -956,18 +913,12 @@ and string_of_term' level t =
     | Case (t, lst) ->
 	(13, "match " ^ (string_of_term' 13 t) ^ " with " ^
 	   (String.concat " | "
-	      (List.map (function
-			     (lb, None, u) -> "`" ^ lb ^ " -> " ^  (string_of_term' 11 u)
-			   | (lb, Some (n,ty), u) -> 
-			       "`" ^ lb ^ " (" ^ (string_of_name n) ^ " : " ^
-			       (string_of_ty ty) ^ ") -> " ^
-			       (string_of_term' 11 u)) lst)))
-    | Let ([n], t, u) ->
-	(13, "let " ^ (string_of_name n) ^ " = " ^
-	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
-    | Let (ns, t, u) ->
-	(13, "let (" ^ (String.concat "," (List.map string_of_name ns)) ^ 
-	 ") = " ^ (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u))
+	      (List.map (fun (pat, u) -> (string_of_pat pat) ^ " -> " ^
+		           (string_of_term' 11 u))
+		 lst)))
+    | Let (pat, t, u) ->
+	(13, "let " ^ (string_of_pat pat) ^ " = " ^
+	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u) ^ " end")
     | Obligation (bnds, p, trm) ->
 	(12,
 	 "assure " ^ (string_of_bnds bnds) ^ " . " ^
@@ -1044,27 +995,29 @@ and string_of_prop level p =
 	  (string_of_prop 14 p) ^ " in " ^ string_of_prop 14 q ^ " end")
 *)
 
-    | PCase (t1, t2, lst) ->
-	let s_of_b lb = function
-	    None -> "`" ^ lb
-	  | Some (n, ty) -> "`" ^ lb ^ " (" ^ string_of_name n ^ ":" ^ string_of_ty ty ^ ")"
-	in
-	  (14, "match " ^ (string_of_term' 13 t1) ^ ", " ^ (string_of_term' 13 t2) ^ " with " ^
+    | PCase (t, lst) ->
+	(14, "match " ^ (string_of_term' 13 t) ^ " with " ^
 	    (String.concat " | "
-	      (List.map (fun (lb, bnd1, bnd2, p) ->
-		s_of_b lb bnd1  ^ " " ^ s_of_b lb bnd2 ^ " => " ^ (string_of_prop 14 p)) lst)) ^
-	    " | _, _ -> false")
-    | PLet ([n], t, p) ->
-	(14, "let " ^ (string_of_name n) ^ " = " ^
-	   (string_of_term' 13 t) ^ " in " ^ (string_of_prop 14 p))
-    | PLet (ns, t, p) ->
-	(14, "let (" ^ (String.concat "," (List.map string_of_name ns)) ^ 
-	 ") = " ^ (string_of_term' 13 t) ^ " in " ^ (string_of_prop 14 p))
+	      (List.map (fun (pat, p) ->
+		string_of_pat pat  ^ " => " ^ (string_of_prop 14 p)) lst)))
+    | PLet (pat, t, p) ->
+	(14, "let " ^ (string_of_pat pat) ^ " = " ^
+	   (string_of_term' 13 t) ^ " in " ^ (string_of_prop 14 p) ^ " end")
 
   in
     if level' > level then "(" ^ str ^ ")" else str
 
 and string_of_proposition p = string_of_prop 999 p
+
+and string_of_pat = function
+    WildPat -> "_"
+  | VarPat nm -> string_of_name nm
+  | TuplePat pats -> 
+      "(" ^ (String.concat "," (List.map string_of_pat pats)) ^ ")"
+  | ConstrPat(lb, None) ->
+      "`" ^ lb
+  | ConstrPat(lb, Some (n,ty)) ->
+      "`" ^ lb ^ " (" ^ string_of_name n ^ ":" ^ string_of_ty ty ^ ")"
 
 and string_of_proptype' level pt = 
   let (level', str) = match pt with
@@ -1177,6 +1130,39 @@ let rec listminus lst1 lst2 =
 	else 
 	  x :: (listminus xs lst2)
 
+(* The next two functions are used in reduce, but we need to pull them
+   out of the (very large) mutually-recursive nest so that they can be
+   used polymorphically.
+*)
+type 'a pattern_match =
+    Yes of 'a | Maybe | No
+
+let rec pmatch (fLet : pattern * term * 'a -> 'a) matchee pat (trm:'a) = 
+  match matchee, pat with 
+    (_, WildPat) ->
+      Yes (fLet(WildPat, matchee, trm))
+  | (_, VarPat nm) ->
+      Yes (fLet(VarPat nm, matchee, trm))
+  | (Tuple matchees, TuplePat pats ) -> 
+      pmatches fLet matchees pats trm
+  | (Inj(lbl1,None), ConstrPat(lbl2,None)) when lbl1 = lbl2 ->
+      Yes trm
+  | (Inj(lbl1,Some trm1), ConstrPat(lbl2, Some(nm2,_))) when lbl1 = lbl2 ->
+      Yes (fLet(VarPat nm2,trm1, trm))
+  | (Inj _, ConstrPat _) -> No
+  | _                    -> Maybe
+
+and pmatches fLet matchees pats trm =
+  match matchees, pats with
+    [], [] -> Yes trm
+  | m::ms, p::ps ->
+      begin
+	match pmatches fLet ms ps trm with
+	  No       -> No
+	| Maybe    -> Maybe
+	| Yes trm' -> pmatch fLet m p trm' 
+      end
+  | _, _ -> failwith "Outsyn.pmatches"
 
 (*
    Subtleties in hosting obligations.
@@ -1567,23 +1553,23 @@ and hoist trm =
              obs1 obs2 trm' arms'
         in (obs', Case(trm'', arms''))
 
-    | Let(nms, trm1, trm2) ->
+    | Let(pat, trm1, trm2) ->
 	(* See comments for PLet *)
 
 	let (obs1, trm1') = hoist trm1
 	in let (preobs2, trm2') = hoist trm2
 
 	in let (obs1', preobs2', trm1'', trm2'') = 
-	  merge2Obs' ~bad:nms fvTerm fvTerm substTerm substTerm
+	  merge2Obs' ~bad:(bvPat pat) fvTerm fvTerm substTerm substTerm
              obs1 preobs2 trm1' trm2'
 
 	in let addPremise (bnds,prp) =
-	  (bnds, reduceProp (PLet(nms, trm1'', prp)))
+	  (bnds, reduceProp (PLet(pat, trm1'', prp)))
 	in let obs2' = List.map addPremise preobs2'
 
 	in let obs' = obs1' @ obs2'
 
-	in (obs', reduce (Let(nms, trm1'', trm2'')))
+	in (obs', reduce (Let(pat, trm1'', trm2'')))
 
 (*
 
@@ -1635,25 +1621,15 @@ and hoistPCaseArms arms = hoistList hoistPCaseArm fvPCaseArm substPCaseArm arms
 
 and hoistCaseArms arms = hoistList hoistCaseArm fvCaseArm substCaseArm arms
 
-and hoistPCaseArm (lbl, bndopt1, bndopt2, prp) =
+and hoistPCaseArm (pat, prp) =
   let (obs,prp') = hoistProp prp
-  in let obs' = 
-    match bndopt1 with
-	None -> obs
-      | Some (nm,ty) -> List.map (quantifyOb nm ty) obs
-  in let obs'' = 
-    match bndopt2 with
-	None -> obs'
-      | Some (nm,ty) -> List.map (quantifyOb nm ty) obs'
-  in (obs'', (lbl, bndopt1, bndopt2, prp'))
+  in let obs' = List.map (quantifyObPat pat) obs
+  in (obs', (pat, prp'))
 
-and hoistCaseArm (lbl, bndopt, trm) =
+and hoistCaseArm (pat, trm) =
   let (obs,trm') = hoist trm
-  in let obs' = 
-    match bndopt with
-	None -> obs
-      | Some (nm,ty) -> List.map (quantifyOb nm ty) obs
-  in (obs', (lbl, bndopt, trm'))
+  in let obs' = List.map (quantifyObPat pat) obs
+  in (obs', (pat, trm'))
 
 (* Fortunately, terms cannot appear in types, so we only have
    to universally quantify the proposition parts of the
@@ -1661,7 +1637,18 @@ and hoistCaseArm (lbl, bndopt, trm) =
 and quantifyOb nm ty (bnd, prp) = (bnd, Forall((nm,ty), prp))
 
 and quantifyObTotal nm ty (bnd, prp) = (bnd, ForallTotal((nm,ty), prp))
+
+and quantifyObPat pat (ob : binding list * proposition) =
+  match pat with
+    WildPat -> ob
+  | VarPat _ -> failwith "quantifyObPat: can't infer variable's type"
+  | TuplePat pats -> quantifyObPats pats ob
+  | ConstrPat(_,None) -> ob
+  | ConstrPat(_,Some(nm,ty)) -> quantifyOb nm ty ob
   
+and quantifyObPats pats ob = 
+  List.fold_right quantifyObPat pats ob
+
 and hoistProp orig_prp =
   let ans = 
     match orig_prp with
@@ -1758,15 +1745,13 @@ and hoistProp orig_prp =
 	    merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
 	  in (obs', PMApp(prp'', trm''))
 	    
-      | PCase(trm1, trm2, arms) -> 
-	  let (obs1, trm1') = hoist trm1
-	  in let (obs2, trm2') = hoist trm2
-	  in let (obs3, arms') = hoistPCaseArms arms
-	  in let (obs', trm1'', trm2'', arms'') =
-	    merge3Obs fvTerm fvTerm fvPCaseArms
-              substTerm substTerm substPCaseArms
-              obs1 obs2 obs3 trm1' trm2' arms'
-	  in (obs', PCase(trm1', trm2', arms''))
+      | PCase(trm, arms) -> 
+	  let (obs1, trm') = hoist trm
+	  in let (obs2, arms') = hoistPCaseArms arms
+	  in let (obs', trm'', arms'') =
+	    merge2Obs fvTerm fvPCaseArms substTerm substPCaseArms
+              obs1 obs2 trm' arms'
+	  in (obs', PCase(trm'', arms''))
 	    
       | PObligation(bnd, prp1, prp2) ->
           (* For justification of this code, see the comments for 
@@ -1776,7 +1761,7 @@ and hoistProp orig_prp =
 	in let (obs2, prp2') = hoistProp prp2
 	in (obs1 @ obs2, prp2') 
 	  
-    | PLet(nms, trm, prp) ->
+    | PLet(pat, trm, prp) ->
 	(* BEFORE (assuming only assure is in body):
 	   let nm = (assure m:t.q(m) in trm(m)) 
                 in (assure n:t.p(n,nm) in prp(n,nm))
@@ -1793,7 +1778,7 @@ and hoistProp orig_prp =
 	in let (preobs2, prp') = hoistProp prp
 	  
 	in let (obs1', preobs2', trm'', prp'') = 
-	  merge2Obs' ~bad:nms fvTerm fvProp substTerm substProp
+	  merge2Obs' ~bad:(bvPat pat) fvTerm fvProp substTerm substProp
              obs1 preobs2 trm' prp'
 
 	(* Normally we'd call addPremise before merging the
@@ -1818,12 +1803,12 @@ and hoistProp orig_prp =
                   only then wrap preobs2.
 	*)
 	in let addPremise (bnds,p) =
-	  (bnds, reduceProp (PLet(nms, trm'', p)))
+	  (bnds, reduceProp (PLet(pat, trm'', p)))
 	in let obs2' = List.map addPremise preobs2'
 
 	in let obs' = obs1' @ obs2'
 
-	in (obs', reduceProp (PLet(nms, trm'', prp'')))
+	in (obs', reduceProp (PLet(pat, trm'', prp'')))
 
   in
     (
@@ -1865,7 +1850,7 @@ and simpleTerm = function
 and reduce trm =
   match trm with 
     App(Lambda ((nm, _), trm1), trm2) ->
-      reduce (Let([nm], trm2, trm1))
+      reduce (Let(VarPat nm, trm2, trm1))
 
   | App(Obligation(bnds,prp,trm1), trm2) ->
       (* Complicated but short method of renaming bnds to
@@ -1875,11 +1860,11 @@ and reduce trm =
       in let trm'' = substTerm (termSubst nm trm2) trm'
       in reduce trm'' 
 
-  | App(Let(nms,trm1,trm2),trm3) ->
-      let nms' = refreshList nms
-      in let trm2' = substTerm (renamingList nms nms') trm2
+  | App(Let(pat,trm1,trm2),trm3) ->
+      let (pat',sbst) = substPat emptysubst pat (* Side-effect of refreshing *)
+      in let trm2' = substTerm sbst trm2
       in let body' = reduce (App(trm2',trm3))
-      in reduce (Let(nms',trm1,body'))
+      in reduce (Let(pat',trm1,body'))
 
   | Obligation(bnds,prp,trm) ->
       Obligation(bnds, prp, reduce trm)
@@ -1894,18 +1879,23 @@ and reduce trm =
       else
 	reduce trm1
 
-  | Let (nms1, Let (nms2, trm2a, trm2b), trm3) ->
-      let nms2' = refreshList nms2
-      in let trm2b' = substTerm (renamingList nms2 nms2') trm2b
-      in reduce (Let(nms2', trm2a, Let(nms1, trm2b', trm3)))
+  | Let (pat1, Let (pat2, trm2a, trm2b), trm3) ->
+      (* Side-effect of refreshing *)
+      let (pat2',sbst) = substPat emptysubst pat2
+      in let trm2b' = substTerm sbst trm2b
+      in reduce (Let(pat2', trm2a, Let(pat1, trm2b', trm3)))
 
-  | Let ([nm1], trm2, trm3) ->
-      (* May lose obligations *)
+  | Let (VarPat nm1, trm2, trm3) ->
+      (* XXX May lose obligations *)
       if (simpleTerm trm2) ||
          (countTerm (occurrencesOfTermName nm1) trm3 < 2) then 
 	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
       else
 	trm
+
+  | Let (WildPat, trm2, trm3) ->
+      (* XXX May lose obligations *)
+      trm3
 
   | Proj(n, trm) ->
       begin
@@ -1914,74 +1904,58 @@ and reduce trm =
 (*	      let (obs, trms') = hoistTerms trms
 	      in foldObligation obs (reduce (List.nth trms' n)) *)
 	      List.nth trms n
-	  | Let (nms1, trm2, trm3) -> 
-	      Let (nms1, trm2, reduce (Proj (n, trm3)))
+	  | Let (pat1, trm2, trm3) -> 
+	      Let (pat1, trm2, reduce (Proj (n, trm3)))
 	  | Obligation (bnd1, prp2, trm3) ->
 	      Obligation (bnd1, prp2, reduce (Proj (n, trm3)))
           | trm' -> Proj(n, trm')
       end
 
-  | Case(trm1, arms) as trm ->
-      begin
-	let rec findArmNone lbl = function
-	    (l,None,t)::rest -> 
-	      if (lbl = l) then t else findArmNone lbl rest
-	  | (_,Some _, _)::rest -> findArmNone lbl rest
-	  | _ ->
-	      failwith "Impossible:  Opt.reduce Case/findArmNone"
-		
-	in let rec findArmSome lbl = function
-	    (l,Some(v,_),t)::rest -> 
-	      if (lbl = l) then (v, t) else findArmSome lbl rest
-	  | (_,None, _)::rest -> findArmSome lbl rest
-	  | _ ->
-	      failwith "Impossible:  Opt.reduce Case/findArmSome"
+  | Case(trm1, arms) as orig_term ->
+      let trm1' = reduce trm1
+      in let rec armLoop = function
+	  [] -> failwith "Outsyn.reduce Case: ran out of arms"
+	| (pat,trm)::rest ->
+	    match pmatch fLet trm1' pat trm with
+	      Yes trm' -> reduce trm'
+	    | No       -> armLoop rest
+	    | Maybe    -> orig_term
+      in armLoop arms
 
-	in let (obs, trm1', arms') = 
-(*	  (match hoist trm with
-	      (obs, Case(trm1', arms')) -> (obs, trm1', arms')
-	    | _ -> failwith "Impossible: Opt.reduce Case/hoist")
-*)
-	  ([], trm1, arms)
-
-	in
-	     match reduce trm1' with
-                 Inj(lbl,None) -> 
-		   foldObligation obs (reduce (findArmNone lbl arms'))
-
-	       | Inj(lbl,Some trm3) -> 
-		   foldObligation obs 
-		     (let (nm,trm2) = findArmSome lbl arms'
-		       in reduce (Let([nm],trm3,trm2)))
-		     
-	       | _ -> trm (* unhoisted! *)
-      end
   | trm -> trm
 
 and reduceProp prp = 
   match prp with
       PApp(PLambda ((nm, _), prp1), trm2) ->
-	reduceProp (PLet([nm], trm2, prp1))
+	reduceProp (PLet(VarPat nm, trm2, prp1))
 
-    | PApp(PLet(nms,trm1,prp2),trm3) ->
-	let nms' = refreshList nms
-	in let prp2' = substProp (renamingList nms nms') prp2
+    | PApp(PLet(pat,trm1,prp2),trm3) ->
+	let (pat',sbst) = 
+	  substPat emptysubst pat (* Side-effect of refreshing *)
+	in let prp2' = substProp sbst prp2
 	in let body' = reduceProp (PApp(prp2',trm3))
-	in reduceProp (PLet(nms',trm1,body'))
+	in reduceProp (PLet(pat',trm1,body'))
 
-    | PLet (nms1, Let (nms2, trm2a, trm2b), prp3) ->
-	let nms2' = refreshList nms2
-	in let trm2b' = substTerm (renamingList nms2 nms2') trm2b
-	in reduceProp (PLet(nms2', trm2a, PLet(nms1, trm2b', prp3)))
+    | PLet (pat1, Let (pat2, trm2a, trm2b), prp3) ->
+	let (pat2',sbst) = 
+	  substPat emptysubst pat2 (* Side-effect of refreshing *)
+	in let trm2b' = substTerm sbst trm2b
+	in reduceProp (PLet(pat2', trm2a, PLet(pat1, trm2b', prp3)))
 	  
-    | PLet([nm], trm1, prp2) ->
+    | PLet(VarPat nm, trm1, prp2) ->
+	(* XXX: May lose obligations *)
 	if (simpleTerm trm1) || 
 	(countProp (occurrencesOfTermName nm) prp2 < 2) then
           reduceProp (substProp (termSubst nm trm1) prp2)
 	else
           prp
 
+    | PLet(WildPat, trm1, prp2) -> 
+	(* XXX: May lose obligations *)
+          prp2
+
     | PMApp(PMLambda((nm, _), prp2), trm1) ->
+	(* XXX: May lose obligations *)
 	if (simpleTerm trm1) || 
 	(countProp (occurrencesOfTermName nm) prp2 < 2) then
           reduceProp (substProp (termSubst nm trm1) prp2)
@@ -2033,5 +2007,16 @@ and reduceProp prp =
 	  | _ -> prp
       end
 *)
+
+  | PCase(trm1, arms) as orig_prop ->
+      let trm1' = reduce trm1
+      in let rec armLoop = function
+	  [] -> False (* Ran out of possible arms *)
+	| (pat,trm)::rest ->
+	    match pmatch fPLet trm1' pat trm with
+	      Yes trm' -> reduceProp trm'
+	    | No       -> armLoop rest
+	    | Maybe    -> orig_prop
+      in armLoop arms
 
   | prp -> prp

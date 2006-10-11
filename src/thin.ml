@@ -204,6 +204,38 @@ let rec thinBinds ctx = function
 	TopTy -> thinBinds ctx bnds
       | _     -> (n,ty')::(thinBinds ctx bnds)
 
+let rec thinPattern ctx pat = 
+  match pat with
+    WildPat -> (ctx, pat)
+  | VarPat nm -> 
+(*      let (ctx', nm') = renameBoundTermVar ctx nm
+      in let ctx'' = insertTermVariable ctx nm ??
+      in (ctx', VarPat nm')
+*)
+      failwith "Thin.thinPattern:  can't infer type of VarPat"
+  | TuplePat pats -> 
+      let (ctx', pats') = thinPatterns ctx pats
+      in (ctx', TuplePat pats)
+  | ConstrPat(_, None) -> (ctx, pat)
+  | ConstrPat(lbl, Some(nm,ty)) ->
+      begin
+	let ty' = thinTy ctx ty
+	in let (ctx', nm') = renameBoundTermVar ctx nm
+	in 
+	match ty' with
+	  TopTy -> (ctx', ConstrPat(lbl, None))
+	| _ -> 
+	    let ctx'' = insertTermVariable ctx nm (ty,ty')
+	    in (ctx'', ConstrPat(lbl, Some (nm, ty')))
+      end
+
+and thinPatterns ctx = function
+    [] -> (ctx, [])
+  | pat::pats ->
+      let (ctx', pat') = thinPattern ctx pat
+      in let (ctx'', pats') = thinPatterns ctx' pats
+      in (ctx'', pat'::pats')
+
 let wrapObsTerm disappearingTerm wrapee =
   let (obs, _) = hoist disappearingTerm
   in foldObligation obs wrapee
@@ -352,16 +384,10 @@ let rec thinTerm (ctx : context) orig_term =
 	  end
       | Case (e, arms) ->
 	  let (ty, e', ty') = thinTerm ctx e
-	  in let doArm = function
-	      (lbl, Some (name2,ty2),  e3) -> 
-		let ty2' = thinTy ctx ty2 
-		in let (ctx,name2) = renameBoundTermVar ctx name2
-		in let ctx' = insertTermVariable ctx name2 (ty,ty')
-		in let (ty3, e3', ty3') = thinTerm ctx' e3
-		in (ty3, (lbl, Some (name2, ty2'), e3'), ty3')
-	    | (lbl, None,  e3) -> 
-		let (ty3, e3', ty3') = thinTerm ctx e3
-		in (ty3, (lbl, None, e3'), ty3')
+	  in let doArm (pat, e3) = 
+	    let (ctx', pat') = thinPattern ctx pat
+	    in let (ty3, e3', ty3') = thinTerm ctx' e3
+		in (ty3, (pat', e3'), ty3')
 	  in let rec doArms = function
 	      [] -> raise (Impossible "Case")
 	    | [arm] -> let (tyarm, arm', tyarm') = doArm arm
@@ -374,7 +400,7 @@ let rec thinTerm (ctx : context) orig_term =
 	  in let (tyarms, arms', tyarms') = doArms arms
 	  in (tyarms, Case(e',arms'), tyarms')
 
-      | Let([name1], term1, term2) ->
+      | Let(VarPat name1, term1, term2) ->
 	  begin
 	    let    (ty1, term1', ty1') = thinTerm ctx term1
 	    in let (ctx,name1) = renameBoundTermVar ctx name1
@@ -382,7 +408,7 @@ let rec thinTerm (ctx : context) orig_term =
 	    in let (ty2, term2', ty2') = thinTerm ctx' term2
 	    in match ty1' with
 		TopTy -> (ty2, wrapObsTerm term1' term2', ty2')
-	      | _ -> (ty2, Let([name1], term1', term2'), ty2')
+	      | _ -> (ty2, Let(VarPat name1, term1', term2'), ty2')
 	  end
 
       | Let _ ->
@@ -514,26 +540,15 @@ and thinProp (ctx: context) orig_prp =
 		   | _     -> PApp(p', t')
 	  end
 
-      | PCase (e1, e2, arms) ->
-	  let doBind ctx0 = function
-	      None -> None, ctx0
-	    | Some (nm, ty) ->
-		let ty' = thinTy ctx ty
-		in let (ctx0, nm) = renameBoundTermVar ctx0 nm
-		in 
-		     (match ty' with
-			 TopTy -> None, ctx0
-		       | _ -> (Some (nm, ty'), 
-			      insertTermVariable ctx0 nm (ty,ty')))
-	  in let doArm (lbl, bnd1, bnd2, p) =
-	    let bnd1', ctx1 = doBind ctx  bnd1 in
-	    let bnd2', ctx2 = doBind ctx1 bnd2 in
-	    let p' = thinProp ctx2 p in
-	      (lbl, bnd1', bnd2', p')
+      | PCase (e, arms) ->
+	  let doArm (pat, p) =
+	    let (ctx', pat') = thinPattern ctx pat
+	    in let p' = thinProp ctx' p in
+	      (pat', p')
 	  in
-	       PCase (thinTerm' ctx e1, thinTerm' ctx e2, List.map doArm arms)
+	       PCase (thinTerm' ctx e, List.map doArm arms)
 
-      | PLet([nm], trm1, prp2) ->
+      | PLet(VarPat nm, trm1, prp2) ->
 	  begin
 	    let    (ty1, trm1', ty1') = thinTerm ctx trm1
 	    in let (ctx,nm) = renameBoundTermVar ctx nm
@@ -541,7 +556,7 @@ and thinProp (ctx: context) orig_prp =
 	    in let prp2' = thinProp ctx' prp2
 	    in match ty1' with
 		TopTy -> wrapObsProp trm1' prp2'
-	      | _     -> PLet([nm], trm1', prp2')
+	      | _     -> PLet(VarPat nm, trm1', prp2')
 	  end
 
       | PLet _ ->

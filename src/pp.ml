@@ -17,13 +17,23 @@ exception Impossible
 let rec output_term ppf = function
     trm -> output_term_13 ppf trm
 
+and output_pattern ppf = function
+    WildPat -> fprintf ppf "_"
+  | VarPat nm -> fprintf ppf "%a"   output_name nm
+  | TuplePat pats -> fprintf ppf "(%a)"  output_patterns pats
+  | ConstrPat(lbl,None) -> fprintf ppf "`%s"  lbl
+  | ConstrPat(lbl,Some(nm,ty)) -> 
+      fprintf ppf "`%s(%a:%a)" lbl   output_name nm   output_ty ty
+
+and output_patterns ppf = function
+    [] -> ()
+  | [pat] -> fprintf ppf "%a"  output_pattern pat
+  | pat::pats -> fprintf ppf "%a,%a"  output_pattern pat   output_patterns pats
+
 and output_term_13 ppf = function
      Case (t, lst) ->
-       (let output_arm ppf = function
-	    (lb, None, u) -> fprintf ppf "`%s -> %a" lb output_term_12 u
-	  | (lb, Some (n,ty), u) -> 
-	      fprintf ppf "`%s(%a : %a) -> %a"
-                lb  output_name n  output_ty ty  output_term_12 u
+       (let output_arm ppf (pat, u) =
+	 fprintf ppf "%a -> %a" output_pattern pat output_term_12 u
 	in let rec output_arms' ppf = function
 	      [] -> ()
           | arm::arms -> fprintf ppf "@[| %a @]@,%a" 
@@ -36,13 +46,9 @@ and output_term_13 ppf = function
 	  fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]]" 
 	    output_term_13 t  output_arms lst)
 
-    | Let ([n], t, u) ->
+    | Let (pat, t, u) ->
 	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
-            output_name n  output_term_12 t  output_term_13 u
-
-    | Let (ns, t, u) ->
-	fprintf ppf "@[let (%a) = @[<hov>%a@]@ in %a@]"
-            output_names ns  output_term_12 t  output_term_13 u
+            output_pattern pat  output_term_12 t  output_term_13 u
 
     | trm -> output_term_12 ppf trm
 
@@ -232,17 +238,11 @@ and output_prop ppf = function
     prp -> output_prop_15 ppf prp
 
 and output_prop_15 ppf = function
-    PCase (t1, t2, lst) ->
+    PCase (t, lst) ->
       begin
-	let output_bnd ppf = function
-	    None -> fprintf ppf ""
-	  | Some (n, ty) ->
-	      fprintf ppf "(%a : %a)"
-		output_name n  output_ty ty
-	in
-	let output_arm ppf (lb, bnd1, bnd2, u) =
-	  fprintf ppf "`%s %a, `%s %a =>@ @[<hv>%a@]"
-	    lb  output_bnd bnd1  lb  output_bnd bnd2  output_prop_14 u
+	let output_arm ppf (pat, u) =
+	  fprintf ppf "%a =>@ @[<hv>%a@]"
+	    output_pattern pat   output_prop_14 u
 	in let rec output_arms' ppf = function
 	    [] -> ()
           | arm::arms ->
@@ -253,8 +253,8 @@ and output_prop_15 ppf = function
 	  | arm::arms -> fprintf ppf "@[<hov 5>  %a @]@,%a" 
 	      output_arm arm  output_arms' arms
 	in  
-	     fprintf ppf "@[<v>@[<hv>match %a, %a with@]@,@[<v>%a@]@]" 
-	       output_term_13 t1  output_term_13 t2  output_arms lst
+	     fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]@]" 
+	       output_term_13 t   output_arms lst
       end
   | prp -> output_prop_14 ppf prp
 
@@ -317,13 +317,9 @@ and output_prop_14 ppf = function
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
         output_binds bnds   output_prop_13 p   output_prop_14 q
 
-  | PLet ([n], t, u) ->
+  | PLet (pat, t, u) ->
 	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
-            output_name n  output_term_12 t  output_prop_14 u
-
-  | PLet (ns, t, u) ->
-	fprintf ppf "@[let (%a) = @[<hov>%a@]@ in %a@]"
-            output_names ns  output_term_12 t  output_prop_14 u
+            output_pattern pat  output_term_12 t  output_prop_14 u
 
   | prp -> output_prop_13 ppf prp
     

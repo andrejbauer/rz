@@ -289,16 +289,11 @@ let rec optTerm ctx orig_term =
 	  (** Optimize the subexpressions, and see if the case can
 	      be reduced *)
 	  let (ty, e') = optTerm ctx e
-	  in let doArm = function
-	      (lbl, Some (name2,ty2),  e3) -> 
-		let (ctx,name2) = renameBoundTermVar ctx name2
-		in let ty2' = optTy ctx ty2 
-		in let ctx' = insertTermVariable ctx name2 ty
-		in let (ty3, e3') = optTerm ctx' e3
-		in (ty3, (lbl, Some (name2, ty2'), e3'))
-	    | (lbl, None,  e3) -> 
-		let (ty3, e3') = optTerm ctx e3
-		in (ty3, (lbl, None, e3'))
+	  in let doArm (pat, e3) =
+	    let (ctx',pat') = optPattern ctx pat
+	    in let ctx'' = insertPattern ctx' pat'
+	    in let (ty3, e3') = optTerm ctx'' e3
+	    in (ty3, (pat', e3'))
 	  in let rec doArms = function
 	      [] -> raise (Impossible "Case")
 	    | [arm] -> let (tyarm, arm') = doArm arm
@@ -310,24 +305,24 @@ let rec optTerm ctx orig_term =
 	  in let (tyarms, arms') = doArms arms
 	  in (tyarms, optReduce ctx (Case(e',arms')))
 
-      | Let(names1, term1, term2) ->
+      | Let(pat1, term1, term2) ->
 	  (** Phase 1: Basic Optimization: optimize subexpressions
 	      and see if the let can be reduced *)
 	  let (ty1, term1') = optTerm ctx term1
-	  in let (ctx', names1) = renameBoundTermVars ctx names1
-	  in let ctx' = insertTermVariableLet ctx' names1 ty1
+	  in let (ctx', pat1') = optPattern ctx pat1
+	  in let ctx' = insertTermVariableLet ctx' pat1' ty1
 	  in let (ty2, term2') = optTerm ctx' term2
-	  in let trm' = optReduce ctx (Let(names1, term1', term2'))
+	  in let trm' = optReduce ctx (Let(pat1', term1', term2'))
 	  in let trm'' =
 	    (** More complicated optimizations *)
 	    match trm' with
-		Let(((_::_::_) as nms), Tuple trms, term2) ->
+		Let(TuplePat pats, Tuple trms, term2) ->
 		  (** Turn a let of a tuple into a sequence of bindings
 		      of the components, if the tuple is never referred
 		      to as a whole *)
-		  let trm'' = nested_let nms trms term2
-		  in optTerm' ctx' trm'' 
-	      | Let([nm1], (Obligation([(nm2,ty2)], prp2, 
+		  let trm'' = nested_let' pats trms term2
+		  in optTerm' ctx trm'' 
+	      | Let(VarPat nm1, (Obligation([(nm2,ty2)], prp2, 
 				    Id(LN(None,nm2'))) as obprp), trm3) 
 		  when nm2 = nm2' ->
 		  (** Now that assures start out like indefinite
@@ -343,8 +338,8 @@ let rec optTerm ctx orig_term =
 		  in let ctx' = insertFact ctx' prp2'
 		  in let trm3' = optTerm' ctx' trm3
 		  in 
-		       optReduce ctx (Let([nm1], obprp, trm3'))
-	      | Let([nm1], (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
+		       optReduce ctx (Let(VarPat nm1, obprp, trm3'))
+	      | Let(VarPat nm1, (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
 				    (Tuple[Id(LN(None,nm2'));
 					   Id(LN(None,nm3'))])) as obprp), 
 		   trm3)
@@ -364,8 +359,8 @@ let rec optTerm ctx orig_term =
 		  in let ctx' = insertFact ctx' prp2'
 		  in let trm3' = optTerm' ctx' trm3
 		  in 
-		       optReduce ctx (Let([nm1], obprp, trm3'))
-	      | Let([nm1], trm2, trm3) ->
+		       optReduce ctx (Let(VarPat nm1, obprp, trm3'))
+	      | Let(VarPat nm1, trm2, trm3) ->
 		  begin
 		    match hnfTy ctx (typeOf ctx trm2) with
 		      TupleTy tys ->
@@ -377,9 +372,11 @@ let rec optTerm ctx orig_term =
 			  if nProjs >= max 1 (nUses - 2) then
 			  let nms = refreshList 
 			      (List.map (fun _ -> nm1) tys)
+			  in let pat = 
+			    TuplePat(List.map (fun n -> VarPat n) nms)
 			  in 
 			  optTerm' ctx
-			    (Let(nms,trm2,
+			    (Let(pat, trm2,
 				 substTerm 
 				   (insertTermvar emptysubst nm1
 				      (Tuple(List.map id nms))) trm3))
@@ -419,7 +416,7 @@ let rec optTerm ctx orig_term =
 		      None -> Obligation(bnds1, prp2, trm3)
 		    | Some (trm,prp2') ->
 			optReduce ctx'
-			  (Let([nm], trm, Obligation([], prp2', trm3)))
+			  (Let(VarPat nm, trm, Obligation([], prp2', trm3)))
 		end
 
 	    | (bnds1, prp2, trm3) -> Obligation(bnds1, prp2, trm3)
@@ -436,6 +433,31 @@ let rec optTerm ctx orig_term =
 	figure out where any exception came from. *)
     (print_endline ("\n\n...in " ^ string_of_term orig_term);
      raise e)
+
+and optPattern ctx pat = 
+  try
+    match pat with
+      WildPat -> (ctx, pat)
+    | VarPat nm -> (ctx, pat)
+    | TuplePat pats ->
+	let (ctx', pats') = optPatterns ctx pats
+	in (ctx', TuplePat pats')
+    | ConstrPat(_, None) -> (ctx, pat)
+    | ConstrPat(lbl, Some (nm,ty)) ->
+	let (ctx', nm') = renameBoundTermVar ctx nm
+	in (ctx', ConstrPat(lbl, Some(nm', optTy ctx' ty)))
+  with e ->
+    (print_endline ("\n\n...in " ^ string_of_pat pat);
+     raise e)
+
+
+and optPatterns ctx = function
+    [] -> (ctx, [])
+  | pat::pats ->
+      let (ctx', pat') = optPattern ctx pat
+      in let (ctx'', pats') = optPatterns ctx' pats
+      in (ctx'', pat'::pats')
+
 
 (** optReduce     : ctx -> term        -> term
     optReduceProp : ctx -> proposition -> proposition
@@ -635,11 +657,11 @@ and optProp ctx orig_prp =
 		match findEqPremise nm1 prp2 with
 		    None -> Forall((nm1,ty1),prp2)
 		  | Some(trm,prp2') -> 
-		      optReduceProp ctx (PLet([n],trm,prp2'))
+		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
 	    in (match (optTy ctx ty, p') with
 		(_, True) -> True
-	      | (UnitTy, _) -> optReduceProp ctx (PLet([n],EmptyTuple,p'))
+	      | (UnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
 	      | (VoidTy, _) -> True
 	      | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
 		  if (n3 = LN(None,n)) && 
@@ -656,14 +678,14 @@ and optProp ctx orig_prp =
 		match findEqPremise nm1 prp2 with
 		    None -> ForallTotal((nm1,ln1),prp2)
 		  | Some(trm,prp2') -> 
-		      optReduceProp ctx (PLet([n],trm,prp2'))
+		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
 	    in let ctx' = insertTermVariable ctx n (NamedTy ln)
 	    in let ctx'' = ctx'  (* XXX Should insert fact that n is total! *)
 	    in let p' = optProp ctx'' p
 	    in (match (optTy ctx (NamedTy ln), p') with
 		(_, True) -> True
-	      | (UnitTy, _) -> optReduceProp ctx (PLet([n],EmptyTuple,p'))
+	      | (UnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
 	      | (VoidTy, _) -> True
 	      | (NamedTy ln',_) -> doForallTotal(n, ln', p')
 	      | (_, _) -> failwith "XXX Andrej messed up here.")
@@ -675,13 +697,13 @@ and optProp ctx orig_prp =
 		match findEq nm1 prp2 with
 		    None -> Cexists((nm1,ty1),prp2)
 		  | Some(trm,prp2') -> 
-		      optReduceProp ctx (PLet([n],trm,prp2'))
+		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
 	    in let p' = optProp (insertTermVariable ctx n ty) p in
 		 (match optTy ctx ty, p' with
 		     (_, False) -> False
 		   | (VoidTy, _) -> False
-		   | (UnitTy, _) -> optReduceProp ctx (PLet([n],EmptyTuple,p'))
+		   | (UnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
 		   | (ty', _) -> doExists(n, ty', p'))
 
 	| PObligation (bnds, p, q) ->
@@ -723,41 +745,33 @@ and optProp ctx orig_prp =
 	    in
 		 optReduceProp ctx (PApp(p', t'))
 		   
-	| PCase (e1, e2, arms) ->
-	    let doBind ctx0 = function
-		None -> None, ctx0
-	      | Some (nm, ty) ->
-		  let (ctx0, nm) = renameBoundTermVar ctx0 nm
-		  in let ty' = optTy ctx ty
-		  in 
-		       (Some (nm, ty'), insertTermVariable ctx0 nm ty)
-	    in
-	    let doArm (lbl, bnd1, bnd2, p) =
-	      let bnd1', ctx1 = doBind ctx  bnd1 in
-	      let bnd2', ctx2 = doBind ctx1 bnd2 in
-	      let p' = optProp ctx2 p in
-		(lbl, bnd1', bnd2', p')
-	    in
-	      optReduceProp ctx
-		(PCase (optTerm' ctx e1, optTerm' ctx e2, List.map doArm arms))
+	| PCase (e, arms) ->
+	  let (ty, e') = optTerm ctx e
+	  in let doArm (pat, p3) =
+	    let (ctx',pat') = optPattern ctx pat
+	    in let ctx'' = insertPattern ctx' pat'
+	    in let p3' = optProp ctx'' p3
+	    in (pat', p3')
+	  in let arms' = List.map doArm arms
+	  in optReduceProp ctx (PCase(e',arms'))
 
-	| PLet(nms, trm1, prp2) ->
+	| PLet(pat, trm1, prp2) ->
 
 	    let (ty1, trm1') = optTerm ctx trm1
-	    in let (ctx', nms) = renameBoundTermVars ctx nms
-	    in let ctx' = insertTermVariableLet ctx' nms ty1
+	    in let (ctx', pat') = optPattern ctx pat
+	    in let ctx' = insertTermVariableLet ctx' pat' ty1
 	    in let prp2' = optProp ctx' prp2
-	    in let prp' = optReduceProp ctx (PLet(nms, trm1', prp2'))
+	    in let prp' = optReduceProp ctx (PLet(pat', trm1', prp2'))
 	    in let prp'' = 
 	      match prp' with
 
-		PLet(((_::_::_) as nms), Tuple trms, prp2) ->
+		PLet(TuplePat pats, Tuple trms, prp2) ->
 		  (** Turn a let of a tuple into a sequence of bindings
 		      of the components, if the tuple is never referred
 		      to as a whole *)
-		  let prp'' = nested_plet nms trms prp2
-		  in optProp ctx' prp'' 
-		| PLet([nm1], (Obligation([(nm2,ty2)], prp2, 
+		  let prp'' = nested_plet' pats trms prp2
+		  in optProp ctx prp'' 
+		| PLet(VarPat nm1, (Obligation([(nm2,ty2)], prp2, 
 				       Id(LN(None,nm2'))) as obprp), prp3) 
 		    when nm2 = nm2' ->
 		    (** Now that assures start out like indefinite
@@ -773,9 +787,9 @@ and optProp ctx orig_prp =
 		    in let ctx' = insertFact ctx' prp2'
 		    in let prp3' = optProp ctx' prp3
 		    in 
-			 optReduceProp ctx (PLet([nm1], obprp, prp3'))
+			 optReduceProp ctx (PLet(VarPat nm1, obprp, prp3'))
 
-		| PLet([nm1], (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
+		| PLet(VarPat nm1, (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
 				       (Tuple[Id(LN(None,nm2'));
 					      Id(LN(None,nm3'))])) as obprp), 
 		      prp3)
@@ -795,8 +809,8 @@ and optProp ctx orig_prp =
 		    in let ctx' = insertFact ctx' prp2'
 		    in let prp3' = optProp ctx' prp3
 		    in 
-			 optReduceProp ctx (PLet([nm1], obprp, prp3'))
-		| PLet([nm1], trm2, prp3) ->
+			 optReduceProp ctx (PLet(VarPat nm1, obprp, prp3'))
+		| PLet(VarPat nm1, trm2, prp3) ->
 		  begin
 		    match hnfTy ctx (typeOf ctx trm2) with
 		      TupleTy tys ->
@@ -808,9 +822,11 @@ and optProp ctx orig_prp =
 			  if nProjs >= max 1 (nUses - 2) then
 			    let nms = refreshList 
 				(List.map (fun _ -> nm1) tys)
+			    in let pat =
+			      TuplePat(List.map (fun n -> VarPat n) nms)
 			    in 
 			    optProp ctx
-			      (PLet(nms,trm2,
+			      (PLet(pat, trm2,
 				    substProp 
 				      (insertTermvar emptysubst nm1
 					 (Tuple(List.map id nms))) prp3))
