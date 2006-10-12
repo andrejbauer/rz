@@ -468,15 +468,9 @@ and countModul x _ = 0 (* XXX wrong if we ever use explicit modul defs *)
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
 
-module TermOrder =
+module LNOrder =
 struct
-  type t = term
-  let compare = Pervasives.compare
-end
-
-module TyOrder =
-struct
-  type t = ty
+  type t = longname
   let compare = Pervasives.compare
 end
 
@@ -486,8 +480,7 @@ struct
   let compare = Pervasives.compare
 end
 
-module TermMap  = Map.Make(TermOrder)
-module TyMap    = Map.Make(TyOrder)
+module LNMap  = Map.Make(LNOrder)
 module ModulMap = Map.Make(ModulOrder)
 
 
@@ -502,31 +495,37 @@ module ModulMap = Map.Make(ModulOrder)
     contain bound variables.
 *)
 
-type subst = {terms : term TermMap.t;
-              tys   :  ty TyMap.t;
-              moduls:  modul ModulMap.t}
+type subst = {terms : term     LNMap.t;
+              tys   : ty       LNMap.t;
+	      props : longname LNMap.t;
+              moduls: modul ModulMap.t}
 
-let emptysubst = {terms = TermMap.empty;
-		  tys   = TyMap.empty;
+let emptysubst = {terms  = LNMap.empty;
+		  tys    = LNMap.empty;
+		  props  = LNMap.empty;
 		  moduls = ModulMap.empty}
 
 let fvSubst subst = 
-  let acc = TermMap.fold (fun _ x a -> fvTerm' [] a x) subst.terms []
-  in let acc = TyMap.fold (fun _ x a -> fvTy' [] a x) subst.tys acc
+  let acc = LNMap.fold (fun _ x a -> fvTerm' [] a x) subst.terms []
+  in let acc = LNMap.fold (fun _ x a -> fvTy' [] a x) subst.tys acc
 (*  in let acc = ModulMap.fold (fun _ x a -> fvModul' [] a x) subst.tys acc *)
   in acc
 
-let insertTermvar sbst nm trm' =
-  {sbst with terms = TermMap.add (id nm) trm' sbst.terms}
 
-let insertTerm sbst trm trm' =
-  {sbst with terms = TermMap.add trm trm' sbst.terms}
+let insertTermLN sbst ln trm' =
+  {sbst with terms = LNMap.add ln trm' sbst.terms}
+
+let insertTermvar sbst nm trm' =
+  insertTermLN sbst (LN(None,nm)) trm'
+
+let insertTyLN sbst ln ty' =
+  {sbst with tys = LNMap.add ln ty' sbst.tys}
 
 let insertTyvar sbst nm ty' =
-  {sbst with tys = TyMap.add (namedty nm) ty' sbst.tys}
+  insertTyLN sbst (LN(None,nm)) ty'
 
-let insertTy sbst ty ty' =
-  {sbst with tys = TyMap.add ty ty' sbst.tys}
+let insertPropLN sbst ln ln' =
+  {sbst with props = LNMap.add ln ln' sbst.props}
 
 let insertModulvar sbst nm mdl =
   {sbst with moduls = ModulMap.add (ModulName nm) mdl sbst.moduls}
@@ -536,12 +535,16 @@ let termsSubst lst =
 
 let termSubst nm trm = insertTermvar emptysubst nm trm
 
-let getTerm sbst trm =
-   try Some (TermMap.find trm sbst.terms) with 
+let getTermLN sbst trm =
+   try Some (LNMap.find trm sbst.terms) with 
        Not_found -> None
 
-let getTy sbst ty =
-   try Some (TyMap.find ty sbst.tys) with 
+let getTyLN sbst ln =
+   try Some (LNMap.find ln sbst.tys) with 
+       Not_found -> None
+
+let getPropLN sbst ln =
+   try Some (LNMap.find ln sbst.props) with 
        Not_found -> None
 
 let getModul sbst mdl =
@@ -617,9 +620,27 @@ and substDefs ?occ sbst = function
 and substProp ?occ sbst = function
     True -> True
   | False -> False
-  | NamedTotal (tln, lst) -> NamedTotal (substLN ?occ sbst tln, substTermList ?occ sbst lst)
-  | NamedPer (tln, lst) -> NamedPer (substLN ?occ sbst tln, substTermList ?occ sbst lst)
-  | NamedProp (ln, t, lst) -> NamedProp (substLN ?occ sbst ln, substTerm ?occ sbst t, substTermList ?occ sbst lst)
+  | NamedTotal (ln, lst) -> 
+      let ln' = 
+	match getPropLN sbst ln with
+	  None -> substLN ?occ sbst ln
+	| Some ln' -> ln'
+      in
+         NamedTotal (ln', substTermList ?occ sbst lst)
+  | NamedPer (ln, lst) -> 
+      let ln' = 
+	match getPropLN sbst ln with
+	  None -> substLN ?occ sbst ln
+	| Some ln' -> ln'
+      in
+         NamedPer (ln', substTermList ?occ sbst lst)
+  | NamedProp (ln, t, lst) ->
+      let ln' = 
+	match getPropLN sbst ln with
+	  None -> substLN ?occ sbst ln
+	| Some ln' -> ln'
+      in
+        NamedProp (ln', substTerm ?occ sbst t, substTermList ?occ sbst lst)
   | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
   | And lst -> And (substPropList ?occ sbst lst)
   | Cor lst -> Cor (substPropList ?occ sbst lst)
@@ -705,13 +726,13 @@ and renameBnds ?occ ?bad sbst = function
       in (sbst'', bnd'::bnds')
 
 and substTerm ?occ sbst orig_term = 
-  match (getTerm sbst orig_term) with
-      Some trm' -> trm'
-    | None ->
 	match orig_term with
-	    Id (LN (None, nm)) -> orig_term
-	  | Id (LN (Some mdl, nm)) -> 
-	      Id (LN (Some (substModul ?occ sbst mdl), nm))
+	    Id ln ->
+	      begin
+		match getTermLN sbst (substLN ?occ sbst ln) with
+		  None -> Id(substLN ?occ sbst ln)
+		| Some trm' -> trm'
+	      end 
 	  | EmptyTuple -> EmptyTuple
 	  | Dagger     -> Dagger
 	  | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
@@ -753,12 +774,13 @@ and substPropList ?occ sbst = List.map (substProp ?occ sbst)
 and substModestList ?occ sbst = List.map (substModest ?occ sbst)
 
 and substTy ?occ sbst orig_type = 
-  match (getTy sbst orig_type) with
-      Some ty' -> ty'
-    | None ->
 	match orig_type with
-	    NamedTy (LN (None, tynm)) -> orig_type
-	  | NamedTy (LN (Some mdl, tynm)) -> NamedTy (LN (Some (substModul ?occ sbst mdl), tynm))
+	    NamedTy ln ->
+	      begin
+		match getTyLN sbst (substLN ?occ sbst ln) with
+		  None -> NamedTy (substLN ?occ sbst ln)
+		| Some ty' -> ty'
+	      end 
 	  | UnitTy -> UnitTy
 	  | VoidTy -> VoidTy
 	  | TopTy -> TopTy
@@ -1176,16 +1198,16 @@ let string_of_toplevel body =
       String.concat "\n\n" (List.map string_of_spec body)
 
 let display_subst sbst =
-  let do_term trm trm' = print_string ("[" ^ string_of_term trm ^ "~>" ^ 
-					  string_of_term trm' ^ "]")
-  in let do_ty ty ty' = print_string ("[" ^ string_of_ty ty ^ "~>" ^ 
-					string_of_ty ty' ^ "]")
+  let doOne stringizeFn ln x =
+    print_string ("[" ^ string_of_ln ln ^ "~>" ^ stringizeFn x ^ "]")
   in let do_modul mdl mdl' = print_string ("[" ^ string_of_modul mdl ^ "~>" ^ 
 					    string_of_modul mdl' ^ "]")
   in  (print_string "Terms: ";
-       TermMap.iter do_term sbst.terms;
+       LNMap.iter (doOne string_of_term) sbst.terms;
        print_string "\nTypes: ";
-       TyMap.iter do_ty sbst.tys;
+       LNMap.iter (doOne string_of_ty) sbst.tys;
+       print_string "\nPropositions: ";
+       LNMap.iter (doOne string_of_ln) sbst.props;
        print_string "\nModuls: ";
        ModulMap.iter do_modul sbst.moduls)
 

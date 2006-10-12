@@ -205,22 +205,31 @@ let tryPolymorph ctx nm signat =
 	    in let argassns' =
 	      List.map (substAssertion arg_subst) argassns
 		
+	    in let (argprpnames, argpts) = List.split prps
+	    in let argpts' =
+	      List.map (substProptype arg_subst) argpts
 		
-	    in let resSubstTyIn nm  = NamedTy(LN(Some(ModulName nm1),nm))
+	    in let resSubstTyIn nm  = LN(Some(ModulName nm1),nm)
 	    in let resSubstTyOut tv = (NamedTy(LN(None,tv)))
 	    in let res_subst_ty = 
 	      (* Mapping from nm1.foo -> 'foo, i.e., type parameters *)
-	      List.fold_left2 insertTy emptysubst
+	      List.fold_left2 insertTyLN emptysubst
 		(List.map resSubstTyIn tynames)
 		(List.map resSubstTyOut tyvars)
 		
-	    in let resSubstTermIn nm =  Id(LN(Some(ModulName nm1), nm))
+	    in let resSubstTermIn nm = LN(Some(ModulName nm1), nm)
 	    in let resSubstTermOut nm = id nm
 	    in let res_subst_term =
 	      (* Mapping from nm1.bar -> bar, i.e, term parameters *)
-	      List.fold_left2 insertTerm emptysubst
+	      List.fold_left2 insertTermLN emptysubst
 		(List.map resSubstTermIn argnames)
 		(List.map resSubstTermOut argnames)
+
+	    in let res_subst_term =
+	      (* Extend mapping from nm1.p -> p, i.e, prop parameters *)
+	      List.fold_left2 insertPropLN res_subst_term
+		(List.map resSubstTermIn argprpnames)
+		(List.map (fun n -> LN(None,n)) argprpnames)
 
 (*		
 	    in let _ = 
@@ -235,10 +244,13 @@ let tryPolymorph ctx nm signat =
 	    in let updateResAssertion asn =
 	      let aprop' = substProp res_subst_term asn.aprop
 	      in let aprop'' = substProp res_subst_ty aprop'
+	      in let apbnds' = 
+		(List.combine argprpnames argpts') @
+		(fst (substPBnds res_subst_term asn.apbnds))
 	      in
 	      {alabel = asn.alabel;
 	       atyvars = tyvars @ asn.atyvars;
-	       apbnds = []; (* XXX *)
+	       apbnds = apbnds';
 	       aannots = asn.aannots;
 	       aprop = nested_forall (List.combine argnames argtypes') aprop''}
 		
