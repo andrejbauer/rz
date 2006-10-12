@@ -81,6 +81,11 @@ let insertTypeVariables cntxt nms def =
   in
      List.fold_left2 insertTypeVariable cntxt nms defs
 
+let insertPropVariable cntxt _ _ = 
+  (* We don't keep track of propositional variables *)
+  cntxt
+  
+
 (** Other functions later *)
 
 (************************************)

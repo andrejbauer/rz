@@ -116,6 +116,7 @@ and spec =
   | ModulSpec  of signat
   | TySpec     of ty option
   | SignatSpec of signat
+  | PropSpec   of proptype
 
 and signat =
     SignatName of signat_name
@@ -803,6 +804,7 @@ and substSpec ?occ sbst = function
   | ModulSpec signat  -> ModulSpec (substSignat ?occ sbst signat)
   | TySpec tyopt      -> TySpec (substTyOption ?occ sbst tyopt)
   | SignatSpec signat -> SignatSpec (substSignat ?occ sbst signat)
+  | PropSpec pt       -> PropSpec (substProptype ?occ sbst pt)
 
 and substSignatElements ?occ sbst =
   let rec subst sbst = function
@@ -1148,6 +1150,9 @@ and string_of_spec = function
   | Spec(nm, SignatSpec signat, assertions) ->
       "signature " ^ string_of_name nm ^ " = " ^ (string_of_signat signat) ^
 	string_of_assertions assertions
+  | Spec(nm, PropSpec pt, assertions) ->
+      "(* proposition " ^ string_of_name nm ^ " : " ^ (string_of_proptype pt) ^
+      " *)" ^ string_of_assertions assertions
   | Assertion assertion ->
       string_of_assertion assertion
   | Comment cmmnt -> "(*" ^ cmmnt ^ "*)\n"

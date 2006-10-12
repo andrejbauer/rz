@@ -64,6 +64,7 @@ let insertTypeVariable = wrapInsert OR.insertTypeVariable
 let insertTypeVariables = wrapInsert OR.insertTypeVariables
 let insertModulVariable = wrapInsert OR.insertModulVariable
 let insertSignatVariable = wrapInsert OR.insertSignatVariable
+let insertPropVariable = wrapInsert OR.insertPropVariable
 
 let hnfSignats (ctx, tctx) (sg,sg') =
   (hnfSignat ctx sg, hnfSignat tctx sg')
@@ -668,6 +669,15 @@ and thinElems (ctx : context) orig_elems =
 	   in let (rest', ctx'') = thinElems ctx'  rest 
 	   in
 		(Spec(nm, TySpec(Some ty'), assertions') :: rest', ctx'')
+
+      | Spec (nm, PropSpec pt, assertions) :: rest ->
+	  let pt' = thinProptype ctx pt
+	  in let ctx' = insertPropVariable ctx nm (pt,pt')
+	  in let assertions' = List.map (thinAssertion ctx') assertions 
+	  in let (rest', ctx'') = thinElems ctx'  rest 
+	  in
+	        (Spec(nm, PropSpec pt', assertions') :: rest', ctx'')
+
 
       |  Comment cmmnt :: rest -> 
 	   let (rest', ctx'') = thinElems ctx rest in

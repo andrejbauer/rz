@@ -281,6 +281,8 @@ and renSpec ctx = function
 
   | SignatSpec sgnt -> SignatSpec (renSignat ctx sgnt)
 
+  | PropSpec pt -> PropSpec (renPt ctx pt)
+
 and renSignatElement ctx = function
     Spec (nm, spc, lst) ->
       let spc = renSpec ctx spc in

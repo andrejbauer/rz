@@ -158,22 +158,29 @@ let rec extractPolyInfo = function
       begin
 	match extractPolyInfo rest with
 	  None -> None
-	| Some (tynames, args, types, assns_rest) ->
-	    Some (nm::tynames, args, types, assns @ assns_rest)
+	| Some (tynames, vals, prps, assns_rest) ->
+	    Some (nm::tynames, vals, prps, assns @ assns_rest)
       end
   | Spec(nm, ValSpec([], ty), assns) :: rest ->
       begin
 	match extractPolyInfo rest with
 	  None -> None
-	| Some (tynames, args, types, assns_rest) ->
-	    Some (tynames, nm :: args, ty :: types, assns @ assns_rest)
+	| Some (tynames, vals, prps, assns_rest) ->
+	    Some (tynames, (nm,ty)::vals, prps, assns @ assns_rest)
       end
   | Assertion asn :: rest ->
       begin
 	match extractPolyInfo rest with
 	  None -> None
-	| Some (tynames, args, types, assns_rest) ->
-	    Some (tynames, args, types, asn :: assns_rest)
+	| Some (tynames, vals, prps, assns_rest) ->
+	    Some (tynames, vals, prps, asn :: assns_rest)
+      end
+  | Spec(nm, PropSpec pt, assns) :: rest ->
+      begin
+	match extractPolyInfo rest with
+	  None -> None
+	| Some (tynames, vals, prps, assns_rest) ->
+	    Some (tynames, vals, (nm,pt)::prps, assns @ assns_rest)
       end
   | _ -> None
 
@@ -185,13 +192,14 @@ let tryPolymorph ctx nm signat =
       begin
 	match extractPolyInfo argElems with
 	  None -> None
-	| Some (tynames, argnames, argtypes, argassns) ->
+	| Some (tynames, vals, prps, argassns) ->
 	    let tyvars = List.map tyvarize tynames
 		
 	    in let arg_subst = 
 	      (* Mapping from foo -> 'foo, for type parameters *)
 	      renamingList tynames tyvars
 		
+	    in let (argnames,argtypes) = List.split vals
 	    in let argtypes' = 
 	      List.map (substTy arg_subst) argtypes
 	    in let argassns' =
@@ -213,6 +221,7 @@ let tryPolymorph ctx nm signat =
 	      List.fold_left2 insertTerm emptysubst
 		(List.map resSubstTermIn argnames)
 		(List.map resSubstTermOut argnames)
+
 (*		
 	    in let _ = 
 	      (print_endline "\nres_subst_ty:";
@@ -1061,7 +1070,7 @@ and optElems ctx orig_elems =
 
       |  Spec(nm, TySpec (Some ty), assertions) :: rest ->
 	   let ty' = optTy ctx ty 
-	   in let ctx' = insertTypeVariable ctx nm (Some ty) 
+	   in let ctx' = insertTypeVariable ctx nm (Some ty') 
 	   in let assertions' = List.map (optAssertion ctx') assertions 
 	   in let ctx'' = insertAssertionFacts ctx' assertions'
 	   in let rest', ctx''' = optElems ctx'' rest 
@@ -1071,11 +1080,20 @@ and optElems ctx orig_elems =
 
       | Spec(nm, SignatSpec sg, assertions) :: rest ->
 	  let sg' = optSignat ctx sg
-	  in let ctx' = insertSignatVariable ctx nm sg
+	  in let ctx' = insertSignatVariable ctx nm sg'
 	  in let assertions' = List.map (optAssertion ctx') assertions
 	  in let ctx'' = insertAssertionFacts ctx' assertions'
 	  in let (rest', ctx''') = optElems ctx'' rest 
 	  in (Spec(nm, SignatSpec sg', assertions') :: rest',
+	     ctx''')
+
+      | Spec(nm, PropSpec pt, assertions) :: rest ->
+	  let pt' = optPt ctx pt
+	  in let ctx' = insertPropVariable ctx nm pt'
+	  in let assertions' = List.map (optAssertion ctx') assertions
+	  in let ctx'' = insertAssertionFacts ctx' assertions'
+	  in let (rest', ctx''') = optElems ctx'' rest 
+	  in (Spec(nm, PropSpec pt', assertions') :: rest',
 	     ctx''')
 
       |  Comment cmmnt :: rest -> 
