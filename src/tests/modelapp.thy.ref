@@ -1,9 +1,10 @@
-[Processing modelapp.thy]
+[Processing ./modelapp.thy]
 module type A =
  sig
    type a
-   (**  Assertion per_a = 
-          (forall x:a, y:a, z:a,  y =a= z /\ x =a= y -> x =a= z)
+   (**  Assertion per_a [Definitional] = 
+          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
+          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
    *)
     
    val c : a
@@ -12,16 +13,17 @@ module type A =
     
    module E : sig
                 type e
-                (**  Assertion per_e = 
-                       (forall x:e, y:e, z:e,  y =e= z /\ x =e= y -> x =e= z)
+                (**  Assertion per_e [Definitional] = 
+                       (forall x:e, y:e,  x =e= y -> y =e= x) /\ 
+                       (forall x:e, y:e, z:e,  x =e= y /\ y =e= z -> x =e= z)
                 *)
                  
                 type f = e
                 (**  Assertion f_def_total = 
-                       forall x:e,  x : ||f|| <-> x : ||e||
+                       forall x:f,  x : ||f|| <-> x : ||e||
                       
                      Assertion f_def_per = 
-                       forall x:e, y:e,  x =f= y <-> x =e= y
+                       forall x:f, y:f,  x =f= y <-> x =e= y
                 *)
               end
  end
@@ -29,44 +31,46 @@ module type A =
 module type B =
  sig
    type a
-   (**  Assertion per_a = 
-          (forall x:a, y:a, z:a,  y =a= z /\ x =a= y -> x =a= z)
+   (**  Assertion per_a [Definitional] = 
+          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
+          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
    *)
     
    type b = a
-   (**  Assertion b_def_total =  forall x:a,  x : ||b|| <-> x : ||a||
+   (**  Assertion b_def_total =  forall x:b,  x : ||b|| <-> x : ||a||
          
-        Assertion b_def_per =  forall x:a, y:a,  x =b= y <-> x =a= y
+        Assertion b_def_per =  forall x:b, y:b,  x =b= y <-> x =a= y
    *)
     
    type b'
-   (**  Assertion per_b' = 
-          (forall x:b', y:b', z:b',  y =b'= z /\ x =b'= y -> x =b'= z)
+   (**  Assertion per_b' [Definitional] = 
+          (forall x:b', y:b',  x =b'= y -> y =b'= x) /\ 
+          (forall x:b', y:b', z:b',  x =b'= y /\ y =b'= z -> x =b'= z)
    *)
     
    val c : a
    (**  Assertion c_total =  c : ||a||
    *)
     
-   val d : a
+   val d : b
    (**  Assertion d_total =  d : ||b||
    *)
     
    module E : sig
                 type e = a
                 (**  Assertion e_def_total = 
-                       forall x:a,  x : ||e|| <-> x : ||a||
+                       forall x:e,  x : ||e|| <-> x : ||a||
                       
                      Assertion e_def_per = 
-                       forall x:a, y:a,  x =e= y <-> x =a= y
+                       forall x:e, y:e,  x =e= y <-> x =a= y
                 *)
                  
-                type f = a
+                type f = b
                 (**  Assertion f_def_total = 
-                       forall x:a,  x : ||f|| <-> x : ||b||
+                       forall x:f,  x : ||f|| <-> x : ||b||
                       
                      Assertion f_def_per = 
-                       forall x:a, y:a,  x =f= y <-> x =b= y
+                       forall x:f, y:f,  x =f= y <-> x =b= y
                 *)
               end
  end
@@ -79,11 +83,9 @@ module type C =
                A
     
    type a = FF(BB).a
-   (**  Assertion a_def_total = 
-          forall x:FF(BB).a,  x : ||a|| <-> x : ||FF(BB).a||
+   (**  Assertion a_def_total =  forall x:a,  x : ||a|| <-> x : ||FF(BB).a||
          
-        Assertion a_def_per = 
-          forall x:FF(BB).a, y:FF(BB).a,  x =a= y <-> x =FF(BB).a= y
+        Assertion a_def_per =  forall x:a, y:a,  x =a= y <-> x =FF(BB).a= y
    *)
  end
 

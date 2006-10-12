@@ -1,27 +1,29 @@
-[Processing dependent_product.thy]
+[Processing ./dependent_product.thy]
 module type T =
  sig
    type s
-   (**  Assertion per_s = 
-          (forall x:s, y:s, z:s,  y =s= z /\ x =s= y -> x =s= z)
+   (**  Assertion per_s [Definitional] = 
+          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
+          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
    *)
     
    type t
-   (**  Assertion per_t = 
-          forall (x:||s||), 
-            (forall y:t, z:t, w:t,  z =(t x)= w /\ y =(t x)= z -> y =(t x)= w)
+   (**  Assertion per_t [Definitional] = 
+          forall x:s,  x : ||s|| ->
+            (forall y:t, z:t,  y =(t x)= z -> z =(t x)= y) /\ 
+            (forall y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w -> y =(t x)= w)
    *)
     
-   val a : t * s
-   (**  Assertion a_total =  pi1 a : ||t (pi0 a)|| /\ pi0 a : ||s||
+   val a : s * t
+   (**  Assertion a_total =  pi0 a : ||s|| /\ pi1 a : ||t (pi0 a)||
    *)
     
-   val b : t * s
-   (**  Assertion b_total =  pi1 b : ||t (pi0 b)|| /\ pi0 b : ||s||
+   val b : s * t
+   (**  Assertion b_total =  pi0 b : ||s|| /\ pi1 b : ||t (pi0 b)||
    *)
     
    
-   (**  Assertion eq =  pi1 a =(t (pi0 a))= pi1 b /\ pi0 a =s= pi0 b
+   (**  Assertion eq =  pi0 a =s= pi0 b /\ pi1 a =(t (pi0 a))= pi1 b
    *)
  end
 

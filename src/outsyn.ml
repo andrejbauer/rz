@@ -47,9 +47,9 @@ and mbinding = name * modest
 
 and pattern =
   | WildPat 
-  | VarPat of name
+  | VarPat of name                         (* Don't use in Case/PCase *)
   | TuplePat of pattern list
-  | ConstrPat of label * binding option
+  | ConstrPat of label * binding option    (* Don't use in Let/PLet *)
 
 and term =
     Id of longname

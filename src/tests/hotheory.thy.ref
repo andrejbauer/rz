@@ -1,10 +1,10 @@
-[Processing hotheory.thy]
+[Processing ./hotheory.thy]
 module type T =
  sig
    type a
    (**  Assertion per_a [Definitional] = 
-          (forall x:a, y:a, z:a,  y =a= z /\ x =a= y -> x =a= z) /\ 
-          (forall x:a, y:a,  x =a= y -> y =a= x)
+          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
+          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
    *)
  end
  

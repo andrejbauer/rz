@@ -1,8 +1,10 @@
-[Processing theoryapp.thy]
+[Processing ./theoryapp.thy]
 module type A =
  sig
    type a
-   (**  Assertion per_a =  PER(=a=)
+   (**  Assertion per_a [Definitional] = 
+          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
+          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
    *)
     
    val n : a
@@ -21,7 +23,9 @@ module type A =
 module type B =
  sig
    type a
-   (**  Assertion per_a =  PER(=a=)
+   (**  Assertion per_a [Definitional] = 
+          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
+          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
    *)
     
    val n : a
@@ -45,15 +49,15 @@ module type C =
  functor (M : A) ->
  sig
    type b = M.a
-   (**  Assertion b_def_total =  forall x:M.a,  x : ||b|| <-> x : ||M.a||
+   (**  Assertion b_def_total =  forall x:b,  x : ||b|| <-> x : ||M.a||
          
-        Assertion b_def_per =  forall x:M.a, y:M.a,  x =b= y <-> x =M.a= y
+        Assertion b_def_per =  forall x:b, y:b,  x =b= y <-> x =M.a= y
    *)
     
    type c = M.a
-   (**  Assertion c_def_total =  forall x:M.a,  x : ||c|| <-> x : ||M.a||
+   (**  Assertion c_def_total =  forall x:c,  x : ||c|| <-> x : ||M.a||
          
-        Assertion c_def_per =  forall x:M.a, y:M.a,  x =c= y <-> x =M.a= y
+        Assertion c_def_per =  forall x:c, y:c,  x =c= y <-> x =M.a= y
    *)
  end
  

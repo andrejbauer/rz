@@ -3,15 +3,13 @@
 (********************************************************************)
 (** {1 Simplification}                                              *)
 (**                                                                 *)
+(** Invariant:  the optimization functions always preserve          *)
+(** type (unlike thinning).                                         *)
 (********************************************************************)
 
 open Name
 open Outsyn
 open Outsynrules
-
-exception Unimplemented
-exception Impossible of string
-
 
 (** allequalTy : ctx -> ty -> bool
 
@@ -287,7 +285,8 @@ let rec optTyOption ctx = function
    optBnd : context -> binding      -> context * binding
    optBnds: context -> binding list -> context * binding list
 
-   Nothing to do here either, but we rename just to be save
+   Renames and adds the (new) bound term variables to the context.
+   Also optimizes the types.
 *)
 let rec optBnd ctx (nm,ty) = 
   let ty' = optTy ctx ty
@@ -298,14 +297,14 @@ let rec optBnd ctx (nm,ty) =
 and optBnds ctx bnds =
   mapWithAccum optBnd ctx bnds
 
-and optPBnd ctx (nm, pt) =
-  let pt' = optPt ctx pt
-  in let ctx', nm' = renameBoundPropVar ctx nm
-  in (ctx', (nm', pt'))
 
-and optPBnds ctx pbnds =
-  mapWithAccum optPBnd ctx pbnds
+(**
+   optModestBnd : context -> (name*modest)      -> context * (name*modest)
+   optModestBnds: context -> (name*modest) list -> context * (name*modest) list
 
+   Renames and adds the (new) bound term variables to the context.
+   Also optimizes the modest sets.
+*)
 and optModestBnd ctx (nm, mset) =
   let mset' = optModest ctx mset
   in let ctx', nm' = renameBoundTermVar ctx nm
@@ -314,16 +313,37 @@ and optModestBnd ctx (nm, mset) =
 and optModestBnds ctx modestbnds =
   mapWithAccum optModestBnd ctx modestbnds
 
+(**
+   optPBnd : context -> (name*proptype)      -> context * (name*proptype)
+   optPBnds: context -> (name*proptype) list -> context * (name*proptype) list
+
+   Renames and adds the (new) bound propositional variables to the context.
+   Also optimizes the proposition-types.
+*)
+and optPBnd ctx (nm, pt) =
+  let pt' = optPt ctx pt
+  in let ctx', nm' = renameBoundPropVar ctx nm
+  in (ctx', (nm', pt'))
+
+and optPBnds ctx pbnds =
+  mapWithAccum optPBnd ctx pbnds
+
+(**
+   optPt : ctx -> proptype -> proptype
+
+   Optimization function for proposition-types.
+ *)
+
 and optPt ctx = function
     Prop -> Prop
-  | PropArrow(bnd,pt) ->
-    let ctx', bnd' = optBnd ctx bnd
-    in let pt' = optPt ctx' pt
-    in PropArrow(bnd', pt')
-  | PropMArrow(modestbnd,pt) ->
-    let ctx', modestbnd' = optModestBnd ctx modestbnd
-    in let pt' = optPt ctx' pt
-    in PropMArrow(modestbnd', pt')
+  | PropArrow(bnd, pt) ->
+       let ctx', bnd' = optBnd ctx bnd
+       in let pt' = optPt ctx' pt
+       in PropArrow(bnd', pt')
+  | PropMArrow(modestbnd, pt) ->
+       let ctx', modestbnd' = optModestBnd ctx modestbnd
+       in let pt' = optPt ctx' pt
+       in PropMArrow(modestbnd', pt')
 
 (* optTerm ctx e = (t, e')
       where t  is the type of e under ctx
@@ -378,7 +398,7 @@ and optTerm ctx orig_term =
 			 print_string (Outsyn.string_of_term (App(e1,e2)));
 			 print_string " the operator has type ";
 			 print_endline (Outsyn.string_of_ty ty1');
-			 raise (Impossible "App"))
+			 failwith "Opt.optTerm: App")
 	  end
 
       | Lambda((nm1, ty1), trm2) ->
@@ -407,7 +427,7 @@ and optTerm ctx orig_term =
 	      | ty_bad -> (print_string (Outsyn.string_of_ty ty ^ "\n");
 			   print_string (Outsyn.string_of_ty ty_bad ^ "\n");
 			   print_endline (Outsyn.string_of_term orig_term);
-			   raise (Impossible "Proj"))
+			   failwith "Opt.optTerm: Proj")
 	  in 
                (List.nth tys n, reduce (Proj(n,e')))
 
@@ -430,7 +450,7 @@ and optTerm ctx orig_term =
 	    in let (ty3, e3') = optTerm ctx'' e3
 	    in (ty3, (pat', e3'))
 	  in let rec doArms = function
-	      [] -> raise (Impossible "Case")
+	      [] -> failwith "Opt.optTerm: Case: doArms"
 	    | [arm] -> let (tyarm, arm') = doArm arm
 	      in (tyarm, [arm'])
 	    | arm::arms -> let (tyarm, arm') = doArm arm
@@ -1065,10 +1085,14 @@ and optElems ctx orig_elems =
 	   in let assertions' = List.map (optAssertion ctx') assertions
 	   in let ctx'' = insertAssertionFacts ctx' assertions'
 	   in let (rest', ctx''') = optElems ctx'' rest 
+	   in let default_spec = Spec(name, ModulSpec signat', assertions')
 	   in let spec' = 
+	     if (!Flags.do_poly) then
 	       match tryPolymorph ctx name signat' with
-		 None -> Spec(name, ModulSpec signat', assertions')
+		 None       -> default_spec
 	       | Some spec' -> spec'
+	     else
+	       default_spec
 	   in
 	      (spec'::rest'), ctx''
 
@@ -1177,11 +1201,8 @@ and optDefs ctx = function
       in DefSignat(nm,sg') :: optDefs ctx' rest
 
 let optToplevels ctx elems =
-  if !Flags.do_thin && !Flags.do_opt then 
+  if !Flags.do_opt then 
     optElems ctx elems 
   else 
-    (if !Flags.do_opt then
-	(print_endline "WARNING:  ";
-	 print_endline "Optimization skipped (it requires thinning)");
-    (elems,ctx))
+    (elems,ctx)
    

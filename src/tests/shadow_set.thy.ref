@@ -1,4 +1,4 @@
-[Processing shadow_set.thy]
+[Processing ./shadow_set.thy]
 
 -------------------------------
 TYPE ERROR:
@@ -12,30 +12,6 @@ Parameter s : Set.
 Parameter s : Set.
 
 end
-
-...in:  Definition T := thy
-Parameter s : Set.
-Parameter s : Set.
-
-end.
-
-...in:  thy
-Definition T := thy
-Parameter s : Set.
-Parameter s : Set.
-
-end.
-
-end
-
-...in:  Parameter Shadow_set : thy
-Definition T := thy
-Parameter s : Set.
-Parameter s : Set.
-
-end.
-
-end.
 
 -------------------------------
 

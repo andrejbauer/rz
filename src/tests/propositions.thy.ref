@@ -1,4 +1,4 @@
-[Processing propositions.thy]
+[Processing ./propositions.thy]
 module type P =
  sig
    
@@ -10,31 +10,33 @@ module type P =
    *)
     
    type s
-   (**  Assertion per_s =  PER(=s=)
+   (**  Assertion per_s [Definitional] = 
+          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
+          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
    *)
     
    type p
    (**  Assertion predicate_p = 
-          (forall z:s, b:p,  b |= p z -> z : ||s||) /\ 
+          (forall x:s, a:p,  a |= p x -> x : ||s||) /\ 
           (forall (x:||s||, y:||s||), 
              forall a:p,  x =s= y -> a |= p x -> a |= p y)
    *)
     
    
-   (**  Assertion predicate_p2 =  (forall z:s,  p2 z -> z : ||s||) /\ 
+   (**  Assertion predicate_p2 =  (forall x:s,  p2 x -> x : ||s||) /\ 
           (forall (x:||s||, y:||s||),  x =s= y -> p2 x -> p2 y)
    *)
     
    
    (**  Assertion predicate_p3 = 
-          (forall x':s, y':s,  p3 x' y' -> x' : ||s|| /\ y' : ||s||) /\ 
-          (forall (x:||s||, y:||s||, z:||s||, t:||s||),  x =s= z /\ 
-             y =s= t -> p3 x y -> p3 z t)
+          (forall x:s, y:s,  p3 x y -> x : ||s|| /\ y : ||s||) /\ 
+          (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
+             y =s= w -> p3 x y -> p3 z w)
    *)
     
    
-   (**  Assertion equiv_p3 =  (forall (y':||s||),  p3 y' y') /\ 
-          (forall (t:||s||, x':||s||),  p3 t x' -> p3 x' t) /\ 
+   (**  Assertion equiv_p3 =  (forall (x:||s||),  p3 x x) /\ 
+          (forall (x:||s||, y:||s||),  p3 x y -> p3 y x) /\ 
           (forall (x:||s||, y:||s||, z:||s||),  p3 x y /\ p3 y z -> p3 x z)
    *)
     
@@ -50,9 +52,9 @@ module type P =
    (**  Assertion predicate_rho =  true
    *)
     
-   val tst_and : phi * (psi * rho)
-   (**  Assertion tst_and =  pi0 tst_and |= phi  /\ 
-          pi0 (pi1 tst_and) |= psi  /\ pi1 (pi1 tst_and) |= rho 
+   val tst_and : phi * psi * rho
+   (**  Assertion tst_and =  pi0 tst_and |= phi  /\ pi1 tst_and |= psi  /\ 
+          pi2 tst_and |= rho 
    *)
     
    val tst_imply : phi -> psi
@@ -62,16 +64,15 @@ module type P =
     
    val tst_iff : (phi -> psi) * (psi -> phi)
    (**  Assertion tst_iff = 
-          (forall y:phi,  y |= phi  -> (pi0 tst_iff) y |= psi ) /\ 
+          (forall x:phi,  x |= phi  -> (pi0 tst_iff) x |= psi ) /\ 
           (forall x:psi,  x |= psi  -> (pi1 tst_iff) x |= phi )
    *)
     
-   val tst_or : [`or0 of phi | `or1 of [`or0 of psi | `or1 of rho]]
+   val tst_or : [`or0 of phi | `or1 of psi | `or2 of rho]
    (**  Assertion tst_or = 
-          (exists z:phi,  tst_or = `or0 z /\ z |= phi ) cor 
-          (exists i:[`or0 of psi | `or1 of rho],  tst_or = `or1 i /\ 
-             ((exists y:psi,  i = `or0 y /\ y |= psi ) cor 
-              (exists x:rho,  i = `or1 x /\ x |= rho )))
+          (exists x:phi,  tst_or = `or0 x /\ x |= phi ) cor 
+          (exists x:psi,  tst_or = `or1 x /\ x |= psi ) cor 
+          (exists x:rho,  tst_or = `or2 x /\ x |= rho )
    *)
     
    val tst_forall : s -> p
@@ -86,8 +87,8 @@ module type P =
    val tst_exists1 : s * p
    (**  Assertion tst_exists1 =  pi0 tst_exists1 : ||s|| /\ 
           pi1 tst_exists1 |= p (pi0 tst_exists1) /\ 
-          (forall t:s * p,  pi0 t : ||s|| /\ pi1 tst_exists1 |= p (pi0 t) ->
-             pi0 tst_exists1 =s= pi0 t)
+          (forall q:s * p,  pi0 q : ||s|| /\ pi1 tst_exists1 |= p (pi0 q) ->
+             pi0 tst_exists1 =s= pi0 q)
    *)
     
    
@@ -108,26 +109,26 @@ module type P =
     
    type q = p
    (**  Assertion q_def = 
-          forall (z:||s||),  forall a:p,  a |= q z <-> (z =s= x0 -> a |= p z)
+          forall (z:||s||),  forall a:q,  a |= q z <-> (z =s= x0 -> a |= p z)
    *)
     
-   val tst_papp : p
+   val tst_papp : q
    (**  Assertion tst_papp =  tst_papp |= q y0
    *)
     
    type r1 = top
    (**  Assertion r1_def = 
           forall (x:||s||, y:||s||),  r1 x y <->
-            (forall q:p,  not (q |= p x /\ (forall z:p,  not (z |= p y))))
+            (forall t:p,  not (t |= p x /\ (forall z:p,  not (z |= p y))))
    *)
     
    type r2 = top
    (**  Assertion r2_def = 
           forall (x:||s||, y:||s||),  r2 x y <->
-            (assure (forall (w':||s||),  r1 w' w') /\ 
-                 (forall (y':||s||, z':||s||),  r1 y' z' -> r1 z' y') /\ 
-                 (forall (z:||s||, t:||s||, x':||s||),  r1 z t /\ r1 t x' ->
-                    r1 z x') in r1 x y)
+            (assure (forall (z:||s||),  r1 z z) /\ 
+                 (forall (z:||s||, w:||s||),  r1 z w -> r1 w z) /\ 
+                 (forall (z:||s||, w:||s||, t:||s||),  r1 z w /\ r1 w t ->
+                    r1 z t) in r1 x y)
    *)
     
    val w : [`foo | `bar of (s * s)]
@@ -137,10 +138,10 @@ module type P =
     
    val tst_pcase : [`bar of p | `foo of p]
    (**  Assertion tst_pcase = 
-          match tst_pcase, w with
-            `bar (y : p), `bar (u : s * s) =>
-               pi0 u : ||s|| /\ pi1 u : ||s|| /\ y |= p (pi0 u) 
-          | `foo (x : p), `foo  => x |= p x0 
+          match (tst_pcase,w) with
+            (`bar(x:p),`bar(u:s * s)) =>
+               pi0 u : ||s|| /\ pi1 u : ||s|| /\ x |= p (pi0 u) 
+          | (`foo(x:p),`foo) => x |= p x0 
           
    *)
  end

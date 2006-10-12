@@ -5,32 +5,71 @@ open Outsyn
 (** {2 The Typing Context} *)
 (***************************)
 
-(* We maintain different lookup tables and renamings for each "flavor"
-   of identifier because they live in distinct ML namespaces. *)
+(* We must maintain different lookup tables and renamings for each
+   "flavor" of identifier because they live in distinct ML namespaces. 
 
-type context = {termvars: ty NameMap.t;  
-		termrenaming: name NameMap.t;
-		typevars: (ty option) NameMap.t;
-		typerenaming: name NameMap.t;
-		modulvars: signat NameMap.t;
-		modulrenaming: name NameMap.t;
-		proprenaming: name NameMap.t;
-		signatvars: signat NameMap.t;
-	        facts: proposition list}
+   Any pass that goes through and calls these renaming functions for
+   bound variables is then obligated to apply the renaming to uses
+   of those variables (in the base cases) 
+
+   Currently we don't bother keeping track of the proptypes of
+   propositional variables (since it never comes up), and we 
+   don't bother keeping a renaming for signature variables
+   (since there are no alpha-varying binders for these in the
+   syntax).
+
+*)
+type context = {termvars: ty NameMap.t;          (* Type of a term variable *)
+		typevars: (ty option) NameMap.t; (* Defn (if any) of ty. var.*)
+		modulvars: signat NameMap.t;     (* Signature of a mod. var  *)
+		signatvars: signat NameMap.t;    (* Defn of a sig. variable *)
+
+		termrenaming: name NameMap.t;    (* Renaming of term vars *)
+		typerenaming: name NameMap.t;    (* Renaming of type vars *)
+		modulrenaming: name NameMap.t;   (* Renaming of mod. vars *)
+		proprenaming: name NameMap.t;    (* Renaming of prop. vars *)
+
+	        facts: proposition list          (* A list of true props *)
+               }
 
 let emptyContext = 
-  {termvars = NameMap.empty;   termrenaming = NameMap.empty;
-   typevars = NameMap.empty;   typerenaming = NameMap.empty;
-   modulvars = NameMap.empty;  modulrenaming = NameMap.empty;
-   proprenaming = NameMap.empty;
+  {termvars   = NameMap.empty;   
+   typevars   = NameMap.empty;   
+   modulvars  = NameMap.empty;  
    signatvars = NameMap.empty;
+
+   termrenaming  = NameMap.empty;
+   typerenaming  = NameMap.empty;
+   modulrenaming = NameMap.empty;
+   proprenaming  = NameMap.empty;
+
    facts = []}
 
-let displayContext cntxt = 
-  (NameMap.iter (fun nm ty -> print_endline("val " ^ string_of_name nm ^ ":" ^ string_of_ty ty)) cntxt.termvars;
-   NameMap.iter (fun nm tyopt -> print_endline("type " ^ string_of_name nm ^ (match tyopt with None -> "" | Some ty -> "=" ^ string_of_ty ty))) cntxt.typevars;
-   NameMap.iter (fun nm sg -> print_endline("module " ^ string_of_name nm ^ " : " ^ string_of_signat sg)) cntxt.modulvars;
-   NameMap.iter (fun nm sg -> print_endline("signature " ^ string_of_name nm ^ " = " ^ string_of_signat sg)) cntxt.signatvars;)
+(* Displays the variable bindings in the context.
+   For now, does not display renamings or the list of facts 
+*)
+let displayContext ctx = 
+  (NameMap.iter 
+     (fun nm ty -> 
+       print_endline("val " ^ string_of_name nm ^ ":" ^ string_of_ty ty)) 
+     ctx.termvars;
+   NameMap.iter 
+     (fun nm tyopt -> 
+       print_endline("type " ^ string_of_name nm ^ 
+		     (match tyopt with 
+		       None -> "" | 
+		       Some ty -> "=" ^ string_of_ty ty))) 
+     ctx.typevars;
+   NameMap.iter 
+     (fun nm sg -> 
+       print_endline("module " ^ string_of_name nm ^ " : " ^ 
+		     string_of_signat sg)) 
+     ctx.modulvars;
+   NameMap.iter 
+     (fun nm sg -> 
+       print_endline("signature " ^ string_of_name nm ^ " = " ^ 
+		     string_of_signat sg)) 
+     ctx.signatvars;)
 
 
 (***************)
@@ -40,91 +79,96 @@ let displayContext cntxt =
 let notFound sort nm = 
   failwith ("Unbound " ^ sort ^ " variable " ^ string_of_name nm)
 
+(* 
+   lookupTermVariable   : context -> name -> ty
+   lookupTypeVariable   : context -> name -> ty option
+   lookupModulVariable  : context -> name -> signat
+   lookupSignatVariable : context -> name -> signat
+*)
 
-let lookupTermVariable cntxt nm = 
-   try (NameMap.find nm cntxt.termvars) with 
+let lookupTermVariable ctx nm = 
+   try (NameMap.find nm ctx.termvars) with 
        Not_found -> notFound "term" nm
 
-let lookupTypeVariable cntxt nm = 
-   try (NameMap.find nm cntxt.typevars) with 
+let lookupTypeVariable ctx nm = 
+   try (NameMap.find nm ctx.typevars) with 
        Not_found -> notFound "type" nm
 
-let lookupModulVariable cntxt nm = 
-   try (NameMap.find nm cntxt.modulvars) with 
+let lookupModulVariable ctx nm = 
+   try (NameMap.find nm ctx.modulvars) with 
        Not_found -> notFound "modul" nm
 
-let lookupSignatVariable cntxt nm = 
-   try (NameMap.find nm cntxt.signatvars) with 
+let lookupSignatVariable ctx nm = 
+   try (NameMap.find nm ctx.signatvars) with 
        Not_found -> notFound "signat" nm
-
-let isboundTermVariable cntxt nm =
-  NameMap.mem nm cntxt.termvars
 
 (******************)
 (** {3 Insertion} *)
 (******************)
 
-let insertTermVariable cntxt nm ty =
-  if NameMap.mem nm cntxt.termvars then
+let insertTermVariable ctx nm ty =
+  if NameMap.mem nm ctx.termvars then
     failwith ("Outsyn: shadowing of term variable " ^ (string_of_name nm))
   else
-    { cntxt with termvars = NameMap.add nm ty cntxt.termvars }
+    { ctx with termvars = NameMap.add nm ty ctx.termvars }
 
-let insertTypeVariable cntxt nm ty =
-  if NameMap.mem nm cntxt.typevars then
+let insertTypeVariable ctx nm ty =
+  if NameMap.mem nm ctx.typevars then
     failwith ("Outsyn: shadowing of type variable " ^ (string_of_name nm))
   else
-  { cntxt with typevars = NameMap.add nm ty cntxt.typevars }
+  { ctx with typevars = NameMap.add nm ty ctx.typevars }
 
-let insertTypeVariables cntxt nms def =
+let insertTypeVariables ctx nms def =
   let defs = List.map (fun _ -> def) nms
   in
-     List.fold_left2 insertTypeVariable cntxt nms defs
+     List.fold_left2 insertTypeVariable ctx nms defs
 
-let insertPropVariable cntxt _ _ = 
+let insertPropVariable ctx _ _ = 
   (* We don't keep track of propositional variables *)
-  cntxt
+  ctx
   
 
-(** Other functions later *)
+(** Other insertion functions defined below (after normalization):
+
+   insertModulVariable : context -> name -> signat -> context
+   insertSignatVariable: context -> name -> signat -> context
+
+*)
 
 (************************************)
 (** {3 Renaming of Bound Variables} *)
 (************************************)
 
 let addToRenaming map oldnm newnm =
-(*  if (oldnm = newnm) then 
-    map
-  else *)
     NameMap.add oldnm newnm map
 
 let addListToRenaming map oldnms newnms =
   List.fold_left2 addToRenaming map oldnms newnms
 
 (* Stolen from logicrules.ml *)
-let renameBoundTermVar cntxt nm =
+let renameBoundTermVar ctx nm =
   let nm' = refresh nm in
-    ({cntxt with termrenaming = addToRenaming cntxt.termrenaming nm nm'}, nm')
+    ({ctx with termrenaming = addToRenaming ctx.termrenaming nm nm'}, nm')
 
-let renameBoundTermVars cntxt nms =
+let renameBoundTermVars ctx nms =
   let nms' = refreshList nms in
-    ({cntxt with termrenaming = 
-        addListToRenaming cntxt.termrenaming nms nms'}, nms')
+    ({ctx with termrenaming = 
+        addListToRenaming ctx.termrenaming nms nms'}, nms')
 
-let renameBoundTypeVar cntxt nm =
+let renameBoundTypeVar ctx nm =
   let nm' = refresh nm in
-    ({cntxt with termrenaming = addToRenaming cntxt.typerenaming nm nm'}, nm')
+    ({ctx with termrenaming = addToRenaming ctx.typerenaming nm nm'}, nm')
 
 let renameBoundTypeVars ctx nms = 
   mapWithAccum renameBoundTypeVar ctx nms
 
-let renameBoundModulVar cntxt nm =
+let renameBoundModulVar ctx nm =
   let nm' = refresh nm in
-    ({cntxt with termrenaming = addToRenaming cntxt.modulrenaming nm nm'}, nm')
+    ({ctx with termrenaming = addToRenaming ctx.modulrenaming nm nm'}, nm')
 
-let renameBoundPropVar cntxt nm =
+let renameBoundPropVar ctx nm =
   let nm' = refresh nm in
-    ({cntxt with proprenaming = addToRenaming cntxt.proprenaming nm nm'}, nm')
+    ({ctx with proprenaming = addToRenaming ctx.proprenaming nm nm'}, nm')
   
 let rec renamePattern ctx pat = 
   match pat with
@@ -150,20 +194,20 @@ let applyRenaming map nm =
   else
     nm
 
-let applyTermRenaming cntxt nm =
-  applyRenaming cntxt.termrenaming nm
+let applyTermRenaming ctx nm =
+  applyRenaming ctx.termrenaming nm
 
-let applyTypeRenaming cntxt nm =
-  applyRenaming cntxt.typerenaming nm
+let applyTypeRenaming ctx nm =
+  applyRenaming ctx.typerenaming nm
 
-let applyModulRenaming cntxt nm =
-  applyRenaming cntxt.modulrenaming nm
+let applyModulRenaming ctx nm =
+  applyRenaming ctx.modulrenaming nm
 
-let applyPropRenaming cntxt nm =
-  applyRenaming cntxt.proprenaming nm
+let applyPropRenaming ctx nm =
+  applyRenaming ctx.proprenaming nm
 
-let applyPropRenamingLN cntxt = function
-    LN(None, nm) -> LN(None, applyPropRenaming cntxt nm)
+let applyPropRenamingLN ctx = function
+    LN(None, nm) -> LN(None, applyPropRenaming ctx nm)
   | ln -> ln  (* XXX: What if we've renamed modul variables in here??? *)
 
       
@@ -207,75 +251,75 @@ let rec findSignatvarInElems elts mdl nm =
   in loop emptysubst elts
 
 
-let rec hnfSignat cntxt = function
+let rec hnfSignat ctx = function
     SignatApp(sg1,mdl2) -> 
       begin
-	match hnfSignat cntxt sg1 with
+	match hnfSignat ctx sg1 with
 	    SignatFunctor((nm,_),sg1b) ->
 	      let sg' = substSignat (insertModulvar emptysubst nm mdl2) sg1b
-	      in hnfSignat cntxt sg'
+	      in hnfSignat ctx sg'
 	  | _ -> failwith "Outsynrules.hnfSignat 1"
       end
-  | SignatName nm -> hnfSignat cntxt (lookupSignatVariable cntxt nm)
+  | SignatName nm -> hnfSignat ctx (lookupSignatVariable ctx nm)
   | SignatProj (mdl, nm) ->
        begin
-	 match hnfSignat cntxt (modulToSignat cntxt mdl) with
+	 match hnfSignat ctx (modulToSignat ctx mdl) with
              Signat elts -> findSignatvarInElems elts mdl nm
 	   | _ -> failwith "Outsynrules.hnfSignat 2"
        end
   | sg -> sg
 
-and modulToSignat cntxt = function
+and modulToSignat ctx = function
     ModulName nm        -> 
-      let nm = applyModulRenaming cntxt nm
-      in lookupModulVariable cntxt nm
+      let nm = applyModulRenaming ctx nm
+      in lookupModulVariable ctx nm
   | ModulProj (mdl, nm) ->
        begin
-	 match hnfSignat cntxt (modulToSignat cntxt mdl) with
+	 match hnfSignat ctx (modulToSignat ctx mdl) with
              Signat elts -> findModulvarInElems elts mdl nm
 	   | _ -> failwith "Outsynrules.modulToSignat 1"
        end
   | ModulApp (mdl1, mdl2)  -> 
        begin
-	 match hnfSignat cntxt (modulToSignat cntxt mdl1) with
+	 match hnfSignat ctx (modulToSignat ctx mdl1) with
              SignatFunctor((nm,_),sg) -> 
 	       let subst = insertModulvar emptysubst nm mdl2
 	       in substSignat subst sg
 	   | _ -> failwith "Outsynrules.modulToSignat 2"
        end
   | ModulStruct defs -> 
-      let rec loop cntxt = function
+      let rec loop ctx = function
 	  [] -> []
 	| DefTerm(nm,ty,_) :: rest ->
 	    Spec(nm, ValSpec ([], ty), []) :: 
-	      loop (insertTermVariable cntxt nm ty) rest
+	      loop (insertTermVariable ctx nm ty) rest
 	| DefType(nm,ty) :: rest ->
 	    Spec(nm, TySpec (Some ty), []) :: 
-	      loop (insertTypeVariable cntxt nm (Some ty)) rest
+	      loop (insertTypeVariable ctx nm (Some ty)) rest
 	| DefModul(nm,sg,_) :: rest ->
 	    Spec(nm, ModulSpec sg, []) :: 
-	      loop (insertModulVariable cntxt nm sg) rest
+	      loop (insertModulVariable ctx nm sg) rest
         | DefSignat(nm,sg) :: rest ->
 	    Spec(nm, SignatSpec sg, []) ::
-	      loop (insertSignatVariable cntxt nm sg) rest
-      in Signat (loop cntxt defs)
+	      loop (insertSignatVariable ctx nm sg) rest
+      in Signat (loop ctx defs)
 
 
-and insertModulVariable cntxt nm sg =
-  if NameMap.mem nm cntxt.modulvars then
+and insertModulVariable ctx nm sg =
+  if NameMap.mem nm ctx.modulvars then
     failwith ("Outsyn: shadowing of modul variable " ^ (string_of_name nm))
   else
-    let sg' =  hnfSignat cntxt sg
+    let sg' =  hnfSignat ctx sg
     in
-    { cntxt with modulvars = NameMap.add nm sg' cntxt.modulvars }
+    { ctx with modulvars = NameMap.add nm sg' ctx.modulvars }
 
-and insertSignatVariable cntxt nm sg =
-  if NameMap.mem nm cntxt.signatvars then
+and insertSignatVariable ctx nm sg =
+  if NameMap.mem nm ctx.signatvars then
     failwith ("Outsyn: shadowing of signat variable " ^ (string_of_name nm))
   else
-    let sg' =  hnfSignat cntxt sg
+    let sg' =  hnfSignat ctx sg
     in
-    { cntxt with signatvars = NameMap.add nm sg' cntxt.signatvars }
+    { ctx with signatvars = NameMap.add nm sg' ctx.signatvars }
 
 
 
@@ -284,22 +328,22 @@ and insertSignatVariable cntxt nm sg =
 (***********************************)
 
 (** Expand out any top-level definitions for a type *)
-let rec hnfTy cntxt orig_ty = 
+let rec hnfTy ctx orig_ty = 
   match orig_ty with
       NamedTy (LN(None, nm)) ->
 	begin
-	  match lookupTypeVariable cntxt nm with
+	  match lookupTypeVariable ctx nm with
 	    | None -> orig_ty
-	    | Some ty -> hnfTy cntxt ty
+	    | Some ty -> hnfTy ctx ty
 	end
     | NamedTy (LN(Some mdl, nm)) ->
 	begin
-	  match hnfSignat cntxt (modulToSignat cntxt mdl) with
+	  match hnfSignat ctx (modulToSignat ctx mdl) with
 	    Signat elems ->
 	      begin
 		match findTypevarInElems elems mdl nm with
 		    None -> orig_ty
-		  | Some ty -> hnfTy cntxt ty
+		  | Some ty -> hnfTy ctx ty
 	      end
 	    | sg' -> (print_endline "Found unprojectable signature:";
 		      print_endline (string_of_signat sg');
@@ -403,6 +447,16 @@ let rec insertPattern ctx = function
   | ConstrPat(lbl, Some(nm,ty)) ->
       insertTermVariable ctx nm ty
 
+(***************************************)
+(** {2: Type Reconstruction for Terms} *)
+(***************************************)
+
+(* Given a context and a well-formed term, return the type
+   of that term.
+
+   Does not actually check that the term is well-formed!
+   Returned type will be correct, but need not be head-normal.
+ *)
 let rec typeOf ctx = function
   | Id(LN(None,nm)) -> 
       let nm = applyTermRenaming ctx nm
@@ -414,7 +468,7 @@ let rec typeOf ctx = function
 	   | _ -> failwith "Outsynrules.typeOf: Id"
        end
   | EmptyTuple -> UnitTy
-  | Dagger -> TopTy
+  | Dagger     -> TopTy
   | App(trm1, _) ->
       begin
 	match hnfTy ctx (typeOf ctx trm1) with
@@ -441,7 +495,7 @@ let rec typeOf ctx = function
 	      in typeOf ctx' trm
 	in let armTys = List.map typeOfArm arms
 	in match armTys with
-	  [] -> VoidTy
+	  []        -> VoidTy
 	| (ty::tys) -> List.fold_left (joinTy ctx) ty tys
       end
   | Let(pat,trm1,trm2) ->

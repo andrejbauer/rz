@@ -19,19 +19,22 @@ let command_line_options =
   let    fSet = ((fun x -> Arg.Set x), true)
   in let fClear = ((fun x -> Arg.Clear x), false)
   in let booleanFlags = 
-    [("--opt",        fSet,   Flags.do_opt,       "Turn on simplification optimations (requires trimming)");
-     ("--noopt",      fClear, Flags.do_opt,       "Turn off simplification optimizations");
-     ("--thin",       fSet,   Flags.do_thin,      "Remove trivial realizers");
-     ("--nothin",     fClear, Flags.do_thin,      "Leave trivial realizers");
-     ("--show",       fSet,   Flags.do_print,     "Show output on stdout");
-     ("--noshow",     fClear, Flags.do_print,     "No output to stdout");
-     ("--save",       fSet,   Flags.do_save,      "Send output to .mli file");
-     ("--nosave",     fClear, Flags.do_save,      "No output to file");
+    [
+     ("--dump_infer", fSet,   Flags.do_dumpinfer, "Dump result of type inference");
      ("--hoist",      fSet,   Flags.do_hoist,     "Hoist all assurances");
      ("--nohoist",    fClear, Flags.do_hoist,     "Don't hoist all assurances");
+     ("--opt",        fSet,   Flags.do_opt,       "Turn on simplification optimations");
+     ("--noopt",      fClear, Flags.do_opt,       "Turn off simplification optimizations");
+     ("--poly",       fSet,   Flags.do_poly,      "Convert functors to polymorphism");
+     ("--nopoly",     fClear, Flags.do_poly,      "Don't convert functors");
+     ("--save",       fSet,   Flags.do_save,      "Send output to .mli file");
+     ("--nosave",     fClear, Flags.do_save,      "No output to file");
+     ("--show",       fSet,   Flags.do_print,     "Show output on stdout");
+     ("--noshow",     fClear, Flags.do_print,     "No output to stdout");
      ("--sigapp",     fSet,   Flags.do_sigapp,    "Retain signature applications");
      ("--nosigapp",   fClear, Flags.do_sigapp,    "Expand away signature applications");
-     ("--dump_infer", fSet,   Flags.do_dumpinfer, "Dump result of type inference");
+     ("--thin",       fSet,   Flags.do_thin,      "Remove trivial realizers");
+     ("--nothin",     fClear, Flags.do_thin,      "Leave trivial realizers");
     ]
   in let otherFlags = 
      [
@@ -185,8 +188,8 @@ let rec processOne (state : state) writeOutput filename =
           else () in
 *)
       let (spec2,opt_state') = 
-	(try ( Opt.optToplevels state.opt_state spec ) with
-	    (Opt.Impossible s) as exn -> (print_endline s; raise exn) ) in
+	Opt.optToplevels state.opt_state spec in
+
 
       let spec3 = 
 	match spec2 with
