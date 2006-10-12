@@ -96,10 +96,15 @@ and proptype =
     | PropMArrow of mbinding * proptype 
 
 and assertionAnnot =
-    Annot_NoOpt
+    Annot_NoOpt             (* Do not optimize the proposition *)
   | Annot_Declare of name
 
-and assertion = string * assertionAnnot list * proposition
+and assertion = 
+  {alabel : string;                       (* Name of the assertion *)
+   atyvars: name list;                    (* Can parameterize by types *)
+   apbnds :  (name * proptype) list;      (* Can parameterize by predicates *)
+   aannots: assertionAnnot list;          (* Options *)
+   aprop  : proposition}                  (* The actual assertion *)
 
 and signat_element =
     Spec      of name * spec * assertion list
@@ -152,6 +157,9 @@ let curried_app head args =
 let nested_lambda args trm =
   List.fold_right (fun b t -> Lambda (b, t)) args trm
 
+let nested_arrowty args ty =
+  List.fold_right (fun b t -> ArrowTy (b, t)) args ty
+
 let nested_let names defns trm =
   List.fold_right2 (fun n t1 t2 -> Let (VarPat n, t1, t2)) names defns trm
 
@@ -163,6 +171,12 @@ let nested_let' pats defns trm =
 
 let nested_plet' pats defns prp =
   List.fold_right2 (fun pat t1 p2 -> PLet (pat, t1, p2)) pats defns prp
+
+let nested_imply args prp =
+  List.fold_right (fun b t -> Imply (b, t)) args prp
+
+let nested_forall args prp =
+  List.fold_right (fun b t -> Forall (b, t)) args prp
 
 let rec dagger_of_ty = function
     NamedTy _ -> Dagger (* XXX: suspicous, should unfold definition? *)
@@ -176,6 +190,22 @@ let rec dagger_of_ty = function
 
 let fLet(a,b,c) = Let(a,b,c)
 let fPLet(a,b,c) = PLet(a,b,c)
+
+(*
+   mapWithAccum:  
+     ('a -> 'b -> 'a * 'b) -> 'a -> 'b list -> 'a * 'b list
+
+   e.g., a is a typing context or a substitution, and the b's are
+   variables to rename; we want back the accumlated substitution
+   *and* all the renamed variables.
+*)
+let rec mapWithAccum f a = function
+   [] -> (a, [])
+ | b::bs -> 
+   let (a',b') = f a b
+   in let (a'', bs') = mapWithAccum f a' bs
+   in (a'', b'::bs') 
+
 
 (** ======== FREE VARIABLES ======= *)
 
@@ -715,17 +745,6 @@ and substCaseArm ?occ sbst (pat, t) =
 and substCaseArms ?occ sbst arms = 
    List.map (substCaseArm ?occ sbst) arms
 
-and substProptype ?occ sbst = function
-    Prop -> Prop
-  | PropArrow((n,ty),pt) -> 
-      let n' = refresh n in
-	PropArrow((n', substTy ?occ sbst ty), 
-		 substProptype ?occ (insertTermvar sbst n (id n')) pt)
-  | PropMArrow((n,m),pt) ->
-      let n' = refresh n in
-	PropMArrow((n', substModest ?occ sbst m),
-		 substProptype ?occ (insertTermvar sbst n (id n')) pt)
-
 and substTermList ?occ sbst = List.map (substTerm ?occ sbst)
 
 and substPropList ?occ sbst = List.map (substProp ?occ sbst)
@@ -803,10 +822,53 @@ and substSignatElements ?occ sbst =
 and substSignatElement ?occ sbst elem =
   List.hd (substSignatElements ?occ sbst [elem])
 
-and substAssertion ?occ sbst (nm, annots, prop) = 
-  (nm, annots, substProp ?occ sbst prop)
+and substAssertion ?occ sbst asn =
+  let atyvars' = refreshList asn.atyvars
+  in let sbst' = renamingList' sbst asn.atyvars atyvars'
+  in let (apbnds', sbst'')  = substPBnds sbst' asn.apbnds
+  in let aprop' = substProp ?occ sbst'' asn.aprop
+  in
+  {alabel  = asn.alabel;
+   atyvars = atyvars';
+   apbnds  = apbnds';
+   aannots  = asn.aannots;
+   aprop   = aprop'}
 
-and substBinding ?occ sbst (nm, ty) = (nm, substTy ?occ sbst ty)
+and substPBnds ?occ sbst = function
+    [] -> ([], sbst)
+  | pb::pbs ->
+      let (pb', sbst') = substPBnd ?occ sbst pb
+      in let (pbs', sbst'') = substPBnds ?occ sbst' pbs
+      in (pb'::pbs', sbst'')
+
+and substPBnd ?occ sbst (nm, pt) =
+  let nm' = refresh nm
+  in let sbst' = renaming' sbst nm nm'
+  in let pt' = substProptype sbst pt
+  in
+  ((nm',pt'), sbst')
+
+and substProptype ?occ sbst = function
+    Prop -> Prop
+  | PropArrow(bnd, pt) ->
+    let (sbst', bnd') = substBinding ?occ sbst bnd
+    in PropArrow(bnd', substProptype ?occ sbst' pt)
+  | PropMArrow(mbnd, pt) ->
+    let (sbst', mbnd') = substMBinding ?occ sbst mbnd
+    in PropMArrow(mbnd', substProptype ?occ sbst' pt)
+   
+
+and substBinding ?occ sbst (nm, ty) = 
+  let nm' = refresh nm
+  in let sbst' = renaming' sbst nm nm'
+  in let ty' = substTy ?occ sbst' ty
+  in (sbst', (nm', ty'))
+
+and substMBinding ?occ sbst (nm, mset) = 
+  let nm' = refresh nm
+  in let sbst' = renaming' sbst nm nm'
+  in let mset' = substModest ?occ sbst' mset
+  in (sbst', (nm', mset'))
 
 
 
@@ -1036,17 +1098,31 @@ and string_of_proptype pt = string_of_proptype' 999 pt
 and string_of_bnd (n,t) = 
   string_of_name n ^ " : " ^ string_of_ty t
 
-and string_of_bnds bnds : string =
+and string_of_bnds bnds =
     String.concat ", " (List.map string_of_bnd bnds)
+
+and string_of_mbnd (n,mset) = 
+  string_of_name n ^ ":" ^ string_of_modest mset
+
+and string_of_mbnds mbnds =
+    String.concat ", " (List.map string_of_mbnd mbnds)
+
+and string_of_pbnd (n,pt) = 
+  string_of_name n ^ ":" ^ string_of_proptype pt
+
+and string_of_pbnds pbnds =
+    String.concat ", " (List.map string_of_pbnd pbnds)
 
 and string_of_annots = function
     [] -> ""
   | Annot_NoOpt::rest -> "[Definitional] " ^ (string_of_annots rest)
   | Annot_Declare _::rest -> string_of_annots rest
 
-and string_of_assertion (nm, annots, p) =
-  "(** Assertion " ^ nm ^ " " ^ string_of_annots annots ^ ":\n" ^ 
-    (string_of_proposition p) ^ "\n*)"
+and string_of_assertion asn =
+  "(** Assertion " ^ string_of_tyvars asn.atyvars ^ 
+    string_of_pbnds asn.apbnds ^ " " ^ asn.alabel ^ " " ^ 
+    string_of_annots asn.aannots ^ ":\n" ^ 
+    (string_of_proposition asn.aprop) ^ "\n*)"
 
 and string_of_assertions assertions = 
   (String.concat "\n" (List.map string_of_assertion assertions))

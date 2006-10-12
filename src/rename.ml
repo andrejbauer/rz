@@ -68,6 +68,13 @@ and renMBinding ctx (nm, ms) =
 
 and renMBindingList ctx bndg = renList renMBinding ctx bndg
 
+and renPBinding ctx (nm, pt) =
+  let pt = renPt ctx pt in
+  let nm, ctx = renName ctx nm in
+    (nm, pt), ctx
+
+and renPBindingList ctx pbnds = renList renPBinding ctx pbnds
+
 and renBindingOpt ctx = function
     None -> None, ctx
   | Some bnd ->
@@ -87,6 +94,15 @@ and renPat ctx pat =
   | ConstrPat (lb, Some bnd) ->
       let bnd, ctx = renBinding ctx bnd in
       ConstrPat(lb, Some bnd), ctx
+
+and renPt ctx = function
+    Prop -> Prop
+  | PropArrow(bnd,pt) ->
+      let bnd, ctx' = renBinding ctx bnd in
+      PropArrow(bnd, renPt ctx' pt)
+  | PropMArrow(mbnd,pt) ->
+      let mbnd, ctx' = renMBinding ctx mbnd in
+      PropMArrow(mbnd, renPt ctx' pt)
 
 and renLN ctx = function
     LN (Some mdl, nm) ->
@@ -234,17 +250,23 @@ and renPropList ctx lst = renList' renProp ctx lst
 and renModest ctx {ty=ty; tot=p; per=q} =
   {ty = renTy ctx ty; tot = renProp ctx p; per = renProp ctx q}
 
-and renAssertion ctx (str, annots, p) =
-  let ctx = forbid (mk_word str) ctx in
+and renAssertion ctx asn =
+  let ctx = forbid (mk_word asn.alabel) ctx in
+  let atyvars, ctx = renNameList ctx asn.atyvars in
+  let apbnds, ctx = renPBindingList ctx asn.apbnds in
   let ctx = List.fold_left
     (fun ctx ->
        function
 	   Annot_NoOpt -> ctx
 	 | Annot_Declare n -> forbid n ctx)
     ctx
-    annots
+    asn.aannots
   in
-    (str, annots, renProp ctx p), ctx
+  {alabel = asn.alabel;
+   atyvars = atyvars;
+   apbnds  = apbnds;
+   aannots = asn.aannots;
+   aprop = renProp ctx asn.aprop}, ctx
 
 and renAssertionList ctx lst = renList renAssertion ctx lst
 

@@ -14,6 +14,7 @@ type context = {termvars: ty NameMap.t;
 		typerenaming: name NameMap.t;
 		modulvars: signat NameMap.t;
 		modulrenaming: name NameMap.t;
+		proprenaming: name NameMap.t;
 		signatvars: signat NameMap.t;
 	        facts: proposition list}
 
@@ -21,6 +22,7 @@ let emptyContext =
   {termvars = NameMap.empty;   termrenaming = NameMap.empty;
    typevars = NameMap.empty;   typerenaming = NameMap.empty;
    modulvars = NameMap.empty;  modulrenaming = NameMap.empty;
+   proprenaming = NameMap.empty;
    signatvars = NameMap.empty;
    facts = []}
 
@@ -74,6 +76,11 @@ let insertTypeVariable cntxt nm ty =
   else
   { cntxt with typevars = NameMap.add nm ty cntxt.typevars }
 
+let insertTypeVariables cntxt nms def =
+  let defs = List.map (fun _ -> def) nms
+  in
+     List.fold_left2 insertTypeVariable cntxt nms defs
+
 (** Other functions later *)
 
 (************************************)
@@ -103,19 +110,17 @@ let renameBoundTypeVar cntxt nm =
   let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.typerenaming nm nm'}, nm')
 
+let renameBoundTypeVars ctx nms = 
+  mapWithAccum renameBoundTypeVar ctx nms
+
 let renameBoundModulVar cntxt nm =
   let nm' = refresh nm in
     ({cntxt with termrenaming = addToRenaming cntxt.modulrenaming nm nm'}, nm')
 
-let rec renameTermBindings cntxt = function
-    [] -> (cntxt, [])
-  | (nm,ty)::bnds -> 
-      let (cntxt', nm') = renameBoundTermVar cntxt nm
-      in let cntxt'' = insertTermVariable cntxt' nm' ty
-      in let (cntxt''', bnds') = renameTermBindings cntxt'' bnds
-      in (cntxt''', (nm',ty)::bnds')
-
-
+let renameBoundPropVar cntxt nm =
+  let nm' = refresh nm in
+    ({cntxt with proprenaming = addToRenaming cntxt.proprenaming nm nm'}, nm')
+  
 let rec renamePattern ctx pat = 
   match pat with
     WildPat -> (ctx, pat)
@@ -130,12 +135,9 @@ let rec renamePattern ctx pat =
       in let ctx'' = insertTermVariable ctx nm ty
       in (ctx'', ConstrPat(lbl, Some(nm', ty)))
 
-and renamePatterns ctx = function
-    [] -> (ctx, [])
-  | pat::pats ->
-      let (ctx', pat') = renamePattern ctx pat
-      in let (ctx'', pats') = renamePatterns ctx' pats
-      in (ctx'', pat'::pats')
+and renamePatterns ctx pats = 
+  mapWithAccum renamePattern ctx pats
+
 
 let applyRenaming map nm = 
   if (NameMap.mem nm map) then
@@ -152,7 +154,12 @@ let applyTypeRenaming cntxt nm =
 let applyModulRenaming cntxt nm =
   applyRenaming cntxt.modulrenaming nm
 
+let applyPropRenaming cntxt nm =
+  applyRenaming cntxt.proprenaming nm
 
+let applyPropRenamingLN cntxt = function
+    LN(None, nm) -> LN(None, applyPropRenaming cntxt nm)
+  | ln -> ln  (* XXX: What if we've renamed modul variables in here??? *)
 
       
 

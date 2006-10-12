@@ -152,17 +152,95 @@ and findEqPremise nm = function
 (** {2: Polymorphization functions} *)
 (***********************************)
 
+let rec extractPolyInfo = function
+    [] -> Some ([], [], [], [])
+  | Spec(nm, TySpec None, assns)::rest ->
+      begin
+	match extractPolyInfo rest with
+	  None -> None
+	| Some (tynames, args, types, assns_rest) ->
+	    Some (nm::tynames, args, types, assns @ assns_rest)
+      end
+  | Spec(nm, ValSpec([], ty), assns) :: rest ->
+      begin
+	match extractPolyInfo rest with
+	  None -> None
+	| Some (tynames, args, types, assns_rest) ->
+	    Some (tynames, nm :: args, ty :: types, assns @ assns_rest)
+      end
+  | Assertion asn :: rest ->
+      begin
+	match extractPolyInfo rest with
+	  None -> None
+	| Some (tynames, args, types, assns_rest) ->
+	    Some (tynames, args, types, asn :: assns_rest)
+      end
+  | _ -> None
+
+
 let tryPolymorph ctx nm signat =
   match (hnfSignat ctx signat) with
-      SignatFunctor((nm1,Signat[Spec(nm2,TySpec None,assns2)]),
-		    Signat[Spec(nm3,ValSpec([],ty3),assns3)]) ->
-	let nm2' = tyvarize nm2
-	in let subst = 
-	  insertTy emptysubst (NamedTy(LN(Some(ModulName nm1),nm2)))
-	    (NamedTy(LN(None,nm2')))
-	in
-	  Some(ValSpec([nm2'], substTy subst ty3))
-    | _ -> None
+    SignatFunctor((nm1,Signat argElems),
+		  Signat[Spec(nm3,ValSpec([],ty3),assns3)]) ->
+      begin
+	match extractPolyInfo argElems with
+	  None -> None
+	| Some (tynames, argnames, argtypes, argassns) ->
+	    let tyvars = List.map tyvarize tynames
+		
+	    in let arg_subst = 
+	      (* Mapping from foo -> 'foo, for type parameters *)
+	      renamingList tynames tyvars
+		
+	    in let argtypes' = 
+	      List.map (substTy arg_subst) argtypes
+	    in let argassns' =
+	      List.map (substAssertion arg_subst) argassns
+		
+		
+	    in let resSubstTyIn nm  = NamedTy(LN(Some(ModulName nm1),nm))
+	    in let resSubstTyOut tv = (NamedTy(LN(None,tv)))
+	    in let res_subst_ty = 
+	      (* Mapping from nm1.foo -> 'foo, i.e., type parameters *)
+	      List.fold_left2 insertTy emptysubst
+		(List.map resSubstTyIn tynames)
+		(List.map resSubstTyOut tyvars)
+		
+	    in let resSubstTermIn nm =  Id(LN(Some(ModulName nm1), nm))
+	    in let resSubstTermOut nm = id nm
+	    in let res_subst_term =
+	      (* Mapping from nm1.bar -> bar, i.e, term parameters *)
+	      List.fold_left2 insertTerm emptysubst
+		(List.map resSubstTermIn argnames)
+		(List.map resSubstTermOut argnames)
+(*		
+	    in let _ = 
+	      (print_endline "\nres_subst_ty:";
+	       display_subst res_subst_ty;
+	       print_endline "\nres_subst_term:";
+	       display_subst res_subst_term)
+*)
+	    in let ty3' =
+	      nested_arrowty argtypes' (substTy res_subst_ty ty3)
+		
+	    in let updateResAssertion asn =
+	      let aprop' = substProp res_subst_term asn.aprop
+	      in let aprop'' = substProp res_subst_ty aprop'
+	      in
+	      {alabel = asn.alabel;
+	       atyvars = tyvars @ asn.atyvars;
+	       apbnds = []; (* XXX *)
+	       aannots = asn.aannots;
+	       aprop = nested_forall (List.combine argnames argtypes') aprop''}
+		
+	    in let assns3' =
+	      List.map updateResAssertion assns3
+	    in
+	    Some(Spec(uncapitalize nm3,
+		      ValSpec(tyvars, ty3'), 
+		      argassns' @ assns3'))
+      end
+  | _ -> None
 
     
 
@@ -184,17 +262,53 @@ let rec optTyOption ctx = function
     None    -> None
   | Some ty -> Some (optTy ctx ty)
 
-(** optBinds: ctx -> binding list -> binding list
+(**
+   optBnd : context -> binding      -> context * binding
+   optBnds: context -> binding list -> context * binding list
 
-   Nothing to do here either.
+   Nothing to do here either, but we rename just to be save
 *)
-let rec optBinds ctx bnds = bnds
+let rec optBnd ctx (nm,ty) = 
+  let ty' = optTy ctx ty
+  in let ctx', nm' = renameBoundTermVar ctx nm
+  in let ctx' = insertTermVariable ctx' nm' ty'
+  in (ctx', (nm',ty'))
+
+and optBnds ctx bnds =
+  mapWithAccum optBnd ctx bnds
+
+and optPBnd ctx (nm, pt) =
+  let pt' = optPt ctx pt
+  in let ctx', nm' = renameBoundPropVar ctx nm
+  in (ctx', (nm', pt'))
+
+and optPBnds ctx pbnds =
+  mapWithAccum optPBnd ctx pbnds
+
+and optModestBnd ctx (nm, mset) =
+  let mset' = optModest ctx mset
+  in let ctx', nm' = renameBoundTermVar ctx nm
+  in (ctx', (nm', mset'))
+
+and optModestBnds ctx modestbnds =
+  mapWithAccum optModestBnd ctx modestbnds
+
+and optPt ctx = function
+    Prop -> Prop
+  | PropArrow(bnd,pt) ->
+    let ctx', bnd' = optBnd ctx bnd
+    in let pt' = optPt ctx' pt
+    in PropArrow(bnd', pt')
+  | PropMArrow(modestbnd,pt) ->
+    let ctx', modestbnd' = optModestBnd ctx modestbnd
+    in let pt' = optPt ctx' pt
+    in PropMArrow(modestbnd', pt')
 
 (* optTerm ctx e = (t, e')
       where t  is the type of e under ctx
             e' is the optimized version of e
 *)       
-let rec optTerm ctx orig_term = 
+and optTerm ctx orig_term = 
   try
     match orig_term with
         Id (LN(None, nm)) ->
@@ -393,7 +507,7 @@ let rec optTerm ctx orig_term =
 	  let (names,tys) = List.split bnds
 	  in let tys'  = List.map (optTy ctx) tys
 	  in let bnds' = List.combine names tys'
-	  in let (ctx', bnds'') = renameTermBindings ctx bnds'
+	  in let (ctx', bnds'') = optBnds ctx bnds'
 	  in let prop' = optProp ctx' prop
 	    
 	  in let ty2, trm' = optTerm ctx' trm
@@ -528,10 +642,12 @@ and optProp ctx orig_prp =
 	    optProp ctx (PApp(NamedTotal(n,lst), t1))
 	| NamedTotal(n, lst)         -> NamedTotal(n, optTerms' ctx lst)
 	| NamedPer  (n, lst)         -> NamedPer  (n, optTerms' ctx lst)
-	| NamedProp (n, Dagger, lst) -> NamedProp (n, Dagger, optTerms' ctx lst)
-	| NamedProp (n, t, lst)      -> NamedProp (n, optTerm' ctx t, 
-						  optTerms' ctx lst)
-
+	| NamedProp (n, Dagger, lst) -> 
+	    let n' = applyPropRenamingLN ctx n
+	    in NamedProp (n', Dagger, optTerms' ctx lst)
+	| NamedProp (n, t, lst)      -> 
+	    let n' = applyPropRenamingLN ctx n
+	    in NamedProp (n', optTerm' ctx t, optTerms' ctx lst)
 	    
 	| Equal(e1, e2) -> 
 	    begin
@@ -710,7 +826,7 @@ and optProp ctx orig_prp =
 	  let (names,tys) = List.split bnds
 	  in let tys'  = List.map (optTy ctx) tys
 	  in let bnds' = List.combine names tys'
-	  in let (ctx', bnds'') = renameTermBindings ctx bnds'
+	  in let (ctx', bnds'') = optBnds ctx bnds'
 	  in let p' = optProp ctx' p
 
 	  in let ctx'' = if bnds = [] then insertFact ctx' p else ctx'
@@ -856,20 +972,40 @@ and optProp ctx orig_prp =
 		       string_of_proposition orig_prp);
      raise e)
 
-and optAssertion ctx (name, annots, prop) = 
-  if List.mem Annot_NoOpt annots then
-    (name, annots, prop)
+and optAssertion ctx asn = 
+  if List.mem Annot_NoOpt asn.aannots then
+    asn
   else
-    let prop' = optProp ctx prop
-    in 
+    let ctx', atyvars' = renameBoundTypeVars ctx asn.atyvars
+    in let ctx' = insertTypeVariables ctx' atyvars' None
+
+    in let ctx', apbnds' = optPBnds ctx' asn.apbnds
+
+    in let aprop' = optProp ctx' asn.aprop
       
-    let prop'' = if (!Flags.do_hoist) then
-	let (obs, prp') = hoistProp prop' in
-	  optProp ctx (foldPObligation obs prp') 
+    in let aprop'' = if (!Flags.do_hoist) then
+	let (obs, prp') = hoistProp aprop' in
+	  optProp ctx' (foldPObligation obs prp') 
       else
-	prop'
+	aprop'
     in
-      (name, annots, prop'')
+    {alabel = asn.alabel;
+     atyvars = atyvars';
+     apbnds = apbnds';
+     aannots = asn.aannots;
+     aprop = aprop''}
+
+and insertAssertionFacts ctx = function
+    [] -> ctx
+  | asn::rest -> 
+      if (asn.atyvars = [] && asn.apbnds = []) then
+	insertAssertionFacts (insertFact ctx asn.aprop) rest
+      else
+      (* We don't have syntax for forall-set quantified propositions,
+	 or for forall-proposition quantified propositions,
+	 so we can't "remember" such a proposition as one of our facts.
+	 We just forget about it. *)
+	insertAssertionFacts ctx rest
       
 and optModest ctx {ty=t; tot=p; per=q} =
   {ty = optTy ctx t;
@@ -884,8 +1020,7 @@ and optElems ctx orig_elems =
 	   let ty'  = optTy ctx ty in
 	   let ctx' = insertTermVariable ctx name ty' in
 	   let assertions' = List.map (optAssertion ctx') assertions
-	   in let ctx' = 
-	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx' = insertAssertionFacts ctx' assertions'
 	   in let (rest', ctx'') = optElems ctx' rest in
 		(Spec (name, ValSpec (tyvars,ty'), assertions') :: rest', 
 		ctx'')
@@ -907,26 +1042,19 @@ and optElems ctx orig_elems =
 	   let signat' = optSignat ctx signat
 	   in let ctx' = insertModulVariable ctx name signat'
 	   in let assertions' = List.map (optAssertion ctx') assertions
-	   in let ctx'' = 
-	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx'' = insertAssertionFacts ctx' assertions'
 	   in let (rest', ctx''') = optElems ctx'' rest 
-	   in let spec' = Spec(name, ModulSpec signat', assertions')
-	   in 
-	      spec' :: rest', ctx'''
-(*
-	   in begin
+	   in let spec' = 
 	       match tryPolymorph ctx name signat' with
-		   None -> 
-		 | Some decl' -> Spec(uncapitalize name, 
-				     decl', assertions')::rest', ctx'''
-	     end
-*)
+		 None -> Spec(name, ModulSpec signat', assertions')
+	       | Some spec' -> spec'
+	   in
+	      (spec'::rest'), ctx''
 
       |  Spec(nm, TySpec None, assertions) :: rest -> 
 	   let ctx' = insertTypeVariable ctx nm None
 	   in let assertions' = List.map (optAssertion ctx') assertions 
-	   in let ctx'' = 
-	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx'' = insertAssertionFacts ctx' assertions'
 	   in let rest', ctx''' = optElems ctx'' rest 
 	   in
 		(Spec (nm, TySpec None, assertions') :: rest'), ctx'''
@@ -935,8 +1063,7 @@ and optElems ctx orig_elems =
 	   let ty' = optTy ctx ty 
 	   in let ctx' = insertTypeVariable ctx nm (Some ty) 
 	   in let assertions' = List.map (optAssertion ctx') assertions 
-	   in let ctx'' = 
-	     insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	   in let ctx'' = insertAssertionFacts ctx' assertions'
 	   in let rest', ctx''' = optElems ctx'' rest 
 	   in
 	     (Spec(nm, TySpec(Some ty'), assertions') :: rest', 
@@ -946,8 +1073,7 @@ and optElems ctx orig_elems =
 	  let sg' = optSignat ctx sg
 	  in let ctx' = insertSignatVariable ctx nm sg
 	  in let assertions' = List.map (optAssertion ctx') assertions
-	  in let ctx'' = 
-	    insertFacts ctx' (List.map (fun (_,_,p)->p) assertions')
+	  in let ctx'' = insertAssertionFacts ctx' assertions'
 	  in let (rest', ctx''') = optElems ctx'' rest 
 	  in (Spec(nm, SignatSpec sg', assertions') :: rest',
 	     ctx''')

@@ -10,6 +10,25 @@ open Outsyn
 exception Unimplemented
 exception Impossible
 
+
+let output_components outputer separator ppf lst =
+  let rec output_loop ppf = function
+      [] -> ()
+    | [trm] -> outputer ppf trm
+    | trm::trms -> fprintf ppf "%a%s@,%a"
+	  outputer trm  separator  output_loop trms
+  in
+  output_loop ppf lst
+
+let output_components_nobreak outputer separator ppf lst =
+  let rec output_loop ppf = function
+      [] -> ()
+    | [trm] -> outputer ppf trm
+    | trm::trms -> fprintf ppf "%a%s%a"
+	  outputer trm  separator  output_loop trms
+  in
+  output_loop ppf lst
+
 (** Outputs a term to the pretty-printing formatter ppf.
       The various output_term_n functions each will display a term of 
       level <=n without enclosing parentheses, or a term of level
@@ -72,7 +91,7 @@ and output_term_12 ppf = function
         output_prop_0 p   output_term_12 trm
   | Obligation (bnds, p, trm) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
-        output_binds bnds   output_prop_0 p   output_term_12 trm
+        output_bnds bnds   output_prop_0 p   output_term_12 trm
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
@@ -141,53 +160,35 @@ and output_term_3 ppf = function
          output_term_3 t   output_term_0 u
   | trm -> output_term_0 ppf trm
 
-and output_term_components outputer separator ppf lst =
-      let rec output_loop ppf = function
-	  [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s%a"
-	    outputer trm  separator  output_loop trms
-      in
-	output_loop ppf lst
-
-and output_prop_components outputer separator ppf lst =
-      let rec output_loop ppf = function
-	  [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s@,%a"
-	    outputer trm  separator  output_loop trms
-      in
-	output_loop ppf lst
-
-and output_type_components outputer separator ppf lst =
-      let rec output_loop ppf = function
-	  [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s@,%a"
-	    outputer trm  separator  output_loop trms
-      in
-	output_loop ppf lst
-
-and output_sum_components outputer separator ppf lst = 
-      let rec output_loop ppf = function
-	  [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s@,%a"
-	    outputer trm  separator  output_loop trms
-      in
-	output_loop ppf lst
-
 (** Specifically for comma-separated variable/type pairs *)
-and output_binds ppf lst =
-      let outputer ppf (n,t) = 
-	fprintf ppf "%s:%a" (Name.string_of_name n)  output_ty t
-      in let rec output_loop ppf = function
-	    [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s@,%a"
-	    outputer trm  ", "  output_loop trms
-      in
-	output_loop ppf lst
+and output_bnd ppf (n,t) = 
+  fprintf ppf "%s:%a" (Name.string_of_name n)  output_ty t
+
+and output_bnds ppf lst =
+  output_components output_bnd ", " ppf lst
+
+and output_mbnd ppf (n,mset) =
+  fprintf ppf "%s:%a" (Name.string_of_name n)  output_modest mset
+    
+and output_mbnds ppf lst =
+  output_components output_mbnd ", " ppf lst
+
+and output_pbnd ppf (n,pt) = 
+  fprintf ppf "%s:%a" (Name.string_of_name n)  output_proptype pt
+
+and output_pbnds ppf lst =
+  output_components output_pbnd ", " ppf lst
+
+and output_modest ppf {ty=ty;tot=p} =
+  fprintf ppf "%a(%a)"  output_ty ty  output_prop p
+  
+
+and output_proptype ppf = function
+    Prop -> fprintf ppf "prop"
+  | PropArrow(bnd, pt) ->
+      fprintf ppf "%a->%a"  output_bnd bnd   output_proptype pt
+  | PropMArrow(mbnd, pt) ->
+      fprintf ppf "%a->%a"  output_mbnd mbnd   output_proptype pt
 
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
@@ -218,11 +219,12 @@ and output_term_0 ppf = function
   | Tuple [] -> fprintf ppf "()"
   | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t
   | Tuple lst -> 
-	fprintf ppf "@[(%a)@]"   (output_term_components output_term_9 ",") lst
+	fprintf ppf "@[(%a)@]"   (output_components output_term_9 ",") lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
 	    fprintf ppf "@[(%a)@]"   output_term trm)
 
-and output_term_apps ppf lst = output_term_components output_term_0 " " ppf lst
+and output_term_apps ppf lst = 
+  output_components_nobreak output_term_0 " " ppf lst
 
 and output_name ppf nm = 
   fprintf ppf "%s" (Name.string_of_name nm)
@@ -268,7 +270,7 @@ and output_prop_14 ppf = function
       in let (alls, prp') = extract_foralls all_ty
       in
 	fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
-	  output_binds alls   output_prop_14 prp'
+	  output_bnds alls   output_prop_14 prp'
   | ForallTotal ((n, ln), p) as all_ty -> 
       let rec extract_foralls = function
 	  (ForallTotal((nm,lnm),prp)) ->
@@ -288,7 +290,7 @@ and output_prop_14 ppf = function
       in let (somes, prp') = extract_somes cexists_ty
       in
 	fprintf ppf "@[<hov 2>exists %a, @ %a@]" 
-	  output_binds  somes   output_prop_14 prp'
+	  output_bnds  somes   output_prop_14 prp'
   | Imply (p, q) -> 
       fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
@@ -296,9 +298,9 @@ and output_prop_14 ppf = function
       fprintf ppf "@[<hov 2>pfun %a : %a =>@ @[%a@]@]" 
         output_name n  output_ty ty  output_prop_14 p
 
-  | PMLambda ((n, {ty=ty; tot=p}), q) ->
-      fprintf ppf "@[<hov 2>pmfun %a : %a(%a) =>@ %a@]" 
-        output_name n  output_ty ty  output_prop_14 p  output_prop_14 q
+  | PMLambda ((n, mset), q) ->
+      fprintf ppf "@[<hov 2>pmfun %a : %a =>@ %a@]" 
+        output_name n  output_modest mset  output_prop_14 q
 (*
   | PObligation ((_, TopTy), p, q) ->
       fprintf ppf "@[<hov2>assure %a in@ %a@]" 
@@ -315,7 +317,7 @@ and output_prop_14 ppf = function
 
   | PObligation (bnds, p, q) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
-        output_binds bnds   output_prop_13 p   output_prop_14 q
+        output_bnds bnds   output_prop_13 p   output_prop_14 q
 
   | PLet (pat, t, u) ->
 	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
@@ -330,12 +332,12 @@ and output_prop_13 ppf = function
   
 and output_prop_11 ppf = function
    Cor (_::_ as lst) -> 
-      output_prop_components output_prop_11 " cor " ppf lst
+      output_components output_prop_11 " cor " ppf lst
   | prp -> output_prop_10 ppf prp
 
 and output_prop_10 ppf = function
     And (_::_ as lst) -> 
-      output_prop_components output_prop_10 " /\\ " ppf lst
+      output_components output_prop_10 " /\\ " ppf lst
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
@@ -395,7 +397,7 @@ and output_app ppf = function
          output_term u  op  output_term v
   | (ln, trms) -> 
       fprintf ppf "%a %a" 
-	 output_ln ln   (output_term_components output_term_8 " ") trms
+	 output_ln ln   (output_components_nobreak output_term_8 " ") trms
 
 (** Outputs a type to the pretty-printing formatter ppf.
       The various output_ty_n functions each will display a type of 
@@ -411,7 +413,7 @@ and output_ty_3 ppf = function
 
 and output_ty_2 ppf = function
    TupleTy (_::_ as ts) -> 
-     output_type_components output_ty_1 " * " ppf ts
+     output_components_nobreak output_ty_1 " * " ppf ts
   | typ -> output_ty_1 ppf typ
 
 and output_ty_1 ppf = function
@@ -420,7 +422,7 @@ and output_ty_1 ppf = function
 	  (lb, None) -> fprintf ppf "`%s" lb
 	| (lb, Some t) -> fprintf ppf "`%s of %a" lb   output_ty_1 t
       in
-	fprintf ppf "[%a]" (output_sum_components doOne " | ") ts
+	fprintf ppf "[%a]" (output_components doOne " | ") ts
 
   | typ -> output_ty_0 ppf typ
 
@@ -439,9 +441,16 @@ and output_annots ppf = function
   | Annot_Declare _ :: rest -> output_annots ppf rest
   | Annot_NoOpt::rest -> fprintf ppf "[Definitional] %a"  output_annots rest
 
-and output_assertion ppf (nm, annots, p) =
-  fprintf ppf "@[<hov 2>Assertion %s %a= @ %a@]"  
-    nm   output_annots annots   output_prop p
+
+and output_assertion ppf asn =
+  fprintf ppf "@[<hov 2>Assertion %a%s%a%s%s %a= @ %a@]"  
+    output_tyvars asn.atyvars 
+    (if asn.atyvars = [] then "" else " ")
+    output_pbnds asn.apbnds
+    (if asn.apbnds = [] then "" else " ")
+    asn.alabel  
+    output_annots asn.aannots   
+    output_prop asn.aprop
 
 and output_assertions ppf = function
     [] -> ()
@@ -457,18 +466,21 @@ and output_assertions ppf = function
 	fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
 
 and output_tyvars ppf = function
-    _ -> ()   (* OCaml doesn't let you bind type variables in a val *)
-
-and output_names ppf = function
     [] -> ()
   | [nm] -> fprintf ppf "%a"  output_name nm
-  | nm::nms -> fprintf ppf "%a,%a"  output_name nm   output_names nms
+  | nms -> fprintf ppf "(%a)"  output_names nms
+
+and output_names ppf nms =
+  output_components_nobreak output_name "," ppf nms
 
 and output_spec ppf = function
-    Spec(nm, ValSpec (tyvars,ty), assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>val %a%s : %a@]%a@]" 
-      output_tyvars tyvars   (Name.string_of_name nm)   
-	output_ty ty  output_assertions assertions
+    Spec(nm, ValSpec (_,ty), assertions) ->
+      (* Unlike Revised SML, ocaml doesn't let you explicitly quantify
+	 with type variables, so we ignore them when pretty-printing.
+	 (We could show them in a comment, I suppose)
+       *)
+      fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
+      (Name.string_of_name nm)  output_ty ty  output_assertions assertions
   | Spec(tynm, TySpec None, assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
 	(Name.string_of_name tynm)   output_assertions assertions

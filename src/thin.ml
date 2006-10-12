@@ -61,6 +61,7 @@ let wrapInsert insertFn (ctx,tctx) nm (ty,tty) =
 
 let insertTermVariable = wrapInsert OR.insertTermVariable
 let insertTypeVariable = wrapInsert OR.insertTypeVariable
+let insertTypeVariables = wrapInsert OR.insertTypeVariables
 let insertModulVariable = wrapInsert OR.insertModulVariable
 let insertSignatVariable = wrapInsert OR.insertSignatVariable
 
@@ -72,16 +73,17 @@ let hnfTy (ctx, _)    = OR.hnfTy ctx
 let hnfTy' (_, tctx)  = OR.hnfTy tctx
 
 
-let wrapRename renameFn ((ctx, tctx):context) (nm:name) =
+let wrapRename renameFn ((ctx, tctx) : context) nm =
   let (ctx', nm') = renameFn ctx nm
   in ((ctx', tctx), nm')
 
 let renameBoundTermVar  = wrapRename OR.renameBoundTermVar
+let renameBoundPropVar  = wrapRename OR.renameBoundPropVar
 let renameBoundTypeVar  = wrapRename OR.renameBoundTypeVar
 let renameBoundModulVar = wrapRename OR.renameBoundModulVar
+let renameBoundTypeVars = wrapRename OR.renameBoundTypeVars
 
-(* We completely re-do this one function, rather than wrap
-   OR.renameTermBindings, because we need to make sure that the
+(* We need to make sure that the
    bindings are added to *both* contexts *)
 let rec renameTermBindings cntxt bnds bnds' = 
   match (bnds, bnds') with
@@ -191,19 +193,6 @@ let rec thinTyOption ctx = function
     None    -> None
   | Some ty -> Some (thinTy ctx ty)
 
-(** thinBinds: ctx -> binding list -> binding list
-
-    Thins all the types in the binding, and removes any bindings
-    of variables to TopTy.
-*)
-let rec thinBinds ctx = function
-    [] -> []
-  | (n,ty) :: bnds ->
-      let ty' = thinTy ctx ty
-      in match ty' with
-	TopTy -> thinBinds ctx bnds
-      | _     -> (n,ty')::(thinBinds ctx bnds)
-
 let rec thinPattern ctx pat = 
   match pat with
     WildPat -> (ctx, pat)
@@ -229,12 +218,8 @@ let rec thinPattern ctx pat =
 	    in (ctx'', ConstrPat(lbl, Some (nm, ty')))
       end
 
-and thinPatterns ctx = function
-    [] -> (ctx, [])
-  | pat::pats ->
-      let (ctx', pat') = thinPattern ctx pat
-      in let (ctx'', pats') = thinPatterns ctx' pats
-      in (ctx'', pat'::pats')
+and thinPatterns ctx pats = 
+  mapWithAccum thinPattern ctx pats
 
 let wrapObsTerm disappearingTerm wrapee =
   let (obs, _) = hoist disappearingTerm
@@ -248,6 +233,46 @@ let wrapPObsProp disappearingProp wrapee =
   let (obs, _) = hoistProp disappearingProp
   in foldPObligation obs wrapee
 
+let rec thinProptype ctx = function
+    Prop -> Prop
+  | PropArrow(bnd,pt) ->
+    begin
+      match thinBind ctx bnd with
+	(_, (_, TopTy)) -> thinProptype ctx pt
+      | (ctx', bnd') -> 
+	  let pt' = thinProptype ctx' pt
+	  in PropArrow(bnd', pt')
+    end
+  | PropMArrow(mbnd,pt) ->
+    begin
+      match thinMBind ctx mbnd with
+      | (ctx', mbnd') -> 
+	  let pt' = thinProptype ctx' pt
+	  in PropMArrow(mbnd', pt')
+    end
+
+and thinBind ctx (nm,ty) = 
+  let ty' = thinTy ctx ty
+  in let (ctx', nm') = renameBoundTermVar ctx nm
+  in let bnd' = (nm', ty')
+  in (ctx', bnd')
+
+and thinMBind ctx (nm,mset) = 
+  let mset' = thinModest ctx mset
+  in let (ctx', nm') = renameBoundTermVar ctx nm
+  in let bnd' = (nm', mset')
+  in (ctx', bnd')
+
+
+and thinPBnd ctx (nm, pt) = 
+  let pt' = thinProptype ctx pt
+  in let ctx', nm' = renameBoundPropVar ctx nm
+  in (ctx', (nm',pt'))
+
+and thinPBnds ctx pbnds = 
+  mapWithAccum thinPBnd ctx pbnds
+
+
 (* thinTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
             e' is the thinimized version of e
@@ -256,7 +281,7 @@ let wrapPObsProp disappearingProp wrapee =
       Never returns Tuple [] or Tuple [x] or an injection into a
       single-element sum.
 *)       
-let rec thinTerm (ctx : context) orig_term = 
+and thinTerm (ctx : context) orig_term = 
   try
     match orig_term with
 	Id (LN(None,nm)) ->
@@ -567,7 +592,21 @@ and thinProp (ctx: context) orig_prp =
 		       string_of_proposition orig_prp);
      raise e)
       
-and thinAssertion ctx (name, annots, prop) = (name, annots, thinProp ctx prop)
+and thinTyvars ctx tyvars =
+  let ctx', tyvars' = renameBoundTypeVars ctx tyvars
+  in let ctx'' = insertTypeVariables ctx tyvars' (None, None)
+  in (ctx'', tyvars')
+
+and thinAssertion ctx asn = 
+  let (ctx', atyvars) = thinTyvars ctx asn.atyvars
+  in let (ctx', apbnds) = thinPBnds ctx' asn.apbnds 
+  in let aprop = thinProp ctx' asn.aprop
+  in 
+  {alabel = asn.alabel;
+   atyvars = atyvars;
+   apbnds = apbnds;
+   aannots = asn.aannots;
+   aprop = aprop}
 
 and thinModest ctx {ty=t; tot=p; per=q} =
   {ty  = thinTy ctx t;
