@@ -40,7 +40,7 @@ let command_line_options =
      [
      ("--columns", Format.set_margin, Format.get_margin, 
       "<int>  Number of columns in output");
-     ("--bigerr",  Error.set_longerr, Error.get_longerr,
+     ("--longerr",  Error.set_longerr, Error.get_longerr,
       "<int>  Minimum lines in a 'long' error message")
      ]
   in let processBooleanFlag (flag, (action,result) , boolref, description) =
