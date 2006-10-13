@@ -4,6 +4,10 @@ open Name
 
 module L = Logic
 
+(*******************************************)
+(** {2: Definition of the Abstract Syntax} *)
+(*******************************************)
+
 type modul_name = L.model_name
 
 type modul =
@@ -37,58 +41,57 @@ and ty =
 (** Modest set, or a uniform family of modest sets. *)
 and modest = {
   ty : ty;
-  tot : proposition; (* propositional abstraction (indexing ->) ty -> Prop *)
-  per : proposition; (* propositional abstraction (indexing ->) ty -> ty -> Prop *)
+  tot : proposition; (* with proptype (indexing ->)ty->Prop *)
+  per : proposition; (* with proptype (indexing ->)ty->ty->Prop *)
 }
 
 and binding = name * ty
 
-and mbinding = name * modest
+and mbinding = name * modest  (* A modest binding, not a modul binding *)
 
 and pattern =
   | WildPat 
-  | VarPat of name                         (* Don't use in Case/PCase *)
+  | VarPat of name                        (* Don't use Varpat in Case/PCase *)
   | TuplePat of pattern list
-  | ConstrPat of label * binding option    (* Don't use in Let/PLet *)
+  | ConstrPat of label * binding option   (* Don't use ConstrPat in Let/PLet *)
 
 and term =
-    Id of longname
   | EmptyTuple
   | Dagger
-  | App of term * term
-  | Lambda of binding * term
-  | Tuple of term list
-  | Proj of int * term
-  | Inj of label * term option
-  | Case of term * (pattern * term) list
-  | Let of pattern * term * term   (* Should be an irrefutable pattern *)
+  | Id         of longname
+  | App        of term * term
+  | Lambda     of binding * term
+  | Tuple      of term list
+  | Proj       of int * term
+  | Inj        of label * term option
+  | Case       of term * (pattern * term) list
+  | Let        of pattern * term * term   
   | Obligation of binding list * proposition * term
-  | PolyInst of term * ty list
+  | PolyInst   of term * ty list  (* Not fully implemented yet *)
 
 (** Propositional function *)
 and proposition =
-  | True                                       (* truth *)
-  | False                                      (* falsehood *)
-  | NamedTotal of longname * term list         (* totality of a term *)
-  | NamedPer of longname * term list           (* extensional equality of terms *)
-  | NamedProp of longname * term * term list   (* basic proposition with a realizer *)
-  | Equal of term * term                       (* (observational?) equality of terms *)
-  | And of proposition list                    (* conjunction *)
+  | True                                      (* truth *)
+  | False                                     (* falsehood *)
+  | NamedTotal of longname * term list        (* totality of a term *)
+  | NamedPer   of longname * term list        (* ext. equality of terms *)
+  | NamedProp  of longname * term * term list (* basic prop with a realizer *)
+  | Equal      of term * term                 (* (obs?) equality of terms *)
+  | And        of proposition list            (* conjunction *)
   | Cor of proposition list                    (* classical disjunction *)
-  | Imply of proposition * proposition         (* implication *)
-  | Iff of proposition * proposition           (* equivalence *)
-  | Not of proposition                         (* negation *)
-  | Forall of binding * proposition            (* universal quantifier *)
+  | Imply      of proposition * proposition   (* implication *)
+  | Iff        of proposition * proposition   (* equivalence *)
+  | Not        of proposition                 (* negation *)
+  | Forall     of binding * proposition       (* universal quantifier *)
   | ForallTotal of (name * longname) * proposition (* universal ranging over total elements *)
   | Cexists of binding * proposition           (* classical existential *)
-  | PApp of proposition * term                 (* application of propositional function *)
-  | PMApp of proposition * term                (* application of propositional function to a total element *)
-  | PLambda of binding * proposition           (* abstraction of a proposition over a type *)
-  | PMLambda of mbinding * proposition         (* abstraction over a modest set *)
+  | PApp       of proposition * term          (* application of propositional function *)
+  | PMApp      of proposition * term          (* application of propositional function to a total element *)
+  | PLambda    of binding * proposition       (* abstraction of a proposition over a type *)
+  | PMLambda   of mbinding * proposition      (* abstraction over a modest set *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
-  | PCase of term * (pattern * proposition) list (* propositional case *)
-  | PLet of pattern * term * proposition          (* Local term-binding *)
-	(* PLet should only have irrefutable patterns *)
+  | PCase       of term * (pattern * proposition) list (* propositional case *)
+  | PLet        of pattern * term * proposition        (* Local term-binding *)
 
 and proptype = 
     | Prop
@@ -100,11 +103,11 @@ and assertionAnnot =
   | Annot_Declare of name
 
 and assertion = 
-  {alabel : string;                       (* Name of the assertion *)
-   atyvars: name list;                    (* Can parameterize by types *)
-   apbnds :  (name * proptype) list;      (* Can parameterize by predicates *)
-   aannots: assertionAnnot list;          (* Options *)
-   aprop  : proposition}                  (* The actual assertion *)
+  {alabel : string;                     (* Name of the assertion *)
+   atyvars: name list;                  (* Quantified over types *)
+   apbnds : (name * proptype) list;     (* Quantified over predicates *)
+   aannots: assertionAnnot list;        (* Assertion options *)
+   aprop  : proposition}                (* The actual assertion *)
 
 and signat_element =
     Spec      of name * spec * assertion list
@@ -207,8 +210,22 @@ let rec mapWithAccum f a = function
    in let (a'', bs') = mapWithAccum f a' bs
    in (a'', b'::bs') 
 
+(* takeList : 'a list -> int -> 'a list
+
+   Returns a prefix of length n
+*)
+let rec takeList lst n =
+    if n <= 0 then
+      []
+    else
+      List.hd lst :: takeList (List.tl lst) (n-1)
 
 (** ======== FREE VARIABLES ======= *)
+
+(* In the following code, the primed functions take two extra
+arguments: flt is the list of bound variables whose scope we are
+inside; acc is the accumulated list of free variables discovered so
+far. *)
 
 let fvList' fvFn' flt acc lst =
   List.fold_left (fvFn' flt) acc lst
@@ -259,33 +276,34 @@ and fvCaseArms' flt acc arms = fvList' fvCaseArm' flt acc arms
 
 
 and fvProp' flt acc = function
-    True -> acc
+    True  -> acc
   | False -> acc
-  | NamedTotal (_, lst) -> fvTermList' flt acc lst
-  | NamedPer (_, lst) -> fvTermList' flt acc lst
-  | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
-  | And lst -> fvPropList' flt acc lst
-  | Cor lst -> fvPropList' flt acc lst
-  | Imply (u, v) -> fvProp' flt (fvProp' flt acc v) u
-  | Forall ((n, _), p) -> fvProp' (n::flt) acc p
-  | ForallTotal ((n, _), p) -> fvProp' (n::flt) acc p
-  | Cexists ((n, _), p) -> fvProp' (n::flt) acc p
+  | NamedTotal (_, lst) 
+  | NamedPer   (_, lst) -> fvTermList' flt acc lst
   | Not p -> fvProp' flt acc p
-  | Iff (p, q) -> fvProp' flt (fvProp' flt acc p) q
+  | And lst 
+  | Cor lst -> fvPropList' flt acc lst
+  | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
+  | Imply (p, q) 
+  | Iff   (p, q) -> fvProp' flt (fvProp' flt acc p) q
+  | Forall      ((n, s), p)
+  | Cexists     ((n, s), p)
+  | PLambda     ((n, s), p) -> fvProp' (n::flt) (fvTy' flt acc s) p
+  | ForallTotal ((n, ln), p) -> fvProp' (n::flt) (fvTy' flt acc (NamedTy ln)) p
+  | PApp  (p, t) 
+  | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | NamedProp (LN(None,nm), t, lst) ->
       let acc' = fvTerm' flt (fvTermList' flt acc lst) t in
 	if List.mem nm flt then acc' else nm :: acc'
-  | NamedProp (LN(Some _, _), t, lst) -> fvTerm' flt (fvTermList' flt acc lst) t
-  | PApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
-  | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
-  | PLambda ((n, s), p) -> fvProp' (n::flt) (fvTy' flt acc s) p
-  | PMLambda ((n, {tot=p; per=q}), r) -> fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
+  | NamedProp (LN(Some _, _), t, lst) -> 
+      fvTerm' flt (fvTermList' flt acc lst) t
+  | PMLambda ((n, {tot=p; per=q}), r) -> 
+      fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
   | PObligation (bnds, p, q) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvProp' flt' (fvProp' flt' acc p) q
-
   | PCase (t, lst) ->
-	fvPCaseArms' flt (fvTerm' flt acc t) lst
+      fvPCaseArms' flt (fvTerm' flt acc t) lst
   | PLet (pat, t, p) -> 
       fvPat' flt (fvProp' ((bvPat pat)@flt) (fvTerm' flt acc t) p) pat
 
@@ -294,8 +312,6 @@ and fvPCaseArm' flt acc (pat,prp) =
 
 and fvPCaseArms' flt acc arms = fvList' fvPCaseArm' flt acc arms
 
-and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
-
 and fvPropList' flt acc lst = fvList' fvProp' flt acc lst
 
 and fvTermList' flt acc lst = fvList' fvTerm' flt acc lst
@@ -303,6 +319,8 @@ and fvTermList' flt acc lst = fvList' fvTerm' flt acc lst
 and fvModestList' flt acc = List.fold_left (fun a t -> fvModest' flt a (snd t)) acc
 
 and fvTyList' flt acc lst = fvList' fvTy' flt acc lst
+
+and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
 and fvTy' flt acc = function
     NamedTy(LN(None,nm)) ->
@@ -322,26 +340,47 @@ and fvTyOpt' flt acc = function
     None -> acc
   | Some ty -> fvTy' flt acc ty
 
-let fvTerm = fvTerm' [] []
-let fvProp = fvProp' [] []
-let fvModest = fvModest' [] []
-let fvPCaseArm = fvPCaseArm' [] []
+(*********************************************************)
+(* Substitution:                                         *)
+(*   Wrapper functions that take only the term/type/etc. *)
+(*********************************************************)
+
+let fvTerm      = fvTerm'      [] []
+let fvProp      = fvProp'      [] []
+let fvModest    = fvModest'    [] []
+let fvPCaseArm  = fvPCaseArm'  [] []
 let fvPCaseArms = fvPCaseArms' [] []
-let fvCaseArm = fvCaseArm' [] []
-let fvCaseArms = fvCaseArms' [] []
-let fvTy = fvTy' [] []
+let fvCaseArm   = fvCaseArm'   [] []
+let fvCaseArms  = fvCaseArms'  [] []
+let fvTy        = fvTy'        [] []
 
-(****************************************************************)
-(** {2: Counts occurrences of subterms satisfying a predicate.} *)
-(** Assumes given term contains no shadowing!                   *)
-(****************************************************************)
+(***************************************************************)
+(** {2: Count occurrences of subterms satisfying a predicate.} *)
+(***************************************************************)
 
-(* In the following, x is a record of three predicates *)
-      
+(**
+Actually, we have three predicates; one for terms, one for types,
+and one for propositions.  We return the total number of times any
+predicate is satisfied.  
+
+As currently written, the code does not search *inside* terms (or
+types, or predicates) that is discovered match a predicate.
+*)
+
 type countPred = {termPred: term -> bool;
                   tyPred  : ty -> bool;
 		  propPred: proposition -> bool}
 
+(* occurrencesOfTermName : nm -> countPred
+
+   For counting the occurrences of a given term name.
+
+   N.B.  Ignores possibility of shadowing; code computes all
+   occurrences, not just the free ones.
+
+   (But if there's no shadowing, an invariant that both thinning and
+   optimization maintain, then any occurrence is a free occurrence.
+*)
 let occurrencesOfTermName nm =
   let isMatchingTermName = function
       Id(LN(None,nm')) -> nm = nm'
@@ -352,6 +391,13 @@ let occurrencesOfTermName nm =
    tyPred   = isFalse;
    propPred = isFalse}
 
+(* occurrencesOfTermName : nm -> countPred
+
+   For counting the tuple projections from the given term name. 
+   (E.g., counting occurrences of nm.0, nm.1, etc.)  
+
+   NB: Ignores the possibility of shadowing.
+*)
 let occurrencesOfNameInProj nm =
   let isMatchingProj = function
       Proj(_,Id(LN(None,nm'))) -> nm = nm'
@@ -363,107 +409,107 @@ let occurrencesOfNameInProj nm =
    propPred = isFalse}
 
 
-(* For historical reasons, the record of predicates is named x *)
 
-let countList countFn x lst = List.fold_left (fun a p -> a + countFn x p) 0 lst
+let countList countFn cpred lst = 
+  List.fold_left (fun a p -> a + countFn cpred p) 0 lst
 
-let rec countTerm (x: countPred) trm = 
-  if (x.termPred trm) then
+let rec countTerm (cp: countPred) trm = 
+  if (cp.termPred trm) then
     1
   else
     match trm with
     | Id (LN(None,nm)) -> 0
-    | Id (LN(Some mdl, _)) -> countModul x mdl
+    | Id (LN(Some mdl, _)) -> countModul cp mdl
     | EmptyTuple -> 0
     | Dagger -> 0
-    | App (u, v) -> countTerm x u + countTerm x v
-    | Lambda ((n, s), t) -> countTerm x t
-    | Tuple lst -> countTermList x lst
-    | Proj (_, t) -> countTerm x t
-    | Inj (_, Some t) -> countTerm x t
+    | App (u, v) -> countTerm cp u + countTerm cp v
+    | Lambda ((n, s), t) -> countTerm cp t
+    | Tuple lst -> countTermList cp lst
+    | Proj (_, t) -> countTerm cp t
+    | Inj (_, Some t) -> countTerm cp t
     | Inj (_, None) -> 0
-    | Case (t, lst) -> List.fold_left (fun a arm -> a + countCaseArm x arm) (countTerm x t) lst
+    | Case (t, lst) -> List.fold_left (fun a arm -> a + countCaseArm cp arm) (countTerm cp t) lst
     | Let (_, t1, t2) -> 
 	(* XXX : Ignores types in patterns *)
-	countTerm x t1 + countTerm x t2
+	countTerm cp t1 + countTerm cp t2
     | Obligation (bnds, p, t) ->
-	countProp x p + countTerm x t
+	countProp cp p + countTerm cp t
     | PolyInst (trm, tys) ->
-	List.fold_left (fun a ty -> a + countTy x ty) (countTerm x trm) tys
+	List.fold_left (fun a ty -> a + countTy cp ty) (countTerm cp trm) tys
 
-and countTermList x lst = countList countTerm x lst
+and countTermList cp lst = countList countTerm cp lst
 
-and countCaseArm x = function
-    (_, t) -> countTerm x t   (*** XXX: Ignores types in patterns *)
+and countCaseArm cp = function
+    (_, t) -> countTerm cp t   (*** XXX: Ignores types in patterns *)
 
-and countProp x prp =
-    if x.propPred prp then
+and countProp cp prp =
+    if cp.propPred prp then
 	1
     else
       match prp with
 	True -> 0
       | False -> 0
-      | NamedTotal (_, lst) -> countTermList x lst
-      | NamedPer (_, lst) -> countTermList x lst
-      | Equal (u, v) -> countTerm x u + countTerm x v
-      | And lst -> countPropList x lst
-      | Cor lst -> countPropList x lst
-      | Imply (u, v) -> countProp x u + countProp x v
-      | Forall ((n, _), p) -> countProp x p
-      | ForallTotal ((n, _), p) -> countProp x p
-      | Cexists ((n, _), p)    -> countProp x p
-      | Not p -> countProp x p
-      | Iff (p, q) -> countProp x p + countProp x q
-      | NamedProp (_, t, lst) -> countTerm x t + countTermList x lst
-      | PApp (p, t) -> countProp x p + countTerm x t
-      | PMApp (p, t) -> countProp x p + countTerm x t
-      | PLambda ((n, _), p) -> countProp x p
+      | NamedTotal (_, lst) -> countTermList cp lst
+      | NamedPer (_, lst) -> countTermList cp lst
+      | Equal (u, v) -> countTerm cp u + countTerm cp v
+      | And lst -> countPropList cp lst
+      | Cor lst -> countPropList cp lst
+      | Imply (u, v) -> countProp cp u + countProp cp v
+      | Forall ((n, _), p) -> countProp cp p
+      | ForallTotal ((n, _), p) -> countProp cp p
+      | Cexists ((n, _), p)    -> countProp cp p
+      | Not p -> countProp cp p
+      | Iff (p, q) -> countProp cp p + countProp cp q
+      | NamedProp (_, t, lst) -> countTerm cp t + countTermList cp lst
+      | PApp (p, t) -> countProp cp p + countTerm cp t
+      | PMApp (p, t) -> countProp cp p + countTerm cp t
+      | PLambda ((n, _), p) -> countProp cp p
       | PMLambda ((n, {tot=p; per=q}), r) ->
-	  countProp x p + countProp x q + countProp x r
+	  countProp cp p + countProp cp q + countProp cp r
       | PObligation (bnds, p, q) -> 
-	  countProp x p + countProp x q
+	  countProp cp p + countProp cp q
 
   | PCase (t, lst) ->
-      (countTerm x t) + (countList countPCaseArm x lst)
+      (countTerm cp t) + (countList countPCaseArm cp lst)
 
   | PLet (_, t, p) ->
       (* XXX: Ignores types in patterns *)
-      countTerm x t + countProp x p
+      countTerm cp t + countProp cp p
 
-and countPCaseArm x (_, p) = countProp x p
+and countPCaseArm cp (_, p) = countProp cp p
 
-and countModest x {tot=p; per=q} = countProp x p + countProp x q
+and countModest cp {tot=p; per=q} = countProp cp p + countProp cp q
 
-and countPropList x lst = countList countProp x lst
+and countPropList cp lst = countList countProp cp lst
 
-and countModestList x lst = countList countModest x lst
+and countModestList cp lst = countList countModest cp lst
 
-and countTy x ty = 
-  if (x.tyPred ty) then
+and countTy cp ty = 
+  if (cp.tyPred ty) then
     1
   else
     match ty with
       NamedTy(LN(None,_)) -> 0
     | NamedTy(LN(Some mdl, _)) ->
-	countModul x mdl
+	countModul cp mdl
     | UnitTy
     | VoidTy
     | TopTy -> 0
-    | SumTy lst -> countSumArms x lst
-    | TupleTy lst -> countTys x lst
-    | ArrowTy (ty1,ty2) -> countTy x ty1 + countTy x ty2
-    | PolyTy (_,ty) -> countTy x ty
+    | SumTy lst -> countSumArms cp lst
+    | TupleTy lst -> countTys cp lst
+    | ArrowTy (ty1,ty2) -> countTy cp ty1 + countTy cp ty2
+    | PolyTy (_,ty) -> countTy cp ty
 
-and countTyOpt x = function
+and countTyOpt cp = function
     None -> 0
-  | Some ty -> countTy x ty
+  | Some ty -> countTy cp ty
 
-and countSumArms x lst = 
-  countList (fun x (_,tyopt) -> countTyOpt x tyopt) x lst
+and countSumArms cp lst = 
+  countList (fun cp (_,tyopt) -> countTyOpt cp tyopt) cp lst
 
-and countTys x lst = countList countTy x lst
+and countTys cp lst = countList countTy cp lst
 
-and countModul x _ = 0 (* XXX wrong if we ever use explicit modul defs *)
+and countModul cp _ = 0 (* XXX wrong if we ever use explicit modul defs *)
 
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
@@ -504,6 +550,8 @@ let emptysubst = {terms  = LNMap.empty;
 		  tys    = LNMap.empty;
 		  props  = LNMap.empty;
 		  moduls = ModulMap.empty}
+
+(** see also display_subst below *)
 
 let fvSubst subst = 
   let acc = LNMap.fold (fun _ x a -> fvTerm' [] a x) subst.terms []
@@ -551,16 +599,26 @@ let getModul sbst mdl =
    try Some (ModulMap.find mdl sbst.moduls) with 
        Not_found -> None
 
+(*****************************************)
 (* Useful special cases of substitutions *)
+(*****************************************)
+
+(* renaming    : Substitution to replace one name by another
+   renamingList: Substitution to replace one set (list) of names by another
+ *)
+
+(* The primed functions renaming' and renamingList' extend a 
+   given substitution; the unprimed functions create a new
+   substitution 
+ *)
 
 let renaming' subst n n' = insertTermvar subst n (id n')
-let renaming n n' = renaming' emptysubst n n'
+let renaming n n'        = renaming' emptysubst n n'
+
 let renamingList' subst ns ns' =
   List.fold_left2 renaming' subst ns ns'
 let renamingList ns ns' = renamingList' emptysubst ns ns'
 
-
-(** see also display_subst below *)
 
 (** The substitution functions accept an optional occ argument which
     is used for extra occur checks (for example in a context). The occ
@@ -767,33 +825,39 @@ and substCaseArm ?occ sbst (pat, t) =
 and substCaseArms ?occ sbst arms = 
    List.map (substCaseArm ?occ sbst) arms
 
-and substTermList ?occ sbst = List.map (substTerm ?occ sbst)
+and substTermList ?occ sbst = 
+  List.map (substTerm ?occ sbst)
 
-and substPropList ?occ sbst = List.map (substProp ?occ sbst)
+and substPropList ?occ sbst = 
+  List.map (substProp ?occ sbst)
 
-and substModestList ?occ sbst = List.map (substModest ?occ sbst)
+and substModestList ?occ sbst = 
+  List.map (substModest ?occ sbst)
 
 and substTy ?occ sbst orig_type = 
-	match orig_type with
-	    NamedTy ln ->
-	      begin
-		match getTyLN sbst (substLN ?occ sbst ln) with
-		  None -> NamedTy (substLN ?occ sbst ln)
-		| Some ty' -> ty'
-	      end 
-	  | UnitTy -> UnitTy
-	  | VoidTy -> VoidTy
-	  | TopTy -> TopTy
-	  | SumTy lst -> SumTy (List.map (function
-		(lbl, None) -> (lbl, None)
-	      | (lbl, Some ty) -> (lbl, Some (substTy ?occ sbst ty))) lst)
-	  | TupleTy lst -> TupleTy (List.map (substTy ?occ sbst) lst)
-	  | ArrowTy (ty1, ty2) -> ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
-	  | PolyTy (nms,ty) ->
-	      PolyTy (nms, substTy ?occ (addTyvarsToSubst sbst nms) ty)  
-		
+  match orig_type with
+    NamedTy ln ->
+      begin
+	match getTyLN sbst (substLN ?occ sbst ln) with
+	  None -> NamedTy (substLN ?occ sbst ln)
+	| Some ty' -> ty'
+      end 
+  | UnitTy -> UnitTy
+  | VoidTy -> VoidTy
+  | TopTy  -> TopTy
+  | SumTy lst -> 
+      SumTy (List.map (fun (lbl, tyopt) -> 
+	                 (lbl, substTyOption ?occ sbst tyopt)) 
+	       lst)
+  | TupleTy lst -> 
+      TupleTy (List.map (substTy ?occ sbst) lst)
+  | ArrowTy (ty1, ty2) -> 
+      ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
+  | PolyTy (nms,ty) ->
+      PolyTy (nms, substTy ?occ (addTyvarsToSubst sbst nms) ty)  
+	
 and substTyOption ?occ sbst = function
-    None -> None
+    None    -> None
   | Some ty -> Some ( substTy ?occ sbst ty )
 
 and substModest ?occ sbst {ty=ty; tot=p; per=q} =
@@ -803,11 +867,12 @@ and substModest ?occ sbst {ty=ty; tot=p; per=q} =
   }
     
 and substSignat ?occ sbst = function
-    SignatName nm -> SignatName nm
-  | Signat lst -> Signat (substSignatElements ?occ sbst lst)
+    SignatName nm  -> SignatName nm
+  | Signat     lst -> Signat (substSignatElements ?occ sbst lst)
   | SignatFunctor ((m,sgnt1), sgnt2) ->
       let sbst' = insertModulvar sbst m (ModulName m) in
-	SignatFunctor ((m, substSignat ?occ sbst sgnt1), substSignat ?occ sbst' sgnt2)
+	SignatFunctor ((m, substSignat ?occ sbst sgnt1), 
+		       substSignat ?occ sbst' sgnt2)
   | SignatApp (sgnt1, mdl) ->
       SignatApp (substSignat ?occ sbst sgnt1,
 		substModul ?occ sbst mdl)

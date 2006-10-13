@@ -1,4 +1,3 @@
-(** XXX: Can we avoid expanding out all the type definitions? *)
 
 (********************************************************************)
 (** {1 Simplification}                                              *)
@@ -44,13 +43,13 @@ let rec allequalTy ctx ty =
           assure P(t) in Q(t)
 
     respectively.
- 
-    These functions are given the bound variable x and the body R(x) of
-    the quantifier, and search R for an equation x = t (or t = x) where
-    t is not free in x.  If found, they return Some(t, R'(x)) where
-    R'(x) is what is left over from R(x) after you remove the equation. 
-    No substitution is done here: R'(x) may contain x free.
-    If no such equation is found, the functions return None.
+
+    The following functions are given the bound variable x and the
+    body R(x) of the quantifier, and search R for an equation x = t or
+    t = x where t is not free in x.  If found, they return Some(t,
+    R'(x)) where R'(x) is what is left over from R(x) after you remove
+    the equation.  No substitution is done here: R'(x) may contain x
+    free.  If no such equation is found, the functions return None.
 
 
     Note that we are only looking for Equal equality, not NamedPer
@@ -65,7 +64,8 @@ let rec allequalTy ctx ty =
      Check for a definition for the given name in the given proposition,
      if it's atomic or a conjunction. 
 
-     Used for simplifying bodies of existentials and assumes.
+     Used for bodies of existentials, bodies of assumes, and
+     premises of implications.
 *)
 let rec findEq nm orig_prop =
   let validDefn trm =
@@ -116,7 +116,7 @@ and findEqs nm = function
     Given a name x and a proposition, see if it is an implication whose
     hypothesis provides a definition for x.
 
-    Used for simplifying universally quantified propositions.
+    Used for bodies of universally quantified propositions.
 *)
 and findEqPremise nm = function
     Imply(prp1, prp2) -> 
@@ -124,12 +124,9 @@ and findEqPremise nm = function
 	match findEq nm prp1 with
 	    None -> 
 	      begin
-(*	      if not (List.mem nm (fvProp prp1)) then *)
 		match findEqPremise nm prp2 with
 		    None -> None
 		  | Some (trm, prp2') -> Some(trm, Imply(prp1, prp2'))
-(*	      else
-		None *)
 	      end
 	  | Some (trm, prp1') -> Some(trm, Imply(prp1', prp2))
       end
@@ -150,6 +147,13 @@ and findEqPremise nm = function
 (** {2: Polymorphization functions} *)
 (***********************************)
 
+(* Collects defined type variables, value specifications, predicate
+   specifications, and assertions from a list of signature elements.
+
+   Returns None if the parameter is "too complex" (e.g., higher-order)
+   to be turned into arguments of a polymorphic function; otherwise
+   returns Some and the 4 lists.
+*)
 let rec extractPolyInfo = function
     [] -> Some ([], [], [], [])
   | Spec(nm, TySpec None, assns)::rest ->
@@ -194,17 +198,21 @@ let tryPolymorph ctx nm signat =
 	    let tyvars = List.map tyvarize tynames
 		
 	    in let arg_subst = 
-	      (* Mapping from foo -> 'foo, for type parameters *)
+	      (* Mapping from t -> 't, for type parameters *)
 	      renamingList tynames tyvars
 		
 	    in let (argnames,argtypes) = List.split vals
 	    in let argtypes' = 
+	      (* New term arguments should refer to 't, not t *)
 	      List.map (substTy arg_subst) argtypes
 	    in let argassns' =
+	      (* Assertions taken from the argument should use 't, not t *)
 	      List.map (substAssertion arg_subst) argassns
 		
 	    in let (argprpnames, argpts) = List.split prps
 	    in let argpts' =
+	      (* We will quantify over propositions mentioned in the
+		 functor argument; these also must refer to 't, not t *)
 	      List.map (substProptype arg_subst) argpts
 		
 	    in let resSubstTyIn nm  = LN(Some(ModulName nm1),nm)
@@ -225,7 +233,7 @@ let tryPolymorph ctx nm signat =
 
 	    in let res_subst_term =
 	      (* Extend mapping from nm1.p -> p, i.e, prop parameters *)
-	      List.fold_left2 insertPropLN res_subst_term
+	      List.fold_left2 insertPropLN res_subst_term (* extending subst!*)
 		(List.map resSubstTermIn argprpnames)
 		(List.map (fun n -> LN(None,n)) argprpnames)
 
@@ -238,8 +246,13 @@ let tryPolymorph ctx nm signat =
 *)
 	    in let ty3' =
 	      nested_arrowty argtypes' (substTy res_subst_ty ty3)
-		
+
+
 	    in let updateResAssertion asn =
+   	      (* XXX Something's not quite right here --- there
+   		 should be an implication where the And of the argument
+   		 assertions implies the result assertion. 
+	       *)
 	      let aprop' = substProp res_subst_term asn.aprop
 	      in let aprop'' = substProp res_subst_ty aprop'
 	      in let apbnds' = 
@@ -563,8 +576,6 @@ and optTerm ctx orig_term =
 
 	    | ([(nm,_)] as bnds1, prp2, trm3) ->
 		begin
-		  if (string_of_name nm = "y'" && 
-		      string_of_term trm3 = "y") then failwith "XXXXX";
 		  (** The one-binding case.  Check for an equation
 		      in prp2 that tells us what term nm must be. *)
 		  match findEq nm prp2 with 
@@ -631,7 +642,6 @@ and optReduce ctx trm =
   with e ->
     (print_endline ("\n\n...in " ^ string_of_term trm);
      raise e)
-
 
 and optReduceProp ctx prp =
   try
@@ -741,7 +751,8 @@ and optProp ctx orig_prp =
 	      | r::rs ->
 		  begin
 		    match (p,r) with
-		      (Imply(q1,q2), Imply(q1',q2')) when (q1=q2') && (q2=q1') ->
+		      (* XXX: Replace with alpha-equivalence someday? *)
+		      (Imply(q1,q2), Imply(q1',q2')) when (q1=q2')&&(q2=q1') ->
 			Iff(q1,q2) :: rs
 		    | _ -> p :: r :: rs
 		  end
@@ -931,7 +942,7 @@ and optProp ctx orig_prp =
 		| PLet(VarPat nm1, (Obligation([(nm2,ty2)], prp2, 
 				       Id(LN(None,nm2'))) as obprp), prp3) 
 		    when nm2 = nm2' ->
-		    (** Now that assures start out like indefinite
+		    (** Now that assures start out looking like indefinite
 			descriptions, one pattern that has cropped up 
 			occasionally is:
 		        let y = (assure x:s. phi(x) in x) in prp3.
@@ -951,7 +962,7 @@ and optProp ctx orig_prp =
 					      Id(LN(None,nm3'))])) as obprp), 
 		      prp3)
 		    when nm2 = nm2' && nm3 = nm3' && nm2 <> nm3 ->
-		    (** Now that assures start out like indefinite
+		    (** Now that assures start out looking like indefinite
 			descriptions, one pattern that has cropped up 
 			occasionally is:
 		        let y = (assure (x,r). phi(x,r) in (x,r) in trm.

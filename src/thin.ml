@@ -26,19 +26,20 @@ exception Impossible of string
     type/signature/definition of a variable were needed, we'd just
     rerun thinning on that definition.
 
-    Unfortunately, this turned out not to work completely.  In the
-    presence of dependencies and type definitions we must avoid
-    shadowing, and if you have a model whose signature declares a type
-    n, and then later you have a local variable "n", and then still
-    later you use that model, re-running thinning on the signature at
-    that point, which now already contains the local n, is treated as
-    un-avoidable shadowing and the code aborts.
+    Unfortunately, this turned out not to work in the all cases.  In
+    the presence of dependencies and type definitions we must avoid
+    shadowing.  But suppose we have a model whose signature includes a
+    type n, and then later you have a local variable "n", and then
+    still later you use that model (all of which is legal).
+    Re-running thinning on the signature at that point tries to
+    temporary put it's n in the context, but the context already
+    contains the local n; this was interpreted as unavoidable
+    shadowing and the code aborted.
 
     So, we give in, and maintain two contexts: the unthinned context and
     the thinned context.
 
-    We only use the renamings in the first (unthinned) context!
-
+    We only put/use the renamings in the first (unthinned) context!
 *)
 
 module OR = Outsynrules
@@ -66,12 +67,14 @@ let insertModulVariable = wrapInsert OR.insertModulVariable
 let insertSignatVariable = wrapInsert OR.insertSignatVariable
 let insertPropVariable = wrapInsert OR.insertPropVariable
 
-let hnfSignats (ctx, tctx) (sg,sg') =
+let hnfSignats (ctx, tctx) (sg,sg') =     (* normalize original + thinned 
+					     signature at the same time *)
   (hnfSignat ctx sg, hnfSignat tctx sg')
-
-let hnfSignat(ctx, _) = hnfSignat ctx
-let hnfTy (ctx, _)    = OR.hnfTy ctx
-let hnfTy' (_, tctx)  = OR.hnfTy tctx
+let hnfSignat(ctx, _) = hnfSignat ctx  (* normalize "original" signature *)
+let hnfTy (ctx, _)    = OR.hnfTy ctx      (* normalize "original" type *)
+let hnfTy' (_, tctx)  = OR.hnfTy tctx     (* normalize "thinned" type *)
+let joinTy  (ctx, _)    = OR.joinTy ctx   (* join "original" types *)
+let joinTy' (_,   tctx) = OR.joinTy tctx  (* join "thinned" types *)
 
 
 let wrapRename renameFn ((ctx, tctx) : context) nm =
@@ -103,8 +106,6 @@ let applyTermRenaming  = wrapApply OR.applyTermRenaming
 let applyTypeRenaming  = wrapApply OR.applyTypeRenaming 
 let applyModulRenaming = wrapApply OR.applyModulRenaming
 
-let joinTy (ctx,_)    = OR.joinTy ctx 
-let joinTy' (_, tctx) = OR.joinTy tctx 
 
   
 (*******************)
@@ -273,7 +274,6 @@ and thinPBnd ctx (nm, pt) =
 and thinPBnds ctx pbnds = 
   mapWithAccum thinPBnd ctx pbnds
 
-
 (* thinTerm ctx e = (t, e', t')
       where t  is the original type of e under ctx
             e' is the thinimized version of e
@@ -357,42 +357,39 @@ and thinTerm (ctx : context) orig_term =
 		| _ -> Tuple es')
 	  in (TupleTy ts, e', toptyize ctx (TupleTy ts'))
       | Proj (n,e) as proj_code ->
-	  let (ty, e', ty') = thinTerm ctx e
-	  in let tys = 
-            match  hnfTy ctx ty with
-		TupleTy tys -> tys
+	  begin
+	    let (ty, e', ty') = thinTerm ctx e
+	    in
+              match  hnfTy ctx ty with
+		TupleTy tys -> 
+		  begin
+		    let tys' = List.map (thinTy ctx) tys
+		    in let countNontop lst = 
+		      List.length (List.filter (nonTopTy ctx) lst)
+		    in let nontops = countNontop tys'
+		    in match (List.nth tys n, List.nth tys' n) with
+		      (ty, TopTy) -> 
+			(* The projection has type TopTy; eliminate entirely *)
+			(ty, wrapObsTerm e' Dagger, TopTy)
+		    | (ty, ty') ->
+			(* The projection returns some interesting value. If
+			   it's the only one, thinning of the tuple will make
+			   it a non-tuple, and we don't need to project. *)
+			if (nontops = 1) then
+			  (ty, e', ty')
+			else
+			  (* It's still a projection but some of the preceding
+			     components might have been thinned away; figure
+			     out how many preceding components remain, which
+			     is exactly the new index for this component. *)
+			  let newproj = countNontop (takeList tys' n)
+			  in (ty, Proj(newproj, e'), ty')
+		  end
 	      | ty_bad -> (print_string (Outsyn.string_of_ty ty ^ "\n");
 			   print_string (Outsyn.string_of_ty ty_bad ^ "\n");
 			   print_endline (Outsyn.string_of_term proj_code);
 			   raise (Impossible "Proj"))
-	  in let rec loop = function
-              (ty::tys, TopTy::tys', nonunits, index) ->
-		if index == n then
-		  (* The projection is unit-like and can be eliminated entirely *)
-		  (ty, wrapObsTerm e' Dagger, TopTy)
-		else
-		  loop(tys, tys', nonunits, index+1)
-	    | (ty::tys, ty'::tys', nonunits, index) ->
-		if index = n then
-		  (* The projection returns some interesting value.
-		     Check if it's the only interesting value in the tuple. *)
-		  if (nonunits = 0 && 
-		      List.length(List.filter (nonTopTy ctx) tys')=0) then
-		    (* Yes; there were no non-unit types before or after. *)
-		    (ty, e', ty')
-		  else
-		    (* Nope; there are multiple values so the tuple is 
-                       still a tuple and this projection is still a projection *)
-		    (ty, Proj(nonunits, e'), ty')
-		else
-		  loop(tys, tys', nonunits+1, index+1)
-	    | (tys,tys',_,index) -> (print_string (string_of_int (List.length tys));
-				     print_string (string_of_int (List.length tys'));
-				     print_string (string_of_int n);
-				     print_string (string_of_int index);
-				     raise (Impossible "deep inside"))
-	  in 
-               loop (tys, List.map (thinTy ctx) tys, 0, 0) 
+	  end
       | Inj (lbl, None) -> 
 	  (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
       | Inj (lbl, Some e) ->
@@ -454,10 +451,18 @@ and thinTerm (ctx : context) orig_term =
 	  failwith "Thin.thinTerm:  unexpected PolyInst"
 
   with e ->
-    (print_endline ("\n\n...in (thin term) " ^
+    (print_endline ("\n\n...thinning " ^
 		       string_of_term orig_term);
      raise e)
 
+(* thinTerms : ctx * term list ->
+                  ty list * term list * obligation list * ty list
+
+   Returns original types of the terms,
+           thinned terms,
+           any obligations from terms that disappeared entirely,
+           and the (thinned) types of the thinned terms
+ *)
 and thinTerms (ctx : context) = function 
     [] -> ([], [], [], [])   
   | e::es -> let (ty, e', ty') = thinTerm ctx e
@@ -468,7 +473,8 @@ and thinTerms (ctx : context) = function
 	  in (ty :: tys, es', obs@obss, tys')
       | _ -> (ty :: tys, e'::es', obss, ty'::tys'))
       
-
+(* Primed thinning functions do not return the previous/thinned type 
+*)
 and thinTerm' (ctx: context) e =
   let (_,e',_) = thinTerm ctx e 
   in e'      
@@ -683,7 +689,7 @@ and thinElems (ctx : context) orig_elems =
 	   let (rest', ctx'') = thinElems ctx rest in
 	     (Comment cmmnt :: rest', ctx'')
   with e ->
-    (print_endline ("\n\n...in (thin) " ^
+    (print_endline ("\n\n...thinning " ^
 		       (String.concat "\n" (List.map string_of_spec orig_elems)));
      raise e)
 
@@ -754,7 +760,7 @@ and thinModul ctx orig_modul =
 	let (elems, defs', elems') = thinDefs ctx defs
 	in (Signat elems, ModulStruct defs, Signat elems')
   with e ->
-    (print_endline ("\n\n...in (thinModul) " ^
+    (print_endline ("\n\n...thinning " ^
 		       (string_of_modul orig_modul));
      raise e)
 	  
