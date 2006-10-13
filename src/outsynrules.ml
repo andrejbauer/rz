@@ -48,28 +48,44 @@ let emptyContext =
 (* Displays the variable bindings in the context.
    For now, does not display renamings or the list of facts 
 *)
+let displayRenaming map = 
+  begin
+    let showPair nm nm' =
+      print_string ("[" ^ string_of_name nm ^ "~>" ^ string_of_name nm' ^ "]")
+    in
+      NameMap.iter showPair map;
+      print_endline "";
+  end
+
 let displayContext ctx = 
-  (NameMap.iter 
-     (fun nm ty -> 
-       print_endline("val " ^ string_of_name nm ^ ":" ^ string_of_ty ty)) 
-     ctx.termvars;
-   NameMap.iter 
-     (fun nm tyopt -> 
-       print_endline("type " ^ string_of_name nm ^ 
-		     (match tyopt with 
-		       None -> "" | 
-		       Some ty -> "=" ^ string_of_ty ty))) 
-     ctx.typevars;
-   NameMap.iter 
-     (fun nm sg -> 
-       print_endline("module " ^ string_of_name nm ^ " : " ^ 
-		     string_of_signat sg)) 
-     ctx.modulvars;
-   NameMap.iter 
-     (fun nm sg -> 
-       print_endline("signature " ^ string_of_name nm ^ " = " ^ 
-		     string_of_signat sg)) 
-     ctx.signatvars;)
+  begin
+    NameMap.iter 
+      (fun nm ty -> 
+	print_endline("val " ^ string_of_name nm ^ ":" ^ string_of_ty ty)) 
+      ctx.termvars;
+    displayRenaming ctx.termrenaming;
+    NameMap.iter 
+      (fun nm tyopt -> 
+	print_endline("type " ^ string_of_name nm ^ 
+		      (match tyopt with 
+			None -> "" | 
+			Some ty -> "=" ^ string_of_ty ty))) 
+      ctx.typevars;
+    displayRenaming ctx.typerenaming;
+    NameMap.iter 
+      (fun nm sg -> 
+	print_endline("module " ^ string_of_name nm ^ " : " ^ 
+		      string_of_signat sg)) 
+      ctx.modulvars;
+    displayRenaming ctx.modulrenaming;
+    NameMap.iter 
+      (fun nm sg -> 
+	print_endline("signature " ^ string_of_name nm ^ " = " ^ 
+		      string_of_signat sg)) 
+      ctx.signatvars;
+    print_endline "and finally, proprenaming:";
+    displayRenaming ctx.proprenaming;
+  end
 
 
 (***************)
@@ -78,6 +94,8 @@ let displayContext ctx =
 
 let notFound sort nm = 
   failwith ("Unbound " ^ sort ^ " variable " ^ string_of_name nm)
+
+
 
 (* 
    lookupTermVariable   : context -> name -> ty

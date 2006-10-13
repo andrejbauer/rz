@@ -48,6 +48,10 @@ let noEqPropWarning prp1 prp2 context_expr =
 let newline = Str.regexp "[\n]+"
 let splitByLine msg = List.rev (Str.split newline msg)
 
+let lines_to_be_long = ref 3
+let set_longerr n = (lines_to_be_long := n) (* For command-line *)
+let get_longerr () = (!lines_to_be_long)
+
 (** The TypeError exception is raised by all type errors 
  *)
 exception TypeError of string list
@@ -56,8 +60,7 @@ let printErrors msgs =
   let    error_header = "\n-------------------------------\nTYPE ERROR:\n"
   in let error_footer = "-------------------------------\n\n"
   in let printed_long_msg = ref false
-  in let lines_to_be_long = 3
-  in let isLong str = (List.length (splitByLine str) >= lines_to_be_long)
+  in let isLong str = (List.length (splitByLine str) >= get_longerr())
   in let printError msg = 
     let doPrint() = (print_endline msg; print_endline "")
     in

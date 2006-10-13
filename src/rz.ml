@@ -20,31 +20,38 @@ let command_line_options =
   in let fClear = ((fun x -> Arg.Clear x), false)
   in let booleanFlags = 
     [
-     ("--dump_infer", fSet,   Flags.do_dumpinfer, "Dump result of type inference");
      ("--hoist",      fSet,   Flags.do_hoist,     "Hoist all assurances");
-     ("--nohoist",    fClear, Flags.do_hoist,     "Don't hoist all assurances");
-     ("--opt",        fSet,   Flags.do_opt,       "Turn on simplification optimations");
-     ("--noopt",      fClear, Flags.do_opt,       "Turn off simplification optimizations");
+     ("--nohoist",    fClear, Flags.do_hoist,     "Don't hoist assurances");
+     ("--opt",        fSet,   Flags.do_opt,       "Optimize translation");
+     ("--noopt",      fClear, Flags.do_opt,       "Don't optimize translation");
      ("--poly",       fSet,   Flags.do_poly,      "Convert functors to polymorphism");
-     ("--nopoly",     fClear, Flags.do_poly,      "Don't convert functors");
+     ("--nopoly",     fClear, Flags.do_poly,      "Don't convert functors to polymorphism");
      ("--save",       fSet,   Flags.do_save,      "Send output to .mli file");
-     ("--nosave",     fClear, Flags.do_save,      "No output to file");
+     ("--nosave",     fClear, Flags.do_save,      "No output to .mli file");
      ("--show",       fSet,   Flags.do_print,     "Show output on stdout");
-     ("--noshow",     fClear, Flags.do_print,     "No output to stdout");
+     ("--noshow",     fClear, Flags.do_print,     "No output on stdout");
      ("--sigapp",     fSet,   Flags.do_sigapp,    "Retain signature applications");
      ("--nosigapp",   fClear, Flags.do_sigapp,    "Expand away signature applications");
      ("--thin",       fSet,   Flags.do_thin,      "Remove trivial realizers");
      ("--nothin",     fClear, Flags.do_thin,      "Leave trivial realizers");
+     ("--dump_infer", fSet,   Flags.do_dumpinfer, "Dump result of type inference");
     ]
-  in let otherFlags = 
+  in let intFlags = 
      [
-     ("--columns", Arg.Int Format.set_margin, "Number of columns in output")
+     ("--columns", Format.set_margin, Format.get_margin, 
+      "<int>  Number of columns in output");
+     ("--bigerr",  Error.set_longerr, Error.get_longerr,
+      "<int>  Minimum lines in a 'long' error message")
      ]
   in let processBooleanFlag (flag, (action,result) , boolref, description) =
     (flag, action boolref, 
-     description ^ (if (!boolref = result) then " (default)" else ""))
+     description ^ (if (!boolref = result) then " [default]" else ""))
+  in let processIntFlag (flag, setter, getter, description) =
+    (flag, Arg.Int setter, 
+     description ^ " [" ^ string_of_int (getter()) ^ "]")
   in
-       (List.map processBooleanFlag booleanFlags) @ otherFlags
+       (List.map processBooleanFlag booleanFlags) @ 
+       (List.map processIntFlag intFlags)
 
 (** One-line usage message
  *)
@@ -147,7 +154,8 @@ let rec processOne (state : state) writeOutput filename =
     (** Following OCaml convention, wrap the input from file foobar.thy
        in the implicit [Parameter Foobar: thy ... end.] *)
     in let thryname =
-	String.capitalize (Filename.chop_extension (Filename.basename filename))
+	String.capitalize 
+	   (Filename.chop_extension (Filename.basename filename))
     in let thy = Syntax.Value(Syntax.Parameter,
 			     [([Name.mk_word(thryname)],
 			      Syntax.Theory thy_elts)])
