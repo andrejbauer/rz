@@ -37,7 +37,7 @@ let fresh2 ty = fresh ty, fresh ty
 let fresh3 ty = fresh ty, fresh ty, fresh ty
 let fresh4 ty = fresh ty, fresh ty, fresh ty, fresh ty
 
-let freshRz = freshName goodRz
+let freshRz () = freshName goodRz
 let freshList tys = List.map fresh tys
 
 let sbp nm t p = PLet (VarPat nm, t, p)
@@ -51,19 +51,10 @@ let rec map3 f lst1 lst2 lst3 =
 
 let pApp p t = match p with
     PLambda ((n, _), q) -> sbp n t q
-  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ -> PApp (p, t)
-  | PMLambda _ | True | False | Equal _ | And _
+  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PObligation _ | PLet _ -> PApp (p, t)
+  | True | False | Equal _ | And _
   | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
-
-let pMApp p t = match p with
-    PMLambda ((n, _), q) -> sbp n t q
-  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PMApp _ | PObligation _ | PLet _ ->
-      PMApp (p, t)
-  | PLambda _ -> failwith ("bad propositional application on " ^ string_of_proposition p)
-  | True | False | Equal _ | And _
-  | Cor _ | Imply _ | Iff _ | Not _   | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
-      failwith ("bad propositional application 2 on " ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let forall_tot (x, s) p = Forall ((x, s.ty), Imply (pApp s.tot (id x), p))
 
@@ -71,7 +62,7 @@ let nest_forall = List.fold_right forall_tot
 
 let nest_forall_ty = List.fold_right (fun (y, {ty=t}) p -> Forall ((y,t), p))
 
-let nest_lambda = List.fold_right (fun b p -> PMLambda (b, p))
+let nest_lambda = List.fold_right (fun (x,{ty=t}) p -> PLambda ((x,t), p))
 
 let makeTot (x, t) p = PLambda ((x,t), p)
 
@@ -81,7 +72,7 @@ let makeProp (x, t) p = (t, PLambda ((x,t), p))
 
 let isPredicate n ty binds =
   let xs = List.map fst binds in
-  let r = freshRz in
+  let r = freshRz () in
   let ys = freshList (List.map (fun (_,{ty=t}) -> t) binds) in
     And [
 	nest_forall_ty binds
@@ -111,7 +102,7 @@ let isPer n binds =
       ])
 
 let isEquiv p s =
-  let q u v = pApp (pMApp (pMApp p (id u)) (id v)) Dagger in
+  let q u v = pApp (pApp (pApp p (id u)) (id v)) Dagger in
   let x, y, z = fresh3 s.ty in
     And [
 	forall_tot (x, s) (q x x);
@@ -233,7 +224,7 @@ let rec translateSet = function
 	  tot = p;
 	  per = (
 	    let x, x' = fresh2 t in
-	      makePer (x, x', t) (pApp (pMApp (pMApp r (id x)) (id x')) (dagger_of_ty ty))
+	      makePer (x, x', t) (pApp (pApp (pApp r (id x)) (id x')) (dagger_of_ty ty))
 	  )
 	}
 
@@ -283,8 +274,9 @@ let rec translateSet = function
 	  ty = t;
 	  tot = p;
 	  per = 
-	    let x, x' = freshRz, freshRz in
-	      makePer (x, x',t) (And [pApp p (id x); Equal (id x, id x')]);
+	    let x  = fresh t in
+	    let x' = fresh t in
+	      makePer (x, x', t) (And [pApp p (id x'); Equal (id x, id x')]);
 	}
 
   | L.SApp (s, t) ->
@@ -292,17 +284,17 @@ let rec translateSet = function
       let t' = translateTerm t in
 	{
 	  ty = v;
-	  tot = pMApp p t';
-	  per = pMApp q t';
+	  tot = pApp p t';
+	  per = pApp q t';
 	}
 
   | L.SLambda ((n, s), t) ->
-       let u = translateSet s in
+       let {ty=u} = translateSet s in
        let {ty=v; tot=p; per=q} = translateSet t in
        {
 	 ty = v;
-	 tot = PMLambda ((n, u), p);
-	 per = PMLambda ((n, u), q)
+	 tot = PLambda ((n, u), p);
+	 per = PLambda ((n, u), q)
        }
 
 and translateTerm = function
@@ -322,7 +314,7 @@ and translateTerm = function
       let {ty=t; tot=p1; per=p2} = translateSet s in
       let (v,q) = translateProp phi in
       let m, m' = refresh n, refresh n in
-      let z, z' = freshRz, freshRz in
+      let z, z' = freshRz (), freshRz () in
 	Obligation ([(m, t); (z,v)], 
 		   And [pApp p1 (id m);
 			pApp (sbp n (id m) q) (id z);
@@ -376,7 +368,7 @@ and translateTerm = function
 	Let (VarPat n, translateTerm t,
 	     Obligation ([],
 			 Forall ((n', ty1), Imply (
-				   pApp (pMApp (pMApp q (id n)) (id n')) (dagger_of_ty ty2),
+				   pApp (pApp (pApp q (id n)) (id n')) (dagger_of_ty ty2),
 				   pApp (pApp p2 v) v')),
 			 v))
 
@@ -386,7 +378,7 @@ and translateTerm = function
   | L.Subin (t, (x, s), p) ->
       let (ty, p') = translateProp p in
       let t' = translateTerm t in
-      let y = freshRz in
+      let y = freshRz () in
 	Tuple[t'; Obligation ([(y, ty)], pApp (sbp x t' p') (id y), id y)]
 
   | L.Subout (t, _) -> Proj (0, translateTerm t)
@@ -415,7 +407,7 @@ and translateProp = function
 	  then TopTy
 	  else NamedTy (translateSLN (L.sln_of_ln ln)))
       in
-      let r = freshRz in
+      let r = freshRz () in
       let binds = bindings_of_proptype pt in
 	(ty, nest_lambda binds
 	  (PLambda ((r, ty), NamedProp (translateLN ln, id r, List.map (fun (y,_) -> id y) binds))))
@@ -514,12 +506,12 @@ and translateProp = function
 
   | L.PLambda ((n, s), p) ->
       let (ty1, p') = translateProp p in
-      let u = translateSet s in
-	(ty1, PMLambda ((n, u), p'))
+      let {ty=u} = translateSet s in
+	(ty1, PLambda ((n, u), p'))
 
   | L.PApp (p, t) -> 
       let (ty, q) = translateProp p in
-	(ty, pMApp q (translateTerm t))
+	(ty, pApp q (translateTerm t))
 
   | L.IsEquiv (p, s) ->
       let (_, p') = translateProp p in
@@ -565,7 +557,15 @@ and translateProp = function
   | L.PLet ((n,s), t, p) ->
       let ty, q = translateProp p in
 	ty, PLet (VarPat n, translateTerm t, q)
-      
+
+and translateProptype rzty = function
+  | L.Prop | L.StableProp -> PropArrow (rzty, Prop)
+  | L.EquivProp s ->
+      let {ty=t} = translateSet s in
+	PropArrow (t, PropArrow (t, PropArrow (rzty, Prop)))
+  | L.PropArrow (_, s, pt) ->
+      let {ty=t} = translateSet s in
+	PropArrow (t, translateProptype rzty pt)
 
 and bindings_of_proptype = function
     L.Prop | L.StableProp -> []
@@ -622,7 +622,7 @@ and translateTheoryElement = function
 	       aprop = nest_forall binds
 		(Forall((x, tyname),
 		       Iff (PApp (NamedTotal (ln_of_name n, idys), id x),
-			   pApp (List.fold_left (pMApp) p idys) (id x))))};
+			   pApp (List.fold_left pApp p idys) (id x))))};
 	      {alabel = string_of_name n ^ "_def_per";
 	       atyvars = [];
 	       apbnds = [];
@@ -632,33 +632,31 @@ and translateTheoryElement = function
 		 (Forall ((y,tyname),
 			  Forall ((y',tyname),
 				  Iff (PApp (PApp (NamedPer (ln_of_name n, idys), id y), id y'),
-				   pApp (pApp (List.fold_left (pMApp) q idys) (id y)) (id y')))))}]
+				   pApp (pApp (List.fold_left pApp q idys) (id y)) (id y')))))}]
 	)]
 
   | L.Declaration(n, L.DeclProp(None, pt)) ->
-      let binds = bindings_of_proptype pt in
-      let spec =
-	isPredicate
-	  (ln_of_name n)
-	  (if L.is_stable pt then TopTy else NamedTy (ln_of_name (L.typename_of_name n)))
-	  binds
-      in
+      let tynm = L.typename_of_name n in
+      let ty =
 	(if L.is_stable pt then
-	   Assertion {alabel = "predicate_" ^ (string_of_name n);
-		      atyvars = [];
-		      apbnds = [];
-		      aannots = [Annot_Declare n];
-		      aprop = spec
-		     }
+	   TopTy
 	 else
-	   Spec (L.typename_of_name n,
-		 TySpec None,
-		 [{alabel = "predicate_" ^ (string_of_name n);
-		   atyvars = [];
-		   apbnds = [];
-		   aannots = [];
-		   aprop = spec}])
-	) :: (if L.is_equiv pt then
+	   NamedTy (ln_of_name tynm))
+      in
+      let spec = isPredicate (ln_of_name n) ty (bindings_of_proptype pt)
+      in
+	(* Type of realizers *)
+	(if L.is_stable pt then [] else [Spec (tynm, TySpec None, [])]) @
+	(* Predicate specification *)
+	[Spec (n, PropSpec (translateProptype ty pt), [
+		 {alabel = "predicate_" ^ (string_of_name n);
+		  atyvars = [];
+		  apbnds = [];
+		  aannots = [Annot_Declare n];
+		  aprop = spec
+		 }
+	       ])
+	] @ (if L.is_equiv pt then
 	    [Assertion {alabel = "equiv_" ^ (string_of_name n);
 			atyvars = [];
 			apbnds = [];
@@ -668,8 +666,8 @@ and translateTheoryElement = function
 			    let xs = List.map fst bnds1 in
 			    let x, y = fresh2 s'.ty in
 			    let p =
-			      PMLambda ((x,s'),
-                              PMLambda ((y,s'),
+			      PLambda ((x,s'.ty),
+                              PLambda ((y,s'.ty),
        			      PLambda ((any(), TopTy), 
                                 NamedProp (ln_of_name n, Dagger, (List.map id xs) @ [id x; id y]))))
 			    in
@@ -679,26 +677,38 @@ and translateTheoryElement = function
 	)
 
   | L.Declaration(n, L.DeclProp(Some p, pt)) ->
-      let (ty, p') = translateProp p in
-      let tyname = NamedTy (ln_of_name (L.typename_of_name n)) in
-      let binds = bindings_of_proptype pt in
-      let ys = List.map fst binds in
-      let idys = List.map id ys in
-      let r = freshRz in
-	[Spec (L.typename_of_name n,
-	       TySpec (Some ty),
-	       [{alabel = (string_of_name n) ^ "_def";
-		 atyvars = [];
-		 apbnds = [];
-		 aannots = [];
-		 aprop =
-		  nest_forall binds
-		   (Forall ((r, tyname),
-			    Iff (
-			    NamedProp (ln_of_name n, id r, idys),
-			      pApp (List.fold_left pMApp p' idys) (id r)
-			   )))
-	       }])]
+      let tynm =L.typename_of_name n in
+      let ty =
+	(if L.is_stable pt then
+	   TopTy
+	 else
+	   NamedTy (ln_of_name tynm))
+      in
+      let (ty', p') = translateProp p in
+	(* Type of realizers *)
+	(if L.is_stable pt then [] else [Spec (tynm, TySpec (Some ty'), [])]) @
+	(* Predicate specification *)
+	[Spec (n, PropSpec (translateProptype ty pt), [
+		 {alabel = (string_of_name n) ^ "_def";
+		  atyvars = [];
+		  apbnds = [];
+		  aannots = [Annot_Declare n];
+		  aprop = (
+		    let binds = bindings_of_proptype pt in
+		    let ys = List.map fst binds in
+		    let idys = List.map id ys in
+		    let r = freshRz () in
+		    nest_forall
+		      binds
+		      (Forall ((r, ty),
+			       Iff (
+				 NamedProp (ln_of_name n, id r, idys),
+				 pApp (List.fold_left pApp p' idys) (id r)
+			       )))
+		  )
+		 }
+	       ])
+	]
 
   | L.Declaration(n, L.DeclTerm(Some t, s)) ->
       let {ty=u; per=q} = translateSet s in

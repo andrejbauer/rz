@@ -20,6 +20,8 @@ module type Terms =
    *)
     
    type p
+    
+   (* proposition p : s->p->prop *)
    (**  Assertion predicate_p = 
           (forall x:s, d:p,  d |= p x -> x : ||s||) /\ 
           (forall (x:||s||, y:||s||), 
@@ -79,11 +81,10 @@ module type Terms =
    *)
     
    val rzchoose : s
-   (**  Assertion rzchoose_def = 
-          rzchoose =s= (assure (forall x:s,  x : ||s|| -> a =s= x) in a)
+   (**  Assertion rzchoose_def =  rzchoose =s= a
    *)
     
-   
+   (* proposition eq : s->s->prop *)
    (**  Assertion predicate_eq = 
           (forall x:s, y:s,  eq x y -> x : ||s|| /\ y : ||s||) /\ 
           (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 

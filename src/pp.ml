@@ -185,10 +185,8 @@ and output_modest ppf {ty=ty;tot=p} =
 
 and output_proptype ppf = function
     Prop -> fprintf ppf "prop"
-  | PropArrow(bnd, pt) ->
-      fprintf ppf "%a->%a"  output_bnd bnd   output_proptype pt
-  | PropMArrow(mbnd, pt) ->
-      fprintf ppf "%a->%a"  output_mbnd mbnd   output_proptype pt
+  | PropArrow(ty, pt) ->
+      fprintf ppf "%a->%a"  output_ty ty   output_proptype pt
 
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
@@ -298,9 +296,6 @@ and output_prop_14 ppf = function
       fprintf ppf "@[<hov 2>pfun %a : %a =>@ @[%a@]@]" 
         output_name n  output_ty ty  output_prop_14 p
 
-  | PMLambda ((n, mset), q) ->
-      fprintf ppf "@[<hov 2>pmfun %a : %a =>@ %a@]" 
-        output_name n  output_modest mset  output_prop_14 q
 (*
   | PObligation ((_, TopTy), p, q) ->
       fprintf ppf "@[<hov2>assure %a in@ %a@]" 
@@ -355,9 +350,6 @@ and output_prop_9 ppf = function
 	output_term_9 t   output_ln ln   output_term_apps lst
   | PApp (p, t) ->
       fprintf ppf "%a %a"
-	output_prop_9 p   output_term_0 t
-  | PMApp (p, t) ->
-      fprintf ppf "(%a %a)"
 	output_prop_9 p   output_term_0 t
   | NamedProp (ln, Dagger, lst) ->
       fprintf ppf "%a %a"

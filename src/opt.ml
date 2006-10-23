@@ -349,14 +349,10 @@ and optPBnds ctx pbnds =
 
 and optPt ctx = function
     Prop -> Prop
-  | PropArrow(bnd, pt) ->
-       let ctx', bnd' = optBnd ctx bnd
-       in let pt' = optPt ctx' pt
-       in PropArrow(bnd', pt')
-  | PropMArrow(modestbnd, pt) ->
-       let ctx', modestbnd' = optModestBnd ctx modestbnd
-       in let pt' = optPt ctx' pt
-       in PropMArrow(modestbnd', pt')
+  | PropArrow(ty, pt) ->
+      let ty' = optTy ctx ty
+      in let pt' = optPt ctx pt
+      in PropArrow(ty', pt')
 
 (* optTerm ctx e = (t, e')
       where t  is the type of e under ctx
@@ -889,16 +885,6 @@ and optProp ctx orig_prp =
 		       ([], True) -> q'
 		     | _ -> PObligation(bnds'', p', q')
 		 end
-
-	| PMLambda ((n, ms), p) ->
-	    let (ctx, n) = renameBoundTermVar ctx n
-	    in let ms' = optModest ctx ms in
-	    let p' = optProp (insertTermVariable ctx n ms.ty) p
-	    in let pre = (PMLambda ((n,ms'), p'))
-	    in optReduceProp ctx pre
-	      
-	| PMApp (p, t) -> 
-	    optReduceProp ctx (PMApp (optProp ctx p, optTerm' ctx t))
 
 	| PLambda ((n,ty), p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n

@@ -61,13 +61,6 @@ and renBinding ctx (nm, ty) =
 
 and renBindingList ctx bndg = renList renBinding ctx bndg
 
-and renMBinding ctx (nm, ms) =
-  let ms = renModest ctx ms in
-  let nm, ctx = renName ctx nm in
-    (nm, ms), ctx
-
-and renMBindingList ctx bndg = renList renMBinding ctx bndg
-
 and renPBinding ctx (nm, pt) =
   let pt = renPt ctx pt in
   let nm, ctx = renName ctx nm in
@@ -97,12 +90,7 @@ and renPat ctx pat =
 
 and renPt ctx = function
     Prop -> Prop
-  | PropArrow(bnd,pt) ->
-      let bnd, ctx' = renBinding ctx bnd in
-      PropArrow(bnd, renPt ctx' pt)
-  | PropMArrow(mbnd,pt) ->
-      let mbnd, ctx' = renMBinding ctx mbnd in
-      PropMArrow(mbnd, renPt ctx' pt)
+  | PropArrow(ty, pt) -> PropArrow(renTy ctx ty, renPt ctx pt)
 
 and renLN ctx = function
     LN (Some mdl, nm) ->
@@ -217,16 +205,9 @@ and renProp ctx = function
 
   | PApp (p, t) -> PApp (renProp ctx p, renTerm ctx t)
 
-  | PMApp (p, t) -> PMApp (renProp ctx p, renTerm ctx t)
-
   | PLambda (bnd, p) ->
       let bnd, ctx = renBinding ctx bnd in
 	PLambda (bnd, renProp ctx p)
-
-  | PMLambda ((nm, ms), p) ->
-      let ms = renModest ctx ms in
-      let nm, ctx = renName ctx nm in
-	PMLambda ((nm, ms), renProp ctx p)
 
   | PObligation (bnds, p1, p2) ->
       let bnds, ctx = renBindingList ctx bnds in

@@ -20,6 +20,8 @@ module type HoistTerms =
    *)
     
    type p
+    
+   (* proposition p : s->p->prop *)
    (**  Assertion predicate_p = 
           (forall x:s, d:p,  d |= p x -> x : ||s||) /\ 
           (forall (x:||s||, y:||s||), 
@@ -141,18 +143,17 @@ module type HoistTerms =
    *)
     
    val rzquot : s
-   (**  Assertion rzquot_def =  rzquot =s= (assure q:s. (q : ||s||) in q)
+   (**  Assertion rzquot_def =  rzquot =s= r
    *)
     
    val rzchoose : s
    (**  Assertion rzchoose_def = 
-          rzchoose =s= (assure (forall x:s,  x : ||s|| ->
-                                  (assure q:s. (q : ||s||) in q) =s= 
-                                  (assure q:s. (q : ||s||) in q))
-                          in assure q:s. (q : ||s||) in q)
+          rzchoose =s= (assure x:s.
+                            (x : ||s|| /\ a =s= x /\ 
+                             (forall (x':||s||),  a =s= x' -> x =s= x')) in x)
    *)
     
-   
+   (* proposition eq : s->s->prop *)
    (**  Assertion predicate_eq = 
           (forall x:s, y:s,  eq x y -> x : ||s|| /\ y : ||s||) /\ 
           (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 

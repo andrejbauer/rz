@@ -237,20 +237,13 @@ let wrapPObsProp disappearingProp wrapee =
 
 let rec thinProptype ctx = function
     Prop -> Prop
-  | PropArrow(bnd,pt) ->
+  | PropArrow(ty,pt) ->
     begin
-      match thinBind ctx bnd with
-	(_, (_, TopTy)) -> thinProptype ctx pt
-      | (ctx', bnd') -> 
-	  let pt' = thinProptype ctx' pt
-	  in PropArrow(bnd', pt')
-    end
-  | PropMArrow(mbnd,pt) ->
-    begin
-      match thinMBind ctx mbnd with
-      | (ctx', mbnd') -> 
-	  let pt' = thinProptype ctx' pt
-	  in PropMArrow(mbnd', pt')
+      match thinTy ctx ty with
+	TopTy -> thinProptype ctx pt
+      | ty' -> 
+	  let pt' = thinProptype ctx pt
+	  in PropArrow(ty', pt')
     end
 
 and thinBind ctx (nm,ty) = 
@@ -540,16 +533,6 @@ and thinProp (ctx: context) orig_prp =
 	  in 
 	       PObligation(bnds''', p', q')
 
-
-      | PMLambda ((n, ms), p) ->
-	  let ms' = thinModest ctx ms
-	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n (ms.ty,ms'.ty)) p
-	  in 
-	    PMLambda ((n,ms'), p')
-
-      | PMApp (p, t) -> 
-	  PMApp (thinProp ctx p, thinTerm' ctx t)
 
       | PLambda ((n,ty), p) ->
 	  begin

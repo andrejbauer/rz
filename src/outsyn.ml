@@ -47,8 +47,6 @@ and modest = {
 
 and binding = name * ty
 
-and mbinding = name * modest  (* A modest binding, not a modul binding *)
-
 and pattern =
   | WildPat 
   | VarPat of name                        (* Don't use Varpat in Case/PCase *)
@@ -86,17 +84,14 @@ and proposition =
   | ForallTotal of (name * longname) * proposition (* universal ranging over total elements *)
   | Cexists of binding * proposition           (* classical existential *)
   | PApp       of proposition * term          (* application of propositional function *)
-  | PMApp      of proposition * term          (* application of propositional function to a total element *)
   | PLambda    of binding * proposition       (* abstraction of a proposition over a type *)
-  | PMLambda   of mbinding * proposition      (* abstraction over a modest set *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
   | PCase       of term * (pattern * proposition) list (* propositional case *)
   | PLet        of pattern * term * proposition        (* Local term-binding *)
 
 and proptype = 
     | Prop
-    | PropArrow of binding * proptype
-    | PropMArrow of mbinding * proptype 
+    | PropArrow of ty * proptype
 
 and assertionAnnot =
     Annot_NoOpt             (* Do not optimize the proposition *)
@@ -290,15 +285,12 @@ and fvProp' flt acc = function
   | Cexists     ((n, s), p)
   | PLambda     ((n, s), p) -> fvProp' (n::flt) (fvTy' flt acc s) p
   | ForallTotal ((n, ln), p) -> fvProp' (n::flt) (fvTy' flt acc (NamedTy ln)) p
-  | PApp  (p, t) 
-  | PMApp (p, t) -> fvProp' flt (fvTerm' flt acc t) p
+  | PApp  (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | NamedProp (LN(None,nm), t, lst) ->
       let acc' = fvTerm' flt (fvTermList' flt acc lst) t in
 	if List.mem nm flt then acc' else nm :: acc'
   | NamedProp (LN(Some _, _), t, lst) -> 
       fvTerm' flt (fvTermList' flt acc lst) t
-  | PMLambda ((n, {tot=p; per=q}), r) -> 
-      fvProp' (n::flt) (fvProp' flt (fvProp' flt acc p) q) r
   | PObligation (bnds, p, q) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvProp' flt' (fvProp' flt' acc p) q
@@ -462,10 +454,7 @@ and countProp cp prp =
       | Iff (p, q) -> countProp cp p + countProp cp q
       | NamedProp (_, t, lst) -> countTerm cp t + countTermList cp lst
       | PApp (p, t) -> countProp cp p + countTerm cp t
-      | PMApp (p, t) -> countProp cp p + countTerm cp t
       | PLambda ((n, _), p) -> countProp cp p
-      | PMLambda ((n, {tot=p; per=q}), r) ->
-	  countProp cp p + countProp cp q + countProp cp r
       | PObligation (bnds, p, q) -> 
 	  countProp cp p + countProp cp q
 
@@ -715,14 +704,9 @@ and substProp ?occ sbst = function
       let n' = refresh n in
 	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | PApp (p, t) -> PApp (substProp ?occ sbst p, substTerm ?occ sbst t)
-  | PMApp (p, t) -> PMApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PLambda ((n, s), p) ->
       let n' = refresh n in
 	PLambda ((n', s), substProp ?occ (insertTermvar sbst n (id n')) p)
-  | PMLambda ((n, {ty=t; tot=p; per=q}), r) ->
-      let n' = refresh n in
-	PMLambda ((n', {ty=substTy ?occ sbst t; tot=substProp ?occ sbst p; per=substProp ?occ sbst q}),
-		 substProp ?occ (insertTermvar sbst n (id n')) r)
   | PObligation (bnds, p, q) ->
       let (sbst', bnds') = renameBnds ?occ sbst bnds
       in 
@@ -939,12 +923,8 @@ and substPBnd ?occ sbst (nm, pt) =
 
 and substProptype ?occ sbst = function
     Prop -> Prop
-  | PropArrow(bnd, pt) ->
-    let (sbst', bnd') = substBinding ?occ sbst bnd
-    in PropArrow(bnd', substProptype ?occ sbst' pt)
-  | PropMArrow(mbnd, pt) ->
-    let (sbst', mbnd') = substMBinding ?occ sbst mbnd
-    in PropMArrow(mbnd', substProptype ?occ sbst' pt)
+  | PropArrow(ty, pt) ->
+      PropArrow(substTy ?occ sbst ty, substProptype ?occ sbst pt)
    
 
 and substBinding ?occ sbst (nm, ty) = 
@@ -952,12 +932,6 @@ and substBinding ?occ sbst (nm, ty) =
   in let sbst' = renaming' sbst nm nm'
   in let ty' = substTy ?occ sbst' ty
   in (sbst', (nm', ty'))
-
-and substMBinding ?occ sbst (nm, mset) = 
-  let nm' = refresh nm
-  in let sbst' = renaming' sbst nm nm'
-  in let mset' = substModest ?occ sbst' mset
-  in (sbst', (nm', mset'))
 
 
 
@@ -1120,9 +1094,6 @@ and string_of_prop level p =
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
     | PLambda ((n, ty), p) ->
 	(14, "Pfun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
-    | PMLambda ((n, {ty=ty; tot=p}), q) ->
-	(14, "PMfun " ^ string_of_name n ^ " : " ^ (string_of_ty ty) ^ " (" ^ string_of_prop 0 p^ ") => " ^
-	  string_of_prop 14 q)
     | PApp (NamedTotal (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
     | PApp (PApp (NamedPer (n, []), t), u) ->
 	(9, (string_of_term' 9 t) ^ " =" ^ (string_of_ln n) ^ "= " ^ (string_of_term' 9 u))
@@ -1132,7 +1103,6 @@ and string_of_prop level p =
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, r, []), u), t) ->
 	(9, string_of_term r ^ " |= " ^ (string_of_infix (string_of_term u) op (string_of_term t)))
-    | PMApp (p, t) -> (9, (string_of_prop 9 p) ^ "" ^ (string_of_term' 9 t))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (bnds, p, q) ->
 	(14,
@@ -1173,12 +1143,8 @@ and string_of_pat = function
 and string_of_proptype' level pt = 
   let (level', str) = match pt with
       Prop -> (0, "Prop")
-    | PropArrow((n,t),pt) ->
-	(12, "(" ^ (string_of_name n) ^ " : " ^ (string_of_ty t) ^ ") -> " ^
-	  (string_of_proptype' 12 pt))
-    | PropMArrow((n,m),pt) ->
-	(12, "(" ^ (string_of_name n) ^ " : " ^ (string_of_modest m) ^ ") -> " ^
-	  (string_of_proptype' 12 pt))
+    | PropArrow(t, pt) ->
+	(12, string_of_ty t ^ " -> " ^ string_of_proptype' 12 pt)
   in
     if level' > level then "(" ^ str ^ ")" else str
 
@@ -1887,31 +1853,12 @@ and hoistProp orig_prp =
 	  in let obs' = List.map (quantifyOb nm ty) obs
 	  in (obs', PLambda((nm,ty), prp') )
 	    
-      | PMLambda((nm,ty), prp) ->
-	  let (obs, prp') = hoistProp prp
-	    (*	in let obs' = List.map (quantifyMOb nm ty) obs *)
-	  in let rec check = function
-	      [] -> true
-	    | (_,prp)::rest -> 
-		not (List.mem nm (fvProp prp)) && check rest
-	  in if check obs then
-	      (obs, PMLambda((nm,ty), prp') )
-	    else
-	      failwith "Outsyn.hoistProp: PMLambda"
-		
       | PApp(prp, trm) ->
 	  let (obs1, prp') = hoistProp prp
 	  in let (obs2, trm') = hoist trm
 	  in let (obs', prp'', trm'') = 
 	    merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
 	  in (obs', PApp(prp'', trm''))
-	    
-      | PMApp(prp, trm) ->
-	  let (obs1, prp') = hoistProp prp
-	  in let (obs2, trm') = hoist trm
-	  in let (obs', prp'', trm'') = 
-	    merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
-	  in (obs', PMApp(prp'', trm''))
 	    
       | PCase(trm, arms) -> 
 	  let (obs1, trm') = hoist trm
@@ -2122,43 +2069,25 @@ and reduceProp prp =
 	(* XXX: May lose obligations *)
           prp2
 
-    | PMApp(PMLambda((nm, _), prp2), trm1) ->
-	(* XXX: May lose obligations *)
-	if (simpleTerm trm1) || 
-	(countProp (occurrencesOfTermName nm) prp2 < 2) then
-          reduceProp (substProp (termSubst nm trm1) prp2)
-	else
-          prp
-
-  | PApp(PObligation(bnds,prp1,prp2), trm3) ->
+    | PApp(PObligation(bnds,prp1,prp2), trm3) ->
       (* Complicated but short method of renaming bnds to
 	 avoid the free variables of trm3 *)
       let nm = wildName() 
       in let prp' = PObligation(bnds,prp1,PApp(prp2,id nm))
       in let prp'' = substProp (termSubst nm trm3) prp'
       in reduceProp prp''
-
-  | PMApp(PObligation(bnds,prp1,prp2), trm3) ->
-      (* Complicated but short method of renaming bnds to
-	 avoid the free variables of trm3 *)
-      let nm = wildName() 
-      in let prp' = PObligation(bnds,prp1,PMApp(prp2,id nm))
-      in let prp'' = substProp (termSubst nm trm3) prp'
-      in reduceProp prp''
-	
   |  PObligation(bnds, prp1, prp2) -> 
        PObligation(bnds, prp1, reduceProp prp2)
 
-  | (PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2)))) |
-     PMLambda((nm1,_), PMApp(prp1, Id(LN(None,nm2)))))  ->
+  | PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2))))  ->
       (** Eta-reduction ! *)
       (print_endline (Name.string_of_name nm1);
        print_endline (Name.string_of_name nm2);
        if (List.mem nm1 (fvProp prp1)) then
-	prp
-      else
-	reduceProp prp1)
-
+	 prp
+       else
+	 reduceProp prp1)
+	
 (* We don't eta-reduce NamedProp's because
    they are supposed to be fully-applied.
 
