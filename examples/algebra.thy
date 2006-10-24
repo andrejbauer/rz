@@ -228,10 +228,3 @@ thy
     forall x : s, forall a b : R.s,
       act x (R.add a b) = add (act x a) (act x b).
 end.
-
-(** Vector space *)
-
-Definition VectorSpace(F : Field) :=
-thy
-  include LeftModule(F).
-end.
