@@ -486,7 +486,7 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
 	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, PropSpec pt, assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>(* proposition %s : %a *)@]%a@]" 
+      fprintf ppf "@[<v>@[<hov 2>(* predicate %s : %a *)@]%a@]" 
 	(Name.string_of_name nm)   output_proptype pt
 	output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]

@@ -1,3 +1,5 @@
+Require Algebra.
+
 (* ***** INTEGERS ***** *)
 
 Definition Integer :=
@@ -105,63 +107,11 @@ end. (* Integer *)
 
 Definition Real (I : Integer) :=
 thy
-(* Real numbers. *)
+include Algebra.CommutativeField.
 
-Parameter real : Set.
-
-Definition t := real.  (* By convention, we always have the type t *)
+Definition real := s.
 
 Implicit Type x y z : real.
-
-(* Ring structure *)
-
-Parameter zero: real.
-
-Parameter one: real.
-
-Parameter add: real -> real -> real.
-
-Parameter neg: real -> real.
-
-Definition sub x y := add x (neg y).
-
-Parameter mul: real -> real -> real.
-
-Axiom non_trivial:
-  not (zero = one).
-
-Axiom add_associative:
-  forall x y z, add x (add y z) = add (add x y) z.
-
-Axiom zero_add_neutral:
-  forall x, add zero x = x.
-
-Axiom neg_add_inverse:
-  forall x, add x (neg x) = zero.
-
-Axiom add_commutative:
-  forall x y, add x y = add y x.
-
-Axiom mul_associative:
-  forall x y z, mul x (mul y z) = mul (mul x y) z.
-
-Axiom one_mul_neutral:
-  forall x, mul one x = x.
-
-Axiom mul_commutative:
-  forall x y, mul x y = mul y x.
-
-Axiom distributivity:
-  forall x y z, mul x (add y z) = add (mul x y) (mul x z).
-
-(* Field structure. *)
-
-Parameter inv : {x | not (x = zero)} -> real.
-
-Definition div (x : real) (y : {x | not (x = zero)}) := mul x (inv y).
-
-Axiom field:
-  forall x, (not (x = zero)) -> mul x (inv x) = one.
 
 (* Linear order. *)
 

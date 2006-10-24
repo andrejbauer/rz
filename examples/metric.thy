@@ -6,10 +6,9 @@ fun (I : Number.Integer) =>
 fun (R : Number.Real I) =>
 fun (U : Sets.Space) =>
 thy
-  Definition s := U.s.
-  Parameter dist : s -> s -> R.real.
+  Parameter dist : U.s -> U.s -> R.real.
 
-  Implicit Type x y z : s.
+  Implicit Type x y z : U.s.
 
   Axiom nonnegative:
     forall x, R.leq R.zero (dist x x).
@@ -24,17 +23,17 @@ thy
     forall x y z,
       R.leq (dist x z) (R.add (dist x y) (dist y z)).
 
-  Definition cauchy (a : I.nat -> s) :=
+  Definition cauchy (a : I.nat -> U.s) :=
     forall k : I.nat,
       R.leq (dist (a (I.add1 k)) (a k)) (R.ratio I.one (I.pow I.two k)).
 
-  Definition limit (a : I.nat -> s) x :=
+  Definition limit (a : I.nat -> U.s) x :=
     forall epsilon : R.positiveReal,
       exists k : I.nat,
         forall m n : I.nat,
           I.leq k m /\ I.leq k n -> R.lt (dist (a m) (a n)) epsilon.
 
-  Definition ball (x : s) (r : R.real) := {y : s | R.lt (dist x y) r}.
+  Definition ball (x : U.s) (r : R.real) := {y : U.s | R.lt (dist x y) r}.
 end.
 
 Definition CompleteMetric :=
@@ -45,7 +44,7 @@ thy
   include Metric I R U.
 
   Axiom complete:
-    forall (a : I.nat -> s), cauchy a -> exists x : s, limit a x.
+    forall (a : I.nat -> U.s), cauchy a -> exists x : U.s, limit a x.
 end.
 
 Definition CompactMetric :=
@@ -58,7 +57,7 @@ thy
   Parameter FiniteSets : Sets.Finite(U).
 
   Definition net (epsilon : R.positiveReal) (u : FiniteSets.s) :=
-    forall x : s, exists y : FiniteSets.carrier u, R.lt (dist x y) epsilon.
+    forall x : U.s, exists y : FiniteSets.carrier u, R.lt (dist x y) epsilon.
 
   Axiom totally_bounded:
     forall epsilon : R.positiveReal, exists u : FiniteSets.s,
@@ -78,7 +77,7 @@ thy
 
   Axiom separable:
     forall epsilon : R.positiveReal,
-    forall x : s,
+    forall x : U.s,
     exists y : CountableSets.carrier denseSet,
       R.lt (dist x y) epsilon.
 end.

@@ -170,7 +170,7 @@ module type DenseLinearOrder =
     
    type ty_less
     
-   (* proposition (<) : s->s->ty_less->prop *)
+   (* predicate (<) : s->s->ty_less->prop *)
    (**  Assertion predicate_(<) = 
           (forall x:s, y:s, a:ty_less,  a |= (<) x y -> x : ||s|| /\ 
              y : ||s||) /\ 
@@ -280,7 +280,7 @@ module type TestSubset =
     
    type p
     
-   (* proposition p : s->p->prop *)
+   (* predicate p : s->p->prop *)
    (**  Assertion predicate_p = 
           (forall x:s, a:p,  a |= p x -> x : ||s||) /\ 
           (forall (x:||s||, y:||s||), 
@@ -289,7 +289,7 @@ module type TestSubset =
     
    type q
     
-   (* proposition q : s * p->q->prop *)
+   (* predicate q : s * p->q->prop *)
    (**  Assertion predicate_q = 
           (forall t:s * p, a:q,  a |= q t -> pi0 t : ||s|| /\ 
              pi1 t |= p (pi0 t)) /\ 
@@ -300,7 +300,7 @@ module type TestSubset =
     
    type r
     
-   (* proposition r : s->s->r->prop *)
+   (* predicate r : s->s->r->prop *)
    (**  Assertion predicate_r = 
           (forall x:s, y:s, a:r,  a |= r x y -> x : ||s|| /\ y : ||s||) /\ 
           (forall (x:||s||, y:||s||, z:||s||, w:||s||), 
@@ -361,7 +361,7 @@ module type Choice =
     
    type r
     
-   (* proposition r : a->b->r->prop *)
+   (* predicate r : a->b->r->prop *)
    (**  Assertion predicate_r = 
           (forall x:a, y:b, c:r,  c |= r x y -> x : ||a|| /\ y : ||b||) /\ 
           (forall (x:||a||, y:||b||, z:||a||, w:||b||), 
@@ -395,14 +395,14 @@ module type Quotients =
           (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
    *)
     
-   (* proposition (<<) : s->s->prop *)
+   (* predicate (<<) : s->s->prop *)
    (**  Assertion predicate_(<<) = 
           (forall x:s, y:s,  (<<) x y -> x : ||s|| /\ y : ||s||) /\ 
           (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
              y =s= w -> (<<) x y -> (<<) z w)
    *)
     
-   (* proposition r : s->s->prop *)
+   (* predicate r : s->s->prop *)
    (**  Assertion predicate_r = 
           (forall x:s, y:s,  r x y -> x : ||s|| /\ y : ||s||) /\ 
           (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
@@ -425,7 +425,7 @@ module type Quotients =
             (<<) x z
    *)
     
-   (* proposition eq : s->s->prop *)
+   (* predicate eq : s->s->prop *)
    (**  Assertion eq_def = 
           forall (x:||s||, y:||s||),  eq x y <->
             (assure (forall (z:||s||),  (<<) z z) /\ 

@@ -15,7 +15,7 @@ thy
   Parameter s : Set.
   Parameter add : s -> s -> s.
 
-  Axiom commutative:
+  Axiom add_commutative:
     forall x y : s, add x y = add y x.
 end.
 
@@ -126,25 +126,10 @@ end.
 
 Definition CommutativeRingWithUnit :=
 thy
-  include CommutativeGroup.
-
-  Parameter one : s.
-
-  Parameter mul : s -> s -> s.
-
-  Axiom one_mul_neutral:
-    forall x : s, mul one x = x /\ mul x one = x.
-
-  Axiom mul_associative:
-    forall x y z : s, mul (mul x y) z = mul x (mul y z).
+  include RingWithUnit.
 
   Axiom mul_commutative:
     forall x y : s, mul x y = mul y x.
-
-  Axiom add_mul_distribute:
-    forall x y z : s,
-      mul x (add y z) = add (mul x y) (mul x z) /\
-      mul (add x y) z = add (mul x z) (mul y z).
 end.
 
 (** Fields with apartness relation. *)
@@ -174,21 +159,12 @@ Definition CommutativeField :=
 thy
   include CommutativeRingWithUnit.
 
-  Parameter apart : s -> s -> Prop.
+  Parameter inv : {x : s | not x = zero} -> s.
 
-  Parameter inv : {x : s | apart x zero} -> s.
-
-  Axiom apart_commutative:
-    forall x y : s, apart x y <-> apart y x.
-
-  Axiom apart_not_equal:
-    forall x y : s, not (apart x y) -> x = y.
-
-  Axiom apart_or:
-    forall x y z : s, apart x y -> apart x z \/ apart y z.
+  Definition div (x : s) (y : {x : s | not x = zero})  := mul x (inv y).
 
   Axiom inv_inverse:
-    forall x : s, apart x zero -> mul x (inv x) = one.
+    forall x : s, not x = zero -> mul x (inv x) = one.
 end.
 
 (** Modules over a ring with unit. *)

@@ -21,7 +21,7 @@ module type Terms =
     
    type p
     
-   (* proposition p : s->p->prop *)
+   (* predicate p : s->p->prop *)
    (**  Assertion predicate_p = 
           (forall x:s, d:p,  d |= p x -> x : ||s||) /\ 
           (forall (x:||s||, y:||s||), 
@@ -84,7 +84,7 @@ module type Terms =
    (**  Assertion rzchoose_def =  rzchoose =s= a
    *)
     
-   (* proposition eq : s->s->prop *)
+   (* predicate eq : s->s->prop *)
    (**  Assertion predicate_eq = 
           (forall x:s, y:s,  eq x y -> x : ||s|| /\ y : ||s||) /\ 
           (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
