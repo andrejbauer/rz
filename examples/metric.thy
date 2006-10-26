@@ -11,7 +11,7 @@ thy
   Implicit Type x y z : U.s.
 
   Axiom nonnegative:
-    forall x, R.leq R.zero (dist x x).
+    forall x y, R.leq R.zero (dist x y).
 
   Axiom strict:
     forall x y, dist x y = R.zero <-> x = y.
@@ -30,8 +30,8 @@ thy
   Definition limit (a : I.nat -> U.s) x :=
     forall epsilon : R.positiveReal,
       exists k : I.nat,
-        forall m n : I.nat,
-          I.leq k m /\ I.leq k n -> R.lt (dist (a m) (a n)) epsilon.
+        forall m : I.nat,
+          I.leq k m  -> R.lt (dist (a m) x) epsilon.
 
   Definition ball (x : U.s) (r : R.real) := {y : U.s | R.lt (dist x y) r}.
 end.

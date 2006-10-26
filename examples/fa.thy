@@ -22,6 +22,9 @@ thy
   Axiom norm_nonnegative:
     forall x : V.s, R.leq R.zero (norm x).
 
+  Axiom norm_zero:
+    forall x : V.s, norm x = R.zero -> x = V.zero.
+
   Axiom norm_homogeneous:
     forall x : V.s, forall a : R.real, norm (V.act a x) = R.mul (R.abs a) (norm x).
 

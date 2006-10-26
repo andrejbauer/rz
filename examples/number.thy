@@ -4,99 +4,76 @@ Require Algebra.
 
 Definition Integer :=
 thy
-(** The ring of integers. *)
+  include Algebra.CommutativeRingWithUnit.
 
-Parameter integer: Set.
+  Definition integer := s.
 
-Implicit Type x y z : integer.
+  Implicit Type x y z : integer.
 
-(* Ring structure *)
+  Definition add1 x := add x one.
 
-Parameter zero: integer.
+  Definition two := add one one.
 
-Parameter one: integer.
+  Axiom non_trivial:
+    not (zero = one).
 
-Parameter add: integer -> integer -> integer.
+  Axiom initial:
+    forall R : Algebra.Ring,
+      forall u : R.s,
+        exists1 h : integer -> R.s,
+          h zero = R.zero /\
+          h one = u /\
+          forall x y, (h (add x y) = R.add (h x) (h y)) /\
+          forall x y, (h (mul x y) = R.mul (h x) (h y)).
 
-Definition add1 x := add x one.
+  (* Decidable order *)
 
-Definition two := add one one.
+  Parameter compare : integer -> integer -> [`less + `equal + `greater].
 
-Parameter neg: integer -> integer.
+  Definition lt x y := (compare x y = `less).
 
-Parameter mul: integer-> integer-> integer.
+  Definition gt x y := (compare x y = `greater).
 
-Axiom non_trivial:
-  not (zero = one).
+  Definition eq x y := (compare x y = `equal).
 
-Axiom add_associative:
-  forall x y z, add x (add y z) = add (add x y) z.
+  Definition leq x y := not (gt x y).
 
-Axiom zero_add_neutral:
-  forall x, add zero x = x.
+  Definition geq x y := not (lt x y).
 
-Axiom neg_add_inverse:
-  forall x, add x (neg x) = zero.
+  Definition nat := {k : integer| leq zero k}.
 
-Axiom add_commutative:
-  forall x y, add x y = add y x.
+  Axiom lt_reflexive:
+    forall x, lt x x.
 
-Axiom mul_associative:
-  forall x y z, mul x (mul y z) = mul (mul x y) z.
+  Axiom lt_transitive:
+    forall x y z, lt x y /\ lt y z -> lt x z.
 
-Axiom one_mul_neutral:
-  forall x, mul one x = x.
+  Axiom lt_antisymmetric:
+    forall x y, lt x y /\ lt y x -> x = y.
 
-Axiom mul_commutative:
-  forall x y, mul x y = mul y x.
+  Axiom lt_dichotomy:
+    forall x y, lt x y \/ x = y \/ lt y x.
 
-Axiom distributivity:
-  forall x y z, mul x (add y z) = add (mul x y) (mul x z).
+  Definition positive x := lt zero x.
 
-(* Decidable order *)
+  Definition positiveInteger := { x | positive x}.
 
-Parameter lt : integer-> integer-> Stable.
+  Axiom one_positive:
+    positive one.
 
-Definition gt x y := lt y x.
+  Axiom order_add:
+    forall x y z, lt x y -> lt (add x z) (add y z).
 
-Definition leq x y := not (gt x y).
+  Axiom order_mul:
+    forall x y z, lt x y -> positive z -> lt (mul x z) (mul x z).
 
-Definition geq x y := not (lt x y).
+  (* Powers *)
 
-Definition nat := {k : integer| leq zero k}.
+  Parameter pow : integer-> nat -> integer.
 
-Axiom lt_reflexive:
-  forall x, lt x x.
-
-Axiom lt_transitive:
-  forall x y z, lt x y /\ lt y z -> lt x z.
-
-Axiom lt_antisymmetric:
-  forall x y, lt x y /\ lt y x -> x = y.
-
-Axiom lt_dichotomy:
-  forall x y, lt x y \/ x = y \/ lt y x.
-
-Definition positive x := lt zero x.
-
-Definition positiveInteger := { x | positive x}.
-
-Axiom one_positive:
-  positive one.
-
-Axiom order_add:
-  forall x y z, lt x y -> lt (add x z) (add y z).
-
-Axiom order_mul:
-  forall x y z, lt x y -> positive z -> lt (mul x z) (mul x z).
-
-(* Powers *)
-
-Parameter pow : integer-> nat -> integer.
-
-Axiom pow_power:
-  (forall x : integer, pow x zero = one) /\
-  (forall x : integer, forall n : nat, pow x (add n one) = mul x (pow x n)).
+  Axiom pow_power:
+   (forall x : integer, pow x zero = one) /\
+   (forall x : integer, forall n : nat, pow x (add n one) = mul x (pow x n)).
 
 end. (* Integer *)
 
@@ -192,8 +169,8 @@ Definition cauchy (a : I.nat -> real) :=
 Definition limit (a : I.nat -> real) x :=
   forall epsilon : positiveReal,
   exists k : I.nat,
-  forall m n : I.nat,
-    I.leq k m /\ I.leq k n -> lt (abs (sub (a m) (a n))) epsilon.
+  forall m : I.nat,
+    I.leq k m -> lt (abs (sub (a m) x)) epsilon.
 
 Axiom complete_field:
   forall (a : I.nat -> real), cauchy a -> exists x : real, limit a x.
