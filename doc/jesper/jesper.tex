@@ -1,5 +1,7 @@
+%\documentclass[10pt,a4paper]{article}
 \documentclass[10pt,a4paper]{article}
 \usepackage{mathpartir,color,amsthm,amssymb,fullpage}
+\usepackage{graphicx}
 
 \newtheorem{theorem}{Theorem}
 \newtheorem{lemma}[theorem]{Lemma}
@@ -24,11 +26,16 @@
 \newcommand{\x}{x}
 \newcommand{\y}{y}
 \newcommand{\tFun}[3]{#1({#2}_1,\ldots,{#2}_{#3})}
-\newcommand{\tDesc}[3]{\iota #1.\, #3}
+\newcommand{\tDesc}[3]{\rotatebox[origin=c]{180}{$\iota$} #1.\, #3}
 
-\newcommand{\p}{\psi}
-\newcommand{\q}{\varphi}
-\renewcommand{\r}{\phi}
+%\newcommand{\p}{\psi}
+%\newcommand{\q}{\varphi}
+%\renewcommand{\r}{\chi}
+
+\newcommand{\p}{P}
+\newcommand{\q}{Q}
+\renewcommand{\r}{R}
+
 \newcommand{\pTrue}{\top}
 \newcommand{\pFalse}{\bot}
 % \newcommand{\pNot}[1]{\lnot #1}
@@ -44,8 +51,10 @@
 \newcommand{\D}{\Delta}
 \newcommand{\emptyCtx}{\cdot}
 
-\renewcommand{\wp}[1]{\mathop{\mathsf{wp}}(#1)}
+\renewcommand{\wp}[1]{\mathop{\mathsf{WP}}(#1)}
+\newcommand{\jwp}[1]{\mathop{\mathsf{wp}}(#1)}
 \newcommand{\trans}[1]{\ulcorner #1 \urcorner}
+\newcommand{\jtrans}[1]{\llcorner #1 \lrcorner}
 
 \newcommand{\jwfterm}[4]{#1;#2 \vdash #3\, :\, #4}
 \newcommand{\jwfprop}[3]{#1;#2 \vdash #3\, :\, \mathsf{Prop}}
@@ -63,7 +72,7 @@
      | &\tFun{\f}{\t}{n}\\
      | &\tDesc{\x}{\I}{\p}\\[10pt]
 
-\p,\q ::= &\pTrue\\
+\p,\q,\r ::= &\pTrue\\
 | & \pFalse\\
 | & \pAnd{\p}{\p}\\
 | & \pOr{\p}{\p}\\
@@ -176,9 +185,12 @@ As usual, we consider two terms or propositions to be equal if they are identica
   { \jpf{\G}{\D}{\pOr{\p}{\q}} }
 }
 
+\fbox{
 \inferrule
-  { \jpf{\G}{\D}{\pOr{\p}{\q}} \\ \jpf{\G}{\D,\p}{\r} \\ \jpf{\G}{\D,\q}{\r} }
+  { \jwfprop{\G}{\D}{\r} \\\\
+    \jpf{\G}{\D}{\pOr{\p}{\q}} \\ \jpf{\G}{\D,\p}{\r} \\ \jpf{\G}{\D,\q}{\r} }
   { \jpf{\G}{\D}{\r} }
+}
 
 \iffalse
 \inferrule
@@ -315,7 +327,53 @@ As usual, we consider two terms or propositions to be equal if they are identica
 Unchanged except for replacement of $\vdash$ by $\triangleright$ in every judgment!
 
 
-\section{Well-Formedness and Translation Functions}
+\section{Well-Formedness and Translation Functions:  Strict}
+
+
+\[
+\begin{array}{lll}
+  \jwp{\x} & := & \pTrue\\
+  \jwp{\tFun{\f}{\t}{n}} & := & \pAnd{\jwp{\t_1}}{\pAnd{\cdots}{\jwp{\t_n}}}\\
+  \jwp{\tDesc{\x}{\I}{\p(\x)}} & := &
+       (\pForall{\x}{\I}{\jwp{\p(\x)}}) \wedge
+       (\pExists{\x}{\I}{\p(\x)} \wedge
+       (\pForall{\y}{\I}
+               {\pImply{\p(\y)}{\x=\y}}))\\[10pt]
+
+  \jwp{\pTrue} & := & \pTrue\\
+  \jwp{\pFalse} & := & \pTrue\\
+%  \jwp{\pOr{\p}{\q}} & := & \pTrue\\
+  \jwp{\pOr{\p}{\q}} & := & \pAnd{\jwp{\p}}{\jwp{\q}}\\
+  \jwp{\pAnd{\p}{\q}} & := & \pAnd{\jwp{\p}}{(\pImply{\p}{\jwp{\q}})}\\
+  \jwp{\pImply{\p}{\q}} & := & \pAnd{\jwp{\p}}{(\pImply{\p}{\jwp{\q}})}\\
+  \jwp{\pForall{\x}{\I}{\p(\x)}} & := & \pForall{\x}{\I}{\jwp{\p(\x)}}\\
+%  \jwp{\pExists{\x}{\I}{\p(\x)}} & := & \pTrue\\
+  \jwp{\pExists{\x}{\I}{\p(\x)}} & := & \pForall{\x}{\I}{\jwp{\p(\x)}}\\
+  \jwp{\pEqual{\t}{\u}} & := & \pAnd{\jwp{\t}}{\jwp{\u}}\\[20pt]
+
+\iffalse  
+  \jtrans{\x} & := & \x\\
+  \jtrans{\tFun{\f}{\t}{n}} & := & \f(\jtrans{\t_1},\ldots,\jtrans{\t_n})\\
+  \jtrans{\tDesc{\x}{\I}{\p(\x)}} & := & \tDesc{\x}{\I}{\jtrans{\p(\x)}}\\[10pt]
+
+  \jtrans{\pTrue} & := & \pTrue\\
+  \jtrans{\pFalse} & := & \pFalse\\
+  \jtrans{\pOr{\p}{\q}} & := & \pOr{(\pAnd{\jwp{\p}}{\jtrans{\p}})}{(\pAnd{\jwp{\q}}{\jtrans{\q}})}\\
+  \jtrans{\pAnd{\p}{\q}} & := & \pAnd{\jtrans{\p}}{\jtrans{\q}}\\
+  \jtrans{\pImply{\p}{\q}} & := & \pImply{\jtrans{\p}}{\jtrans{\q}}\\
+  \jtrans{\pForall{\x}{\I}{\p}} & := & \pForall{\x}{\I}{\jtrans{\p}} \\
+  \jtrans{\pExists{\x}{\I}{\p}} & := & \pExists{\x}{\I}{(\pAnd{\jwp{\p}}{\jtrans{\p}})}\\
+  \jtrans{\pEqual{\t}{\u}} & := & \pEqual{\jtrans{\t}}{\jtrans{\u}}\\[10pt]
+  
+  \jtrans{\emptyCtx} & := & \emptyCtx\\
+  \jtrans{\D,\p} & := & \jtrans{\D},\jtrans{\p}\\
+\fi %\iffalse
+\end{array}
+\]
+
+%\clearpage
+
+\section{Well-Formedness and Translation Functions: Lax}
 
 
 \[
@@ -323,19 +381,19 @@ Unchanged except for replacement of $\vdash$ by $\triangleright$ in every judgme
   \wp{\x} & := & \pTrue\\
   \wp{\tFun{\f}{\t}{n}} & := & \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}\\
   \wp{\tDesc{\x}{\I}{\p(\x)}} & := &
-       (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge
-       (\pExists{\x}{\I}{\p(\x)}) \wedge
-       (\pForall{\x}{\I}{\pForall{\y}{\I}
-               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})\\[10pt]
+%       (\pForall{\x}{\I}{\wp{\p(\x)}}) \wedge 
+\mbox{\fbox{$
+        \pExists{\x}{\I}{(\pAnd{\p(\x)}{(\pForall{\y}{\I}
+               {\pImply{\p(\y)}{\x=\y}})})}$}}\\[10pt]
 
   \wp{\pTrue} & := & \pTrue\\
   \wp{\pFalse} & := & \pTrue\\
-  \wp{\pOr{\p}{\q}} & := & \pTrue\\
+  \wp{\pOr{\p}{\q}} & := & \mbox{\fbox{$\pTrue$}}\\
 %  \wp{\pOr{\p}{\q}} & := & \pAnd{\wp{\p}}{\wp{\q}}\\
   \wp{\pAnd{\p}{\q}} & := & \pAnd{\wp{\p}}{(\pImply{\p}{\wp{\q}})}\\
   \wp{\pImply{\p}{\q}} & := & \pAnd{\wp{\p}}{(\pImply{\p}{\wp{\q}})}\\
   \wp{\pForall{\x}{\I}{\p(\x)}} & := & \pForall{\x}{\I}{\wp{\p(\x)}}\\
-  \wp{\pExists{\x}{\I}{\p(\x)}} & := & \pTrue\\
+  \wp{\pExists{\x}{\I}{\p(\x)}} & := & \mbox{\fbox{$\pTrue$}}\\
   \wp{\pEqual{\t}{\u}} & := & \pAnd{\wp{\t}}{\wp{\u}}\\[20pt]
   
   \trans{\x} & := & \x\\
@@ -409,6 +467,19 @@ To be checked.
 To be checked.
 \end{proof}
 
+\begin{lemma}[Logical weakening]
+\label{lemma:logweak}
+\mbox{}
+\begin{enumerate}
+\item If $\jpf{\G}{\D}{\p}$ and $\jwfprop{\G}{\p}{\q}$ then
+  $\jwfprop{\G}{\D}{\q}$.
+\end{enumerate}
+\end{lemma}
+
+\begin{proof}
+  To be checked.
+\end{proof}
+
 \begin{lemma}
 \mbox{}
 \begin{enumerate}
@@ -426,63 +497,68 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 \end{proof}
 
 
-\begin{lemma}[Well-formedness of  $\wp{\cdot}$]
+\begin{lemma}[Well-formedness of  $\jwp{\cdot}$]
 \label{lemma:wfwp}
 \mbox{}
   \begin{enumerate}
-  \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
-    $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$.
-  \item If $\jwfprop{\G}{(\D,\pFalse)}{\p}$, we have
-    $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$.
+  \item If $\jwfterm{\G}{\D}{\t}{\I}$ then
+    $\jwfprop{\G}{\emptyCtx}{\jwp{\t}}$.
+  \item If $\jwfprop{\G}{\D}{\p}$, we have
+    $\jwfprop{\G}{\emptyCtx}{\jwp{\p}}$.
   \end{enumerate}
 \end{lemma}
 
 \begin{proof}
   \raggedright Induction on the proof of
-  $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ or $\jwfprop{\G}{(\D,\pFalse)}{\p}$.
+  $\jwfterm{\G}{\D}{\t}{\I}$ or $\jwfprop{\G}{\D}{\p}$.
   \begin{itemize}
   \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
     \begin{enumerate}
       \item
-        Here $\wp{\t} = \pTrue$.
+        Here $\jwp{\t} = \pTrue$,
       \item
-        Then $\jwfprop{\G}{\emptyCtx}{\pTrue}$. 
+        and $\jwfprop{\G}{\emptyCtx}{\pTrue}$. 
       \end{enumerate}
   \item Case: $\t = \tFun{\f}{\t}{n}$ with
-    $\jwfterm{\G}{(\D,\pFalse)}{\t_i}{\I}$ for all $i\in1..n$.
+    $\jwfterm{\G}{\D}{\t_i}{\I}$ for all $i\in1..n$.
     \begin{enumerate}
     \item
-      Here $\wp{\t} =
-      \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.
+      Here $\jwp{\t} =
+      \pAnd{\jwp{\t_1}}{\pAnd{\cdots}{\jwp{\t_n}}}$.
     \item 
     	By induction,
-      $\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$ for
+      $\jwfprop{\G}{\emptyCtx}{\jwp{\t_1}}$ for
       all $i\in1..n$, 
     \item 
     	so
-    $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    $\jwfprop{\G}{\emptyCtx}{\pAnd{\jwp{\t_1}}{\pAnd{\cdots}{\jwp{\t_n}}}}$.
     \end{enumerate}
-        
+
+\goodbreak        
   \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
-  $\jpf{\G}{(\D,\pFalse)}{\pExists{\x}{\I}{\p(\x)}}$ and 
-  $\jpf{\G}{(\D,\pFalse)}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  $\jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
 
     \begin{enumerate}
       \item 
         Then
-        $\wp{\t} = 
+        $\jwp{\t} = 
         \pAnd
-          {(\pForall{\x}{\I}{\wp{\p(\x)}})}
+          {(\pForall{\x}{\I}{\jwp{\p(\x)}})}
           {\pAnd
             {(\pExists{\x}{\I}{\p(\x)})}
             {(\pForall{\x}{\I}{\pForall{\y}{\I}
               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}}$.
       \item 
-        By the inductive hypothesis, $\jwfprop{\G}{\emptyCtx}{\wp{\pExists{\x}{\I}{\p(\x)}}}$
+        By the inductive hypothesis, $\jwfprop{\G}{\emptyCtx}{\jwp{\pExists{\x}{\I}{\p(\x)}}}$
+\bigskip
+
+{\bf BOGUS---can't apply the inducive hypothesis to a {\it logical} derivation!
+}
       \item 
       	and
-        $\jwfprop{\G}{\emptyCtx}{\wp{\pForall{\x}{\I}{\pForall{\y}{\I}
+        $\jwfprop{\G}{\emptyCtx}{\jwp{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}$.
       \item
       	That is, 
@@ -491,46 +567,46 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 	      {\pForall{\y}{\I}
 	        {\pAnd
 	          {\bigl(\pAnd
-	             {\wp{\p(\x)}}
-	             {(\pImply{\p(\x)}{\wp{\p(\y)}})}\bigr)}
+	             {\jwp{\p(\x)}}
+	             {(\pImply{\p(\x)}{\jwp{\p(\y)}})}\bigr)}
 	          {(\pImply
 	             {\pAnd{\p(\x)}{\p(\y)}}
 	             {\pAnd{\pTrue}{\pTrue}})} }}}$.
 	  \item
 	    By inversion, 
-	      $\jwfprop{(\G,\x{:}\I,\y{:}\I)}{\emptyCtx}{\wp{\p(\x)}}$,
+	      $\jwfprop{(\G,\x{:}\I,\y{:}\I)}{\emptyCtx}{\jwp{\p(\x)}}$,
       \item 
         so by Lemma~\ref{lemma:subst} we have 
-        $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\wp{\p(\x)}}$,
+        $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\jwp{\p(\x)}}$,
       \item
-        and hence $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\wp{\p(x)}}}$.
+        and hence $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\jwp{\p(x)}}}$.
       \item
-        Thus, $\jwfprop{\G}{\emptyCtx}{\wp{\t}}$.
+        Thus, $\jwfprop{\G}{\emptyCtx}{\jwp{\t}}$.
       \end{enumerate}
       
   \item Cases: $\p = \pTrue$, or $\p = \pFalse$, or $\p=(\pOr{\p_1}{\p_2})$,
       or $\p=(\pExists{\x}{\I}{\q})$.
       \begin{enumerate}
       \item 
-      	Here $\wp{\p} = \pTrue$.
+      	Here $\jwp{\p} = \pTrue$.
       \item
         Then $\jwfprop{\G}{\emptyCtx}{\pTrue}$.
       \end{enumerate}
             
   \item Case: $\p = (\pAnd{\p_1}{\p_2})$ or $\p = (\pImply{\p_1}{\p_2})$ with
-       $\jwfprop{\G}{(\D,\pFalse)}{\p_1}$ and 
-              $\jwfprop{\G}{(\D,\pFalse,\p_1)}{\p_2}$.
+       $\jwfprop{\G}{\D}{\p_1}$ and 
+              $\jwfprop{\G}{(\D,\p_1)}{\p_2}$.
        \begin{enumerate}
        \item 
-       		Then $\wp{\p} = \pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}$.
+       		Then $\jwp{\p} = \pAnd{\jwp{\p_1}}{(\pImply{\p_1}{\jwp{\p_2}})}$.
        \item 
        		By the inductive hypothesis,
-         	$\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
-         	and $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$.
+         	$\jwfprop{\G}{\emptyCtx}{\jwp{\p_1}}$
+         	and $\jwfprop{\G}{\emptyCtx}{\jwp{\p_2}}$.
        \item 
          By Lemma~\ref{lemma:weaken} we have 
-         $\jwfprop{\G}{\p_1}{\wp{\p_2}}$,
-       \item so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\wp{\p_2}})}$,
+         $\jwfprop{\G}{\p_1}{\jwp{\p_2}}$,
+       \item so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\jwp{\p_2}})}$,
 
 
          {\bf Oops...this doesn't follow!  We didn't (and in
@@ -538,39 +614,39 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
          Maybe we should define 
 \[
 \begin{array}{lll}
-\wp{\pAnd{\p}{\q}} &:=& \pAnd{\wp{\p}}{(\pImply{\trans\p}{\wp\q})}\\
-\wp{\pImply{\p}{\q}} &:=& \pAnd{\wp{\p}}{(\pImply{\trans\p}{\wp\q})}\\
+\jwp{\pAnd{\p}{\q}} &:=& \pAnd{\jwp{\p}}{(\pImply{\trans\p}{\wp\q})}\\
+\jwp{\pImply{\p}{\q}} &:=& \pAnd{\jwp{\p}}{(\pImply{\trans\p}{\wp\q})}\\
 \end{array}
 \]
 instead?
 }
          
        \item
-         and hence $\jwfprop{\G}{\emptyCtx}{\wp{\p}}$.
+         and hence $\jwfprop{\G}{\emptyCtx}{\jwp{\p}}$.
        \end{enumerate}
   \item Case: $\p=(\pForall{\x}{\I}{\q})$, 
-        with $\jwfprop{(\G,\x{:}\I)}{(\D,\pFalse)}{\q}$.
+        with $\jwfprop{(\G,\x{:}\I)}{\D}{\q}$.
   	\begin{enumerate}
 	\item 
-		Here $\wp{\p} = \pForall{\x}{\I}{\wp{\q}}$.
+		Here $\jwp{\p} = \pForall{\x}{\I}{\jwp{\q}}$.
 	\item 
 		By the inductive hypothesis,
-	   $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\wp{\q}}$.
+	   $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\jwp{\q}}$.
 	\item 
 		Thus
-	   $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\wp{\q}}}$ as desired.
+	   $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\jwp{\q}}}$ as desired.
 	\end{enumerate}
-  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\G}{(\D,\pFalse)}{\t_1}{\I}$ and $\jwfterm{\G}{(\D,\pFalse)}{\t_2}{\I}$. 
+  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\G}{\D}{\t_1}{\I}$ and $\jwfterm{\G}{\D}{\t_2}{\I}$. 
     	\begin{enumerate}
 	\item 
-		Here $\wp{\p} = \pAnd{\wp{\t_1}}{\wp{\t_2}}$.
+		Here $\jwp{\p} = \pAnd{\jwp{\t_1}}{\jwp{\t_2}}$.
 	\item 
 		By the inductive hypotheses,
-		$\jwfprop{\G}{\emptyCtx}{\wp{\t_1}}$ 
+		$\jwfprop{\G}{\emptyCtx}{\jwp{\t_1}}$ 
 	\item 
-		and $\jwfprop{\G}{\emptyCtx}{\wp{\t_2}}$.
+		and $\jwfprop{\G}{\emptyCtx}{\jwp{\t_2}}$.
 	\item
-		Thus $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\t_1}}{\wp{\t_2}}}$.
+		Thus $\jwfprop{\G}{\emptyCtx}{\pAnd{\jwp{\t_1}}{\jwp{\t_2}}}$.
 	\end{enumerate}
   \end{itemize}
 \end{proof}
