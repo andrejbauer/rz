@@ -1,14 +1,10 @@
-(** We investigate how one might implement finitely presented monoids. *)
+(** Hyperspace of finite permutation groups. *)
+Require Sets.
 
-theory Monoid :=
+(** The group of finitary permutations. *)
+Definition FinitaryPermutationGroup (I : Number.Integer) :=
 thy
-  Parameter s : Set.
-  Parameter one : s.
-  Parameter mul : s -> s -> s.
+  include Algebra.Group.  
 
-  Axiom one_neutral:
-    forall x : s, mul x one = x /\ mul one x = x.
-
-  Axiom mul_associative:
-    forall x y z : s, mul x (mul y z) = mul (mul x y) z.
-end
+  
+end.

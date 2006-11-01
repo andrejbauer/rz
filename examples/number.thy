@@ -14,17 +14,13 @@ thy
 
   Definition two := add one one.
 
-  Axiom non_trivial:
-    not (zero = one).
-
   Axiom initial:
-    forall R : Algebra.Ring,
-      forall u : R.s,
-        exists1 h : integer -> R.s,
-          h zero = R.zero /\
-          h one = u /\
-          forall x y, (h (add x y) = R.add (h x) (h y)) /\
-          forall x y, (h (mul x y) = R.mul (h x) (h y)).
+    forall R : Algebra.CommutativeRingWithUnit,
+      exists1 h : integer -> R.s,
+        h zero = R.zero /\
+        h one = R.one /\
+        forall x y, (h (add x y) = R.add (h x) (h y)) /\
+        forall x y, (h (mul x y) = R.mul (h x) (h y)).
 
   (* Decidable order *)
 

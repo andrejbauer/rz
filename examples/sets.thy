@@ -19,6 +19,9 @@ thy
       (forall lst : s, M.p lst).
 end.
 
+Parameter ListMaker : [S : Space] -> List S.
+
+
 Definition Hyperspace(S : Space) :=
 thy
   Parameter s : Set.
