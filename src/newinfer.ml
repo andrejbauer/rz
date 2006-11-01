@@ -1023,22 +1023,24 @@ and annotateBinding cntxt surrounding_expr binders =
     | ([],_)::rest          -> bLoop cntxt' rest
     | (nms, expropt)::rest ->
 	(* Now loop to create this pair's bindings and extended context *)
-	let rec nLoop = function 
-	    [] -> (cntxt', [], [])
+	let rec nLoop cntxt0 = function 
+	    [] -> (cntxt0, [], [])
 	  | n::ns -> 
-	      let (cntxt'', mbnds, lbnds) = nLoop ns
-	      in let doTypeBinding ty =
-		   let (cntxt'', n) = LR.renameBoundVar cntxt'' n
-		   in (LR.insertTermVariable cntxt'' n ty None, 
-		       mbnds, (n,ty) :: lbnds)
+	      let doTypeBinding ty =
+		let (cntxt0', n) = LR.renameBoundVar cntxt0 n
+		in let cntxt0'' = LR.insertTermVariable cntxt0' n ty None
+		in let (cntxt0''', mbnds, lbnds) = nLoop cntxt0'' ns
+		in (cntxt0''', mbnds, (n,ty) :: lbnds)
               in let doTheoryBinding thry =
 		begin
-		  if (lbnds = []) then
-		    let (cntxt'', n) = LR.renameBoundVar cntxt'' n
-		    in (LR.insertModelVariable cntxt'' n thry, 
-		        (n,thry)::mbnds, lbnds)
-		  else
-		    E.innerModelBindingError surrounding_expr
+		    let (cntxt0', n) = LR.renameBoundVar cntxt0 n
+		    in let cntxt0'' = LR.insertModelVariable cntxt0' n thry
+		    in let (cntxt0''', mbnds, lbnds) = nLoop cntxt0'' ns
+		    in
+			 if (lbnds = []) then
+			   (cntxt0''', (n,thry)::mbnds, lbnds)
+			 else
+			   E.innerModelBindingError surrounding_expr
 		end
 		  
 	      in
@@ -1068,7 +1070,7 @@ and annotateBinding cntxt surrounding_expr binders =
 		     | Some expr ->
 			 begin
 			   (* Explicitly-annotated binding *)
-			   match annotateExpr cntxt expr with
+			   match annotateExpr cntxt0 expr with
 			       ResSet( ty, L.KindSet ) -> 
 				 doTypeBinding ty
 			     | ResTheory (thry, L.ModelTheoryKind) ->
@@ -1076,7 +1078,7 @@ and annotateBinding cntxt surrounding_expr binders =
 			     | _ -> E.illegalBindingError n expr surrounding_expr
 			 end
  		   end
-	in let (cntxt'', mbnds, lbnds) = nLoop nms
+	in let (cntxt'', mbnds, lbnds) = nLoop cntxt' nms
 	  
 	(* Now handle the rest of the pairs *)
 	in let (cntxt_final, mbnds_rest, lbnds_rest) = bLoop cntxt'' rest
