@@ -1147,10 +1147,13 @@ and optSignat ctx = function
       let    ( (mdlnm, _) as arg', ctx'  ) = optStructBinding ctx arg
       in let body' = optSignat ctx' body
       in SignatFunctor ( arg', body' )
-  | SignatApp(sg1,mdl) ->
-      let sg1' = optSignat ctx sg1
-      in let mdl' = optModul' ctx mdl
-      in SignatApp(sg1', mdl')
+  | SignatApp(sg1,mdl) as sg->
+      if ( ! Flags.do_sigapp ) then
+        let sg1' = optSignat ctx sg1
+        in let mdl' = optModul' ctx mdl
+        in SignatApp(sg1', mdl')
+      else	
+	optSignat ctx (hnfSignat ctx sg)
   | SignatProj(mdl, nm) ->
       let mdl' = optModul' ctx mdl
       in SignatProj(mdl',nm)
