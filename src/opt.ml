@@ -12,8 +12,9 @@ open Outsynrules
 
 (** allequalTy : ctx -> ty -> bool
 
-    Check whether the given type is a unit (or void) type, i.e., one in
-    which any two terms of the type are equal.
+    Check whether the given type is has the property that 
+    any two terms of the type are equal.  (i.e., all types
+    isomorphic to Unit or Void).
 *)
 let rec allequalTy ctx ty = 
   match hnfTy ctx ty with
@@ -55,7 +56,7 @@ let rec allequalTy ctx ty =
     Note that we are only looking for Equal equality, not NamedPer
     equality.  NamedPer equality would only suffice if the rest of the
     proposition is invariant under choice of representative, and we
-    aren't checking for that.
+    don't (yet) check for that.
 *)
 
 
@@ -114,7 +115,8 @@ and findEqs nm = function
 (** findEqPremise: name -> proposition -> (term * proposition) option
 
     Given a name x and a proposition, see if it is an implication whose
-    hypothesis provides a definition for x.
+    hypothesis provides a definition for x (i.e., contains a top-level 
+    proposition x=e where x is not free in x).
 
     Used for bodies of universally quantified propositions.
 *)
@@ -147,8 +149,12 @@ and findEqPremise nm = function
 (** {2: Polymorphization functions} *)
 (***********************************)
 
-(* Collects defined type variables, value specifications, predicate
-   specifications, and assertions from a list of signature elements.
+(* Collects 
+      - defined type variables
+      - value specifications
+      - predicate specifications
+      - assertions
+   from a list of signature elements.
 
    Returns None if the parameter is "too complex" (e.g., higher-order)
    to be turned into arguments of a polymorphic function; otherwise
@@ -156,35 +162,20 @@ and findEqPremise nm = function
 *)
 let rec extractPolyInfo = function
     [] -> Some ([], [], [], [])
-  | Spec(nm, TySpec None, assns)::rest ->
-      begin
-	match extractPolyInfo rest with
+  | first::rest ->
+      match extractPolyInfo rest with
 	  None -> None
 	| Some (tynames, vals, prps, assns_rest) ->
-	    Some (nm::tynames, vals, prps, assns @ assns_rest)
-      end
-  | Spec(nm, ValSpec([], ty), assns) :: rest ->
-      begin
-	match extractPolyInfo rest with
-	  None -> None
-	| Some (tynames, vals, prps, assns_rest) ->
-	    Some (tynames, (nm,ty)::vals, prps, assns @ assns_rest)
-      end
-  | Assertion asn :: rest ->
-      begin
-	match extractPolyInfo rest with
-	  None -> None
-	| Some (tynames, vals, prps, assns_rest) ->
-	    Some (tynames, vals, prps, asn :: assns_rest)
-      end
-  | Spec(nm, PropSpec pt, assns) :: rest ->
-      begin
-	match extractPolyInfo rest with
-	  None -> None
-	| Some (tynames, vals, prps, assns_rest) ->
-	    Some (tynames, vals, (nm,pt)::prps, assns @ assns_rest)
-      end
-  | _ -> None
+	    match first with
+		Spec(nm, TySpec None, assns) ->
+		  Some (nm::tynames, vals, prps, assns @ assns_rest)
+	      | Spec(nm, ValSpec([], ty), assns)  ->
+		  Some (tynames, (nm,ty)::vals, prps, assns @ assns_rest)
+	      | Assertion asn ->
+		  Some (tynames, vals, prps, asn :: assns_rest)
+	      | Spec(nm, PropSpec pt, assns) ->
+		  Some (tynames, vals, (nm,pt)::prps, assns @ assns_rest)
+	      | _ -> None
 
 
 let tryPolymorph ctx nm signat =
@@ -193,23 +184,29 @@ let tryPolymorph ctx nm signat =
 		  Signat[Spec(nm3,ValSpec([],ty3),assns3)]) ->
       begin
 	match extractPolyInfo argElems with
-	  None -> None
-	| Some (tynames, vals, prps, argassns) ->
-	    let tyvars = List.map tyvarize tynames
+	  Some (tynames, vals, prps, ([] as argassns)) ->
+	    let tyvars =
+	      (* Functor's type parameters but with a leading ' character *)
+	      List.map tyvarize tynames
 		
 	    in let arg_subst = 
 	      (* Mapping from t -> 't, for type parameters *)
 	      renamingList tynames tyvars
 		
-	    in let (argnames,argtypes) = List.split vals
+	    in let (argnames,argtypes) = 
+	      (* Functor's term arguments and their types *)
+	      List.split vals
 	    in let argtypes' = 
 	      (* New term arguments should refer to 't, not t *)
 	      List.map (substTy arg_subst) argtypes
+
 	    in let argassns' =
 	      (* Assertions taken from the argument should use 't, not t *)
 	      List.map (substAssertion arg_subst) argassns
 		
-	    in let (argprpnames, argpts) = List.split prps
+	    in let (argprpnames, argpts) = 
+	      (* Functor's predicate arguments and their proptypes *)
+	      List.split prps
 	    in let argpts' =
 	      (* We will quantify over propositions mentioned in the
 		 functor argument; these also must refer to 't, not t *)
@@ -232,7 +229,7 @@ let tryPolymorph ctx nm signat =
 		(List.map resSubstTermOut argnames)
 
 	    in let res_subst_term =
-	      (* Extend mapping from nm1.p -> p, i.e, prop parameters *)
+	      (* EXTEND term mapping with nm1.p -> p, i.e, prop parameters *)
 	      List.fold_left2 insertPropLN res_subst_term (* extending subst!*)
 		(List.map resSubstTermIn argprpnames)
 		(List.map (fun n -> LN(None,n)) argprpnames)
@@ -244,7 +241,9 @@ let tryPolymorph ctx nm signat =
 	       print_endline "\nres_subst_term:";
 	       display_subst res_subst_term)
 *)
-	    in let ty3' =
+	    in let final_ty =
+	      (* Type of the final polymorphic value [without any
+		 type foralls] *)
 	      nested_arrowty argtypes' (substTy res_subst_ty ty3)
 
 
@@ -252,6 +251,9 @@ let tryPolymorph ctx nm signat =
    	      (* XXX Something's not quite right here --- there
    		 should be an implication where the And of the argument
    		 assertions implies the result assertion. 
+
+		 So, this whole optimization has been disabled if
+		 argassns is non-empty.
 	       *)
 	      let aprop' = substProp res_subst_term asn.aprop
 	      in let aprop'' = substProp res_subst_ty aprop'
@@ -269,8 +271,9 @@ let tryPolymorph ctx nm signat =
 	      List.map updateResAssertion assns3
 	    in
 	    Some(Spec(uncapitalize nm3,
-		      ValSpec(tyvars, ty3'), 
+		      ValSpec(tyvars, final_ty), 
 		      argassns' @ assns3'))
+	  | _ -> None
       end
   | _ -> None
 
@@ -281,11 +284,9 @@ let tryPolymorph ctx nm signat =
 (** {2: Main Optimization functions} *)
 (*************************************)
 
-
-
 (* optTy : ty -> ty
     
-   We should probably optimize modules that appear in types, but
+   We should probably optimize the modules that appear in types, but
    this shouldn't happen often.
  *)
 let rec optTy ctx ty = ty
@@ -824,16 +825,27 @@ and optProp ctx orig_prp =
 		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
 	    in (match (optTy ctx ty, p') with
-		(_, True) -> True
-	      | (UnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
-	      | (VoidTy, _) -> True
+		(_, True) -> 
+		  (* forall x:t. True  ===  True *)
+		  True
+	      | (UnitTy, _) -> 
+		  (* forall x:Unit. p'  ===  let x=() in p' *)
+		  optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
+	      | (VoidTy, _) -> 
+		  (* forall x:Void. p'  ===   True *)
+		  True
 	      | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
+		  (* forall x:t. (||t|| -> p'')   ===   forall x:||t||. p'' *)
 		  if (n3 = LN(None,n)) && 
 		    (hnfTy ctx (NamedTy n1) = hnfTy ctx (NamedTy n2)) then
 		    ForallTotal((n, n2), p'')
 		  else
 		    doForall(n, NamedTy n1, p')
-	      | (ty',_) -> doForall(n, ty', p'))
+	      | (ty',_) -> 
+		  (* forall x:t. ((... /\ x=e /\ ...) -> p) 
+		      ===  let x=e in ((... /\ ...) -> p)
+		     when x is not free in e.  *)
+		  doForall(n, ty', p'))
 	      
 	| ForallTotal((n,ln),p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n

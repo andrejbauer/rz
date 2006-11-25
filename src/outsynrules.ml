@@ -450,6 +450,7 @@ and insertFact ({facts=facts} as ctx) prp =
   else
     (match prp with
 	And prps -> insertFacts ctx prps
+      | Not(Not prp) -> insertFact ctx prp (* Classical logic! *)
       | _ -> { ctx with facts = prp::facts })
 
 and insertFacts ctx prps =
