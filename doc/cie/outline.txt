@@ -1,0 +1,8 @@
+TITLE:
+
+Sections:
+* Introduction/Motivation
+* What RZ is (Semantics)
+* How RZ works (Implementation)
+* Examples
+* Comparison with Coq extraction tool
