@@ -2,7 +2,21 @@ TITLE:
 
 Sections:
 * Introduction/Motivation
-* What RZ is (Semantics)
-* How RZ works (Implementation)
 * Examples
+   [cs: Even people not interested in the details can probably read the examples,
+    so it would be better if we could move them early.]
+* What RZ is (Semantics)
+   * Source language: terms and logic 
+   * Realizability translation
+      * Something about realizers being total/terminating
+* How RZ works (Implementation)
+   * Parsing and typechecking occur
+      *  Not much to say except perhaps for mentioning subtyping/coercions
+   * Translation
+   * TopTy and thinning
+   * Optimization occurs
+      * Simplifications, but not any real theorem-proving.
+   * Phase-splitting:  functors into polymorphism
 * Comparison with Coq extraction tool
+   [cs: see e-mail?]
+* Future work
