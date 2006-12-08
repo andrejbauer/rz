@@ -167,6 +167,7 @@ thy
     forall x : s, not x = zero -> mul x (inv x) = one.
 end.
 
+
 (** Modules over a ring with unit. *)
 
 Definition LeftModule(R : RingWithUnit) :=

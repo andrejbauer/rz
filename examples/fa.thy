@@ -5,17 +5,17 @@ Require Metric.
 
 (** Real vector space *)
 
-Definition VectorSpace :=
-fun (I : Number.Integer) =>
-fun (R : Number.Real I) =>
-  Algebra.LeftModule R.
+Definition VectorSpace
+  (I : Number.Integer)
+  (R : Number.Real I) :=
+Algebra.LeftModule R.
 
 (** Normed space *)
 
-Definition Norm :=
-fun (I : Number.Integer) =>
-fun (R : Number.Real(I)) =>
-fun (V : VectorSpace I R) =>
+Definition Norm
+(I : Number.Integer)
+(R : Number.Real I)
+(V : VectorSpace I R) :=
 thy
   Parameter norm : V.s -> R.real.
 
