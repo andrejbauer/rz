@@ -1,14 +1,20 @@
 TITLE:
 
+[ab: It will be hard to show fancy examples before we explain anything.
+I would show some examples at the beginning and more later.]
+
+[ab: we have to adress the question "what about program extraction?"]
+
 Sections:
 * Introduction/Motivation
-* Examples
-   [cs: Even people not interested in the details can probably read the examples,
-    so it would be better if we could move them early.]
+   *  Initial examples (that don't require one to really know RZ)
 * What RZ is (Semantics)
+   * The intended realizability model:
+      * Something abour realizers being total/terminating
    * Source language: terms and logic 
+   * Output language: signatures with assertions
    * Realizability translation
-      * Something about realizers being total/terminating
+* Fancier examples here?
 * How RZ works (Implementation)
    * Parsing and typechecking occur
       *  Not much to say except perhaps for mentioning subtyping/coercions
@@ -18,5 +24,5 @@ Sections:
       * Simplifications, but not any real theorem-proving.
    * Phase-splitting:  functors into polymorphism
 * Comparison with Coq extraction tool
-   [cs: see e-mail?]
+   [ab: I like your email message]
 * Future work
