@@ -10,7 +10,7 @@ We motivate and explain typed realizability and its relationship with
 real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
 simple\footnote{There is at most one arrow between any two vertices.}
-directed graphs with vertices labeled by integers. An exemplar
+directed graphs with vertices labelled by integers. An exemplar
 directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 %
 \begin{figure}
@@ -88,40 +88,34 @@ store, and other computational effects, as long as they behave as if
 they did not. A useful example of a functional value using store is
 presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
 Note also that a functional value of a functional type may diverge as
-soon as it is applied, e.g., if we define $\cletrec{f\;x}{f\;(x+1)}$
-then $f \in \values{\cint \to \cint}$. The collection $\Type$ with the
-assignment of functional values $|t|$ to each $t \in \Type$ forms a
-\emph{typed partial combinatory algebra (TPCA)}, which provides a
-theoretical basis for the definition of a realizability model that
-suits our needs.
+soon as it is applied, e.g., if we define
+$\cletrec{f\;(x:\cint):\cint}{f\;x}$ then $f \in \values{\cint \to
+  \cint}$. The collection $\Type$ with the assignment of functional
+values $|t|$ to each $t \in \Type$ forms a \emph{typed partial
+  combinatory algebra (TPCA)}, which provides a theoretical basis for
+the definition of a realizability model that suits our needs.
 
 Going back to our example, we see that to implement the set of
 directed graphs $\mathcal{G}$ is to specify a datatype
 $\typeOf{\mathcal{G}} = \mathtt{graph}$ together with a
 \emph{realizability relation} $\rz_{\mathcal{G}}$ between
-$\mathcal{G}$ and $\values{\mathtt{graph}}$. The meaning of
-$(\ell_V, \ell_A) \rz_\mathcal{G} G$ is ``value $(\ell_V, \ell_A)$
-represents (realizes, implements) graph $G$''. There are two natural
-conditions that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G
-\in \mathcal{G}$ there should be at least one realizer $(\ell_V,
-\ell_A)$ representing it, and (2) if $(\ell_V, \ell_A)$ represents
-both $G$ and $G'$ then $G = G'$. The latter condition is called
-\emph{modesty} and is not strictly necessary for the development of
-the theory, though it is something that programmers would naturally
-expect to hold. If $(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$
-represent the same graph, we say that they are \emph{equivalent} and
-write $(\ell_V, \ell_A) \per_\mathcal{G} (\ell'_V, \ell'_A)$. The
-relation $\per_\mathcal{G}$ is a partial equivalence relation
-(symmetric and transitive), and may be defined in terms of
-$\rz_\mathcal{G}$ by
-%
-\begin{equation*}
-  u \per_\mathcal{G} v
-  \iff
-  \some{G}{\mathcal{G}}{u \rz_\mathcal{G} G \land v \rz_\mathcal{G} G}
-  \;.
-\end{equation*}
+$\mathcal{G}$ and $\values{\mathtt{graph}}$. The meaning of $(\ell_V,
+\ell_A) \rz_\mathcal{G} G$ is ``value $(\ell_V, \ell_A)$ represents
+(realizes, implements) graph $G$''. There are two natural conditions
+that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G \in
+\mathcal{G}$ there should be at least one realizer $(\ell_V, \ell_A)$
+representing it, and (2) if $(\ell_V, \ell_A)$ represents both $G$ and
+$G'$ then $G = G'$. The latter condition is called \emph{modesty} and
+is not strictly necessary for the development of the theory, though it
+is something that programmers would naturally expect to hold. If
+$(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$ represent the same graph,
+we say that they are \emph{equivalent} and write $(\ell_V, \ell_A)
+\per_\mathcal{G} (\ell'_V, \ell'_A)$. The relation $\per_\mathcal{G}$
+is a \emph{partial} equivalence relation (symmetric and transitive,
+but not reflexive) because not every $(\ell_V, \ell_A) \in
+\values{\mathtt{graph}}$ represents a graph.
 
+\bigskip
 
 A general definition is in order. A \emph{modest set} is a triple $A =
 (\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is the
@@ -135,14 +129,10 @@ $\values{\typeOf{A}}$ and $\setOf{A}$, satisfying
 \item \emph{modesty:} if $u \rz_A x$ and $u \rz_A y$ then $x = y$.
 \end{enumerate}
 %
-The \emph{support} of $A$ is the set $\support{A}$ of those values
-which realize something,
-%
-\begin{equation*}
-  \support{A} = \set{v \in \typeOf{A} \such \xsome{x}{\setOf{A}}{v \rz_A x}} \;.
-\end{equation*}
-%
-We define the relation $\per_A$ on $\values{\typeOf{A}}$ by
+The \emph{support} of $A$ is the set $\support{A} = \set{v \in
+  \typeOf{A} \such \xsome{x}{\setOf{A}}{v \rz_A x}}$ of those values
+which realize something. We define the relation $\per_A$ on
+$\values{\typeOf{A}}$ by
 %
 \begin{equation*}
   u \per_A v
@@ -151,7 +141,7 @@ We define the relation $\per_A$ on $\values{\typeOf{A}}$ by
 \end{equation*}
 %
 From totality and modesty of $\rz_A$ it follows that $\rz_A$ is a per,
-i.e., symmtric and transitive. Observe that $\support{A} = \set{v \in
+i.e., symmetric and transitive. Observe that $\support{A} = \set{v \in
   \values{\typeOf{A}} \such v \per_A v}$, whence $\per_A$
 restricted to $\support{A}$ is an equivalence relation. In fact, we
 may recover a modest set up to isomorphism from $\typeOf{A}$ and
@@ -162,7 +152,7 @@ The two views of implementations, as modest sets $(\setOf{A},
 \typeOf{A}, {\rz_A})$, and as pers $(\typeOf{A}, {\per_A})$, are
 equivalent. In RZ we use pers because they refer only to types and
 values, as opposed to arbitrary sets. Nevertheless, it is useful to
-undestand how modest sets and pers arise from natural considerations
+understand how modest sets and pers arise from natural considerations
 about programming practice.
 
 Modest sets form a category whose objects are modest sets and
@@ -185,7 +175,7 @@ what~$f$ does to the elements they represent.
 
 The equivalent category of pers has as objects pairs $A = (\typeOf{A},
 {\per_A})$ where $\typeOf{A} \in \Type$ and $\per_A$ is a per on
-$\values{\typeOf{A}}$. A morphism $A to B$ is represented by $v
+$\values{\typeOf{A}}$. A morphism $A \to B$ is represented by $v
 \in \values{\typeOf{A} \to \typeOf{B}}$ such that, for all $u, u'
 \in \support{A}$,
 %
@@ -218,10 +208,22 @@ the underlying type
 \end{equation*}
 %
 and the realizability relation $\rz_{B^A}$ defined
-by~\eqref{eq:rz-function-space}. We review other canonical
-constructions on modest sets, such as products and sums, in
-Section~\ref{sec:realizability-interpretation}.
+by~\eqref{eq:rz-function-space}. In
+Section~\ref{sec:realizability-interpretation} we review other
+canonical constructions on modest sets, such as products and sums.
 
+
+\subsection{Relationship with other models of computation}
+\label{sec:relat-with-other}
+
+\internal{AB}{This might fit better at the end of the paper, but for the CCA
+audience it's good that they see it early, because it will help them
+imagine things more easily.}
+
+
+
+\subsection{Examples of modest sets}
+\label{sec:examples-modest-sets}
 
 
 \subsection{Uniform families}

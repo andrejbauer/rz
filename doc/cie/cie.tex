@@ -8,6 +8,17 @@
 
 %%%% MACROS %%%%%
 
+% Private comments, should be left in the source when the paper is finished.
+% Use this version for visible comments:
+\newcommand{\comment}[1]{\paragraph{Comment:} #1}
+% For invisible comments:
+%\newcommand{\comment}[1]{}
+
+% Internal notes, used during writing the paper. The first argument is
+% the author of the note. When the paper is finished, these should
+% all be gone. Delete an internal note as soon as you resolve it.
+\newcommand{\internal}[2]{\paragraph{Note by #1:} #2}
+
 % Types and terms in ocaml
 \newcommand{\ctype}{\mathtt{type}\;}
 \newcommand{\cint}{\mathtt{int}}
