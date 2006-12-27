@@ -216,7 +216,29 @@ canonical constructions on modest sets, such as products and sums.
 \subsection{Two Examples}
 \label{sec:examples-modest-sets}
 
-Group. (mention word problem and why pers are not computable).
+As a first example we implement the group $(\ZZ_7, 0, {-}, {+})$ of
+integers modulo~$7$. We represent the elements of $\ZZ_7 = \set{0, 1,
+  \ldots, 6}$ by values of type $\cint$,
+%
+\begin{equation*}
+  \typeOf{\ZZ_7} = \cint.
+\end{equation*}
+%
+An integer value $v \in \values{\cint}$ reprents an element $k \in
+\ZZ_7$ if $v \geq 0$ and $v \equiv k \mod 7$.\footnote{The reason for
+  requiring $v \geq 0$ is that the Ocaml operator $\mathtt{mod}$
+  returns negative remainders when given a negative argument, which is
+  something we do not want to worry about.} The associated per is
+%
+\begin{equation*}
+  u \per_{\ZZ_7} v
+  \iff
+  u \geq 0 \land v \geq 0 \land u \equiv v \mod 7 \;.
+\end{equation*}
+%
+(Mention the word problem and decidable equality at the end.)
+
+
 
 Natural numbers. Explicitly postulate the realizer for induction,
 using the type $\alpha \to (\alpha \to \alpha) \to \mathtt{nat} \to
@@ -225,6 +247,9 @@ using the type $\alpha \to (\alpha \to \alpha) \to \mathtt{nat} \to
 
 \subsection{Uniform families}
 \label{sec:uniform-families}
+
+Give an example of a uniform family (probably the cyclic group of rank
+$n$).
 
 Describe uniform families and mention that they are related to
 dependent types. Motivate and discuss the uniformity. Describe the
