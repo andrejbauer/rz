@@ -1,31 +1,33 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Given the constants, relations, and axioms of a mathematical structure,
-expressed in constructive logic, what must a programmer do in order to
-implement that mathematical structure?
+Given the constants, relations, and axioms of a mathematical
+structure, what must a programmer do in order to implement that
+mathematical structure?
 
 For some familiar cases, the answer is obvious. Code implementing a
 group must have a type to represent the group elements, a constant, a
 unary operator, and a binary operator, each satisfying appropriate
-axioms that guarantee the constant is a unit of the binary operator,
-the unary operator computes inverses, and that the binary operator is
+axioms that guarantee the constant is the neutral element, the unary
+operator computes inverses, and that the binary operator is
 associative.
 
 But for more interesting structures, especially those arising in
-constructive analysis, the answer is much less obvious. Significant
-research goes into finding suitable representations~\cite{???}. What
-do you need to implement the real numbers (a complete, ordered field)?
-What about a complete metric space? Or a [cs: I'm hoping Andrej will
-fix this part up and add more interesting examples examples.] Â`
-\bigskip
+mathematical analysis, the answer is much less obvious. How do we
+implement the real numbers (a Cauchy-complete Archimedean ordered
+field), or a compact metric space, or a space of smooth functions?
+Significant research goes into finding representations that provide a
+satisfactory theory of computability on such
+structures~\cite{Wei00,TZ98,Bla97,EL00}, and several implementations
+of exact real arithmetic~\cite{Mue00,Lam05a} show that the theory can
+be put into practice quite successfully.
 
-The theory of realizability provides guidance in this task.
-Realizability is a fundamental theoretical tool for the study of
-logic, but it also has direct application to the design and
-implementation of programs. It can be used to find a description of
-the data structure directly corresponding to a mathematical
-specification.
+The theory of realizability provides guidance in development of
+computable mathematics. We show not only that realizability is a
+fundamental tool in logic and theory of computability, but also that
+it has direct application to the design and implementation of
+programs. It can be used to find a description of the data structure
+directly corresponding to a mathematical specification.
 
 Extracting code interfaces by hand from mathematical axioms quickly
 grows tedious, especially because different but logically equivalent
@@ -73,6 +75,8 @@ generate a Coq interface as an \emph{input}, where the distinction
 between computational (Set) and non-computational (Prop) is
 automatically determined, and a corresponding implementation can be
 provided through logical techniques.
+
+[ab: from here on the introduction seems ``undone'']
 
 The RZ system translates this to the language understood by many
 programmers (typed interfaces with assertions in classical logic)

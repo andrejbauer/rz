@@ -1,7 +1,52 @@
 \documentclass{article}
 
 \usepackage{amsmath}
+\usepackage{theorem}
+\usepackage{graphicx}
 \usepackage{mathpartir}
+
+%%%% MACROS %%%%%
+
+% Types and terms in ocaml
+\newcommand{\ctype}{\mathtt{type}\;}
+\newcommand{\cint}{\mathtt{int}}
+\newcommand{\clist}[1]{#1\;\mathtt{list}}
+\newcommand{\ctrue}{\mathtt{true}}
+\newcommand{\cwhile}[2]{\mathtt{while}\;#1\;\mathtt{do}\;#2\;\mathtt{done}}
+\newcommand{\cstring}[1]{\mathtt{"#1"}}
+\newcommand{\cprint}[1]{\mathtt{print\_string}\;#1}
+\newcommand{\cfun}[2]{\mathtt{fun}\;#1 \to #2}
+\newcommand{\clet}[2]{\mathtt{let}\;#1 = #2}
+\newcommand{\cletrec}[2]{\mathtt{let}\;\mathtt{rec}\;#1 = #2}
+
+% PERS
+\newcommand{\per}{\approx}
+\newcommand{\Type}{\mathsf{Type}}
+\newcommand{\terminating}[1]{[\![#1]\!]}
+\newcommand{\typeOf}[1]{|#1|}
+\newcommand{\support}[1]{\|#1\|}
+
+% Sets
+\newcommand{\set}[1]{\{#1\}}
+\newcommand{\such}{\mid}
+
+% Theorem-like environments
+{
+  \theorembodyfont{\itshape}
+  \newtheorem{theorem}{Theorem}[section]
+  \newtheorem{lemma}[theorem]{Lemma}
+  \newtheorem{proposition}[theorem]{Proposition}
+  \newtheorem{corollary}[theorem]{Corollary}
+}
+{
+  \theorembodyfont{\rmfamily}
+  \newtheorem{definition}[theorem]{Definition}
+  \newtheorem{example}[theorem]{Example}
+}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
 \title{RZ (Working title)}
@@ -22,12 +67,12 @@
   RZ is RZ.
 \end{abstract}
 
-\include{introduction}
-\include{theory}
-\include{examples}
-\include{implementation}
-\include{comparison}
-\include{conclusion}
+\input{introduction.tex}
+\input{theory.tex}
+\input{examples.tex}
+\input{implementation.tex}
+\input{comparison.tex}
+\input{conclusion.tex}
 
 %% Bibliography
 % Bibliography
