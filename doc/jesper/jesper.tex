@@ -1,5 +1,5 @@
 %\documentclass[10pt,a4paper]{article}
-\documentclass[10pt,a4paper]{article}
+\documentclass[10pt,letter]{article}
 \usepackage{mathpartir,color,amsthm,amssymb,fullpage}
 \usepackage{graphicx}
 
@@ -47,7 +47,6 @@
 \newcommand{\pEqual}[2]{#1 = #2}
 \newcommand{\pIff}[2]{#1 \Longleftrightarrow #2}
 
-\newcommand{\G}{\Gamma}
 \newcommand{\D}{\Delta}
 \newcommand{\emptyCtx}{\cdot}
 
@@ -56,13 +55,13 @@
 \newcommand{\trans}[1]{\ulcorner #1 \urcorner}
 \newcommand{\jtrans}[1]{\llcorner #1 \lrcorner}
 
-\newcommand{\jwfterm}[4]{#1;#2 \vdash #3\, :\, #4}
-\newcommand{\jwfprop}[3]{#1;#2 \vdash #3\, :\, \mathsf{Prop}}
-\newcommand{\jpf}[3]{#1;#2 \vdash #3}
+\newcommand{\jwfterm}[3]{#1 \vdash #2\, :\, #3}
+\newcommand{\jwfprop}[2]{#1 \vdash #2\, :\, \mathsf{Prop}}
+\newcommand{\jpf}[2]{#1 \vdash #2}
 
-\newcommand{\wfterm}[4]{#1;#2 \,\triangleright\, #3\, :\, #4}
-\newcommand{\wfprop}[3]{#1;#2 \,\triangleright\, #3\,:\, \mathsf{Prop}}
-\newcommand{\pf}[3]{#1;#2 \,\triangleright\, #3}
+\newcommand{\wfterm}[3]{#1 \,\triangleright\, #2\, :\, #3}
+\newcommand{\wfprop}[2]{#1 \,\triangleright\, #2\,:\, \mathsf{Prop}}
+\newcommand{\pf}[2]{#1 \,\triangleright\, #2}
 
 \newcommand{\subst}[3]{#1[#2{\mapsto}#3]}
 
@@ -81,11 +80,9 @@
 | & \pExists{\x}{\I}{\p}\\
 | & \pEqual{\t}{\u}\\[10pt]
 
-\G ::= & \emptyCtx\\
-       |& \G,\x{:}\I\\[10pt]
-
 \D ::= & \emptyCtx\\
-       |& \D,\p\\[10pt]
+       |& \D,\x{:}\I\\
+       |& \D,\p\\
 
 \end{array}
 \]
@@ -97,59 +94,59 @@ As usual, we consider two terms or propositions to be equal if they are identica
 
 \begin{mathpar}
 \inferrule
-  {\x{:}\I \in \G}
-  { \jwfterm{\G}{\D}{\x}{\I} }
+  {\x{:}\I \in \D}
+  { \jwfterm{\D}{\x}{\I} }
 
 \inferrule
-  { \jwfterm{\G}{\D}{\t_1}{\I}\\ \cdots \\ \jwfterm{\G}{\D}{\t_n}{\I} }
-  { \jwfterm{\G}{\D}{\tFun{\f}{\t}{n}}{\I} }
+  { \jwfterm{\D}{\t_1}{\I}\\ \cdots \\ \jwfterm{\D}{\t_n}{\I} }
+  { \jwfterm{\D}{\tFun{\f}{\t}{n}}{\I} }
 
 \inferrule
-  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
-    \jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  { \jpf{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
-  { \jwfterm{\G}{\D}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
+  { \jwfterm{\D}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
 \end{mathpar}
 
 \begin{mathpar}
 \inferrule
   { }
-  { \jwfprop{\G}{\D}{\pTrue} }
+  { \jwfprop{\D}{\pTrue} }
 
 \inferrule
   { }
-  { \jwfprop{\G}{\D}{\pFalse} }
+  { \jwfprop{\D}{\pFalse} }
 
 %\inferrule
-% { \jwfprop{\G}{\D}{\p} }
-% { \jwfprop{\G}{\D}{\pNot{\p}} }
+% { \jwfprop{\D}{\p} }
+% { \jwfprop{\D}{\pNot{\p}} }
 
 \inferrule
- { \jwfprop{\G}{\D}{\p} \\ 
-   \jwfprop{\G}{\D}{\q} }
- { \jwfprop{\G}{\D}{\pOr{\p}{\q}} }
+ { \jwfprop{\D}{\p} \\ 
+   \jwfprop{\D}{\q} }
+ { \jwfprop{\D}{\pOr{\p}{\q}} }
  
 \inferrule
- { \jwfprop{\G}{\D}{\p} \\ 
-   \jwfprop{\G}{\D,\p}{\q} }
- { \jwfprop{\G}{\D}{\pAnd{\p}{\q}} }
+ { \jwfprop{\D}{\p} \\ 
+   \jwfprop{\D,\p}{\q} }
+ { \jwfprop{\D}{\pAnd{\p}{\q}} }
 
 \inferrule
- { \jwfprop{\G}{\D}{\p} \\ 
-   \jwfprop{\G}{\D,\p}{\q} }
- { \jwfprop{\G}{\D}{\pImply{\p}{\q}} }
+ { \jwfprop{\D}{\p} \\ 
+   \jwfprop{\D,\p}{\q} }
+ { \jwfprop{\D}{\pImply{\p}{\q}} }
 
 \inferrule
- { \jwfprop{\G,\x{:}\I}{\D}{\p} }
- { \jwfprop{\G}{\D}{\pForall{\x}{\I}{\p}} }
+ { \jwfprop{\D,\x{:}\I}{\p} }
+ { \jwfprop{\D}{\pForall{\x}{\I}{\p}} }
 
 \inferrule
- { \jwfprop{\G,\x{:}\I}{\D}{\p} }
- { \jwfprop{\G}{\D}{\pExists{\x}{\I}{\p}} }
+ { \jwfprop{\D,\x{:}\I}{\p} }
+ { \jwfprop{\D}{\pExists{\x}{\I}{\p}} }
 
 \inferrule
- { \jwfterm{\G}{\D}{\t}{\I} \\ \jwfterm{\G}{\D}{\u}{\I} }
- { \jwfprop{\G}{\D}{\pEqual{\t}{\u}} }
+ { \jwfterm{\D}{\t}{\I} \\ \jwfterm{\D}{\u}{\I} }
+ { \jwfprop{\D}{\pEqual{\t}{\u}} }
 
 \end{mathpar}
 
@@ -159,97 +156,97 @@ As usual, we consider two terms or propositions to be equal if they are identica
 \begin{mathpar}
 \inferrule
   {\p\in\D}
-  {\jpf{\G}{\D}{\p}}
+  {\jpf{\D}{\p}}
 
 \inferrule
-  {\jpf{\G}{\D}{\p} \\ \jpf{\G}{\D}{\q}}
-  {\jpf{\G}{\D}{\pAnd{\p}{\q}} }
+  {\jpf{\D}{\p} \\ \jpf{\D}{\q}}
+  {\jpf{\D}{\pAnd{\p}{\q}} }
 
 \inferrule
-  {\jpf{\G}{\D}{\pAnd{\p}{\q}} }
-  {\jpf{\G}{\D}{\p}}
+  {\jpf{\D}{\pAnd{\p}{\q}} }
+  {\jpf{\D}{\p}}
 
 \inferrule
-  {\jpf{\G}{\D}{\pAnd{\p}{\q}} }
-  {\jpf{\G}{\D}{\q}}
+  {\jpf{\D}{\pAnd{\p}{\q}} }
+  {\jpf{\D}{\q}}
 
 \fbox{
 \inferrule
-  { \jpf{\G}{\D}{\p} \\ \jwfprop{\G}{\D}{\pOr{\p}{\q}} }
-  { \jpf{\G}{\D}{\pOr{\p}{\q}} }
+  { \jpf{\D}{\p} \\ \jwfprop{\D}{\pOr{\p}{\q}} }
+  { \jpf{\D}{\pOr{\p}{\q}} }
 }
 
 \fbox{
 \inferrule
-  { \jpf{\G}{\D}{\q} \\ \jwfprop{\G}{\D}{\pOr{\p}{\q}} }
-  { \jpf{\G}{\D}{\pOr{\p}{\q}} }
+  { \jpf{\D}{\q} \\ \jwfprop{\D}{\pOr{\p}{\q}} }
+  { \jpf{\D}{\pOr{\p}{\q}} }
 }
 
 \fbox{
 \inferrule
-  { \jwfprop{\G}{\D}{\r} \\\\
-    \jpf{\G}{\D}{\pOr{\p}{\q}} \\ \jpf{\G}{\D,\p}{\r} \\ \jpf{\G}{\D,\q}{\r} }
-  { \jpf{\G}{\D}{\r} }
+  { \jwfprop{\D}{\r} \\\\
+    \jpf{\D}{\pOr{\p}{\q}} \\ \jpf{\D,\p}{\r} \\ \jpf{\D,\q}{\r} }
+  { \jpf{\D}{\r} }
 }
 
 \iffalse
 \inferrule
-  { \jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D,
+  { \jwfprop{\D}{\p} \\ \jpf{\D,
 \fi
 
 \inferrule
-  {\jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D}{\pFalse}}
-  {\jpf{\G}{\D}{\p}}
+  {\jwfprop{\D}{\p} \\ \jpf{\D}{\pFalse}}
+  {\jpf{\D}{\p}}
 
 \inferrule
-  {\jwfprop{\G}{\D}{\p} \\ \jpf{\G}{\D,\p}{\q}}
-  {\jpf{\G}{\D}{\pImply{\p}{\q}}}
+  {\jwfprop{\D}{\p} \\ \jpf{\D,\p}{\q}}
+  {\jpf{\D}{\pImply{\p}{\q}}}
 
 \inferrule
-  { \jpf{\G}{\D}{\p} \\ \jpf{\G}{\D}{\pImply{\p}{\q}} }
-  { \jpf{\G}{\D}{\q} }
+  { \jpf{\D}{\p} \\ \jpf{\D}{\pImply{\p}{\q}} }
+  { \jpf{\D}{\q} }
 
 \\ 
 
 \inferrule
-  { \jpf{\G,\x{:}\I}{\D}{\p(\x)} }
-  { \jpf{\G}{\D}{\pForall{\x}{\I}{\p(\x)}} }
+  { \jpf{\D,\x{:}\I}{\p(\x)} }
+  { \jpf{\D}{\pForall{\x}{\I}{\p(\x)}} }
 
 \inferrule
-  { \jpf{\G}{\D}{\pForall{\x}{\I}{\p(\x)}} \\ \jwfterm{\G}{\D}{\t}{\I} }
-  { \jpf{\G}{\D}{\p(\t)} }
+  { \jpf{\D}{\pForall{\x}{\I}{\p(\x)}} \\ \jwfterm{\D}{\t}{\I} }
+  { \jpf{\D}{\p(\t)} }
 
 \\
 
 \fbox{
 \inferrule
-  { \jwfprop{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\\\ 
-    \jpf{\G}{\D}{\p(\t)} \\ \jwfterm{\G}{\D}{\t}{\I} }
-  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} }
+  { \jwfprop{\D}{\pExists{\x}{\I}{\p(\x)}} \\\\ 
+    \jpf{\D}{\p(\t)} \\ \jwfterm{\D}{\t}{\I} }
+  { \jpf{\D}{\pExists{\x}{\I}{\p(\x)}} }
 }
 
 \fbox{
 \inferrule
-  { \jwfprop{\G}{\D}{\q} \\\\
-    \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
-    \jpf{(\G,\x{:}\I)}{(\D,\p(\x))}{\q} \\
+  { \jwfprop{\D}{\q} \\\\
+    \jpf{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{(\D,\x{:}\I,\p(\x))}{\q} \\
      }
-  { \jpf{\G}{\D}{\q} }
+  { \jpf{\D}{\q} }
 }
 
 \inferrule
-  { \jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
-    \jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  { \jpf{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \jpf{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
-  { \jpf{\G}{\D}{\p(\tDesc{\x}{\I}{\p(\x)})} }
+  { \jpf{\D}{\p(\tDesc{\x}{\I}{\p(\x)})} }
 
 \inferrule
-  { \jwfprop{\G}{\t}{\I} }
-  { \jpf{\G}{\D}{\pEqual{\t}{\t}} }
+  { \jwfprop{\t}{\I} }
+  { \jpf{\D}{\pEqual{\t}{\t}} }
   
 \inferrule
-  { \jpf{\G}{\D}{\p(\t)} \\ \jpf{\G}{\D}{\pEqual{\t}{\u}} }
-  { \jpf{\G}{\D}{\p(\u)} }
+  { \jpf{\D}{\p(\t)} \\ \jpf{\D}{\pEqual{\t}{\u}} }
+  { \jpf{\D}{\p(\u)} }
 
 \end{mathpar}
 
@@ -260,63 +257,63 @@ As usual, we consider two terms or propositions to be equal if they are identica
 
 \begin{mathpar}
 \inferrule
-  {\x{:}\I \in \G}
-  { \wfterm{\G}{\D}{\x}{\I} }
+  {\x{:}\I \in \D}
+  { \wfterm{\D}{\x}{\I} }
 
 \inferrule
-  { \wfterm{\G}{\D}{\t_1}{\I}\\ \cdots \\ \wfterm{\G}{\D}{\t_n}{\I} }
-  { \wfterm{\G}{\D}{\tFun{\f}{\t}{n}}{\I} }
+  { \wfterm{\D}{\t_1}{\I}\\ \cdots \\ \wfterm{\D}{\t_n}{\I} }
+  { \wfterm{\D}{\tFun{\f}{\t}{n}}{\I} }
 
 \inferrule
-  { \pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}} \\
-    \pf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  { \pf{\D}{\pExists{\x}{\I}{\p(\x)}} \\
+    \pf{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}
-  { \wfterm{\G}{\D}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
+  { \wfterm{\D}{\tDesc{\x}{\I}{\p(\x)}}{\I} }
 \end{mathpar}
 
 \begin{mathpar}
 \inferrule
   { }
-  { \wfprop{\G}{\D}{\pTrue} }
+  { \wfprop{\D}{\pTrue} }
 
 \inferrule
   { }
-  { \wfprop{\G}{\D}{\pFalse} }
+  { \wfprop{\D}{\pFalse} }
 
 %\inferrule
-% { \wfprop{\G}{\D}{\p} }
-% { \wfprop{\G}{\D}{\pNot{\p}} }
+% { \wfprop{\D}{\p} }
+% { \wfprop{\D}{\pNot{\p}} }
 
 \inferrule
- { \wfprop{\G}{\D}{\p_1} \\ 
-   \wfprop{\G}{(\D,\p_1)}{\p_2} }
- { \wfprop{\G}{\D}{\pAnd{\p_1}{\p_2}} }
+ { \wfprop{\D}{\p_1} \\ 
+   \wfprop{(\D,\p_1)}{\p_2} }
+ { \wfprop{\D}{\pAnd{\p_1}{\p_2}} }
 
 \inferrule
- { \wfprop{\G}{\D}{\p_1} \\ 
-   \wfprop{\G}{(\D,\p_1)}{\p_2} }
- { \wfprop{\G}{\D}{\pImply{\p_1}{\p_2}} }
-
-\fbox{
-\inferrule
- { \wfprop{\G}{(\D,\pFalse)}{\p_1} \\
-   \wfprop{\G}{(\D,\pFalse)}{\p_2} }
- { \wfprop{\G}{\D}{\pOr{\p_1}{\p_2}} }
-}
-
-\inferrule
- { \wfprop{(\G,\x{:}\I)}{\D}{\p} }
- { \wfprop{\G}{\D}{\pForall{\x}{\I}{\p}} }
+ { \wfprop{\D}{\p_1} \\ 
+   \wfprop{(\D,\p_1)}{\p_2} }
+ { \wfprop{\D}{\pImply{\p_1}{\p_2}} }
 
 \fbox{
 \inferrule
- { \wfprop{(\G,\x{:}\I)}{(\D,\pFalse)}{\p}}
- { \wfprop{\G}{\D}{\pExists{\x}{\I}{\p}} }
+ { \wfprop{(\D,\pFalse)}{\p_1} \\
+   \wfprop{(\D,\pFalse)}{\p_2} }
+ { \wfprop{\D}{\pOr{\p_1}{\p_2}} }
 }
 
 \inferrule
- { \wfterm{\G}{\D}{\t}{\I} \\ \wfterm{\G}{\D}{\u}{\I} }
- { \wfprop{\G}{\D}{\pEqual{\t}{\u}} }
+ { \wfprop{(\D,\x{:}\I)}{\p} }
+ { \wfprop{\D}{\pForall{\x}{\I}{\p}} }
+
+\fbox{
+\inferrule
+ { \wfprop{(\D,\x{:}\I,\pFalse)}{\p}}
+ { \wfprop{\D}{\pExists{\x}{\I}{\p}} }
+}
+
+\inferrule
+ { \wfterm{\D}{\t}{\I} \\ \wfterm{\D}{\u}{\I} }
+ { \wfprop{\D}{\pEqual{\t}{\u}} }
 
 
 \end{mathpar}
@@ -422,15 +419,15 @@ Unchanged except for replacement of $\vdash$ by $\triangleright$ in every judgme
 \label{lemma:subst}
 \mbox{}
  \begin{enumerate}
-	\item If $\jwfterm{(\G,\x{:}\I,\G')}{\D}{\t}{\I}$ and
-	  $\jwfterm{(\G,\G')}{\emptyCtx}{\u}{\I}$ then
-	  $\jwfterm{(\G,\G')}{(\subst{\D}{\x}{\u})}{\subst{\t}{\x}{\u}}{\I}$.
-	\item If $\jwfprop{(\G,\x{:}\I,\G')}{\D}{\p}$ and
-	  $\jwfterm{\G}{\emptyCtx}{\u}{\I}$ then
-	  $\jwfprop{(\G,\G')}{(\subst{\D}{\x}{\u})}{\subst{\p}{\x}{\u}}$.
-	\item If $\jpf{(\G,\x{:}\I,\G')}{\D}{\p}$ and
-	  $\jwfterm{\G}{\emptyCtx}{\u}{\I}$ then
-	  $\jpf{(\G,\G')}{(\subst{\D}{\x}{\u})}{\subst{\p}{\x}{\u}}$.	
+	\item If $\jwfterm{(\D,\x{:}\I,\D')}{\t}{\I}$ and
+	  $\jwfterm{(\D,\D')}{\emptyCtx}{\u}{\I}$ then
+	  $\jwfterm{(\D,\subst{\D'}{\x}{\u})}{\subst{\t}{\x}{\u}}{\I}$.
+	\item If $\jwfprop{(\D,\x{:}\I,\D')}{\p}$ and
+	  $\jwfterm{\emptyCtx}{\u}{\I}$ then
+	  $\jwfprop{(\D,\subst{\D'}{\x}{\u})}{\subst{\p}{\x}{\u}}$.
+	\item If $\jpf{(\D,\x{:}\I,\D')}{\p}$ and
+	  $\jwfterm{\emptyCtx}{\u}{\I}$ then
+	  $\jpf{(\D,\subst{\D'}{\x}{\u})}{\subst{\p}{\x}{\u}}$.	
  \end{enumerate}
 \end{lemma}
 
@@ -442,10 +439,10 @@ To be checked.
 \mbox{}
 \label{lemma:weaken}
 \begin{enumerate}
-	\item If $\jwfterm{\G}{\D_1}{\t}{\I}$ then
-	   $\jwfterm{\G}{(\D_1,\D_2)}{\t}{\I}$.
-	\item If $\jwfprop{\G}{\D_1}{\p}$ then
-	   $\jwfprop{\G}{(\D_1,\D_2)}{\p}$.
+	\item If $\jwfterm{\D_1}{\t}{\I}$ then
+	   $\jwfterm{(\D_1,\D_2)}{\t}{\I}$.
+	\item If $\jwfprop{\D_1}{\p}$ then
+	   $\jwfprop{(\D_1,\D_2)}{\p}$.
 \end{enumerate}
 \end{lemma}
 
@@ -457,9 +454,9 @@ To be checked.
 \label{lemma:cut}
 \mbox{}
 \begin{enumerate}
-  \item If $\jwfterm{\G}{(\D,\p)}{\t}{\I}$ and
-     $\jpf{\G}{\D}{\p}$ then
-     $\jwfterm{\G}{\D}{\t}{\I}$.
+  \item If $\jwfterm{(\D,\p)}{\t}{\I}$ and
+     $\jpf{\D}{\p}$ then
+     $\jwfterm{\D}{\t}{\I}$.
 \end{enumerate}
 \end{lemma}
 
@@ -471,8 +468,8 @@ To be checked.
 \label{lemma:logweak}
 \mbox{}
 \begin{enumerate}
-\item If $\jpf{\G}{\D}{\p}$ and $\jwfprop{\G}{\p}{\q}$ then
-  $\jwfprop{\G}{\D}{\q}$.
+\item If $\jpf{\D}{\p}$ and $\jwfprop{\p}{\q}$ then
+  $\jwfprop{\D}{\q}$.
 \end{enumerate}
 \end{lemma}
 
@@ -483,12 +480,12 @@ To be checked.
 \begin{lemma}
 \mbox{}
 \begin{enumerate}
-  \item If $\jwfterm{\G}{\D}{\t}{\I}$ then 
-    $\wfterm{\G}{\D}{\t}{\I}$.
-  \item If $\jwfprop{\G}{\D}{\p}$ then
-    $\wfprop{\G}{\D}{\p}$.
-  \item If $\jpf{\G}{\D}{\p}$ then
-    $\pf{\G}{\D}{\p}$.
+  \item If $\jwfterm{\D}{\t}{\I}$ then 
+    $\wfterm{\D}{\t}{\I}$.
+  \item If $\jwfprop{\D}{\p}$ then
+    $\wfprop{\D}{\p}$.
+  \item If $\jpf{\D}{\p}$ then
+    $\pf{\D}{\p}$.
 \end{enumerate}
 \end{lemma}
 
@@ -501,43 +498,43 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 \label{lemma:wfwp}
 \mbox{}
   \begin{enumerate}
-  \item If $\jwfterm{\G}{\D}{\t}{\I}$ then
-    $\jwfprop{\G}{\emptyCtx}{\jwp{\t}}$.
-  \item If $\jwfprop{\G}{\D}{\p}$, we have
-    $\jwfprop{\G}{\emptyCtx}{\jwp{\p}}$.
+  \item If $\jwfterm{\D}{\t}{\I}$ then
+    $\jwfprop{\emptyCtx}{\jwp{\t}}$.
+  \item If $\jwfprop{\D}{\p}$, we have
+    $\jwfprop{\emptyCtx}{\jwp{\p}}$.
   \end{enumerate}
 \end{lemma}
 
 \begin{proof}
   \raggedright Induction on the proof of
-  $\jwfterm{\G}{\D}{\t}{\I}$ or $\jwfprop{\G}{\D}{\p}$.
+  $\jwfterm{\D}{\t}{\I}$ or $\jwfprop{\D}{\p}$.
   \begin{itemize}
-  \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
+  \item Case: $\t = \x$ with $\x{:}\I\in\D$.  
     \begin{enumerate}
       \item
         Here $\jwp{\t} = \pTrue$,
       \item
-        and $\jwfprop{\G}{\emptyCtx}{\pTrue}$. 
+        and $\jwfprop{\emptyCtx}{\pTrue}$. 
       \end{enumerate}
   \item Case: $\t = \tFun{\f}{\t}{n}$ with
-    $\jwfterm{\G}{\D}{\t_i}{\I}$ for all $i\in1..n$.
+    $\jwfterm{\D}{\t_i}{\I}$ for all $i\in1..n$.
     \begin{enumerate}
     \item
       Here $\jwp{\t} =
       \pAnd{\jwp{\t_1}}{\pAnd{\cdots}{\jwp{\t_n}}}$.
     \item 
     	By induction,
-      $\jwfprop{\G}{\emptyCtx}{\jwp{\t_1}}$ for
+      $\jwfprop{\emptyCtx}{\jwp{\t_1}}$ for
       all $i\in1..n$, 
     \item 
     	so
-    $\jwfprop{\G}{\emptyCtx}{\pAnd{\jwp{\t_1}}{\pAnd{\cdots}{\jwp{\t_n}}}}$.
+    $\jwfprop{\emptyCtx}{\pAnd{\jwp{\t_1}}{\pAnd{\cdots}{\jwp{\t_n}}}}$.
     \end{enumerate}
 
 \goodbreak        
   \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
-  $\jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}}$ and 
-  $\jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  $\jpf{\D}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
 
     \begin{enumerate}
@@ -551,18 +548,18 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
             {(\pForall{\x}{\I}{\pForall{\y}{\I}
               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}}$.
       \item 
-        By the inductive hypothesis, $\jwfprop{\G}{\emptyCtx}{\jwp{\pExists{\x}{\I}{\p(\x)}}}$
+        By the inductive hypothesis, $\jwfprop{\emptyCtx}{\jwp{\pExists{\x}{\I}{\p(\x)}}}$
 \bigskip
 
 {\bf BOGUS---can't apply the inducive hypothesis to a {\it logical} derivation!
 }
       \item 
       	and
-        $\jwfprop{\G}{\emptyCtx}{\jwp{\pForall{\x}{\I}{\pForall{\y}{\I}
+        $\jwfprop{\emptyCtx}{\jwp{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}$.
       \item
       	That is, 
-	$\jwfprop{\G}{\emptyCtx}
+	$\jwfprop{\emptyCtx}
 	   {\pForall{\x}{\I}
 	      {\pForall{\y}{\I}
 	        {\pAnd
@@ -574,14 +571,14 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
 	             {\pAnd{\pTrue}{\pTrue}})} }}}$.
 	  \item
 	    By inversion, 
-	      $\jwfprop{(\G,\x{:}\I,\y{:}\I)}{\emptyCtx}{\jwp{\p(\x)}}$,
+	      $\jwfprop{(\D,\x{:}\I,\y{:}\I)}{\jwp{\p(\x)}}$,
       \item 
         so by Lemma~\ref{lemma:subst} we have 
-        $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\jwp{\p(\x)}}$,
+        $\jwfprop{(\D,\x{:}\I)}{\jwp{\p(\x)}}$,
       \item
-        and hence $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\jwp{\p(x)}}}$.
+        and hence $\jwfprop{\emptyCtx}{\pForall{\x}{\I}{\jwp{\p(x)}}}$.
       \item
-        Thus, $\jwfprop{\G}{\emptyCtx}{\jwp{\t}}$.
+        Thus, $\jwfprop{\emptyCtx}{\jwp{\t}}$.
       \end{enumerate}
       
   \item Cases: $\p = \pTrue$, or $\p = \pFalse$, or $\p=(\pOr{\p_1}{\p_2})$,
@@ -590,27 +587,27 @@ By induction on derivations, using weakening and cut FOR THE LAX SYSTEM.
       \item 
       	Here $\jwp{\p} = \pTrue$.
       \item
-        Then $\jwfprop{\G}{\emptyCtx}{\pTrue}$.
+        Then $\jwfprop{\emptyCtx}{\pTrue}$.
       \end{enumerate}
             
   \item Case: $\p = (\pAnd{\p_1}{\p_2})$ or $\p = (\pImply{\p_1}{\p_2})$ with
-       $\jwfprop{\G}{\D}{\p_1}$ and 
-              $\jwfprop{\G}{(\D,\p_1)}{\p_2}$.
+       $\jwfprop{\D}{\p_1}$ and 
+              $\jwfprop{(\D,\p_1)}{\p_2}$.
        \begin{enumerate}
        \item 
        		Then $\jwp{\p} = \pAnd{\jwp{\p_1}}{(\pImply{\p_1}{\jwp{\p_2}})}$.
        \item 
        		By the inductive hypothesis,
-         	$\jwfprop{\G}{\emptyCtx}{\jwp{\p_1}}$
-         	and $\jwfprop{\G}{\emptyCtx}{\jwp{\p_2}}$.
+         	$\jwfprop{\emptyCtx}{\jwp{\p_1}}$
+         	and $\jwfprop{\emptyCtx}{\jwp{\p_2}}$.
        \item 
          By Lemma~\ref{lemma:weaken} we have 
-         $\jwfprop{\G}{\p_1}{\jwp{\p_2}}$,
-       \item so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\jwp{\p_2}})}$,
+         $\jwfprop{\p_1}{\jwp{\p_2}}$,
+       \item so $\jwfprop{\emptyCtx}{(\pImply{\p_1}{\jwp{\p_2}})}$,
 
 
          {\bf Oops...this doesn't follow!  We didn't (and in
-           general can't) show that $\jwfprop{\G}{\emptyCtx}{\p_1}$.
+           general can't) show that $\jwfprop{\emptyCtx}{\p_1}$.
          Maybe we should define 
 \[
 \begin{array}{lll}
@@ -622,31 +619,31 @@ instead?
 }
          
        \item
-         and hence $\jwfprop{\G}{\emptyCtx}{\jwp{\p}}$.
+         and hence $\jwfprop{\emptyCtx}{\jwp{\p}}$.
        \end{enumerate}
   \item Case: $\p=(\pForall{\x}{\I}{\q})$, 
-        with $\jwfprop{(\G,\x{:}\I)}{\D}{\q}$.
+        with $\jwfprop{(\D,\x{:}\I)}{\q}$.
   	\begin{enumerate}
 	\item 
 		Here $\jwp{\p} = \pForall{\x}{\I}{\jwp{\q}}$.
 	\item 
 		By the inductive hypothesis,
-	   $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\jwp{\q}}$.
+	   $\jwfprop{(\D,\x{:}\I)}{\jwp{\q}}$.
 	\item 
 		Thus
-	   $\jwfprop{\G}{\emptyCtx}{\pForall{\x}{\I}{\jwp{\q}}}$ as desired.
+	   $\jwfprop{\emptyCtx}{\pForall{\x}{\I}{\jwp{\q}}}$ as desired.
 	\end{enumerate}
-  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\G}{\D}{\t_1}{\I}$ and $\jwfterm{\G}{\D}{\t_2}{\I}$. 
+  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\D}{\t_1}{\I}$ and $\jwfterm{\D}{\t_2}{\I}$. 
     	\begin{enumerate}
 	\item 
 		Here $\jwp{\p} = \pAnd{\jwp{\t_1}}{\jwp{\t_2}}$.
 	\item 
 		By the inductive hypotheses,
-		$\jwfprop{\G}{\emptyCtx}{\jwp{\t_1}}$ 
+		$\jwfprop{\emptyCtx}{\jwp{\t_1}}$ 
 	\item 
-		and $\jwfprop{\G}{\emptyCtx}{\jwp{\t_2}}$.
+		and $\jwfprop{\emptyCtx}{\jwp{\t_2}}$.
 	\item
-		Thus $\jwfprop{\G}{\emptyCtx}{\pAnd{\jwp{\t_1}}{\jwp{\t_2}}}$.
+		Thus $\jwfprop{\emptyCtx}{\pAnd{\jwp{\t_1}}{\jwp{\t_2}}}$.
 	\end{enumerate}
   \end{itemize}
 \end{proof}
@@ -654,10 +651,10 @@ instead?
 \begin{corollary}
 \mbox{}
 \begin{enumerate}
-\item If $\jwfterm{\G}{\D}{\t}{\I}$ then
-  $\jwfprop{\G}{\D}{\wp{\t}}$.
-\item If $\jwfprop{\G}{\D}{\p}$ then
-  $\jwfprop{\G}{\D}{\wp{\p}}$.
+\item If $\jwfterm{\D}{\t}{\I}$ then
+  $\jwfprop{\D}{\wp{\t}}$.
+\item If $\jwfprop{\D}{\p}$ then
+  $\jwfprop{\D}{\wp{\p}}$.
 \end{enumerate}
 \end{corollary}
 
@@ -670,44 +667,44 @@ To be checked.
 \begin{lemma}[Truth of $\wp{\cdot}$]
 \mbox{}
   \begin{enumerate}
-  \item If $\jwfterm{\G}{\D}{\t}{\I}$ then
-    $\jpf{\G}{\D}{\wp{\t}}$.
-  \item If $\jwfprop{\G}{\D}{\p}$, we have
-    $\jpf{\G}{\D}{\wp{\p}}$.
+  \item If $\jwfterm{\D}{\t}{\I}$ then
+    $\jpf{\D}{\wp{\t}}$.
+  \item If $\jwfprop{\D}{\p}$, we have
+    $\jpf{\D}{\wp{\p}}$.
   \end{enumerate}
 \end{lemma}
 
 \begin{proof}
   \raggedright By induction on the proof of
-  $\jwfterm{\G}{\D}{\t}{\I}$ or $\jwfprop{\G}{\D}{\p}$.
-%  In all cases we have $\jwfprop{\G}{\D}{\wp{\t}}$ or
-%  $\jwfprop{\G}{\D}{\wp{\p}}$ as appropriate.
+  $\jwfterm{\D}{\t}{\I}$ or $\jwfprop{\D}{\p}$.
+%  In all cases we have $\jwfprop{\D}{\wp{\t}}$ or
+%  $\jwfprop{\D}{\wp{\p}}$ as appropriate.
   \begin{itemize}
   \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
     \begin{enumerate}
       \item
         Here $\wp{\t} = \pTrue$.
       \item
-        Then $\jpf{\G}{\emptyCtx}{\pTrue}$ 
+        Then $\jpf{\emptyCtx}{\pTrue}$ 
       \end{enumerate}
   \item Case: $\t = \tFun{\f}{\t}{n}$ with
-    $\jwfterm{\G}{\D}{\t_i}{\I}$ for all $i\in1..n$.
+    $\jwfterm{\D}{\t_i}{\I}$ for all $i\in1..n$.
     \begin{enumerate}
     \item
       Here $\wp{\t} =
       \pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}$.
     \item 
     	By induction,
-      $\jpf{\G}{\D}{\wp{\t_1}}$ for
+      $\jpf{\D}{\wp{\t_1}}$ for
       all $i\in1..n$, 
     \item 
     	so
-    $\jpf{\G}{\D}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
+    $\jpf{\D}{\pAnd{\wp{\t_1}}{\pAnd{\cdots}{\wp{\t_n}}}}$.
     \end{enumerate}
     
   \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
-  $\jpf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}}$ and 
-  $\jpf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  $\jpf{\D}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
 
     \begin{enumerate}
@@ -722,11 +719,11 @@ To be checked.
               {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}})}}$.
       \item 
         By the inductive hypothesis, 
-        $\jpf{\G}{\D}{\wp{\pForall{\x}{\I}{\pForall{\y}{\I}
+        $\jpf{\D}{\wp{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}}$.
       \item
       	That is, 
-	$\jpf{\G}{\D}
+	$\jpf{\D}
 	   {\pForall{\x}{\I}
 	      {\pForall{\y}{\I}
 	        {\pAnd
@@ -739,9 +736,9 @@ To be checked.
 	  \item
 	    From this (and conjunction elimination and introduction/elimination
 	    for the universal quantifier) we can prove 
-	      $\jpf{\G}{\D}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
+	      $\jpf{\D}{\pForall{\x}{\I}{\wp{\p(\x)}}}$.
       \item 
-        Thus, $\jpf{\G}{\D}{\wp{\t}}$.
+        Thus, $\jpf{\D}{\wp{\t}}$.
       \end{enumerate}
       
   \item Cases: $\p = \pTrue$, or $\p = \pFalse$, or $\p = (\pOr{\p_1}{\p_2})$, or $\p = (\pExists{\x}{\I}{\q})$.
@@ -749,22 +746,22 @@ To be checked.
       \item 
       	Then $\wp{\p} = \pTrue$,
       \item
-        and $\jpf{\G}{\D}{\pTrue}$ 
+        and $\jpf{\D}{\pTrue}$ 
       \end{enumerate}
             
   \item Case: $\p = (\pAnd{\p_1}{\p_2})$ or $\p = (\pImply{\p_1}{\p_2})$ with
-       $\jwfprop{\G}{\D}{\p_1}$ and 
-              $\jwfprop{\G}{(\D,\p_1)}{\p_2}$.
+       $\jwfprop{\D}{\p_1}$ and 
+              $\jwfprop{(\D,\p_1)}{\p_2}$.
        \begin{enumerate}
        \item Then $\wp{\p} = \pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}$.
        \item By the inductive hypothesis,
-         $\jpf{\G}{\D}{\wp{\p_1}}$
+         $\jpf{\D}{\wp{\p_1}}$
        \item 
-         and $\jpf{\G}{\D,\p_1}{\wp{\p_2}}$.
+         and $\jpf{\D,\p_1}{\wp{\p_2}}$.
        \item 
-         Thus $\jpf{\G}{\D}{\pImply{\p_1}{\wp{\p_2}}}$,
+         Thus $\jpf{\D}{\pImply{\p_1}{\wp{\p_2}}}$,
        \item
-         so $\jpf{\G}{\D}{\wp{\p}}$.    
+         so $\jpf{\D}{\wp{\p}}$.    
        \end{enumerate}
   \item Case: $\p=(\pForall{\x}{\I}{\q})$, 
         with $\jwfprop{(\G,\x{:}\I)}{\D}{\q}$.
@@ -776,19 +773,19 @@ To be checked.
 	   $\jpf{(\G,\x{:}\I)}{\D}{\wp{\q}}$.
 	\item 
 		Thus
-	   $\jpf{\G}{\D}{\pForall{\x}{\I}{\wp{\q}}}$ as desired.
+	   $\jpf{\D}{\pForall{\x}{\I}{\wp{\q}}}$ as desired.
 	\end{enumerate}
-  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\G}{\D}{\t_1}{\I}$ and $\jwfterm{\G}{\D}{\t_2}{\I}$. 
+  \item Case: $\p = (\pEqual{\t_1}{\t_2})$, with $\jwfterm{\D}{\t_1}{\I}$ and $\jwfterm{\D}{\t_2}{\I}$. 
     	\begin{enumerate}
 	\item 
 		Here $\wp{\p} = \pAnd{\wp{\t_1}}{\wp{\t_2}}$.
 	\item 
 		By the inductive hypotheses,
-		$\jpf{\G}{\D}{\wp{\t_1}}$ 
+		$\jpf{\D}{\wp{\t_1}}$ 
 	\item 
-		and $\jpf{\G}{\D}{\wp{\t_2}}$.
+		and $\jpf{\D}{\wp{\t_2}}$.
 	\item
-		Thus $\jpf{\G}{\D}{\pAnd{\wp{\t_1}}{\wp{\t_2}}}$.
+		Thus $\jpf{\D}{\pAnd{\wp{\t_1}}{\wp{\t_2}}}$.
 	\end{enumerate}       
   \end{itemize}
 \end{proof}
@@ -799,26 +796,26 @@ To be checked.
 \label{lemma:l9}
 \mbox{}
   \begin{enumerate}
-  \item If $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ then
-    $\jwfterm{\G}{\wp{\t}}{\trans{\t}}{\I}$.
-  \item If $\jwfprop{\G}{(\D,\pFalse)}{\p}$, then
-    $\jwfprop{\G}{\wp{\p}}{\trans{\p}}$.
+  \item If $\jwfterm{(\D,\pFalse)}{\t}{\I}$ then
+    $\jwfterm{\wp{\t}}{\trans{\t}}{\I}$.
+  \item If $\jwfprop{(\D,\pFalse)}{\p}$, then
+    $\jwfprop{\wp{\p}}{\trans{\p}}$.
   \end{enumerate}
 \end{lemma}
 
 \begin{proof}
   \raggedright Induction on the proof of
-  $\jwfterm{\G}{(\D,\pFalse)}{\t}{\I}$ or $\jwfprop{\G}{(\D,\pFalse)}{\p}$.
+  $\jwfterm{(\D,\pFalse)}{\t}{\I}$ or $\jwfprop{(\D,\pFalse)}{\p}$.
   \begin{itemize}
   \item Case: $\t = \x$ with $\x{:}\I\in\G$.  
     \begin{enumerate}
       \item
         Here $\wp{\t} = \pTrue$ and $\trans{\t} = \x$.
       \item
-        Then $\jwfterm{\G}{\pTrue}{\x}{\I}$.
+        Then $\jwfterm{\pTrue}{\x}{\I}$.
       \end{enumerate}
   \item Case: $\t = \tFun{\f}{\t}{n}$ with
-    $\jwfterm{\G}{(\D,\pFalse)}{\t_i}{\I}$ for all $i\in1..n$.
+    $\jwfterm{(\D,\pFalse)}{\t_i}{\I}$ for all $i\in1..n$.
     \begin{enumerate}
     \item
       Here $\wp{\t} =
@@ -826,25 +823,25 @@ To be checked.
       and $\trans{\t} = \f(\trans{\t_1},\ldots,\trans{\t_n})$.
     \item 
     	By induction,
-        $\jwfterm{\G}{\wp{\t_i}}{\trans{\t_i}}{\I}$ for
+        $\jwfterm{\wp{\t_i}}{\trans{\t_i}}{\I}$ for
       all $i\in1..n$.  
     \item 
       By Lemma~\ref{lemma:weaken} we have
-      $\jwfterm{\G}{(\wp{\t},\wp{\t_i})}{\trans{\t_i}}{\I}$
+      $\jwfterm{(\wp{\t},\wp{\t_i})}{\trans{\t_i}}{\I}$
       for all $i\in1..n$.
     \item
       By Lemma~\ref{lemma:cut} we have
-      $\jwfterm{\G}{\wp{\t}}{\trans{\t_i}}{\I}$ for
+      $\jwfterm{\wp{\t}}{\trans{\t_i}}{\I}$ for
       all $i\in1..n$.  
     \item Thus,
-      $\jwfterm{\G}{\wp{\t}}{\f(\trans{\t_1},\ldots,\trans{\t_n})}{\I}$.  
+      $\jwfterm{\wp{\t}}{\f(\trans{\t_1},\ldots,\trans{\t_n})}{\I}$.  
     \end{enumerate}
     
   \goodbreak
     
   \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
-  $\jpf{\G}{(\D,\pFalse)}{\pExists{\x}{\I}{\p(\x)}}$ and 
-  $\jpf{\G}{(\D,\pFalse)}{\pForall{\x}{\I}{\pForall{\y}{\I}
+  $\jpf{(\D,\pFalse)}{\pExists{\x}{\I}{\p(\x)}}$ and 
+  $\jpf{(\D,\pFalse)}{\pForall{\x}{\I}{\pForall{\y}{\I}
                {\pImply{\pAnd{\p(\x)}{\p(\y)}}{\x=\y}}}}$.
 
     \begin{enumerate}
@@ -862,11 +859,11 @@ To be checked.
         $\trans{\t} = \tDesc{\x}{\I}{\trans{\p(\x)}}$.
       \item 
         By the inductive hypothesis
-        $\jwfprop{\G}{\pTrue}
+        $\jwfprop{\pTrue}
           {\pExists{\x}{\I}{\pAnd{\wp{\p(\x)}}{\trans{\p(\x)}}}}$
       \item
         and 
-        $\jwfprop{\G}{\pForall{\x}{\I}
+        $\jwfprop{\pForall{\x}{\I}
                        {\pForall{\y}{\I}
                        	 {\pAnd{(\pAnd{\wp{\p(\x)}}{(\pImply{\p(\x)}{\wp{\p(\y)}})})}
 	                           {(\pImply{\pAnd{\p(\x)}{\p(\y)}}
@@ -881,14 +878,14 @@ To be checked.
       \item 
       	Then $\wp{\p} = \pTrue$,
       \item
-        and $\jwfprop{\G}{\emptyCtx}{\pTrue}$ 
+        and $\jwfprop{\emptyCtx}{\pTrue}$ 
       \item
-        and $\jwfterm{\G}{\pTrue}{\x}{\I}$.
+        and $\jwfterm{\pTrue}{\x}{\I}$.
       \end{enumerate}
       
   \item Case: $\p = (\pOr{\p_1}{\p_2})$ with
-       $\jwfprop{\G}{(\D,\pFalse)}{\p_1}$ and 
-              $\jwfprop{\G}{(\D,\pFalse)}{\p_2}$.
+       $\jwfprop{(\D,\pFalse)}{\p_1}$ and 
+              $\jwfprop{(\D,\pFalse)}{\p_2}$.
       	\begin{enumerate}
 		\item
                   Here $\wp{\p} = \pTrue$
@@ -897,86 +894,86 @@ To be checked.
                   \pOr{(\pAnd{\wp{\p_1}}{\trans{\p_1}})}{(\pAnd{\wp{\p_2}}{\trans{\p_2}})}$.
 		\item
                   By the inductive hypothesis and \ref{lemma:weaken}
-                  $\jwfprop{\G}{(\pTrue,\wp{\p_1})}{\trans{\p_2}}$ 
+                  $\jwfprop{(\pTrue,\wp{\p_1})}{\trans{\p_2}}$ 
                 \item
                   and
-                  $\jwfprop{\G}{(\pTrue,\wp{\p_2})}{\trans{\p_2}}$ 
+                  $\jwfprop{(\pTrue,\wp{\p_2})}{\trans{\p_2}}$ 
 		\item
                   By Lemmas~\ref{lemma:wfwp} and \ref{lemma:weaken},
-                  $\jwfprop{\G}{\pTrue}{\wp{\p_1}}$
+                  $\jwfprop{\pTrue}{\wp{\p_1}}$
                 \item
                   and
-                  $\jwfprop{\G}{\pTrue}{\wp{\p_2}}$.
+                  $\jwfprop{\pTrue}{\wp{\p_2}}$.
 		\item
                   Thus, 
-                  $\jwfprop{\G}{\pTrue}{\pAnd{\wp{\p_1}}{\trans{\p_1}}}$
+                  $\jwfprop{\pTrue}{\pAnd{\wp{\p_1}}{\trans{\p_1}}}$
                 \item
                   and 
-                  $\jwfprop{\G}{\pTrue}{\pAnd{\wp{\p_2}}{\trans{\p_2}}}$
+                  $\jwfprop{\pTrue}{\pAnd{\wp{\p_2}}{\trans{\p_2}}}$
 		\item
                   Therefore,
-                  $\jwfprop{\G}{\wp{\p}}{\trans{\p}}$.
+                  $\jwfprop{\wp{\p}}{\trans{\p}}$.
 		\end{enumerate}    
       
       
   \item Case: $\p = (\pAnd{\p_1}{\p_2})$ or $\p = (\pImply{\p_1}{\p_2})$ with
-       $\jwfprop{\G}{(\D,\pFalse)}{\p_1}$ and 
-              $\jwfprop{\G}{(\D,\pFalse,\p_1)}{\p_2}$.
+       $\jwfprop{(\D,\pFalse)}{\p_1}$ and 
+              $\jwfprop{(\D,\pFalse,\p_1)}{\p_2}$.
        \begin{enumerate}
        \item Then $\wp{\p} = \pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}$.
        \item By the inductive hypothesis,
-         $\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
-         and $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$.
+         $\jwfprop{\emptyCtx}{\wp{\p_1}}$
+         and $\jwfprop{\emptyCtx}{\wp{\p_2}}$.
        \item 
        		By Lemma~\ref{lemma:weaken} we have 
-			$\jwfprop{\G}{\p_1}{\wp{\p_2}}$,
+			$\jwfprop{\p_1}{\wp{\p_2}}$,
 		\item
-			so $\jwfprop{\G}{\emptyCtx}{(\pImply{\p_1}{\wp{\p_2}})}$,
+			so $\jwfprop{\emptyCtx}{(\pImply{\p_1}{\wp{\p_2}})}$,
 		\item
-		 	and hence $\jwfprop{\G}{\emptyCtx}{\p}$.
+		 	and hence $\jwfprop{\emptyCtx}{\p}$.
 	    \item
 	        Again by the inductive hypothesis,
-	        $\jwfprop{\G}{\wp{\p_1}}{\p_1}$
+	        $\jwfprop{\wp{\p_1}}{\p_1}$
 	    \item
-	        and $\jwfprop{\G}{\wp{\p_2}}{\p_2}$.
+	        and $\jwfprop{\wp{\p_2}}{\p_2}$.
 	    \item
 	        By Lemma~\ref{lemma:weaken} we have
-	        $\jwfprop{\G}
+	        $\jwfprop
 	           {(\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})},\wp{\p_1})}
 	           {\p_1}$
 	    \item
 	        and since
-	        $\jpf{\G}{\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}}{\wp{\p_1}}$,
+	        $\jpf{\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}}{\wp{\p_1}}$,
 	    \item
 	        by Lemma~\ref{lemma:cut} we have
-	        	$\jwfprop{\G}
+	        	$\jwfprop
 		       {\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})}}
 	           {\p_1}$.
 	    \item
-	        That is, $\jwfprop{\G}{\wp{\p}}{\p_1}$.
+	        That is, $\jwfprop{\wp{\p}}{\p_1}$.
 	    \item
 	        Similarly, by Lemma~\ref{lemma:weaken} we have
-	        $\jwfprop{\G}
+	        $\jwfprop
 	           {(\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})},\p_1,\wp{\p_2})}
 	           {\p_2}$.
 	    \item 
 	        Then since
-	        $\jpf{\G}
+	        $\jpf
 	           {(\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})},\p_1)}
 	           {\wp{\p_2}}$,
 	    \item
 	        by Lemma~\ref{lemma:cut} we have
-	        $\jwfprop{\G}
+	        $\jwfprop
 	           {(\pAnd{\wp{\p_1}}{(\pImply{\p_1}{\wp{\p_2}})},\p_1)}
 	           {\p_2}$.
 	    \item
 	        That is,
-	        $\jwfprop{\G}
+	        $\jwfprop
 	           {\wp{\p},\p_1}
 	           {\p_2}$.
 	    \item
 	        Therefore,
-	        $\jwfprop{\G}{\wp{\p}}{\p}$.    
+	        $\jwfprop{\wp{\p}}{\p}$.    
        \end{enumerate}
   \end{itemize}
 \end{proof}
@@ -985,10 +982,10 @@ To be checked.
   \label{lemma:l42}
   \mbox{}
   \begin{enumerate}
-  \item If $\wfterm{\G}{\D}{\t}{\I}$ then
-    $\jwfterm{\G}{\pFalse}{\t}{\I}$.
-  \item If $\wfprop{\G}{\D}{\p}$ then
-    $\jwfprop{\G}{\pFalse}{\p}$.
+  \item If $\wfterm{\D}{\t}{\I}$ then
+    $\jwfterm{\pFalse}{\t}{\I}$.
+  \item If $\wfprop{\D}{\p}$ then
+    $\jwfprop{\pFalse}{\p}$.
   \end{enumerate}
 \end{lemma}
 
@@ -996,10 +993,10 @@ To be checked.
   \label{lemma:wfproofs}
 \mbox{}
 \begin{enumerate}
-\item If ``$D$ is well-formed'' and $\jpf{\G}{\D}{\p}$ then
-  $\jwfprop{\G}{\D}{\p}$.
-\item If ``$D$ is well-formed'' and $\pf{\G}{\D}{\p}$ then
-  $\jwfprop{\G}{\D}{\p}$.
+\item If ``$D$ is well-formed'' and $\jpf{\D}{\p}$ then
+  $\jwfprop{\D}{\p}$.
+\item If ``$D$ is well-formed'' and $\pf{\D}{\p}$ then
+  $\jwfprop{\D}{\p}$.
 \end{enumerate}
 \end{lemma}
 
@@ -1011,12 +1008,12 @@ To be checked.
   \label{lemma:l41}
   \mbox{}
   \begin{enumerate}
-  \item If $\wfterm{\G}{\D}{\t}{\I}$ then
-    $\jwfterm{\G}{\trans{\D}}{\trans{\t}}{\I}$.
-  \item If $\wfprop{\G}{\D}{\p}$ then
-    $\jwfprop{\G}{\trans{\D}}{\trans{\p}}$.
-  \item If $\pf{\G}{\D}{\p}$ then
-    $\jpf{\G}{\trans{\D}}{\trans{\p}}$.
+  \item If $\wfterm{\D}{\t}{\I}$ then
+    $\jwfterm{\trans{\D}}{\trans{\t}}{\I}$.
+  \item If $\wfprop{\D}{\p}$ then
+    $\jwfprop{\trans{\D}}{\trans{\p}}$.
+  \item If $\pf{\D}{\p}$ then
+    $\jpf{\trans{\D}}{\trans{\p}}$.
   \end{enumerate}
 \end{lemma}
 
@@ -1031,33 +1028,33 @@ To be checked.
     \item 
       Here $\trans{\t} = x$.
     \item 
-      Then $\jwfterm{\G}{\trans{\D}}{\x}{\I}$.
+      Then $\jwfterm{\trans{\D}}{\x}{\I}$.
     \end{enumerate}
-  \item Case: $\t = \tFun{\f}{\t}{n}$ with $\wfterm{\G}{\D}{\t_i}{\I}$ for every $i\in1..n$.
+  \item Case: $\t = \tFun{\f}{\t}{n}$ with $\wfterm{\D}{\t_i}{\I}$ for every $i\in1..n$.
     \begin{enumerate}
     \item 
       Here $\trans{\t} = \f(\trans{\t_1},\ldots,\trans{\t_n})$.
     \item 
-      By the induction hypothesis, $\jwfterm{\G}{\trans{\D}}{\trans{\t_i}}{\I}$ for every $i\in1..n$.
+      By the induction hypothesis, $\jwfterm{\trans{\D}}{\trans{\t_i}}{\I}$ for every $i\in1..n$.
     \item 
-      Thus, $\jwfterm{\G}{\trans{\D}}{\f(\trans{\t_1},\ldots,\trans{\t_n})}{\I}$.
+      Thus, $\jwfterm{\trans{\D}}{\f(\trans{\t_1},\ldots,\trans{\t_n})}{\I}$.
     \end{enumerate}
   \item Case: $\t = \tDesc{\x}{\I}{\p(\x)}$ with
-     $\pf{\G}{\D}{\pExists{\x}{\I}{\p(\x)}}$ and
-     $\pf{\G}{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\p(\x)}{\p(\y)})}{\pEqual{\x}{\y}}}}}$.
+     $\pf{\D}{\pExists{\x}{\I}{\p(\x)}}$ and
+     $\pf{\D}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\p(\x)}{\p(\y)})}{\pEqual{\x}{\y}}}}}$.
      \begin{enumerate}
      \item 
        \label{lemma:l41:proofline:a2}
        By the inductive hypothesis, 
-     $\jpf{\G}{\trans{\D}}{\pExists{\x}{\I}{\pAnd{\wp{\p(\x)}}{\p(\x)}}}$
+     $\jpf{\trans{\D}}{\pExists{\x}{\I}{\pAnd{\wp{\p(\x)}}{\p(\x)}}}$
      \item
        and
-       $\jpf{\G}{\trans{\D}}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\trans{\p(\x)}}{\trans{\p(\y)}})}{\pEqual{\x}{\y}}}}}$.
+       $\jpf{\trans{\D}}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\trans{\p(\x)}}{\trans{\p(\y)}})}{\pEqual{\x}{\y}}}}}$.
      \item 
        FOR SOME REASON, ``$\D$ will be well-formed''.
      \item 
        Hence by Lemma~\ref{lemma:wfproofs} we have
-       $\jwfprop{\G}{\trans{\D}}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\trans{\p(\x)}}{\trans{\p(\y)}})}{\pEqual{\x}{\y}}}}}$.
+       $\jwfprop{\trans{\D}}{\pForall{\x}{\I}{\pForall{\y}{\I}{\pImply{(\pAnd{\trans{\p(\x)}}{\trans{\p(\y)}})}{\pEqual{\x}{\y}}}}}$.
      \item 
        By inversion,
        $\jwfprop{\G,\x{:}\I,\y{:}\I}{\trans{\D}}{\trans{\p(\x)}}$
@@ -1067,7 +1064,7 @@ To be checked.
        $\jwfprop{\G,\x{:}\I}{\trans{\D}}{\trans{\p(\x)}}$.
      \item
        \label{lemma:l41:proofline:a1}
-       Thus, $\wfprop{\G}{\trans{\D}}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
+       Thus, $\wfprop{\trans{\D}}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
 \smallskip
 
      \item 
@@ -1084,7 +1081,7 @@ To be checked.
        Then by existential elimination 
        applied to lines~\ref{lemma:l41:proofline:a1}, \ref{lemma:l41:proofline:a2}, and \ref{lemma:l41:proofline:a3}, 
        we have
-       $\jpf{\G}{\trans\D}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
+       $\jpf{\trans\D}{\pExists{\x}{\I}{\trans{\p(\x)}}}$.
      \end{enumerate}
   \end{itemize}
 \item % Part 2
@@ -1094,61 +1091,61 @@ To be checked.
     \item 
       Here $\trans{\p} = \p$ 
     \item
-      and $\jpf{\G}{\trans\D}{\p}$.
+      and $\jpf{\trans\D}{\p}$.
     \end{enumerate}
   \item Case: $\p = \pOr{\p_1}{\p_2}$ with
-    $\wfprop{\G}{(\D,\pFalse)}{\p_1}$ and
-    $\wfprop{\G}{(\D,\pTrue)}{\p_2}$.
+    $\wfprop{(\D,\pFalse)}{\p_1}$ and
+    $\wfprop{(\D,\pTrue)}{\p_2}$.
     \begin{enumerate}
     \item 
       Here $\trans\p = 
       \pOr{(\pAnd{\wp{\p_1}}{\trans{\p_1}})}{(\pAnd{\wp{\p_2}}{\trans{\p_2}})}$.
     \item 
       By Lemma~\ref{lemma:l42},
-      $\jwfprop{\G}{(\D,\pFalse)}{\p_1}$ 
+      $\jwfprop{(\D,\pFalse)}{\p_1}$ 
     \item 
       and
-      $\jwfprop{\G}{(\D,\pTrue)}{\p_2}$.
+      $\jwfprop{(\D,\pTrue)}{\p_2}$.
     \item
       Then by Lemma~\ref{lemma:wfwp} we have
-      $\jwfprop{\G}{\emptyCtx}{\wp{\p_1}}$
+      $\jwfprop{\emptyCtx}{\wp{\p_1}}$
     \item 
       and 
-      $\jwfprop{\G}{\emptyCtx}{\wp{\p_2}}$,
+      $\jwfprop{\emptyCtx}{\wp{\p_2}}$,
     \item 
       and by Lemma~\ref{lemma:l9} we have
-      $\jwfprop{\G}{\wp{\p_1}}{\trans{\p_1}}$
+      $\jwfprop{\wp{\p_1}}{\trans{\p_1}}$
     \item 
       and
-      $\jwfprop{\G}{\wp{\p_2}}{\trans{\p_2}}$.
+      $\jwfprop{\wp{\p_2}}{\trans{\p_2}}$.
     \item 
       Thus,
-      $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\p_1}}{\trans{\p_1}}}$
+      $\jwfprop{\emptyCtx}{\pAnd{\wp{\p_1}}{\trans{\p_1}}}$
     \item 
       and
-      $\jwfprop{\G}{\emptyCtx}{\pAnd{\wp{\p_2}}{\trans{\p_2}}}$,
+      $\jwfprop{\emptyCtx}{\pAnd{\wp{\p_2}}{\trans{\p_2}}}$,
     \item 
       and hence
-      $\jwfprop{\G}{\emptyCtx}{\trans{\p}}$.
+      $\jwfprop{\emptyCtx}{\trans{\p}}$.
     \item
       The desired result then follows by Lemma~\ref{lemma:weaken}.
     \end{enumerate}
   \item Cases: $\p = \pAnd{\p_1}{\p_2}$ or $\p = \pImply{\p_1}{\p_2}$, with
-    $\wfprop{\G}{\D}{\p_1}$ and $\wfprop{\G}{\D,\p_1}{\p_2}$.
+    $\wfprop{\D}{\p_1}$ and $\wfprop{\D,\p_1}{\p_2}$.
     \begin{enumerate}
     \item 
       By the inductive hypothesis we have
-      $\jwfprop{\G}{\trans\D}{\trans{\p_1}}$
+      $\jwfprop{\trans\D}{\trans{\p_1}}$
     \item
       and
-      $\jwfprop{\G}{\trans\D,\trans{\p_1}}{\trans{\p_2}}$.
+      $\jwfprop{\trans\D,\trans{\p_1}}{\trans{\p_2}}$.
     \item 
-      Thus $\jwfprop{\G}{\trans\D}{\pAnd{\trans{\p_1}}{\trans{\p_2}}}$
-      or $\jwfprop{\G}{\trans\D}{\pImply{\trans{\p_1}}{\trans{\p_2}}}$, as
+      Thus $\jwfprop{\trans\D}{\pAnd{\trans{\p_1}}{\trans{\p_2}}}$
+      or $\jwfprop{\trans\D}{\pImply{\trans{\p_1}}{\trans{\p_2}}}$, as
       appropriate.
     \item
       That is,
-      $\jwfprop{\G}{\trans\D}{\trans\p}$.
+      $\jwfprop{\trans\D}{\trans\p}$.
     \end{enumerate}
   \item Case: $\p = \pExists{\x}{\I}{\q}$, with
     $\wfprop{(\G,\x{:}\I)}{(\D,\pFalse)}{\q}$.
@@ -1158,22 +1155,22 @@ To be checked.
       \pExists{\x}{\I}{\pAnd{\wp{\q}}{\trans{\q}}}$.
     \item 
       By Lemma~\ref{lemma:l42},
-      $\jwfprop{\G}{(\D,\pFalse)}{\q}$. 
+      $\jwfprop{(\D,\pFalse)}{\q}$. 
     \item
       Then by Lemma~\ref{lemma:wfwp} we have
-      $\jwfprop{\G}{\emptyCtx}{\wp{\q}}$
+      $\jwfprop{\emptyCtx}{\wp{\q}}$
     \item 
       and by Lemma~\ref{lemma:l9} we have
-      $\jwfprop{\G}{\wp{\q}}{\trans{\q}}$.
+      $\jwfprop{\wp{\q}}{\trans{\q}}$.
     \item 
       Thus 
       $\jwfprop{(\G,\x{:}\I)}{\emptyCtx}{\pAnd{\wp{\q}}{\trans\q}}$,
     \item 
       so
-      $\jwfprop{\G}{\emptyCtx}{\pExists{\x}{\I}{\pAnd{\wp{\q}}{\trans\q}}}$.
+      $\jwfprop{\emptyCtx}{\pExists{\x}{\I}{\pAnd{\wp{\q}}{\trans\q}}}$.
     \item
       That is,
-      $\jwfprop{\G}{\emptyCtx}{\trans{\p}}$.
+      $\jwfprop{\emptyCtx}{\trans{\p}}$.
     \item
       The desired result follows by Lemma~\ref{lemma:weaken}.
     \end{enumerate}
@@ -1190,10 +1187,10 @@ To be checked.
 \begin{claim}
 \mbox{}
 \begin{enumerate}
-  \item If $\jwfprop{\G}{\D}{\p}$ then
-    $\jpf{\G}{\D}{\pImply{\pAnd{\wp{\p}}{\trans{\p}}}{\p}}$.
-  \item If $\jwfprop{\G}{\D}{\p}$ then
-    $\jpf{\G}{\D}{\pImply{\p}{\pAnd{\wp{\p}}{\trans{\p}}}}$.
+  \item If $\jwfprop{\D}{\p}$ then
+    $\jpf{\D}{\pImply{\pAnd{\wp{\p}}{\trans{\p}}}{\p}}$.
+  \item If $\jwfprop{\D}{\p}$ then
+    $\jpf{\D}{\pImply{\p}{\pAnd{\wp{\p}}{\trans{\p}}}}$.
 \end{enumerate}
 \end{claim}
 
@@ -1208,8 +1205,8 @@ To be checked.
 \begin{claim}
 \mbox{}
 \begin{enumerate}
-  \item If $\jwfprop{\G}{\D}{\p}$ and $\pf{\G}{\D}{\p}$ then
-    $\jpf{\G}{\D}{\p}$.
+  \item If $\jwfprop{\D}{\p}$ and $\pf{\D}{\p}$ then
+    $\jpf{\D}{\p}$.
 \end{enumerate}
 \end{claim}
 
