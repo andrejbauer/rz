@@ -1,7 +1,41 @@
-\section{Comparison with Coq}
+\section{Related Work}
+\subsection{Coq}
 \label{sec:comparison-with-coq}
 
-Coq is better than RZ.
+
+1. Choose Coq if you want complete machinery for producing code.
+
+     * Complete theorems can be turned into (trusted) code
+
+2. Choose RZ if you want lightweight machinery for specifying the required code.
+
+     * It's possible that programmers *should* be doing theorem proving,
+       but this is not always practical.
+
+     * Clarifies the constructive content (e.g., what should be in Set
+       and what can be left in Prop), and could serve as a front-end to
+       Coq.
+
+     * Grunt-work of computing realizability interpretations, but without
+        requiring full code/proofs
+
+     * Provides a way to talk with programmers (e.g., about the impliciations
+       of constructive logic.) without full theorem proving
+
+
+\subsection{Other tools}
+
+Komagata and Schmidt~\cite{komagata+:tr95} describe a system that uses
+a similar realizability translation to ours.  Like Coq, the system
+translates formal proofs to programs, rather than 
+
+An interesting technical difference is that the algorithm they use,
+attributed to John Hatcliff, does thinning as it goes along, rather
+than making this a separate pass.  For example, the translation of the
+conjunction-introduction rule has four cases, depending on whether the
+left and/or right propositions being proved are [almost?] negative, in which
+case the trivial contribution can be immediately discarded.
+
 
 
 %%% Local Variables: 

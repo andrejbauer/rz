@@ -24,5 +24,16 @@ Sections:
       * Simplifications, but not any real theorem-proving.
    * Phase-splitting:  functors into polymorphism
 * Comparison with Coq extraction tool
+   * Choose Coq if you want complete machinery for producing code.
+        * Complete theorems can be turned into (trusted) code
+   *  Choose RZ if you want lightweight machinery for specifying the required code.
+     * It's possible that programmers *should* be doing theorem proving,
+          but this is not always practical.
+     * Clarifies the constructive content (e.g., what should be in Set
+       and what can be left in Prop)
+     * Grunt-work of computing realizability interpretations, but without
+        requiring full code/proofs
+     * Provides a way to talk with programmers (e.g., about the impliciations
+       of constructive logic.) without full theorem proving
    [ab: I like your email message]
 * Future work
