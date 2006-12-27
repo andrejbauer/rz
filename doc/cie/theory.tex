@@ -41,8 +41,8 @@ expressed directly in the programming language, such as:
 \item The order in which vertices and arrows are listed is not
   important, e.g., $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
 \item Each vertex and arrow must be listed exactly once.
-\item Infinite, cyclic lists, and non-terminating values, are not
-  valid representations, e.g.,
+\item Infinite, cyclic lists, and non-terminating values are not valid
+  representations, e.g.,
   %
   \begin{equation*}
     \cwhile{\ctrue}{()}; [(1,2);(2,2);(2,3);(3,2);(3;1)]
@@ -60,48 +60,107 @@ expressed directly in the programming language, such as:
   a valid adjacency list?
 \end{enumerate}
 %
-An implementation of the set~$\mathcal{G}$ should tell us not only
-what the underlying datatype $\mathtt{graph}$ is, but also which
-values of type $\mathtt{graph}$ represent elements of~$\mathcal{G}$,
-as well as when two such values represent the same element. As we
-shall see next, all of this can be expressed by a \emph{partial
-  equivalence relation}~$\per$, or \emph{per} for short, defined on
-the set of values of type~$\mathtt{graph}$.
+To summarize, an implementation of the set~$\mathcal{G}$ should tell
+us not only what the underlying datatype $\mathtt{graph}$ is, but also
+which values of type $\mathtt{graph}$ represent which elements
+of~$\mathcal{G}$. As we shall see next, all of this can be expressed
+either as a \emph{realizability relation} or a \emph{partial
+  equivalence relation (per)}.
 
 We now give the formal definition of typed realizability, as it
-applies to Ocaml. Other programming languages could be used instead,
-as long as they provide the usual ground types, product and function
-types. Additionally, it is convenient to work with a language that
-supports sum types, as this allows a more natural representation of
-disjoint unions.
+applies to Ocaml. Other general-purpose programming languages could be
+used instead, as long as they provide the usual ground types, product
+and function types. Additionally, it is convenient to work with a
+language that supports sum types, as this allows a more natural
+representation of disjoint unions.
 
 Let $\Type$ be the collection of all (non-parametric) Ocaml types. To
 each type $t \in \Type$ we assign the set $\terminating{t}$ of
 terminating values of type~$t$ which behave \emph{functionally} in the
 sense of~\cite{longley99when}. Such values may not diverge, raise
-exceptions or return different results on different invocations,
+exceptions, or return different results on different invocations,
 although they \emph{may} use exceptions, store, and other
 computational effects, as long as they behave as if they did not. A
-useful example of a functional value using exceptions is presented in
+useful example of a functional value using store is presented in
 Section~\ref{sec:we-show-modulus-of-continuity-example}. Note also
 that a terminating value of a functional type may diverge as soon as
 it is applied, e.g., if we define $\cletrec{f\;x}{f\;(x+1)}$ then $f
-\in \terminating{\cint \to \cint}$.
+\in \terminating{\cint \to \cint}$. The collection $\Type$ with the
+assignment of terminating values $|t|$ to each $t \in \Type$ forms a
+\emph{typed partial combinatory algebra (TPCA)}, which provides a
+theoretical basis for the definition of a realizability model that
+suits our needs.
 
-The collection $\Type$ with the assignment of terminating values $|t|$
-to each $t \in \Type$ forms a \emph{typed partial combinatory algebra
-  (TPCA)}. This provides a theoretical basis for the definition of a
-realizability model that suits our needs. Recall that a \emph{partial
-  equivalence relation} on a set~$S$ is a symmteric and transitive
-binary relation on~$S$.
+Going back to our example, we see that to implement the set of
+directed graphs $\mathcal{G}$ is to specify a datatype
+$\typeOf{\mathcal{G}} = \mathtt{graph}$ together with a
+\emph{realizability relation} $\rz_{\mathcal{G}}$ between
+$\mathcal{G}$ and $\terminating{\mathtt{graph}}$. The meaning of
+$(\ell_V, \ell_A) \rz_\mathcal{G} G$ is ``value $(\ell_V, \ell_A)$
+represents (realizes, implements) graph $G$''. There are two natural
+conditions that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G
+\in \mathcal{G}$ there should be at least one realizer $(\ell_V,
+\ell_A)$ representing it, and (2) if $(\ell_V, \ell_A)$ represents
+both $G$ and $G'$ then $G = G'$. The latter condition is called
+\emph{modesty} and is not strictly necessary for the development of
+the theory, though it is something that programmers would naturally
+expect to hold. If $(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$
+represent the same graph, we say that they are \emph{equivalent} and
+write $(\ell_V, \ell_A) \per_\mathcal{G} (\ell'_V, \ell'_A)$. The
+relation $\per_\mathcal{G}$ is a partial equivalence relation
+(symmetric and transitive), and may be defined in terms of
+$\rz_\mathcal{G}$ by
+%
+\begin{equation*}
+  u \per_\mathcal{G} v
+  \iff
+  \some{G}{\mathcal{G}}{u \rz_\mathcal{G} G \land v \rz_\mathcal{G} G}
+  \;.
+\end{equation*}
 
-\begin{definition}
-  A \emph{per} $A = (\typeOf{A}, {\per_A})$ is given by a type
-  $\typeOf{A} \in \Type$ and a partial equivalence relation $\per_A$
-  on $\terminating{\typeOf{A}}$. The \emph{support} of~$\per_A$ is the
-  set $\support{A} = \set{v \in \terminating{\typeOf{A}} \such v
-    \per_A v}$.
-\end{definition}
+
+A general definition is in order. A \emph{modest set} is a triple
+$\modestSet{A}$ where $A$ is a set, $\typeOf{A} \in \Type$, and
+$\rz_A$ is a relation between $\terminating{\typeOf{A}}$ and $A$,
+satisfying
+% 
+\begin{enumerate}
+\item \emph{totality:} for every $x \in A$ there is $v$ such that $v
+  \rz_A x$, and
+\item \emph{modesty:} if $u \rz_A x$ and $u \rz_A y$ then $x = y$.
+\end{enumerate}
+%
+The \emph{support} of $A$ is the set $\support{A}$ of those values
+which realize something,
+%
+\begin{equation*}
+  \support{A} = \set{v \in \typeOf{A} \such \xsome{x}{A}{v \rz_A x}} \;.
+\end{equation*}
+%
+We define the relation $\per_A$ on $\terminating{\typeOf{A}}$ by
+%
+\begin{equation*}
+  u \per_A v
+  \iff
+  \some{x}{A}{u \rz_A x \land v \rz_A x} \;.
+\end{equation*}
+%
+From totality and modesty of $\rz_A$ it follows that $\rz_A$ is a per,
+ie., symmtric and transitive. Observe that $\support{A} = \set{v \in
+  \typeOf{A} \such v \per_A v}$, whence $\per_A$ restricted to
+$\support{A}$ is an equivalence relation. Even more, we may recover a
+modest set up to isomorphism from $\typeOf{A}$ and $\per_A$ by taking
+$A$ to be the set of equivalence classes of $\per_A$, and $v \rz_A x$
+to mean $v \in x$.
+
+We have developed two equivalent views of implementations: as modest
+sets $(A, \typeOf{A}, {\rz_A})$, and as pers $(\typeOf{A}, {\per_A})$.
+In RZ we use pers because they refer only to types and values, as
+opposed to arbitrary sets. Nevertheless, it is useful to undestand how
+modest sets and pers arise from natural considerations about
+programming practice.
+
+- canonical constructions
 
 
 

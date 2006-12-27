@@ -1,6 +1,7 @@
 \documentclass{article}
 
 \usepackage{amsmath}
+\usepackage{amssymb}
 \usepackage{theorem}
 \usepackage{graphicx}
 \usepackage{mathpartir}
@@ -19,12 +20,14 @@
 \newcommand{\clet}[2]{\mathtt{let}\;#1 = #2}
 \newcommand{\cletrec}[2]{\mathtt{let}\;\mathtt{rec}\;#1 = #2}
 
-% PERS
+% Realizaiblity
 \newcommand{\per}{\approx}
+\newcommand{\rz}{\Vdash}
 \newcommand{\Type}{\mathsf{Type}}
 \newcommand{\terminating}[1]{[\![#1]\!]}
 \newcommand{\typeOf}[1]{|#1|}
 \newcommand{\support}[1]{\|#1\|}
+\newcommand{\modestSet}[1]{(#1, \typeOf{#1}, {\rz_{#1}})}
 
 % Sets
 \newcommand{\set}[1]{\{#1\}}
@@ -44,6 +47,13 @@
   \newtheorem{example}[theorem]{Example}
 }
 
+% Quantifiers. I am really used to these...
+\newcommand{\all}[3]{\forall\, #1 \,{\in}\, #2\,.\left(#3\right)}
+\newcommand{\some}[3]{\exists\, #1 \,{\in}\, #2\,.\left(#3\right)}
+\newcommand{\exactlyone}[3]{\exists!\, #1 \,{\in}\, #2\,.\left(#3\right)}
+\newcommand{\xall}[3]{\forall\, #1 \,{\in}\, #2\,.\,#3}
+\newcommand{\xsome}[3]{\exists\, #1 \,{\in}\, #2\,.\,#3}
+\newcommand{\xexactlyone}[3]{\exists!\, #1 \,{\in}\, #2\,.\,#3}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
