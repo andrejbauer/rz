@@ -2,7 +2,7 @@
 
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{theorem}
+%\usepackage{theorem}
 \usepackage{graphicx}
 \usepackage{mathpartir}
 
@@ -34,6 +34,7 @@
 \newcommand{\such}{\mid}
 
 % Theorem-like environments
+\iffalse
 {
   \theorembodyfont{\itshape}
   \newtheorem{theorem}{Theorem}[section]
@@ -46,6 +47,7 @@
   \newtheorem{definition}[theorem]{Definition}
   \newtheorem{example}[theorem]{Example}
 }
+\fi
 
 % Quantifiers. I am really used to these...
 \newcommand{\all}[3]{\forall\, #1 \,{\in}\, #2\,.\left(#3\right)}
