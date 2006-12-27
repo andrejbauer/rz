@@ -67,6 +67,10 @@ of~$\mathcal{G}$. As we shall see next, all of this can be expressed
 either as a \emph{realizability relation} or a \emph{partial
   equivalence relation (per)}.
 
+
+\subsection{Modest sets and pers}
+\label{sec:modest-sets-pers}
+
 We now give the formal definition of typed realizability, as it
 applies to Ocaml. Other general-purpose programming languages could be
 used instead, as long as they provide the usual ground types, product
@@ -119,14 +123,15 @@ $\rz_\mathcal{G}$ by
 \end{equation*}
 
 
-A general definition is in order. A \emph{modest set} is a triple
-$\modestSet{A}$ where $A$ is a set, $\typeOf{A} \in \Type$, and
-$\rz_A$ is a relation between $\terminating{\typeOf{A}}$ and $A$,
-satisfying
+A general definition is in order. A \emph{modest set} is a triple $A =
+(\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is the
+\emph{underlying set}, $\typeOf{A} \in \Type$ is the \emph{underlying
+  type}, and $\rz_A$ is a \emph{realizability relation} between
+$\terminating{\typeOf{A}}$ and $\setOf{A}$, satisfying
 % 
 \begin{enumerate}
-\item \emph{totality:} for every $x \in A$ there is $v$ such that $v
-  \rz_A x$, and
+\item \emph{totality:} for every $x \in \setOf{A}$ there is $v \in
+  \typeOf{A}$ such that $v \rz_A x$, and
 \item \emph{modesty:} if $u \rz_A x$ and $u \rz_A y$ then $x = y$.
 \end{enumerate}
 %
@@ -134,7 +139,7 @@ The \emph{support} of $A$ is the set $\support{A}$ of those values
 which realize something,
 %
 \begin{equation*}
-  \support{A} = \set{v \in \typeOf{A} \such \xsome{x}{A}{v \rz_A x}} \;.
+  \support{A} = \set{v \in \typeOf{A} \such \xsome{x}{\setOf{A}}{v \rz_A x}} \;.
 \end{equation*}
 %
 We define the relation $\per_A$ on $\terminating{\typeOf{A}}$ by
@@ -142,49 +147,91 @@ We define the relation $\per_A$ on $\terminating{\typeOf{A}}$ by
 \begin{equation*}
   u \per_A v
   \iff
-  \some{x}{A}{u \rz_A x \land v \rz_A x} \;.
+  \some{x}{\setOf{A}}{u \rz_A x \land v \rz_A x} \;.
 \end{equation*}
 %
 From totality and modesty of $\rz_A$ it follows that $\rz_A$ is a per,
-ie., symmtric and transitive. Observe that $\support{A} = \set{v \in
-  \typeOf{A} \such v \per_A v}$, whence $\per_A$ restricted to
-$\support{A}$ is an equivalence relation. Even more, we may recover a
-modest set up to isomorphism from $\typeOf{A}$ and $\per_A$ by taking
-$A$ to be the set of equivalence classes of $\per_A$, and $v \rz_A x$
-to mean $v \in x$.
+i.e., symmtric and transitive. Observe that $\support{A} = \set{v \in
+  \terminating{\typeOf{A}} \such v \per_A v}$, whence $\per_A$
+restricted to $\support{A}$ is an equivalence relation. In fact, we
+may recover a modest set up to isomorphism from $\typeOf{A}$ and
+$\per_A$ by taking $\setOf{A}$ to be the set of equivalence classes of
+$\per_A$, and $v \rz_A x$ to mean $v \in x$.
 
-We have developed two equivalent views of implementations: as modest
-sets $(A, \typeOf{A}, {\rz_A})$, and as pers $(\typeOf{A}, {\per_A})$.
-In RZ we use pers because they refer only to types and values, as
-opposed to arbitrary sets. Nevertheless, it is useful to undestand how
-modest sets and pers arise from natural considerations about
-programming practice.
+The two views of implementations, as modest sets $(\setOf{A},
+\typeOf{A}, {\rz_A})$, and as pers $(\typeOf{A}, {\per_A})$, are
+equivalent. In RZ we use pers because they refer only to types and
+values, as opposed to arbitrary sets. Nevertheless, it is useful to
+undestand how modest sets and pers arise from natural considerations
+about programming practice.
 
-- canonical constructions
-
-
-
-\bigskip\bigskip
-
-
-Outline:
+Modest sets form a category whose objects are modest sets and
+morphisms are the realized functions. A \emph{realized function} $f :
+A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ such that there
+exists $v \in \terminating{\typeOf{A} \to \typeOf{B}}$ for which
 %
-\begin{enumerate}
-\item explain how PER models are a natural semantic model for a
-  programmer, because they capture ideas like
-\item choice of representation and representation invariants,
-\item definition of a PER model, which makes things more precise, in
-  particular
-\item what computational model we use (ML-like language, terminating
-  values are used to represent things), and
-\item what the category of PER's is (but sweep categories under the
-  rug)
-\item discuss relationship with ``ordinary'' realizability a la
-  Kleene~\cite{KleeneSC:intint}, since logicians and theoreticians
-  usually know that kind
-\end{enumerate}
+\begin{equation}
+  \label{eq:rz-function-space}
+  \xall{x}{\setOf{A}}{
+    \all{u}{\typeOf{A}}{
+      u \rz_A x \implies v\;u \rz_B f(x)
+    }
+  }.
+\end{equation}
+%
+This condition is just a mathematical expression of the usual idea
+that~$v$ is an implementation of~$f$, since~$v$ does to realizers
+what~$f$ does to the elements they represent.
 
-There ought to be some examples here.
+The equivalent category of pers has as objects pairs $A = (\typeOf{A},
+{\per_A})$ where $\typeOf{A} \in \Type$ and $\per_A$ is a per on
+$\terminating{\typeOf{A}}$. A morphism $A to B$ is represented by $v
+\in \terminating{\typeOf{A} \to \typeOf{B}}$ such that, for all $u, u'
+\in \support{A}$,
+%
+\begin{equation}
+  \label{eq:per-exponential}
+  u \per_A u' \implies v\;u \per_B v\;u' \;.
+\end{equation}
+%
+Values $v$ and $v'$ which both satisfy~\eqref{eq:per-exponential}
+represent the same morphism if, for all $u, u' \in \support{A}$,
+%
+\begin{equation*}
+  u \per_A u' \implies v\;u \per_B v'\;u' \;.
+\end{equation*}
+
+The category of modest sets, and the equivalent category of pers, have
+a very rich structure. For example, the morphisms between modest
+sets~$A$ and~$B$ again form a modest set $B^A$, also written as $A \to
+B$, called the \emph{exponential} of~$A$ and~$B$, with the underlying
+set
+%
+\begin{equation*}
+  \setOf{B^A} =
+  \set{f : \setOf{A} \to \setOf{B} \such \text{$f$ is a realized function}},
+\end{equation*}
+%
+the underlying type
+%
+\begin{equation*}
+  \typeOf{B^A} = \typeOf{A} \to \typeOf{B},
+\end{equation*}
+%
+and the realizability relation $\rz_{B^A}$ defined
+by~\eqref{eq:rz-function-space}. We review other canonical
+constructions on modest sets, such as products and sums, in
+Section~\ref{sec:realizability-interpretation}.
+
+
+
+
+\subsection{Uniform families}
+\label{sec:uniform-families}
+
+
+
+
 
 \section{Singatures and specifications}
 \label{sec:sing-spec}
