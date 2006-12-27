@@ -34,15 +34,15 @@ define the datatype of graphs to be\footnote{We use Ocaml notation in
 \end{equation*}
 %
 However, this is not a complete description of the representation, as
-there are representation invariants and conditions which are not
-expressed directly in the programming language, such as:
+there are invariants and conditions which are not expressed directly
+in the programming language, such as:
 %
 \begin{enumerate}
 \item The order in which vertices and arrows are listed is not
   important, e.g., $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
 \item Each vertex and arrow must be listed exactly once.
-\item Infinite, cyclic lists, and non-terminating values are not valid
-  representations, e.g.,
+\item Infinite, cyclic lists, and non-terminating expressions are not
+  valid representations, e.g.,
   %
   \begin{equation*}
     \cwhile{\ctrue}{()}; [(1,2);(2,2);(2,3);(3,2);(3;1)]
@@ -79,18 +79,18 @@ language that supports sum types, as this allows a more natural
 representation of disjoint unions.
 
 Let $\Type$ be the collection of all (non-parametric) Ocaml types. To
-each type $t \in \Type$ we assign the set $\terminating{t}$ of
-terminating values of type~$t$ which behave \emph{functionally} in the
-sense of~\cite{longley99when}. Such values may not diverge, raise
-exceptions, or return different results on different invocations,
-although they \emph{may} use exceptions, store, and other
-computational effects, as long as they behave as if they did not. A
-useful example of a functional value using store is presented in
-Section~\ref{sec:we-show-modulus-of-continuity-example}. Note also
-that a terminating value of a functional type may diverge as soon as
-it is applied, e.g., if we define $\cletrec{f\;x}{f\;(x+1)}$ then $f
-\in \terminating{\cint \to \cint}$. The collection $\Type$ with the
-assignment of terminating values $|t|$ to each $t \in \Type$ forms a
+each type $t \in \Type$ we assign the set $\values{t}$ of values of
+type~$t$ which behave \emph{functionally} in the sense
+of~\cite{longley99when}. Such values are represented by terminating
+expressions which do not raise exceptions or return different results
+on different invocations, although they \emph{may} use exceptions,
+store, and other computational effects, as long as they behave as if
+they did not. A useful example of a functional value using store is
+presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
+Note also that a functional value of a functional type may diverge as
+soon as it is applied, e.g., if we define $\cletrec{f\;x}{f\;(x+1)}$
+then $f \in \values{\cint \to \cint}$. The collection $\Type$ with the
+assignment of functional values $|t|$ to each $t \in \Type$ forms a
 \emph{typed partial combinatory algebra (TPCA)}, which provides a
 theoretical basis for the definition of a realizability model that
 suits our needs.
@@ -99,7 +99,7 @@ Going back to our example, we see that to implement the set of
 directed graphs $\mathcal{G}$ is to specify a datatype
 $\typeOf{\mathcal{G}} = \mathtt{graph}$ together with a
 \emph{realizability relation} $\rz_{\mathcal{G}}$ between
-$\mathcal{G}$ and $\terminating{\mathtt{graph}}$. The meaning of
+$\mathcal{G}$ and $\values{\mathtt{graph}}$. The meaning of
 $(\ell_V, \ell_A) \rz_\mathcal{G} G$ is ``value $(\ell_V, \ell_A)$
 represents (realizes, implements) graph $G$''. There are two natural
 conditions that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G
@@ -127,7 +127,7 @@ A general definition is in order. A \emph{modest set} is a triple $A =
 (\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is the
 \emph{underlying set}, $\typeOf{A} \in \Type$ is the \emph{underlying
   type}, and $\rz_A$ is a \emph{realizability relation} between
-$\terminating{\typeOf{A}}$ and $\setOf{A}$, satisfying
+$\values{\typeOf{A}}$ and $\setOf{A}$, satisfying
 % 
 \begin{enumerate}
 \item \emph{totality:} for every $x \in \setOf{A}$ there is $v \in
@@ -142,7 +142,7 @@ which realize something,
   \support{A} = \set{v \in \typeOf{A} \such \xsome{x}{\setOf{A}}{v \rz_A x}} \;.
 \end{equation*}
 %
-We define the relation $\per_A$ on $\terminating{\typeOf{A}}$ by
+We define the relation $\per_A$ on $\values{\typeOf{A}}$ by
 %
 \begin{equation*}
   u \per_A v
@@ -152,7 +152,7 @@ We define the relation $\per_A$ on $\terminating{\typeOf{A}}$ by
 %
 From totality and modesty of $\rz_A$ it follows that $\rz_A$ is a per,
 i.e., symmtric and transitive. Observe that $\support{A} = \set{v \in
-  \terminating{\typeOf{A}} \such v \per_A v}$, whence $\per_A$
+  \values{\typeOf{A}} \such v \per_A v}$, whence $\per_A$
 restricted to $\support{A}$ is an equivalence relation. In fact, we
 may recover a modest set up to isomorphism from $\typeOf{A}$ and
 $\per_A$ by taking $\setOf{A}$ to be the set of equivalence classes of
@@ -168,7 +168,7 @@ about programming practice.
 Modest sets form a category whose objects are modest sets and
 morphisms are the realized functions. A \emph{realized function} $f :
 A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ such that there
-exists $v \in \terminating{\typeOf{A} \to \typeOf{B}}$ for which
+exists $v \in \values{\typeOf{A} \to \typeOf{B}}$ for which
 %
 \begin{equation}
   \label{eq:rz-function-space}
@@ -185,8 +185,8 @@ what~$f$ does to the elements they represent.
 
 The equivalent category of pers has as objects pairs $A = (\typeOf{A},
 {\per_A})$ where $\typeOf{A} \in \Type$ and $\per_A$ is a per on
-$\terminating{\typeOf{A}}$. A morphism $A to B$ is represented by $v
-\in \terminating{\typeOf{A} \to \typeOf{B}}$ such that, for all $u, u'
+$\values{\typeOf{A}}$. A morphism $A to B$ is represented by $v
+\in \values{\typeOf{A} \to \typeOf{B}}$ such that, for all $u, u'
 \in \support{A}$,
 %
 \begin{equation}
@@ -201,11 +201,10 @@ represent the same morphism if, for all $u, u' \in \support{A}$,
   u \per_A u' \implies v\;u \per_B v'\;u' \;.
 \end{equation*}
 
-The category of modest sets, and the equivalent category of pers, have
-a very rich structure. For example, the morphisms between modest
-sets~$A$ and~$B$ again form a modest set $B^A$, also written as $A \to
-B$, called the \emph{exponential} of~$A$ and~$B$, with the underlying
-set
+The category of modest sets has a very rich structure. For example,
+the morphisms between modest sets~$A$ and~$B$ again form a modest set
+$B^A$, also written as $A \to B$, called the \emph{exponential} of~$A$
+and~$B$, with the underlying set
 %
 \begin{equation*}
   \setOf{B^A} =
@@ -225,38 +224,8 @@ Section~\ref{sec:realizability-interpretation}.
 
 
 
-
 \subsection{Uniform families}
 \label{sec:uniform-families}
-
-
-
-
-
-\section{Singatures and specifications}
-\label{sec:sing-spec}
-
-Outline:
-%
-\begin{enumerate}
-\item We introduce assertions by saying that signatures only describe a
-  part of a specification
-\item Our assertions talk about per's
-\item They are written in the negative fragment,
-\end{enumerate}
-
-
-\section{The Input Language}
-\label{sec:input-language}
-
-Explain the input language and its semantics.
-
-\section{Translation}
-\label{sec:translation}
-
-Explain the translation.
-
-
 
 
 %%% Local Variables: 
