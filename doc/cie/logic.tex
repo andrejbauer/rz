@@ -1,7 +1,140 @@
 \section{The Input Language}
 \label{sec:input-language}
 
+\begin{figure}[htbp]
+	\internal{CS}{code here}
+	\caption{caption}
+	\label{fig:typicalinput}
+\end{figure}
+
+Figure~\ref{fig:typicalinput} shows a sample input for the RZ system that
+generates the output shown in \internal{CS}{somewhere}. The input is the
+definition of one or more \emph{theories}. A \emph{theory} is a generalized
+logical signature with associated axioms, similar to a Coq module signature.
+The components of a theory may specify that a certain set must exist, that an
+element of a set must exist, that a proposition or first-order predicate must
+exist, a model of some other theory must exist, or specify an axiom that must
+hold.
+
+\internal{CS}{Actually, I should probably just follow the CASE approach of introducing the syntax in-line as each construct is mentioned.  This could save significant space for the short paper.}
+
+As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
+appearing in theories may use full first-order constructive logic, not just the
+negative fragment. The grammar for logical inputs is shown in
+Figure~\ref{fig:input}. Most of this should be familiar, including the use of
+lambda abstraction are to define predicates.
+
+The language of sets is rich, going well beyond the type systems of typical
+programming languages. In addition to any base sets postulated in a theory, one
+can construct dependent cartesian products and dependent function spaces. We
+also supports disjoint unions (with labeled tags), quotient spaces (a set
+modulo an equivalence relation), subsets (elements of a set satisfying a
+predicate). RZ even permits explicit references to sets of realizers.
+
+The term language then primarily follows the set structure by providing
+introduction and elimination constructs. For product sets we have tuples and
+projection, and for function spaces we have lambda abstractions and
+applications. One can inject a term into a dependent union, or do case analyses
+on the members of a union. We can refer to the equivalence class of a given
+term, or pick a representative of a given equivalence class (as long as what we
+do with it does not depend on the particular representative). Very similarly,
+we can produce the set of realizers for a term, or choose a representative from
+a given set of realizers (as long as what we do with it does not depend on the
+particular representative). We can inject a term into a subset (if it satisfies
+the appropriate predicate), or project an element of a subset into the
+enclosing set. Finally, the term language allows local definitions of term
+variables, and definite descriptions (as long as there is a unique element
+satisfying the predicate in question).
+
+From the parenthesized qualifiers, it is clear that checking the
+well-formedness of terms is not decidable. RZ checks what it can, but does not
+attempt any serious theorem proving. Uncheckable constraints remain as
+explicitly-marked \emph{obligations} in the final output, and must be verified
+by other means.
+
+
+
+
+
+
+\newcommand{\ip}{p}
+\newcommand{\ix}{x}
+\newcommand{\is}{s}
+\newcommand{\ie}{e}
+\newcommand{\iP}{P}
+\newcommand{\iS}{S}
+\newcommand{\iprop}{\mathtt{prop}}
+\newcommand{\itrue}{\mathtt{true}}
+\newcommand{\ifalse}{\mathtt{false}}
+\newcommand{\inot}[1]{\mathtt{not}\,#1}
+\newcommand{\iimply}[2]{#1\,\mbox{\texttt{->}}\,#2}
+\newcommand{\iiff}[2]{#1\,\mbox{\texttt{<->}}\,#2}
+\newcommand{\iequal}[2]{#1\,\mathtt{=}\,#2}
+\newcommand{\iands}[2]{#1\,\mathtt{/\backslash}\, #2}
+\newcommand{\iors}[2]{#1\,\mathtt{\backslash/}\,#2}
+\newcommand{\iforall}[3]{\texttt{forall}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\iexists}[3]{\texttt{exists}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\iunique}[3]{\texttt{unique}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\ilambda}[3]{\texttt{lambda}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\iapps}[3]{#1\ #2\,\cdots\,#3}
+
+\newcommand{\ituples}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
+\newcommand{\iproj}[2]{#1\texttt{.}#2}
+\newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
+\newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
+\newcommand{\ilet}[3]{\texttt{let}\,#1\,\texttt{=}\,#2\,\texttt{in}\, #3}
+\newcommand{\iquot}[2]{#1\,\texttt{\%}\,#2}
+\newcommand{\iletquot}[4]{\texttt{let}\ #1\texttt{\%}\,#2\,\texttt{=}\,#3\ \texttt{in}\ #4}
+\newcommand{\irz}[1]{\texttt{rz}\,#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
+
+\newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
+\newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
+
+\begin{figure}
+	\[
+	\begin{array}{rll}
+		\ip ::= 
+		    & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
+		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
+		  | & \iP\\
+		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapps{\ip}{\ie}{\ie}\\
+		  | & \iequal{\ie}{\ie}\\
+		  | & \iforall{\ix}{\is}{\ip} \ |\ 
+		      \iexists{\ix}{\is}{\ip} \ |\
+		      \iunique{\ix}{\is}{\ip}\\[10pt]
+		
+		\is ::= 
+		    & ()\ |\ \iprods{\is}{\is}\\
+		  | & \ilambda{\ix}{\is}{\is}\ |\ 
+		      \iapps{\is}{\ie_1}{\ie_n}\\
+		  | & \isums{\is}{\is}\\
+		
+		\\[10pt]
+		\ie ::=
+		    & \ix\\
+		  | & \iapps{\ie}{\ie}{\ie}\\
+		  | & \ilambda{\ix}{\is}{\ie}\\
+		  | & \ituples{\ie}{\ie}\\
+		  | & \iproj{\ie}{n}\\
+		  | & \iconstrain{\ie}{\is}\\
+		  | & \ithe{\ix}{\is}{\ip}\\
+		  | & \ilet{\ix}{\ie}{\ie}\\
+		  | & \iquot{\ie}{\ip}\\
+		  | & \iletquot{\ix}{\ip}{\ie}{\ie}\\
+		  | & \irz{\ie}\\
+		  | & \iletrz{\ix}{\ie}{\ie}\\
+	\end{array}
+	\]
+	\label{fig:input}
+	\caption{Input Syntax}
+\end{figure}
+
+
+
 Explain the input language and its semantics.
+
+
 
 \internal{AB}{The plan here seems to be as follows. Before this
   section we will say that assertions are written in the negative
@@ -20,3 +153,5 @@ Explain the input language and its semantics.
 %%% mode: latex
 %%% TeX-master: "cie"
 %%% End: 
+%!TEX root = cie
+

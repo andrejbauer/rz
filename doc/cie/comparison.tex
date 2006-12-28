@@ -22,7 +22,6 @@
      * Provides a way to talk with programmers (e.g., about the impliciations
        of constructive logic.) without full theorem proving
 
-
 \subsection{Other tools}
 
 Komagata and Schmidt~\cite{komagata+:tr95} describe a system that uses
@@ -36,7 +35,25 @@ conjunction-introduction rule has four cases, depending on whether the
 left and/or right propositions being proved are [almost?] negative, in which
 case the trivial contribution can be immediately discarded.
 
-
+\subsection{Models of Computability}
+\label{sec:models-of-computability}
+Most formulations of
+computable mathematics are based on realizability
+models~\cite{Bauer:00}, even though they were not initially developed,
+nor are they usually presented within the framework of realizability:
+Recursive Mathematics~\cite{ershov98:_handb_recur_mathem} is based on
+the original realizability by Turing machines~\cite{KleeneSC:intint};
+Type Two Effectivity~\cite{Wei00} on function
+realizability~\cite{KleeneSC:fouim} and relative function
+realizability~\cite{BirkedalL:devttc}, while topological and domain
+representations~\cite{Bla97a,Bauer:Birkedal:Scott:98} are based on
+realizability over the graph model
+$\mathcal{P}\omega$~\cite{ScottD:dattl}. A common feature of these is
+that they use models of computation which are suitable for the
+theoretical studies of computability, rather than for practical
+programming. Since we want to emphasize the practical aspects of
+realizability, we have chosen instead an actual real-world programming
+language.
 
 %%% Local Variables: 
 %%% mode: latex
