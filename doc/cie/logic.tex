@@ -31,7 +31,7 @@ also supports disjoint unions (with labeled tags), quotient spaces (a set
 modulo an equivalence relation), subsets (elements of a set satisfying a
 predicate). RZ even permits explicit references to sets of realizers.
 
-The term language then primarily follows the set structure by providing
+The term language primarily follows the set structure by providing
 introduction and elimination constructs. For product sets we have tuples and
 projection, and for function spaces we have lambda abstractions and
 applications. One can inject a term into a dependent union, or do case analyses
@@ -56,7 +56,7 @@ by other means.
 
 
 
-
+\iffalse
 \newcommand{\ip}{p}
 \newcommand{\ix}{x}
 \newcommand{\is}{s}
@@ -90,6 +90,41 @@ by other means.
 
 \newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
 \newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
+\fi
+
+\newcommand{\ip}{p}
+\newcommand{\ix}{x}
+\newcommand{\is}{s}
+\newcommand{\ie}{e}
+\newcommand{\iP}{P}
+\newcommand{\iS}{S}
+\newcommand{\iprop}{\mathtt{prop}}
+\newcommand{\itrue}{\top}
+\newcommand{\ifalse}{\bot}
+\newcommand{\inot}[1]{\lnot #1}
+\newcommand{\iimply}[2]{#1\Rightarrow #2}
+\newcommand{\iiff}[2]{#1 \Leftrightarrow #2}
+\newcommand{\iequal}[2]{#1 = #2}
+\newcommand{\iands}[2]{#1\land #2}
+\newcommand{\iors}[2]{#1\lor #2}
+\newcommand{\iforall}[3]{\forall #1{:}#2.\ #3}
+\newcommand{\iexists}[3]{\exists #1{:}#2.\ #3}
+\newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
+\newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
+\newcommand{\iapps}[3]{#1\ #2\,\cdots\,#3}
+
+\newcommand{\ituples}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
+\newcommand{\iproj}[2]{#1\texttt{.}#2}
+\newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
+\newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
+\newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
+\newcommand{\iquot}[2]{#1{\bigm/} #2}
+\newcommand{\iletquot}[4]{\texttt{let}\ #1{\bigm/} #2\,\texttt{=}\,#3\ \texttt{in}\ #4}
+\newcommand{\irz}[1]{\texttt{rz}\,#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
+
+\newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
+\newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
 
 \begin{figure}
 	\[
@@ -98,7 +133,7 @@ by other means.
 		    & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
 		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
 		  | & \iP\\
-		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapps{\ip}{\ie}{\ie}\\
+		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapps{\ip}{\ie_1}{\ie_n}\\
 		  | & \iequal{\ie}{\ie}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 
 		      \iexists{\ix}{\is}{\ip} \ |\
@@ -113,7 +148,7 @@ by other means.
 		\\[10pt]
 		\ie ::=
 		    & \ix\\
-		  | & \iapps{\ie}{\ie}{\ie}\\
+		  | & \iapps{\ie}{\ie_1}{\ie_n}\\
 		  | & \ilambda{\ix}{\is}{\ie}\\
 		  | & \ituples{\ie}{\ie}\\
 		  | & \iproj{\ie}{n}\\
