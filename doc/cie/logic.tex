@@ -2,7 +2,40 @@
 \label{sec:input-language}
 
 \begin{figure}[htbp]
-	\internal{CS}{code here}
+	\internal{CS}{This isn't a good example; it exercises the source language, but doesn't have model parameters and doesn't translate into anything very interesting, it seems.  I think I'd prefer finite sets.}
+\begin{alltt}
+Definition Metric :=
+  \ensuremath{\lambda}I : Number.Integer. 
+  \ensuremath{\lambda}R : Number.Real I.
+  \ensuremath{\lambda}U : Sets.Space.
+	thy
+	  \textbf{Parameter} dist : U.s \ensuremath{\to} U.s \ensuremath{\to} R.real.
+
+	  \textbf{Implicit Type} x y z : U.s.
+
+	  \textbf{Axiom} nonnegative: \ensuremath{\forall} x y. R.leq R.zero (dist x y).
+
+	  \textbf{Axiom} strict: \ensuremath{\forall}x y. dist x y = R.zero \ensuremath{\Leftrightarrow} x = y.
+
+	  \textbf{Axiom} symmetric:  \ensuremath{\forall}x y. dist x y = dist y x.
+
+	  \textbf{Axiom} triangle_inequality:
+	    forall x y z,
+	      R.leq (dist x z) (R.add (dist x y) (dist y z)).
+
+	  \textbf{Definition} cauchy (a : I.nat -> U.s) :=
+	    forall k : I.nat,
+	      R.leq (dist (a (I.add1 k)) (a k)) (R.ratio I.one (I.pow I.two k)).
+
+	  Definition limit (a : I.nat -> U.s) x :=
+	    forall epsilon : R.positiveReal,
+	      exists k : I.nat,
+	        forall m : I.nat,
+	          I.leq k m  -> R.lt (dist (a m) x) epsilon.
+
+	  Definition ball (x : U.s) (r : R.real) := \{y : U.s | R.lt (dist x y) r\}.
+	end.
+\end{alltt}
 	\caption{caption}
 	\label{fig:typicalinput}
 \end{figure}
@@ -46,11 +79,11 @@ enclosing set. Finally, the term language allows local definitions of term
 variables, and definite descriptions (as long as there is a unique element
 satisfying the predicate in question).
 
-From the parenthesized qualifiers, it is clear that checking the
+From the parenthesized qualifiers in the previous paragraph, it is clear that checking the
 well-formedness of terms is not decidable. RZ checks what it can, but does not
-attempt any serious theorem proving. Uncheckable constraints remain as
+attempt any serious theorem proving.  Uncheckable constraints remain as
 explicitly-marked \emph{obligations} in the final output, and must be verified
-by other means.
+by other means; the output can then be trusted to the extent that the obligations are satisfied.
 
 
 
@@ -92,12 +125,12 @@ by other means.
 \newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
 \fi
 
-\newcommand{\ip}{p}
+\newcommand{\ip}{\varphi}
 \newcommand{\ix}{x}
 \newcommand{\is}{s}
 \newcommand{\ie}{e}
-\newcommand{\iP}{P}
-\newcommand{\iS}{S}
+\newcommand{\iP}{p}
+\newcommand{\iS}{\alpha}
 \newcommand{\iprop}{\mathtt{prop}}
 \newcommand{\itrue}{\top}
 \newcommand{\ifalse}{\bot}
@@ -118,21 +151,23 @@ by other means.
 \newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
 \newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
 \newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
-\newcommand{\iquot}[2]{#1{\bigm/} #2}
-\newcommand{\iletquot}[4]{\texttt{let}\ #1{\bigm/} #2\,\texttt{=}\,#3\ \texttt{in}\ #4}
+\newcommand{\ieclass}[2]{[#1]_{#2}}
+\newcommand{\ileteclass}[4]{\texttt{let}\ [#1]_{#2}\,\texttt{=}\,#3\ \texttt{in}\ #4}
 \newcommand{\irz}[1]{\texttt{rz}\,#1}
 \newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
 
-\newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
-\newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
+\newcommand{\iprods}[2]{#1\times\cdots\times#2}
+\newcommand{\isums}[2]{#1+\cdots+\,#2}
+\newcommand{\iquot}[2]{#1{\bigm/} #2}
+\newcommand{\isubset}[3]{\{\,#1{:}#2\ |\ #3\,\}}
 
 \begin{figure}
 	\[
 	\begin{array}{rll}
 		\ip ::= 
-		    & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
+		    & \iP\\
+		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
 		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
-		  | & \iP\\
 		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapps{\ip}{\ie_1}{\ie_n}\\
 		  | & \iequal{\ie}{\ie}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 
@@ -140,12 +175,16 @@ by other means.
 		      \iunique{\ix}{\is}{\ip}\\[10pt]
 		
 		\is ::= 
-		    & ()\ |\ \iprods{\is}{\is}\\
+		    & \iS\\
+		  | & ()\ |\ \iprods{\is}{\is}\\
 		  | & \ilambda{\ix}{\is}{\is}\ |\ 
 		      \iapps{\is}{\ie_1}{\ie_n}\\
 		  | & \isums{\is}{\is}\\
+		  | & \iquot{\is}{\ip}\\
+		  | & \isubset{\ix}{\is}{\ip}\\
+		  | & \irz{\is}\\[10pt] 
 		
-		\\[10pt]
+	
 		\ie ::=
 		    & \ix\\
 		  | & \iapps{\ie}{\ie_1}{\ie_n}\\
@@ -155,8 +194,8 @@ by other means.
 		  | & \iconstrain{\ie}{\is}\\
 		  | & \ithe{\ix}{\is}{\ip}\\
 		  | & \ilet{\ix}{\ie}{\ie}\\
-		  | & \iquot{\ie}{\ip}\\
-		  | & \iletquot{\ix}{\ip}{\ie}{\ie}\\
+		  | & \ieclass{\ie}{\ip}\\
+		  | & \ileteclass{\ix}{\ip}{\ie}{\ie}\\
 		  | & \irz{\ie}\\
 		  | & \iletrz{\ix}{\ie}{\ie}\\
 	\end{array}
