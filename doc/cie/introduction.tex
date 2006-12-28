@@ -1,9 +1,9 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Given the constants, relations, and axioms of a mathematical
-structure, what must a programmer do in order to implement that
-mathematical structure?
+Given the constants, functions, relations, and axioms of a
+mathematical structure, what must a programmer do in order to
+implement that mathematical structure?
 
 For some familiar cases, the answer is obvious. Code implementing a
 group must have a type to represent the group elements, a constant, a
@@ -18,16 +18,16 @@ implement the real numbers (a Cauchy-complete Archimedean ordered
 field), or a compact metric space, or a space of smooth functions?
 Significant research goes into finding representations that provide a
 satisfactory theory of computability on such
-structures~\cite{Wei00,TZ98,Bla97,EL00}, and several implementations
-of exact real arithmetic~\cite{Mue00,Lam05a} show that the theory can
-be put into practice quite successfully.
+structures~\cite{Wei00,TZ98,Bla97,EL00}, and implementations of exact
+real arithmetic~\cite{Mue00,Lam05a} show that the theory can be put
+into practice quite successfully.
 
 The theory of realizability provides guidance in development of
-computable mathematics. We show not only that realizability is a
-fundamental tool in logic and theory of computability, but also that
-it has direct application to the design and implementation of
-programs. It can be used to find a description of the data structure
-directly corresponding to a mathematical specification.
+computable mathematics. We show that, in addition to being a
+fundamental tool in logic and theory of computability, realizability
+has direct application to the design and implementation of programs.
+It can be used to find a description of the data structure directly
+corresponding to a mathematical specification.
 
 Extracting code interfaces by hand from mathematical axioms quickly
 grows tedious, especially because different but logically equivalent
