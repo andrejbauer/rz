@@ -56,9 +56,9 @@
 \newcommand{\iexists}[3]{\exists #1{:}#2.\ #3}
 \newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
 \newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
-\newcommand{\iapps}[3]{#1\ #2\,\cdots\,#3}
+\newcommand{\iapp}[2]{#1\ #2}
 
-\newcommand{\ituples}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
+\newcommand{\ituple}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
 \newcommand{\iproj}[2]{#1\texttt{.}#2}
 \newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
 \newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
@@ -68,11 +68,11 @@
 \newcommand{\irz}[1]{\texttt{rz}\,#1}
 \newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
 
+\newcommand{\itag}{\mathit{tag}}
 \newcommand{\iprod}[3]{#1{:}#2\times#3}
-\newcommand{\isums}[2]{#1+\cdots+\,#2}
+\newcommand{\isum}[4]{#1{:}#2+#3{:}#4}
 \newcommand{\iquot}[2]{#1{\bigm/} #2}
 \newcommand{\isubset}[3]{\{\,#1{:}#2\ |\ #3\,\}}
-
 
 \section{The Input Language}
 \label{sec:input-language}
@@ -107,7 +107,7 @@ also supports disjoint unions (with labeled tags), quotient spaces (a set
 modulo an equivalence relation), subsets (elements of a set satisfying a
 predicate). RZ even permits explicit references to sets of realizers.
 
-The term language primarily follows the set structure by providing
+The term language follows the structure of the set level by providing
 introduction and elimination constructs. For product sets we have tuples and
 projections ($\iproj{\ie}{1}$, $\iproj{\ie}{2}$, \ldots), and for function spaces we have lambda abstractions and
 application. One can inject a term into a tagged dependent union, or do case analyses
@@ -118,7 +118,7 @@ we can produce the set of realizers for a term, or choose a representative from
 a given set of realizers (as long as what we do with it does not depend on the
 particular representative). We can inject a term into a subset (if it satisfies
 the appropriate predicate), or project an element of a subset into the
-enclosing set. Finally, the term language allows local definitions of term
+enclosing set. Finally, the term language also allows local definitions of term
 variables, and definite descriptions (as long as there is a unique element
 satisfying the predicate in question).
 
@@ -140,7 +140,7 @@ by other means; the output can then be trusted to the extent that the obligation
 		    & \iP\\
 		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
 		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
-		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapps{\ip}{\ie_1}{\ie_n}\\
+		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie}\\
 		  | & \iequal{\ie}{\ie}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 
 		      \iexists{\ix}{\is}{\ip} \ |\
@@ -148,10 +148,10 @@ by other means; the output can then be trusted to the extent that the obligation
 		
 		\is ::= 
 		    & \iS\\
-		  | & ()\ |\ \iprod{\ix}{\is}{\is}\\
-		  | & \ilambda{\ix}{\is}{\is}\ |\ 
-		      \iapps{\is}{\ie_1}{\ie_n}\\
-		  | & \isums{\is}{\is}\\
+		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2}\\
+		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
+		      \iapp{\is}{\ie}\\
+		  | & \isum{\itag_1}{\is_1}{\itag_2}{\is_2}\\
 		  | & \iquot{\is}{\ipp}\\
 		  | & \isubset{\ix}{\is}{\ipp}\\
 		  | & \irz{\is}\\[10pt] 
@@ -159,17 +159,17 @@ by other means; the output can then be trusted to the extent that the obligation
 	
 		\ie ::=
 		    & \ix\\
-		  | & \iapps{\ie}{\ie_1}{\ie_n}\\
+		  | & \iapp{\ie_1}{\ie_2}\\
 		  | & \ilambda{\ix}{\is}{\ie}\\
-		  | & \ituples{\ie}{\ie}\\
+		  | & \ituple{\ie_1}{\ie_2}\\
 		  | & \iproj{\ie}{n}\\
 		  | & \iconstrain{\ie}{\is}\\
 		  | & \ithe{\ix}{\is}{\ip}\\
-		  | & \ilet{\ix}{\ie}{\ie}\\
+		  | & \ilet{\ix}{\ie_1}{\ie_2}\\
 		  | & \ieclass{\ie}{\ipp}\\
-		  | & \ileteclass{\ix}{\ipp}{\ie}{\ie}\\
+		  | & \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}\\
 		  | & \irz{\ie}\\
-		  | & \iletrz{\ix}{\ie}{\ie}\\
+		  | & \iletrz{\ix}{\ie_1}{\ie_2}\\
 	\end{array}
 	\]
 	\label{fig:input}
@@ -187,7 +187,7 @@ Explain the input language and its semantics.
   fragment, and that in the input language we use constructive logic,
   which turns out to be more convenient. So just go ahead and
   introduce constructive logic without worrying what its
-  interpretation might be. Then in the translation secton we'll
+  interpretation might be. Then in the translation section we'll
   explain the realizability interpretation of constructive logic.
   Actually, the logic is first-order intuitionistic logic. The fact
   the the logic is intuitionistic is not a choice but reality: the

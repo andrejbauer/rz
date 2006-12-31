@@ -7,9 +7,11 @@
 \usepackage{mathpartir}
 \usepackage{fancyvrb}
 
-% AB: I don't have this package, and the source compiles without it
-% so I commented it out.
-%\usepackage{pdfsync}
+\usepackage{ifpdf}
+
+\ifpdf
+\usepackage{pdfsync}
+\fi
 
 %%%% MACROS %%%%%
 
