@@ -1,94 +1,3 @@
-\section{The Input Language}
-\label{sec:input-language}
-
-\begin{figure}[htbp]
-	\internal{CS}{This isn't a good example; it exercises the source language, but doesn't have model parameters and doesn't translate into anything very interesting, it seems.  I think I'd prefer finite sets.}
-\begin{alltt}
-Definition Metric :=
-  \ensuremath{\lambda}I : Number.Integer. 
-  \ensuremath{\lambda}R : Number.Real I.
-  \ensuremath{\lambda}U : Sets.Space.
-	thy
-	  \textbf{Parameter} dist : U.s \ensuremath{\to} U.s \ensuremath{\to} R.real.
-
-	  \textbf{Implicit Type} x y z : U.s.
-
-	  \textbf{Axiom} nonnegative: \ensuremath{\forall} x y. R.leq R.zero (dist x y).
-
-	  \textbf{Axiom} strict: \ensuremath{\forall}x y. dist x y = R.zero \ensuremath{\Leftrightarrow} x = y.
-
-	  \textbf{Axiom} symmetric:  \ensuremath{\forall}x y. dist x y = dist y x.
-
-	  \textbf{Axiom} triangle_inequality:
-	    forall x y z,
-	      R.leq (dist x z) (R.add (dist x y) (dist y z)).
-
-	  \textbf{Definition} cauchy (a : I.nat -> U.s) :=
-	    forall k : I.nat,
-	      R.leq (dist (a (I.add1 k)) (a k)) (R.ratio I.one (I.pow I.two k)).
-
-	  Definition limit (a : I.nat -> U.s) x :=
-	    forall epsilon : R.positiveReal,
-	      exists k : I.nat,
-	        forall m : I.nat,
-	          I.leq k m  -> R.lt (dist (a m) x) epsilon.
-
-	  Definition ball (x : U.s) (r : R.real) := \{y : U.s | R.lt (dist x y) r\}.
-	end.
-\end{alltt}
-	\caption{caption}
-	\label{fig:typicalinput}
-\end{figure}
-
-Figure~\ref{fig:typicalinput} shows a sample input for the RZ system that
-generates the output shown in \internal{CS}{somewhere}. The input is the
-definition of one or more \emph{theories}. A \emph{theory} is a generalized
-logical signature with associated axioms, similar to a Coq module signature.
-The components of a theory may specify that a certain set must exist, that an
-element of a set must exist, that a proposition or first-order predicate must
-exist, a model of some other theory must exist, or specify an axiom that must
-hold.
-
-\internal{CS}{Actually, I should probably just follow the CASE approach of introducing the syntax in-line as each construct is mentioned.  This could save significant space for the short paper.}
-
-As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
-appearing in theories may use full first-order constructive logic, not just the
-negative fragment. The grammar for logical inputs is shown in
-Figure~\ref{fig:input}. Most of this should be familiar, including the use of
-lambda abstraction are to define predicates.
-
-The language of sets is rich, going well beyond the type systems of typical
-programming languages. In addition to any base sets postulated in a theory, one
-can construct dependent cartesian products and dependent function spaces. We
-also supports disjoint unions (with labeled tags), quotient spaces (a set
-modulo an equivalence relation), subsets (elements of a set satisfying a
-predicate). RZ even permits explicit references to sets of realizers.
-
-The term language primarily follows the set structure by providing
-introduction and elimination constructs. For product sets we have tuples and
-projection, and for function spaces we have lambda abstractions and
-applications. One can inject a term into a dependent union, or do case analyses
-on the members of a union. We can refer to the equivalence class of a given
-term, or pick a representative of a given equivalence class (as long as what we
-do with it does not depend on the particular representative). Very similarly,
-we can produce the set of realizers for a term, or choose a representative from
-a given set of realizers (as long as what we do with it does not depend on the
-particular representative). We can inject a term into a subset (if it satisfies
-the appropriate predicate), or project an element of a subset into the
-enclosing set. Finally, the term language allows local definitions of term
-variables, and definite descriptions (as long as there is a unique element
-satisfying the predicate in question).
-
-From the parenthesized qualifiers in the previous paragraph, it is clear that checking the
-well-formedness of terms is not decidable. RZ checks what it can, but does not
-attempt any serious theorem proving.  Uncheckable constraints remain as
-explicitly-marked \emph{obligations} in the final output, and must be verified
-by other means; the output can then be trusted to the extent that the obligations are satisfied.
-
-
-
-
-
 \iffalse
 \newcommand{\ip}{p}
 \newcommand{\ix}{x}
@@ -126,6 +35,7 @@ by other means; the output can then be trusted to the extent that the obligation
 \fi
 
 \newcommand{\ip}{\varphi}
+\newcommand{\ipp}{\rho}
 \newcommand{\ix}{x}
 \newcommand{\is}{s}
 \newcommand{\ie}{e}
@@ -156,15 +66,75 @@ by other means; the output can then be trusted to the extent that the obligation
 \newcommand{\irz}[1]{\texttt{rz}\,#1}
 \newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
 
-\newcommand{\iprods}[2]{#1\times\cdots\times#2}
+\newcommand{\iprod}[3]{#1{:}#2\times#3}
 \newcommand{\isums}[2]{#1+\cdots+\,#2}
 \newcommand{\iquot}[2]{#1{\bigm/} #2}
 \newcommand{\isubset}[3]{\{\,#1{:}#2\ |\ #3\,\}}
 
+
+\section{The Input Language}
+\label{sec:input-language}
+
+\begin{figure}[htbp]
+\VerbatimInput{kuratowski.thy}
+	\caption{caption}
+	\label{fig:typicalinput}
+\end{figure}
+
+Figure~\ref{fig:typicalinput} shows a sample input for the RZ system that
+generates the output shown in \internal{CS}{somewhere}. The input is the
+definition of one or more \emph{theories}. A \emph{theory} is a generalized
+logical signature with associated axioms, similar to a Coq module signature.
+The components of a theory may specify that a certain set must exist, that an
+element of a set must exist, that a proposition or first-order predicate must
+exist, a model of some other theory must exist, or specify an axiom that must
+hold.
+
+\internal{CS}{Actually, I should probably just follow the CASE approach of introducing the syntax in-line as each construct is mentioned.  This could save significant space for the short paper.}
+
+As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
+appearing in theories may use full first-order constructive logic, not just the
+negative fragment. The grammar for logical inputs is shown in
+Figure~\ref{fig:input}. Most of this should be familiar, including the use of
+lambda abstraction are to define predicates.
+
+The language of sets is rich, going well beyond the type systems of typical
+programming languages. In addition to any base sets postulated in a theory, one
+can construct dependent cartesian products and dependent function spaces. We
+also supports disjoint unions (with labeled tags), quotient spaces (a set
+modulo an equivalence relation), subsets (elements of a set satisfying a
+predicate). RZ even permits explicit references to sets of realizers.
+
+The term language primarily follows the set structure by providing
+introduction and elimination constructs. For product sets we have tuples and
+projections ($\iproj{\ie}{1}$, $\iproj{\ie}{2}$, \ldots), and for function spaces we have lambda abstractions and
+application. One can inject a term into a tagged dependent union, or do case analyses
+on the members of a union. We can produce the equivalence class of a given
+term, or pick a representative of a given equivalence class (as long as what we
+do with it does not depend on the particular representative). Very similarly,
+we can produce the set of realizers for a term, or choose a representative from
+a given set of realizers (as long as what we do with it does not depend on the
+particular representative). We can inject a term into a subset (if it satisfies
+the appropriate predicate), or project an element of a subset into the
+enclosing set. Finally, the term language allows local definitions of term
+variables, and definite descriptions (as long as there is a unique element
+satisfying the predicate in question).
+
+From the parenthesized qualifiers in the previous paragraph, it is clear that checking the
+well-formedness of terms is not decidable. RZ checks what it can, but does not
+attempt any serious theorem proving.  Uncheckable constraints remain as
+explicitly-marked \emph{obligations} in the final output, and must be verified
+by other means; the output can then be trusted to the extent that the obligations are satisfied.
+
+
+
+
+
+
 \begin{figure}
 	\[
 	\begin{array}{rll}
-		\ip ::= 
+		\ip,\ipp ::= 
 		    & \iP\\
 		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
 		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
@@ -176,12 +146,12 @@ by other means; the output can then be trusted to the extent that the obligation
 		
 		\is ::= 
 		    & \iS\\
-		  | & ()\ |\ \iprods{\is}{\is}\\
+		  | & ()\ |\ \iprod{\ix}{\is}{\is}\\
 		  | & \ilambda{\ix}{\is}{\is}\ |\ 
 		      \iapps{\is}{\ie_1}{\ie_n}\\
 		  | & \isums{\is}{\is}\\
-		  | & \iquot{\is}{\ip}\\
-		  | & \isubset{\ix}{\is}{\ip}\\
+		  | & \iquot{\is}{\ipp}\\
+		  | & \isubset{\ix}{\is}{\ipp}\\
 		  | & \irz{\is}\\[10pt] 
 		
 	
@@ -194,8 +164,8 @@ by other means; the output can then be trusted to the extent that the obligation
 		  | & \iconstrain{\ie}{\is}\\
 		  | & \ithe{\ix}{\is}{\ip}\\
 		  | & \ilet{\ix}{\ie}{\ie}\\
-		  | & \ieclass{\ie}{\ip}\\
-		  | & \ileteclass{\ix}{\ip}{\ie}{\ie}\\
+		  | & \ieclass{\ie}{\ipp}\\
+		  | & \ileteclass{\ix}{\ipp}{\ie}{\ie}\\
 		  | & \irz{\ie}\\
 		  | & \iletrz{\ix}{\ie}{\ie}\\
 	\end{array}
