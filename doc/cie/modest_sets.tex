@@ -157,16 +157,13 @@ about programming practice.
 
 Modest sets form a category whose objects are modest sets and
 morphisms are the realized functions. A \emph{realized function} $f :
-A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ such that there
-exists $v \in \values{\typeOf{A} \to \typeOf{B}}$ for which
+A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ for which that there
+exists $v \in \values{\typeOf{A} \to \typeOf{B}}$ such that, for all
+$x \in \setOf{A}$ and $u \in \typeOf{A}$,
 %
 \begin{equation}
   \label{eq:rz-function-space}
-  \xall{x}{\setOf{A}}{
-    \all{u}{\typeOf{A}}{
-      u \rz_A x \implies v\;u \rz_B f(x)
-    }
-  }.
+  u \rz_A x \implies v\;u \rz_B f(x) \;.
 \end{equation}
 %
 This condition is just a mathematical expression of the usual idea
@@ -199,12 +196,11 @@ by
   \setOf{A \times B} &= \setOf{A} \times \setOf{B},\\
   \typeOf{A \times B} &= \typeOf{A} * \typeOf{B},\\
   p \rz_{A \times B} (x,y) &\iff
-  \cfst{p} \rz_A x \land csnd{p} \rz_B y.
+  \cfst{p} \rz_A x \land \csnd{p} \rz_B y.
 \end{align*}
 %
 The projections $\pi_1 : A \times B \to A$ and $\pi_2 : A \times B \to
-B$ are realized by $\cfun{p}{\cfst{p}}$ and $\cfun{p}{\csnd{p}}$,
-respectively.
+B$ are realized by $\mathtt{fst}$ and $\mathtt{snd}$, respectively.
 
 The morphisms between modest sets~$A$ and~$B$ again form a modest set
 $B^A$, also written as $A \to B$, called the \emph{exponential} of~$A$
@@ -223,49 +219,45 @@ the underlying type
 %
 and the realizability relation $\rz_{B^A}$ defined
 by~\eqref{eq:rz-function-space}. The evaluation map $e : B^A \times A
-\to B$, $e(f,x) = f(x)$ is realized by $\cfun{(u,v)}{u\;v}$. If a
-function $f : C \times A \to B$ is realized by $v$, then its transpose
-$\tilde{f} : C \to B^A$, $\tilde{f}(z)(x) = f(z,x)$, is realized by
-$\cfun{z\;x}{v \; (z,x)}$. This shows that the category of modest sets
-is cartesian closed. In Section~\ref{sec:realizability-interpretation}
-we review other canonical constructions on modest sets, such as
-products and sums.
+\to B$, $e(f,x) = f(x)$ is realized by Ocaml application,
+$\cfun{(u,v)}{u\;v}$. If a function $f : C \times A \to B$ is realized
+by $v$, then its transpose $\tilde{f} : C \to B^A$, $\tilde{f}(z)(x) =
+f(z,x)$, is realized by $\cfun{z\;x}{v \; (z,x)}$. This shows that the
+category of modest sets is cartesian closed. In
+Section~\ref{sec:realizability-interpretation} we review other
+canonical constructions on modest sets.
 
-\subsection{Two Examples}
-\label{sec:examples-modest-sets}
+\bigskip
 
-As a first example we implement the cyclic group on seven elements
-$(\ZZ_7, 0, {-}, {+})$. For the implementation we must give a
-representation of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z},
-{\rz_Z})$, and show that negation $-$ and addition $+$ are realized.
-We represent the elements of~$\ZZ_7 = \set{0, 1, \ldots, 6}$ with
-values of type $\typeOf{Z} = \cint$ and the realizability relation
+As an example we implement the cyclic group on seven elements $(\ZZ_7,
+0, {-}, {+})$. To implement the group, we must give a representation
+of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, provide
+a realizer for the neutral element, and show that negation~$-$ and
+addition~$+$ are realized. We represent the elements of~$\ZZ_7 =
+\set{0, 1, \ldots, 6}$ with values of type $\typeOf{Z} = \cint$. We
+allow any integer $n \in \values{\cint}$ to represent the element $n
+\mathbin{\mathrm{mod}} 7$,
 %
 \begin{equation*}
-  v \rz_Z k \iff v = k \;.
+  n \rz_Z k \iff n \mathbin{\mathrm{mod}} 7 = k \;.
 \end{equation*}
 %
-This says that $v \in \values{\cint}$ represents an element $k \in
-\ZZ_7$ if it is equal to it. The associated per is
+The neutral elements $0$ is represented by~$0$, while negation and
+addition are implemented by
 %
-\begin{equation*}
-  u \per_Z v
-  \iff
-  0 \leq u = v \leq 6 \;.
-\end{equation*}
+\begin{align*}
+  &\clet{\mathtt{neg}\; k}{-(k \;\mathtt{mod}\; 7)} \\
+  &\clet{\mathtt{add}\; k\; m}{(k \;\mathtt{mod}\; 7) + (m \;\mathtt{mod}\; 7)}
+\end{align*}
 %
-Negation is realized by the function $\mathtt{neg}: \cint \to \cint$,
-%
-\begin{equation*}
-  \clet{\mathtt{neg}\; k}{7 - k},
-\end{equation*}
-%
-while addition is realized by $\mathtt{add}: \cint * \cint \to \cint$,
-%
-\begin{equation*}
-  \clet{\mathtt{add}\;(k,m)}{(k + m) \;\mathtt{mod}\; 7}\;.
-\end{equation*}
-%
+The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
+  k\; m}{k+m}$ do not work because of ovwerflow at values that exceed
+$2^{30}$ (on a 32-bit machine). (We could avoid the overflow worries
+by taking an isomorphic representation in which the only valid
+realizers are $0$, $1$, \ldots, $6$, and negation and addition
+realized by $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\;
+  k\; m}{(k + m) \;\mathtt{mod}\; 7}$, respectively.)
+
 The modest set~$Z$ also has \emph{decidable equality}, which means
 that the characteristic map $\mathrm{eq} : Z \times Z \to
 \set{\mathtt{false}, \mathtt{true}}$ of equality is realized, namely
@@ -273,13 +265,7 @@ by $\cfun{(k,m)}{(k=m)}$. However, not all modest sets have decidable
 equality, since there may not be a decision procedure for determining
 whether two realizers represent the same element. In particular, this
 would happen if we implemented a group with an undecidable word
-problem~\cite{undecidable-word-problem}.
-
-
-\internal{AB}{Example: Natural numbers. Explicitly postulate the
-  realizer for induction, using the type $\alpha \to (\alpha \to
-  \alpha) \to \mathtt{nat} \to \mathtt{\alpha}$ of a realizer for
-  induction.}
+problem~\cite{post47:_recur_unsol_probl_thue}.
 
 
 \subsection{Uniform families}

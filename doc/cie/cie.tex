@@ -6,7 +6,10 @@
 \usepackage{graphicx}
 \usepackage{mathpartir}
 \usepackage{fancyvrb}
-\usepackage{pdfsync}
+
+% AB: I don't have this package, and the source compiles without it
+% so I commented it out.
+%\usepackage{pdfsync}
 
 %%%% MACROS %%%%%
 
@@ -111,9 +114,9 @@
 \input{conclusion.tex}
 
 %% Bibliography
-% Bibliography
+% AB: It's weird that references are ordered by first appearance, but if
+% that's what they want, that's what they get.
 \bibliographystyle{splncs}
-
 \bibliography{rzbib}
 
 
