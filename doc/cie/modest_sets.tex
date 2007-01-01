@@ -229,52 +229,135 @@ canonical constructions on modest sets.
 
 \bigskip
 
-As an example we implement the cyclic group on seven elements $(\ZZ_7,
+As an example we consider the cyclic group on seven elements $(\ZZ_7,
 0, {-}, {+})$. To implement the group, we must give a representation
 of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, provide
-a realizer for the neutral element, and show that negation~$-$ and
+a realizer for the neutral element~$0$, and show that negation~$-$ and
 addition~$+$ are realized. We represent the elements of~$\ZZ_7 =
 \set{0, 1, \ldots, 6}$ with values of type $\typeOf{Z} = \cint$. We
-allow any integer $n \in \values{\cint}$ to represent the element $n
+allow any integer $v \in \values{\cint}$ to represent the element $v
 \mathbin{\mathrm{mod}} 7$,
 %
 \begin{equation*}
-  n \rz_Z k \iff n \mathbin{\mathrm{mod}} 7 = k \;.
+  v \rz_Z k \iff v \mathbin{\mathrm{mod}} 7 = k \;.
 \end{equation*}
 %
 The neutral elements $0$ is represented by~$0$, while negation and
 addition are implemented by
 %
 \begin{align*}
-  &\clet{\mathtt{neg}\; k}{-(k \;\mathtt{mod}\; 7)} \\
-  &\clet{\mathtt{add}\; k\; m}{(k \;\mathtt{mod}\; 7) + (m \;\mathtt{mod}\; 7)}
+  &\clet{\mathtt{neg}\; k}{-(k \cmod 7)} \\
+  &\clet{\mathtt{add}\; k\; m}{(k \cmod 7) + (m \cmod 7)}
 \end{align*}
 %
 The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
-  k\; m}{k+m}$ do not work because of ovwerflow at values that exceed
+  k\; m}{k+m}$ do not work because of overflow at values that exceed
 $2^{30}$ (on a 32-bit machine). (We could avoid the overflow worries
 by taking an isomorphic representation in which the only valid
 realizers are $0$, $1$, \ldots, $6$, and negation and addition
 realized by $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\;
-  k\; m}{(k + m) \;\mathtt{mod}\; 7}$, respectively.)
+  k\; m}{(k + m) \cmod 7}$, respectively.)
 
 The modest set~$Z$ also has \emph{decidable equality}, which means
 that the characteristic map $\mathrm{eq} : Z \times Z \to
 \set{\mathtt{false}, \mathtt{true}}$ of equality is realized, namely
-by $\cfun{(k,m)}{(k=m)}$. However, not all modest sets have decidable
+by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod 7 = 0}$ does not
+  decide equality because of possible overflow in subtraction, whereas
+  $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not work because in Ocaml
+  $a \cmod b$ is negative when~$a$ is negative, e.g., $(-10) \cmod 7 =
+  -3$ instead of the expected $4$.} $\cfun{(k,m)}{(k \cmod 7 - m \cmod
+  7) \cmod 7 = 0}$. However, not all modest sets have decidable
 equality, since there may not be a decision procedure for determining
 whether two realizers represent the same element. In particular, this
 would happen if we implemented a semigroup with an undecidable word
 problem~\cite{post47:_recur_unsol_probl_thue}.
 
 
-\subsection{Uniform families}
+\subsection{Uniform families of modest sets}
 \label{sec:uniform-families}
 
-A \emph{family} of modest sets 
+Many structures are naturally viewed as families of sets, or sets
+depending on parameters, or \emph{dependent types} as they are called
+in type theory. For example, the $n$-dimensional Euclidean space
+$\RR^n$ depends on the dimension $n \in \NN$, the Banach space
+$\mathcal{C}([a,b])$ of uniformly continuous real functions on the
+closed interval $[a,b]$ depends on $a, b \in \RR$ such that $a < b$,
+etc. In general, a family of sets $\family{A_i}{i \in I}$ is an
+assignment of a set $A_i$ to each $i \in I$ from an \emph{index
+  set}~$I$.
 
+In the category of modest sets the appropriate notion is that of a
+\emph{uniform} family~$\family{A_i}{i \in I}$, which is an assignment
+of a modest set $A_i = (\setOf{A_i}, \typeOf{A}, {\rz_{A_i}})$ to each
+$i \in \setOf{I}$, where $I$ is an index modest set,
+cf.~\cite{Jacobs,Birkedal}. The uniformity comes from the requirement
+that all the~$A_i$'s share the same underlying type~$\typeOf{A_i} =
+\typeOf{A}$. It is a desirable restriction from the implementation
+point of view, because it removes dependencies at the level of types.
+Note also that there is no dependency on the realizers, only on the
+elements of the underlying set.
 
+We may form the \emph{sum} $\depsum{i \in I}{A_i}$ of a uniform family
+$\family{A_i}{i \in I}$ as
+%
+\begin{align*}
+  \setOf{\depsum{i \in I}{A_i}} &=
+  \set{\pair{i,x} \such i \in \setOf{I} \land x \in \setOf{A_i}}
+  \\
+  \typeOf{\depsum{i \in I}{A_i}} &=
+  \typeOf{I} \times \typeOf{A}
+  \\
+  (u,v) \rz_{\depsum{i \in I}{A_i}} (i,x)
+  &\iff
+  u \rz_I i \land v \rz_{A_i} x
+\end{align*}
+%
+and the \emph{product} $\depprod{i \in I}{A_i}$ as
+%
+\begin{align*}
+  \setOf{\depprod{i \in I}{A_i}} &=
+  \set{f : \setOf{I} \to {\textstyle \bigcup_{i \in \setOf{I}} \setOf{A_i}} \such
+    \xall{i}{\setOf{i}}{f(i) \in \setOf{A_i}}}
+  \\
+  \typeOf{\depprod{i \in I}{A_i}} &=
+  \typeOf{I} \to \typeOf{A}
+  \\
+  u \rz_{\depprod{i \in I}{A_i}} f
+  &\iff
+  \xall{i}{I}{\all{v}{\typeOf{I}}{
+      v \rz_I i \implies
+      u \; v \rz_{A_i} f(i)
+    }}.
+\end{align*}
+%
+These constructions allow us to interpret (extensional) dependent type
+theory in the category of modest sets.
 
+As an example of a uniform family we consider the cyclic group
+$(\ZZ_n, 0, {-}, {+})$ of order $n$. Essentially, we just replace~$7$
+by~$n$ everywhere in the above example:
+%
+\begin{align*}
+  & \setOf{Z_n} = \ZZ_n = \set{0, 1, \ldots, n - 1}
+  \\
+  & \typeOf{Z_n} = \cint
+  \\
+  & v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k
+  \\
+  & \clet{\mathtt{neg}\; k }{- (k \cmod n)}
+  \\
+  & \clet{\mathtt{add}\; k \; m}{k \cmod n + m \cmod n}.
+\end{align*}
+%
+These definitions make sense for $n \geq 1$, but for too large a value
+of~$n$ overflow might occur. If we expect the implementation to be
+used with such values, it is more prudent to replace the type~$\cint$
+with an implementation of arbitrary size integers.
+
+\internal{Andrej}{I have set up this example so that it looks ok, but
+  it actually incomplete because we have not specified the index
+  modest sets. Maybe we can use this later on. If not, I'll include
+  the definition of the index modest set.}
 
 %%% Local Variables: 
 %%% mode: latex

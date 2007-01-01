@@ -39,6 +39,7 @@
 \newcommand{\cletrec}[2]{\mathtt{let}\;\mathtt{rec}\;#1 = #2}
 \newcommand{\cfst}[1]{\mathtt{fst}\;#1}
 \newcommand{\csnd}[1]{\mathtt{snd}\;#1}
+\newcommand{\cmod}{\mathbin{\mathtt{mod}}}
 
 % Realizaiblity
 \newcommand{\per}{\approx}
@@ -49,14 +50,19 @@
 \newcommand{\setOf}[1]{\langle #1 \rangle}
 \newcommand{\support}[1]{\|#1\|}
 
-
 % Sets
 \newcommand{\set}[1]{\{#1\}}
 \newcommand{\such}{\mid}
+\newcommand{\pair}[1]{\langle #1 \rangle}
+
+\newcommand{\family}[2]{\set{#1}_{#2}}
+\newcommand{\depsum}[2]{{\Sigma_{#1} #2}}
+\newcommand{\depprod}[2]{{\Pi_{#1} #2}}
 
 % Common sets
 \newcommand{\NN}{\mathbb{N}}
 \newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\RR}{\mathbb{R}}
 
 % Theorem-like environments
 \iffalse
