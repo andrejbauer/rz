@@ -9,8 +9,8 @@ mind when thinking about an implementation of a structure.
 We motivate and explain typed realizability and its relationship with
 real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
-simple\footnote{There is at most one arrow between any two vertices.}
-directed graphs with vertices labelled by integers. An exemplar
+simple\footnote{At most one arrow between any two vertices.}
+directed graphs with vertices labeled by distinct integers. An exemplar
 directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 %
 \begin{figure}
@@ -21,13 +21,14 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 \end{figure}
 %
 A common representation is a pair of lists $(\ell_V, \ell_A)$, where
-$\ell_V$ is the list of vertices and $\ell_A$ the list of arrows,
-known as the \emph{adjacency list}. In our example, $\ell_V = [1; 2;
+$\ell_V$ is the list of vertex labels and $\ell_A$ the \emph{adjacency list} 
+representing the arrows by pairing the labels of each source and target.
+In our example, $\ell_V = [1; 2;
 3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$. Thus we
 define the datatype of graphs to be\footnote{We use Ocaml notation in
-  which $\clist{t}$ means lists of elements of type~$t$, and
-  $t_1 * t_2$ means the type of ordered pairs whose first component
-  has type $t_1$ and second type $t_2$.}
+  which $\clist{t}$ classifies finite lists of elements of type~$t$, and
+  $t_1 * t_2$ classifies pairs containing a value of type $t_1$ and and 
+  value of type $t_2$.}
 %
 \begin{equation*}
   \ctype \mathtt{graph} = \clist{\cint} * \clist{(\cint * \cint)}
@@ -336,6 +337,7 @@ theory in the category of modest sets.
 As an example of a uniform family we consider the cyclic group
 $(\ZZ_n, 0, {-}, {+})$ of order $n$. Essentially, we just replace~$7$
 by~$n$ everywhere in the above example:
+\internal{Chris}{Shouldn't the functions then take an extra $n$ parameter?}
 %
 \begin{align*}
   & \setOf{Z_n} = \ZZ_n = \set{0, 1, \ldots, n - 1}
