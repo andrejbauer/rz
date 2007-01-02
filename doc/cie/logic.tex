@@ -49,8 +49,8 @@
 \newcommand{\iimply}[2]{#1\Rightarrow #2}
 \newcommand{\iiff}[2]{#1 \Leftrightarrow #2}
 \newcommand{\iequal}[2]{#1 = #2}
-\newcommand{\iands}[2]{#1\land #2}
-\newcommand{\iors}[2]{#1\lor #2}
+\newcommand{\iand}[2]{#1\land #2}
+\newcommand{\ior}[2]{#1\lor #2}
 \newcommand{\iforall}[3]{\forall #1{:}#2.\ #3}
 \newcommand{\iexists}[3]{\exists #1{:}#2.\ #3}
 \newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
@@ -154,8 +154,8 @@ by other means; the output can then be trusted to the extent that the obligation
 	\begin{array}{rll}
 		\ip,\ipp ::= 
 		    & \iP\ |\ \iselect{\im}{\iP}\\
-		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
-		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
+		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iand{\ip}{\ip}\ |\ 
+		       \ior{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
 		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie}\\
 		  | & \iequal{\ie}{\ie}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 

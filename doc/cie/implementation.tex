@@ -1,29 +1,27 @@
 \section{Implementation}
 \label{sec:implementation}
 
+The RZ implementation consists of several sequential passes.  
 
-\subsection{Typechecking}
-\label{sec:typechecking}
+After the initial parsing, a \emph{type reconstruction} phase checks that the input is well-typed (and checks for well-formedness to the extent that it is easily decidable), and if successful produces an annotated result with all variables explicitly tagged with types.  The type checking phase uses a system of dependent types, with limited subtyping (implicit coercions) for sum types and subset types.  The details are fairly standard, so are omitted here.  One non-obvious consequence of the realizability translation, however, is that the subset types $\isubset{\ix}{\iS}{\iand{\ipp_1(\ix)}{\ipp_2(\ix)}}$ and
+$\isubset{\ix}{\iS}{\iand{\ipp_2(\ix)}{\ipp_1(\ix)}}$ are not equivalent in general (even ignoring decidability concerns!).  An explicit coercion is required to go from one type to the other, because subset values are pairs containing realizers for $\iand{\ipp_1(\ix)}{\ipp_2(\ix)}$ and $\iand{\ipp_2(\ix)}{\ipp_1(\ix)}$, and these realizers have potentially different types
+$|\ipp_1(\ix)|\mathtt{*}|\ipp_2(\ix)|$ and $|\ipp_2(\ix)|\mathtt{*}|\ipp_1(\ix)|$ respectively.
 
-Is ``typechecking'' one word?
+Next the realizability translation is performed as described in Section~\ref{sec:translation}, producing interface code.  The flexibility of the full input language (e.g., n-ary sum types and dependent product types) makes the translation code fairly involved, and so it is performed in a ``naive'' fashion whenever possible.  The immediate result of the translation is not easily readable.
+ 
+Thus, two more passes simplify the output before it is displayed to the user.  A \emph{thinning} pass removes all references to trivial realizers produced by stable formulas.  For example,  direct translation of the \texttt{initial} axiom in the output for Kuratowski-finite sets yields
+\begin{Verbatim}
+val initial: (A.a -> S.s) -> (fin -> S.s) * (top * (A.a -> top) * (fin -> fin -> top))
+\end{Verbatim}
+where \texttt{top} is the unit (terminal) type classifying the trivial realizer.  Thinning replaces this by the isomorphic type
+\begin{Verbatim}
+val initial: (A.a -> S.s) -> fin -> S.s
+\end{Verbatim}
+and appropriately modifies references to \texttt{initial} in the assertions to account for this change in type.
 
-Parsing and typechecking occur (Not much to say except perhaps for mentioning subtyping/coercions)
-
-
-\subsection{Translation}
-\label{sec:translation-1}
-
-Translation (what is said here that was not said in \ref{sec:translation}?
-
-
-\subsection{Optimization}
-\label{sec:optimization}
-
-TopTy and thinning
-
-Simplifications, but not any real theorem-proving. (Maybe address
-``program extraction from proofs here?'')
-
+Finally, an \emph{optimization} pass applies an ad-hoc collection of basic simplifications in order to make the output more readable.  (It is convenient to separate this from thinning because thinning can change the types of constants, while simplification optimizations are always type-preserving.  Except that phase-splitting breaks this invariant.  Oops.)  Term-level simplifications include \ldots.
+Logical simplifications include applications of truth table rules ($\iand{\itrue}{\ip}$ becomes $\ip$), detection of syntactically identical premises and conclusions ($\iimply{\ip_1}{\iand{\ip_1}{\ip_2}}$ becomes $\iimply{\ip_1}{\ip_2}$), as well as other common patterns we have seen arise
+($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes $\ipp(\ie)$).  We do not even attempt to do full theorem-proving here, so some redundancy may remain, but in practice the optimization pass can help significantly.
 
 \subsection{Phase-splitting}
 \label{sec:phase-splitting}
@@ -31,6 +29,15 @@ Simplifications, but not any real theorem-proving. (Maybe address
 I always wondered why it's called \emph{phase-splitting}.
 
 Phase-splitting:  functors into polymorphism
+
+
+Finally, the output is displayed to the user.
+
+\label{sec:typechecking}
+(Maybe address
+``program extraction from proofs here?'')
+
+
 
 
 
