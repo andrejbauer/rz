@@ -43,7 +43,6 @@
 \newcommand{\ie}{e}
 \newcommand{\iP}{p}
 \newcommand{\iS}{\alpha}
-\newcommand{\iprop}{\mathtt{prop}}
 \newcommand{\itrue}{\top}
 \newcommand{\ifalse}{\bot}
 \newcommand{\inot}[1]{\lnot #1}
@@ -58,21 +57,44 @@
 \newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
 \newcommand{\iapp}[2]{#1\ #2}
 
-\newcommand{\ituple}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
-\newcommand{\iproj}[2]{#1\texttt{.}#2}
-\newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
-\newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
+\newcommand{\ituple}[2]{(#1,\ldots,#2)}
+\newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
+\newcommand{\iconstrain}[2]{#1:#2}
+\newcommand{\ithe}[3]{\iota\,#1{:}#2{.}\, #3}
 \newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
 \newcommand{\ieclass}[2]{[#1]_{#2}}
-\newcommand{\ileteclass}[4]{\texttt{let}\ [#1]_{#2}\,\texttt{=}\,#3\ \texttt{in}\ #4}
-\newcommand{\irz}[1]{\texttt{rz}\,#1}
-\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
+\newcommand{\ileteclass}[4]{\textsf{let}\ [#1]_{#2}\,{=}#3\ \textsf{in}\ #4}
+\newcommand{\irz}[1]{\textsf{rz}\,#1}
+\newcommand{\iletrz}[3]{\textsf{let}\ \textsf{rz}\,#1\,{=}\,#2\ \textsf{in}\ #3}
+\newcommand{\iinj}[2]{#1\,#2}
+\newcommand{\imatches}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\cdots|\iinj{#5}{#6}\Rightarrow{#7}}
+\newcommand{\imatch}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\,\iinj{#5}{#6}\Rightarrow{#7}}
+\newcommand{\iselect}[2]{#1{.}#2}
 
 \newcommand{\itag}{\mathit{tag}}
 \newcommand{\iprod}[3]{#1{:}#2\times#3}
 \newcommand{\isum}[4]{#1{:}#2+#3{:}#4}
 \newcommand{\iquot}[2]{#1{\bigm/} #2}
 \newcommand{\isubset}[3]{\{\,#1{:}#2\ |\ #3\,\}}
+
+\newcommand{\iDefinition}[2]{\mathsf{Definition}\ #1\ :=\ #2.}
+\newcommand{\iParameter}[2]{\mathsf{Parameter}\ #1\ : #2.}
+\newcommand{\iAxiom}[2]{\mathsf{Axiom}\ #1\ : #2.}
+\newcommand{\ipt}{\tau}
+\newcommand{\ik}{\kappa}
+\newcommand{\idarrow}[3]{(#1{:}#2){\to}#3}
+\newcommand{\ite}{\theta}
+\newcommand{\ith}{\Theta}
+\newcommand{\iTH}{T}
+\newcommand{\ithy}[1]{\mathsf{thy}\ #1\ \mathsf{end}}
+\newcommand{\im}{M}
+\newcommand{\iM}{m}
+\newcommand{\il}{l}
+\newcommand{\iSet}{\mathsf{Set}}
+\newcommand{\iStable}{\mathsf{Stable}}
+\newcommand{\iProp}{\mathsf{Prop}}
+\newcommand{\iEquiv}[1]{\mathsf{Equiv}(#1)}
+\newcommand{\ibar}{\ |\ }
 
 \section{The Input Language}
 \label{sec:input-language}
@@ -83,16 +105,13 @@
 	\label{fig:typicalinput}
 \end{figure}
 
-Figure~\ref{fig:typicalinput} shows a sample input for the RZ system that
-generates the output shown in \internal{CS}{somewhere}. The input is the
+Figure~\ref{fig:typicalinput} shows a sample input for the RZ system. The input is the
 definition of one or more \emph{theories}. A \emph{theory} is a generalized
 logical signature with associated axioms, similar to a Coq module signature.
 The components of a theory may specify that a certain set must exist, that an
 element of a set must exist, that a proposition or first-order predicate must
 exist, a model of some other theory must exist, or specify an axiom that must
 hold.
-
-\internal{CS}{Actually, I should probably just follow the CASE approach of introducing the syntax in-line as each construct is mentioned.  This could save significant space for the short paper.}
 
 As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
 appearing in theories may use full first-order constructive logic, not just the
@@ -130,14 +149,11 @@ by other means; the output can then be trusted to the extent that the obligation
 
 
 
-
-
-
 \begin{figure}
 	\[
 	\begin{array}{rll}
 		\ip,\ipp ::= 
-		    & \iP\\
+		    & \iP\ |\ \iselect{\im}{\iP}\\
 		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iands{\ip}{\ip}\ |\ 
 		       \iors{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
 		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie}\\
@@ -147,29 +163,62 @@ by other means; the output can then be trusted to the extent that the obligation
 		      \iunique{\ix}{\is}{\ip}\\[10pt]
 		
 		\is ::= 
-		    & \iS\\
+		    & \iS \ |\ \iselect{\im}{\iS}\\
 		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2}\\
 		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
 		      \iapp{\is}{\ie}\\
-		  | & \isum{\itag_1}{\is_1}{\itag_2}{\is_2}\\
+		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2}\\
 		  | & \iquot{\is}{\ipp}\\
 		  | & \isubset{\ix}{\is}{\ipp}\\
 		  | & \irz{\is}\\[10pt] 
 		
 	
 		\ie ::=
-		    & \ix\\
-		  | & \iapp{\ie_1}{\ie_2}\\
-		  | & \ilambda{\ix}{\is}{\ie}\\
-		  | & \ituple{\ie_1}{\ie_2}\\
-		  | & \iproj{\ie}{n}\\
+		    & \ix\ |\ \iselect{\im}{\ix}\\
+		  | & \ilambda{\ix}{\is_1}{\ie}\ |\ 
+		      \iapp{\ie_1}{\ie_2}\\
+		  | & \ituple{\ie_1}{\ie_2} 
+		      \ibar \iproj{\ie}{n}\\
+		  | & \iinj{\il}{\ie} 
+		      \ibar (\imatch{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_2}{\ix_2}{\ie_2})\\
+		  | & \ieclass{\ie}{\ipp}
+		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}\\
+		  | & \irz{\ie}
+		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}\\
 		  | & \iconstrain{\ie}{\is}\\
 		  | & \ithe{\ix}{\is}{\ip}\\
-		  | & \ilet{\ix}{\ie_1}{\ie_2}\\
-		  | & \ieclass{\ie}{\ipp}\\
-		  | & \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}\\
-		  | & \irz{\ie}\\
-		  | & \iletrz{\ix}{\ie_1}{\ie_2}\\
+		  | & \ilet{\ix}{\ie_1}{\ie_2}\\[10pt]
+		
+		\im ::= 
+		    & \iM \ |\ \iselect{\im}{\iM}\\
+		  | & \ilambda{\iM}{\ith}{\im}\ |\ 
+		      \iapp{\im_1}{\im_2}\\
+		
+		\ipt ::=
+		    & \iProp\ |\ \iStable\ |\ \iEquiv{\is}\\[10pt] 
+		
+		\ik ::= 
+		    & \iSet\ |\ \idarrow{\ix}{\is}{\ik}\\[10pt]
+		
+
+		\ite ::=
+		     & \iDefinition{\ix}{\ie}\\
+		   | & \iDefinition{\iS}{\is}\\
+		   | & \iDefinition{\iP}{\ip}\\
+		   | & \iDefinition{\iTH}{\ith}\\
+		   | & \iParameter{\ix}{\ie}\\
+		   | & \iParameter{\iS}{\ik}\\
+		   | & \iParameter{\iP}{\ipt}\\
+		   | & \iParameter{\iM}{\ith}\\
+		   | & \iAxiom{\iP}{\ip}\\[10pt]
+		
+		\ith ::= 
+		     & \iTH\\
+%		   | & \iselect{\im}{\iTH}\\
+		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
+		 	| & \idarrow{\iM}{\ith_1}{\ith_2}\\
+		  	| & \ilambda{\iM}{\ith_1}{\ith_2}\ |\ 
+		      \iapp{\ith}{\iM}\\
 	\end{array}
 	\]
 	\label{fig:input}
