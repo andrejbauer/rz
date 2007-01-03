@@ -105,13 +105,29 @@
 	\label{fig:typicalinput}
 \end{figure}
 
-Figure~\ref{fig:typicalinput} shows a sample input for the RZ system. The input is the
-definition of one or more \emph{theories}. A \emph{theory} is a generalized
+
+A RZ \emph{theory} is a generalized
 logical signature with associated axioms, similar to a Coq module signature.
-The components of a theory may specify that a certain set must exist, that an
-element of a set must exist, that a proposition or first-order predicate must
-exist, a model of some other theory must exist, or specify an axiom that must
-hold.
+Theories are descriptions of \emph{models}, or implementations. The input is the
+definition of one or more \emph{theories}; 
+Figure~\ref{fig:typicalinput} shows a sample input for the RZ system. 
+(RZ does not permit models to be written directly, but it does let you
+assume that a model of a theory exists.)
+
+The simplest theory $\ith$ is a list of \emph{theory element}\/s $\ite$. A theory element may specify that a certain set, set element, proposition or predicate, or model must exist (i.e.,
+\textsf{Parameter} specifications). It may also provide a definition of a set, term, proposition, predicate, or theory (i.e., \textsf{Definition} specifications). Finally, a theory element can be
+a named axiom that must hold. (i.e., \textsf{Axiom} specifications).
+
+More complex theories can be parameterized by models (e.g., a theory of real numbers
+can be written in terms of one unspecified but arbitrary model of the natural numbers);
+in figure~\ref{fig:typicalinput} \texttt{Kuratowski} is a theory parameterized by a
+model choosing an implementation of a single set.  For any such model $\im$, then,
+$\mathtt{Kuratowski}(\im)$ is a theory describing a model of finite sets whose elements are
+in the set $\iselect{\im}{\mathtt{a}}$.   Alternatively, a theory can describe a 
+uniform family of models (e.g., a single model of real numbers written in terms of an arbitrary
+model of the natural numbers); this would correspond to a single implementation that works for any 
+model $\im$ satisfying the parameter theory.  In contrast, a parameterized theory permits
+completely unrelated implementations for $\mathtt{Kuratowski}(\im_1)$ and $\mathtt{Kuratowski(\im_2)}$.}
 
 As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
 appearing in theories may use full first-order constructive logic, not just the
@@ -151,78 +167,88 @@ by other means; the output can then be trusted to the extent that the obligation
 
 \begin{figure}
 	\[
-	\begin{array}{rll}
+	\begin{array}{rl@{\qquad}l}
+		\noalign{\textbf{Propositions/Predicates}}
 		\ip,\ipp ::= 
-		    & \iP\ |\ \iselect{\im}{\iP}\\
+		    & \iP\ |\ \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
 		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iand{\ip}{\ip}\ |\ 
-		       \ior{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip}\\
-		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie}\\
-		  | & \iequal{\ie}{\ie}\\
+		       \ior{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip} & \mbox{Predicate logic}\\
+		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
+		  | & \iequal{\ie}{\ie} & \mbox{Term equality}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 
 		      \iexists{\ix}{\is}{\ip} \ |\
-		      \iunique{\ix}{\is}{\ip}\\[10pt]
+		      \iunique{\ix}{\is}{\ip} & \mbox{Term quantifiers}\\[5pt]
 		
+		\noalign{\textbf{Sets}}
 		\is ::= 
-		    & \iS \ |\ \iselect{\im}{\iS}\\
-		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2}\\
+		    & \iS \ |\ \iselect{\im}{\iS} &\mbox{Set names}\\
+		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2} &\mbox{Unit and cartesian product}\\
+		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Disjoint union}\\
 		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
-		      \iapp{\is}{\ie}\\
-		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2}\\
-		  | & \iquot{\is}{\ipp}\\
-		  | & \isubset{\ix}{\is}{\ipp}\\
-		  | & \irz{\is}\\[10pt] 
+		      \iapp{\is}{\ie} &\mbox{Dependent set and application}\\
+		  | & \iquot{\is}{\ipp} & \mbox{Set quotient by an equivalence relation}\\
+		  | & \isubset{\ix}{\is}{\ipp} & \mbox{Subset satisfying a predicate}\\
+		  | & \irz{\is}&\mbox{Realizers of a set}\\[5pt] 
 		
-	
+		\noalign{\textbf{Terms}}	
 		\ie ::=
-		    & \ix\ |\ \iselect{\im}{\ix}\\
+		    & \ix\ |\ \iselect{\im}{\ix} &\mbox{Term names}\\
 		  | & \ilambda{\ix}{\is_1}{\ie}\ |\ 
-		      \iapp{\ie_1}{\ie_2}\\
+		      \iapp{\ie_1}{\ie_2} &\mbox{Function and application}\\
 		  | & \ituple{\ie_1}{\ie_2} 
-		      \ibar \iproj{\ie}{n}\\
+		      \ibar \iproj{\ie}{n}&\mbox{Tuple and projection}\\
 		  | & \iinj{\il}{\ie} 
-		      \ibar (\imatch{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_2}{\ix_2}{\ie_2})\\
+		      \ibar (\imatch{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_2}{\ix_2}{\ie_2})&\mbox{Injection and projection from a union}\\
 		  | & \ieclass{\ie}{\ipp}
-		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}\\
+		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}&\mbox{Equivalence class and picking a representative}\\
 		  | & \irz{\ie}
-		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}\\
-		  | & \iconstrain{\ie}{\is}\\
-		  | & \ithe{\ix}{\is}{\ip}\\
-		  | & \ilet{\ix}{\ie_1}{\ie_2}\\[10pt]
+		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}&\mbox{Realized value and picking a realizer}\\
+		  | & \iconstrain{\ie}{\is}&\mbox{Type coercion (e.g., in or out of a subset)}\\
+		  | & \ithe{\ix}{\is}{\ip}&\mbox{Definite description}\\
+		  | & \ilet{\ix}{\ie_1}{\ie_2}&\mbox{Local definition}\\[5pt]
 		
+		\noalign{\textbf{Models}}		
 		\im ::= 
-		    & \iM \ |\ \iselect{\im}{\iM}\\
-		  | & \ilambda{\iM}{\ith}{\im}\ |\ 
-		      \iapp{\im_1}{\im_2}\\
+		    & \iM \ |\ \iselect{\im}{\iM}&\mbox{Model names}\\
+		  | & \iapp{\im_1}{\im_2}&\mbox{Application of parameterized model}\\[5pt]
 		
+		\noalign{\textbf{Proposition Kinds}}
 		\ipt ::=
-		    & \iProp\ |\ \iStable\ |\ \iEquiv{\is}\\[10pt] 
+		    & \iProp & \mbox{Classifier for propositions}\\
+		    & \iStable & \mbox{Classifier for stable propositions}\\
+		    & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
+		    & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
 		
+		\noalign{\textbf{Set Kinds}}
 		\ik ::= 
-		    & \iSet\ |\ \idarrow{\ix}{\is}{\ik}\\[10pt]
+		    & \iSet &\mbox{Classifier for a proper set}\\
+		   | & \idarrow{\ix}{\is}{\ik} &\mbox{Classifier for a dependent set}\\[5pt]
 		
 
+		\noalign{\textbf{Theory Elements}}
 		\ite ::=
-		     & \iDefinition{\ix}{\ie}\\
-		   | & \iDefinition{\iS}{\is}\\
-		   | & \iDefinition{\iP}{\ip}\\
-		   | & \iDefinition{\iTH}{\ith}\\
-		   | & \iParameter{\ix}{\ie}\\
-		   | & \iParameter{\iS}{\ik}\\
-		   | & \iParameter{\iP}{\ipt}\\
-		   | & \iParameter{\iM}{\ith}\\
-		   | & \iAxiom{\iP}{\ip}\\[10pt]
-		
+		     & \iDefinition{\ix}{\ie}&\mbox{Name for a term}\\
+		   | & \iDefinition{\iS}{\is}&\mbox{Name for a set}\\
+		   | & \iDefinition{\iP}{\ip}&\mbox{Name for a proposition/predicate}\\
+		   | & \iDefinition{\iTH}{\ith}&\mbox{Name for a theory}\\
+		   | & \iParameter{\ix}{\is}&\mbox{Require an element in the given set}\\
+		   | & \iParameter{\iS}{\ik}&\mbox{Require a set of the given kind}\\
+		   | & \iParameter{\iP}{\ipt}&\mbox{Require a proposition/predicate of the given sort}\\
+		   | & \iParameter{\iM}{\ith}&\mbox{Require a model of the given theory}\\
+		   | & \iAxiom{\iP}{\ip}&\mbox{Axiom that must hold}\\[5pt]
+
+  		\noalign{\textbf{Theory}}
 		\ith ::= 
 		     & \iTH\\
 %		   | & \iselect{\im}{\iTH}\\
 		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
-		 	| & \idarrow{\iM}{\ith_1}{\ith_2}\\
+		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
 		  	| & \ilambda{\iM}{\ith_1}{\ith_2}\ |\ 
 		      \iapp{\ith}{\iM}\\
 	\end{array}
 	\]
 	\label{fig:input}
-	\caption{Input Syntax}
+	\caption{Input Syntax (Simplified)}
 \end{figure}
 
 

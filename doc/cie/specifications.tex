@@ -3,13 +3,13 @@
 
 
 In programming we distinguish between \emph{impementation} and
-\emph{specification} of a structure. In Ocaml these two notions are
+\emph{specification} of a structure. In OCaml these two notions are
 expressed with modules and module types, respectively.\footnote{In
   object-oriented languages implementations and specifications are
   expressed with classes and interfaces, while in Haskell they
-  correspond to ??? and ???.} A module contains definitions of types
-and values, while a module type lists the types and values that are
-defined in a module. In Figure~\ref{fig:module-example} we see the
+  correspond to ??? and ???.} A module defines types
+and values, while a module type simply lists the types and values provided
+by a module. In Figure~\ref{fig:module-example} we see the
 definition of a module type $\mathtt{AbelianGroup}$ and a
 module~$\mathtt{Z7}$ satisfying~$\mathtt{AbelianGroup}$.
 %
