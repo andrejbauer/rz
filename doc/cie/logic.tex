@@ -1,100 +1,4 @@
-% ASCII syntax
-\iffalse
-\newcommand{\ip}{p}
-\newcommand{\ix}{x}
-\newcommand{\is}{s}
-\newcommand{\ie}{e}
-\newcommand{\iP}{P}
-\newcommand{\iS}{S}
-\newcommand{\iprop}{\mathtt{prop}}
-\newcommand{\itrue}{\mathtt{true}}
-\newcommand{\ifalse}{\mathtt{false}}
-\newcommand{\inot}[1]{\mathtt{not}\,#1}
-\newcommand{\iimply}[2]{#1\,\mbox{\texttt{->}}\,#2}
-\newcommand{\iiff}[2]{#1\,\mbox{\texttt{<->}}\,#2}
-\newcommand{\iequal}[2]{#1\,\mathtt{=}\,#2}
-\newcommand{\iands}[2]{#1\,\mathtt{/\backslash}\, #2}
-\newcommand{\iors}[2]{#1\,\mathtt{\backslash/}\,#2}
-\newcommand{\iforall}[3]{\texttt{forall}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
-\newcommand{\iexists}[3]{\texttt{exists}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
-\newcommand{\iunique}[3]{\texttt{unique}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
-\newcommand{\ilambda}[3]{\texttt{lambda}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
-\newcommand{\iapps}[3]{#1\ #2\,\cdots\,#3}
-
-\newcommand{\ituples}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
-\newcommand{\iproj}[2]{#1\texttt{.}#2}
-\newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
-\newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
-\newcommand{\ilet}[3]{\texttt{let}\,#1\,\texttt{=}\,#2\,\texttt{in}\, #3}
-\newcommand{\iquot}[2]{#1\,\texttt{\%}\,#2}
-\newcommand{\iletquot}[4]{\texttt{let}\ #1\texttt{\%}\,#2\,\texttt{=}\,#3\ \texttt{in}\ #4}
-\newcommand{\irz}[1]{\texttt{rz}\,#1}
-\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
-
-\newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
-\newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
-\fi
-
-% Spiffed up syntax using mathematical symbols
-\newcommand{\ip}{\varphi}
-\newcommand{\ipp}{\rho}
-\newcommand{\ix}{x}
-\newcommand{\is}{s}
-\newcommand{\ie}{e}
-\newcommand{\iP}{p}
-\newcommand{\iS}{\alpha}
-\newcommand{\itrue}{\top}
-\newcommand{\ifalse}{\bot}
-\newcommand{\inot}[1]{\lnot #1}
-\newcommand{\iimply}[2]{#1\Rightarrow #2}
-\newcommand{\iiff}[2]{#1 \Leftrightarrow #2}
-\newcommand{\iequal}[2]{#1 = #2}
-\newcommand{\iand}[2]{#1\land #2}
-\newcommand{\ior}[2]{#1\lor #2}
-\newcommand{\iforall}[3]{\forall #1{:}#2.\ #3}
-\newcommand{\iexists}[3]{\exists #1{:}#2.\ #3}
-\newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
-\newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
-\newcommand{\iapp}[2]{#1\ #2}
-
-\newcommand{\ituple}[2]{(#1,\ldots,#2)}
-\newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
-\newcommand{\iconstrain}[2]{#1:#2}
-\newcommand{\ithe}[3]{\iota\,#1{:}#2{.}\, #3}
-\newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
-\newcommand{\ieclass}[2]{[#1]_{#2}}
-\newcommand{\ileteclass}[4]{\textsf{let}\ [#1]_{#2}\,{=}#3\ \textsf{in}\ #4}
-\newcommand{\irz}[1]{\textsf{rz}\,#1}
-\newcommand{\iletrz}[3]{\textsf{let}\ \textsf{rz}\,#1\,{=}\,#2\ \textsf{in}\ #3}
-\newcommand{\iinj}[2]{#1\,#2}
-\newcommand{\imatches}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\cdots|\iinj{#5}{#6}\Rightarrow{#7}}
-\newcommand{\imatch}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\,\iinj{#5}{#6}\Rightarrow{#7}}
-\newcommand{\iselect}[2]{#1{.}#2}
-
-\newcommand{\itag}{\mathit{tag}}
-\newcommand{\iprod}[3]{#1{:}#2\times#3}
-\newcommand{\isum}[4]{#1{:}#2+#3{:}#4}
-\newcommand{\iquot}[2]{#1{\bigm/} #2}
-\newcommand{\isubset}[3]{\{\,#1{:}#2\ |\ #3\,\}}
-
-\newcommand{\iDefinition}[2]{\mathsf{Definition}\ #1\ :=\ #2.}
-\newcommand{\iParameter}[2]{\mathsf{Parameter}\ #1\ : #2.}
-\newcommand{\iAxiom}[2]{\mathsf{Axiom}\ #1\ : #2.}
-\newcommand{\ipt}{\tau}
-\newcommand{\ik}{\kappa}
-\newcommand{\idarrow}[3]{(#1{:}#2){\to}#3}
-\newcommand{\ite}{\theta}
-\newcommand{\ith}{\Theta}
-\newcommand{\iTH}{T}
-\newcommand{\ithy}[1]{\mathsf{thy}\ #1\ \mathsf{end}}
-\newcommand{\im}{M}
-\newcommand{\iM}{m}
-\newcommand{\il}{l}
-\newcommand{\iSet}{\mathsf{Set}}
-\newcommand{\iStable}{\mathsf{Stable}}
-\newcommand{\iProp}{\mathsf{Prop}}
-\newcommand{\iEquiv}[1]{\mathsf{Equiv}(#1)}
-\newcommand{\ibar}{\ |\ }
+% Macros were moved to macros.tex because I need them in an earlier section.
 
 \section{The Input Language}
 \label{sec:input-language}
@@ -118,16 +22,20 @@ The simplest theory $\ith$ is a list of \emph{theory element}\/s $\ite$. A theor
 \textsf{Parameter} specifications). It may also provide a definition of a set, term, proposition, predicate, or theory (i.e., \textsf{Definition} specifications). Finally, a theory element can be
 a named axiom that must hold. (i.e., \textsf{Axiom} specifications).
 
-More complex theories can be parameterized by models (e.g., a theory of real numbers
-can be written in terms of one unspecified but arbitrary model of the natural numbers);
-in figure~\ref{fig:typicalinput} \texttt{Kuratowski} is a theory parameterized by a
-model choosing an implementation of a single set.  For any such model $\im$, then,
-$\mathtt{Kuratowski}(\im)$ is a theory describing a model of finite sets whose elements are
-in the set $\iselect{\im}{\mathtt{a}}$.   Alternatively, a theory can describe a 
-uniform family of models (e.g., a single model of real numbers written in terms of an arbitrary
-model of the natural numbers); this would correspond to a single implementation that works for any 
-model $\im$ satisfying the parameter theory.  In contrast, a parameterized theory permits
-completely unrelated implementations for $\mathtt{Kuratowski}(\im_1)$ and $\mathtt{Kuratowski(\im_2)}$.}
+More complex theories can be parameterized by models (e.g., a theory
+of real numbers can be written in terms of one unspecified but
+arbitrary model of the natural numbers); in
+figure~\ref{fig:typicalinput} \texttt{Kuratowski} is a theory
+parameterized by a model choosing an implementation of a single set.
+For any such model $\im$, then, $\mathtt{Kuratowski}(\im)$ is a theory
+describing a model of finite sets whose elements are in the set
+$\iselect{\im}{\mathtt{a}}$. Alternatively, a theory can describe a
+uniform family of models (e.g., a single model of real numbers written
+in terms of an arbitrary model of the natural numbers); this would
+correspond to a single implementation that works for any model $\im$
+satisfying the parameter theory. In contrast, a parameterized theory
+permits completely unrelated implementations for
+$\mathtt{Kuratowski}(\im_1)$ and $\mathtt{Kuratowski(\im_2)}$.
 
 As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
 appearing in theories may use full first-order constructive logic, not just the
@@ -171,10 +79,10 @@ by other means; the output can then be trusted to the extent that the obligation
 		\noalign{\textbf{Propositions/Predicates}}
 		\ip,\ipp ::= 
 		    & \iP\ |\ \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
-		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip}\ |\ \iand{\ip}{\ip}\ |\ 
-		       \ior{\ip}{\ip}\ | \ \iimply{\ip}{\ip}\ |\ \iiff{\ip}{\ip} & \mbox{Predicate logic}\\
+		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip_1}\ |\ \iand{\ip_1}{\ip_2}\ |\ 
+		       \ior{\ip_1}{\ip_2}\ | \ \iimply{\ip_1}{\ip_2}\ |\ \iiff{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
 		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
-		  | & \iequal{\ie}{\ie} & \mbox{Term equality}\\
+		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 
 		      \iexists{\ix}{\is}{\ip} \ |\
 		      \iunique{\ix}{\is}{\ip} & \mbox{Term quantifiers}\\[5pt]
@@ -251,23 +159,12 @@ by other means; the output can then be trusted to the extent that the obligation
 	\caption{Input Syntax (Simplified)}
 \end{figure}
 
+\internal{AB}{Is the unit set really denoted by $()$?}
 
 
 Explain the input language and its semantics.
 
 
-
-\internal{AB}{The plan here seems to be as follows. Before this
-  section we will say that assertions are written in the negative
-  fragment, and that in the input language we use constructive logic,
-  which turns out to be more convenient. So just go ahead and
-  introduce constructive logic without worrying what its
-  interpretation might be. Then in the translation section we'll
-  explain the realizability interpretation of constructive logic.
-  Actually, the logic is first-order intuitionistic logic. The fact
-  the the logic is intuitionistic is not a choice but reality: the
-  interpretation does not validate the Law of Excluded Middle. This
-  should be commented on.}
 
 
 %%% Local Variables: 

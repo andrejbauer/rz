@@ -95,6 +95,97 @@ shown in Figure~\ref{fig:ab-group-thy}.
 In this section we present the logical language of assertions. To be
 continued\dots
 
+\begin{figure}
+	\[
+	\begin{array}{rl@{\qquad}l}
+          \noalign{(I am going to change this to out syntax.)}
+		\noalign{\textbf{Assertions}}
+		\ip ::= 
+		    & \iP\ |\ \iselect{\im}{\iP}&\mbox{Atomic
+                      proposition}\\
+                    | & \ie : \support{\iapp{\iS}{\ie_1 \ldots
+                        \ie_n}} \ | \ \ie_1 \iper{\iapp{\iS}{\ie_1
+                        \ldots \ie_n}} \ie_2 \\
+		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip_1}\ |\ \iand{\ip_1}{\ip_2}\ |\ 
+		       \iimply{\ip_1}{\ip_2}\ |\ \iiff{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
+		  | & \ilambda{\ix}{\ity}{\ip} \ |\ \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
+		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
+		  | & \iforall{\ix}{\is}{\ip} \ |\ 
+		      \iforall{\ix}{\support{\is}}{\ip} & \mbox{Term quantifiers}\\[5pt]
+		
+		\noalign{\textbf{Types}}
+		\is ::= 
+		    & \iS \ |\ \iselect{\im}{\iS} &\mbox{Type names}\\
+		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2} &\mbox{Unit and cartesian product}\\
+		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Disjoint union}\\
+		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
+		      \iapp{\is}{\ie} &\mbox{Dependent set and application}\\
+		  | & \iquot{\is}{\ipp} & \mbox{Set quotient by an equivalence relation}\\
+		  | & \isubset{\ix}{\is}{\ipp} & \mbox{Subset satisfying a predicate}\\
+		  | & \irz{\is}&\mbox{Realizers of a set}\\[5pt] 
+		
+		\noalign{\textbf{Terms}}	
+		\ie ::=
+		    & \ix\ |\ \iselect{\im}{\ix} &\mbox{Term names}\\
+		  | & \ilambda{\ix}{\is_1}{\ie}\ |\ 
+		      \iapp{\ie_1}{\ie_2} &\mbox{Function and application}\\
+		  | & \ituple{\ie_1}{\ie_2} 
+		      \ibar \iproj{\ie}{n}&\mbox{Tuple and projection}\\
+		  | & \iinj{\il}{\ie} 
+		      \ibar (\imatch{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_2}{\ix_2}{\ie_2})&\mbox{Injection and projection from a union}\\
+		  | & \ieclass{\ie}{\ipp}
+		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}&\mbox{Equivalence class and picking a representative}\\
+		  | & \irz{\ie}
+		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}&\mbox{Realized value and picking a realizer}\\
+		  | & \iconstrain{\ie}{\is}&\mbox{Type coercion (e.g., in or out of a subset)}\\
+		  | & \ithe{\ix}{\is}{\ip}&\mbox{Definite description}\\
+		  | & \ilet{\ix}{\ie_1}{\ie_2}&\mbox{Local definition}\\[5pt]
+		
+		\noalign{\textbf{Models}}		
+		\im ::= 
+		    & \iM \ |\ \iselect{\im}{\iM}&\mbox{Model names}\\
+		  | & \iapp{\im_1}{\im_2}&\mbox{Application of parameterized model}\\[5pt]
+		
+		\noalign{\textbf{Proposition Kinds}}
+		\ipt ::=
+		    & \iProp & \mbox{Classifier for propositions}\\
+		    & \iStable & \mbox{Classifier for stable propositions}\\
+		    & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
+		    & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
+		
+		\noalign{\textbf{Set Kinds}}
+		\ik ::= 
+		    & \iSet &\mbox{Classifier for a proper set}\\
+		   | & \idarrow{\ix}{\is}{\ik} &\mbox{Classifier for a dependent set}\\[5pt]
+		
+
+		\noalign{\textbf{Theory Elements}}
+		\ite ::=
+		     & \iDefinition{\ix}{\ie}&\mbox{Name for a term}\\
+		   | & \iDefinition{\iS}{\is}&\mbox{Name for a set}\\
+		   | & \iDefinition{\iP}{\ip}&\mbox{Name for a proposition/predicate}\\
+		   | & \iDefinition{\iTH}{\ith}&\mbox{Name for a theory}\\
+		   | & \iParameter{\ix}{\is}&\mbox{Require an element in the given set}\\
+		   | & \iParameter{\iS}{\ik}&\mbox{Require a set of the given kind}\\
+		   | & \iParameter{\iP}{\ipt}&\mbox{Require a proposition/predicate of the given sort}\\
+		   | & \iParameter{\iM}{\ith}&\mbox{Require a model of the given theory}\\
+		   | & \iAxiom{\iP}{\ip}&\mbox{Axiom that must hold}\\[5pt]
+
+  		\noalign{\textbf{Theory}}
+		\ith ::= 
+		     & \iTH\\
+%		   | & \iselect{\im}{\iTH}\\
+		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
+		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
+		  	| & \ilambda{\iM}{\ith_1}{\ith_2}\ |\ 
+		      \iapp{\ith}{\iM}\\
+	\end{array}
+	\]
+	\label{fig:input}
+	\caption{Input Syntax (Simplified)}
+\end{figure}
+
+
 
 \internal{Andrej}{Do not forger to mention \emph{assure}!}
 \internal{Andrej}{Do we discuss functors here as well?}
