@@ -116,7 +116,9 @@
 
 % Output language
 \newcommand{\ity}{t}
+\newcommand{\iTy}{T}
 \newcommand{\iper}[1]{\mathbin{\mathtt{=}{#1}\mathtt{=}}}
+\newcommand{\iunit}{\mathtt{unit}}
 \fi
 
 % Spiffed up syntax using mathematical symbols
@@ -180,9 +182,15 @@
 \newcommand{\iEquiv}[1]{\mathsf{Equiv}(#1)}
 \newcommand{\ibar}{\ |\ }
 
-\newcommand{\ity}{t}
+\newcommand{\ity}{\tau}
+\newcommand{\iTy}{T}
 \newcommand{\iper}[1]{\approx_{#1}}
-
+\newcommand{\iunit}{\mathsf{unit}}
+\newcommand{\isumty}[4]{[`#1\,\mathsf{of}\,#2 \mid `#3\,\mathsf{of}\,#4]}
+\newcommand{\iinjty}[2]{`#1\,#2}
+\newcommand{\imatchesty}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinjty{#2}{#3}\to{#4}\,|\cdots|\iinjty{#5}{#6}\to{#7}}
+\newcommand{\ioblig}[3]{\textsf{assure}\,#1{:}#2\,\mathsf{in}\,#3}
+\newcommand{\isig}[1]{\textsf{sig}\,#1\,\mathsf{end}}
 
 %%% Local Variables: 
 %%% mode: latex

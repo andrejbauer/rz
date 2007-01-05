@@ -101,49 +101,39 @@ continued\dots
           \noalign{(I am going to change this to out syntax.)}
 		\noalign{\textbf{Assertions}}
 		\ip ::= 
-		    & \iP\ |\ \iselect{\im}{\iP}&\mbox{Atomic
+		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Atomic
                       proposition}\\
-                    | & \ie : \support{\iapp{\iS}{\ie_1 \ldots
-                        \ie_n}} \ | \ \ie_1 \iper{\iapp{\iS}{\ie_1
-                        \ldots \ie_n}} \ie_2 \\
-		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip_1}\ |\ \iand{\ip_1}{\ip_2}\ |\ 
-		       \iimply{\ip_1}{\ip_2}\ |\ \iiff{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
-		  | & \ilambda{\ix}{\ity}{\ip} \ |\ \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
-		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
-		  | & \iforall{\ix}{\is}{\ip} \ |\ 
-		      \iforall{\ix}{\support{\is}}{\ip} & \mbox{Term quantifiers}\\[5pt]
+		  | & \itrue  \ibar \ifalse \ibar \inot{\ip_1} \ibar \iand{\ip_1}{\ip_2} \ibar 
+		      \iimply{\ip_1}{\ip_2} \ibar \iiff{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
+		  | & \ilambda{\ix}{\ity}{\ip}  \ibar \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
+                    | & \ie : \support{\iS}  \ibar \ie_1 \iper{\iS} \ie_2 & \mbox{Pers and support} \\
+		  | & \iequal{\ie_1}{\ie_2} & \mbox{(Observational) term equality}\\
+		  | & \iforall{\ix}{\ity}{\ip}  \ibar 
+		      \iforall{\ix}{\support{\iS}}{\ip} & \mbox{Term quantifiers}\\[5pt]
 		
 		\noalign{\textbf{Types}}
-		\is ::= 
-		    & \iS \ |\ \iselect{\im}{\iS} &\mbox{Type names}\\
-		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2} &\mbox{Unit and cartesian product}\\
-		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Disjoint union}\\
-		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
-		      \iapp{\is}{\ie} &\mbox{Dependent set and application}\\
-		  | & \iquot{\is}{\ipp} & \mbox{Set quotient by an equivalence relation}\\
-		  | & \isubset{\ix}{\is}{\ipp} & \mbox{Subset satisfying a predicate}\\
-		  | & \irz{\is}&\mbox{Realizers of a set}\\[5pt] 
+		\ity ::= 
+		    & \iTy  \ibar \iselect{\im}{\iTy} &\mbox{Type names}\\
+		  | & \iunit \ibar \ity_1 \times \ity_2 &\mbox{Unit and cartesian product}\\
+		  | & \ity_1 \to \ity_2 & \mbox{Function type}\\
+		  | & \isumty{\il_1}{\ity_1}{\il_2}{\ity_2} &\mbox{Disjoint sum}\\
+                  | & & \mbox{Polymorphic types?}\\[5pt]
 		
 		\noalign{\textbf{Terms}}	
 		\ie ::=
-		    & \ix\ |\ \iselect{\im}{\ix} &\mbox{Term names}\\
-		  | & \ilambda{\ix}{\is_1}{\ie}\ |\ 
+		    & \ix \ibar \iselect{\im}{\ix} &\mbox{Term names}\\
+		  | & \ilambda{\ix}{\ity_1}{\ie} \ibar 
 		      \iapp{\ie_1}{\ie_2} &\mbox{Function and application}\\
 		  | & \ituple{\ie_1}{\ie_2} 
 		      \ibar \iproj{\ie}{n}&\mbox{Tuple and projection}\\
-		  | & \iinj{\il}{\ie} 
-		      \ibar (\imatch{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_2}{\ix_2}{\ie_2})&\mbox{Injection and projection from a union}\\
-		  | & \ieclass{\ie}{\ipp}
-		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}&\mbox{Equivalence class and picking a representative}\\
-		  | & \irz{\ie}
-		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}&\mbox{Realized value and picking a realizer}\\
-		  | & \iconstrain{\ie}{\is}&\mbox{Type coercion (e.g., in or out of a subset)}\\
-		  | & \ithe{\ix}{\is}{\ip}&\mbox{Definite description}\\
+		  | & \iinjty{\il}{\ie} 
+		      \ibar (\imatchesty{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_n}{\ix_n}{\ie_n})&\mbox{Injection and projection from a union}\\
+		  | & \ioblig{\ix}{\ip}{\ie}&\mbox{Obligation}\\
 		  | & \ilet{\ix}{\ie_1}{\ie_2}&\mbox{Local definition}\\[5pt]
 		
 		\noalign{\textbf{Models}}		
 		\im ::= 
-		    & \iM \ |\ \iselect{\im}{\iM}&\mbox{Model names}\\
+		    & \iM  \ibar \iselect{\im}{\iM}&\mbox{Model names}\\
 		  | & \iapp{\im_1}{\im_2}&\mbox{Application of parameterized model}\\[5pt]
 		
 		\noalign{\textbf{Proposition Kinds}}
@@ -159,7 +149,7 @@ continued\dots
 		   | & \idarrow{\ix}{\is}{\ik} &\mbox{Classifier for a dependent set}\\[5pt]
 		
 
-		\noalign{\textbf{Theory Elements}}
+		\noalign{\textbf{Module Elements}}
 		\ite ::=
 		     & \iDefinition{\ix}{\ie}&\mbox{Name for a term}\\
 		   | & \iDefinition{\iS}{\is}&\mbox{Name for a set}\\
@@ -171,14 +161,13 @@ continued\dots
 		   | & \iParameter{\iM}{\ith}&\mbox{Require a model of the given theory}\\
 		   | & \iAxiom{\iP}{\ip}&\mbox{Axiom that must hold}\\[5pt]
 
-  		\noalign{\textbf{Theory}}
+  		\noalign{\textbf{Module Type}}
 		\ith ::= 
 		     & \iTH\\
 %		   | & \iselect{\im}{\iTH}\\
-		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
+		   	| & \isig{\ite_1 \ldots \ite_n}\\
 		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
-		  	| & \ilambda{\iM}{\ith_1}{\ith_2}\ |\ 
-		      \iapp{\ith}{\iM}\\
+		  	| & \ilambda{\iM}{\ith_1}{\ith_2} \ibar \iapp{\ith}{\iM}\\
 	\end{array}
 	\]
 	\label{fig:input}
