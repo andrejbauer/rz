@@ -114,11 +114,6 @@
 \newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
 \newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
 
-% Output language
-\newcommand{\ity}{t}
-\newcommand{\iTy}{T}
-\newcommand{\iper}[1]{\mathbin{\mathtt{=}{#1}\mathtt{=}}}
-\newcommand{\iunit}{\mathtt{unit}}
 \fi
 
 % Spiffed up syntax using mathematical symbols
@@ -182,15 +177,69 @@
 \newcommand{\iEquiv}[1]{\mathsf{Equiv}(#1)}
 \newcommand{\ibar}{\ |\ }
 
-\newcommand{\ity}{\tau}
-\newcommand{\iTy}{T}
-\newcommand{\iper}[1]{\approx_{#1}}
-\newcommand{\iunit}{\mathsf{unit}}
-\newcommand{\isumty}[4]{[`#1\,\mathsf{of}\,#2 \mid `#3\,\mathsf{of}\,#4]}
-\newcommand{\iinjty}[2]{`#1\,#2}
-\newcommand{\imatchesty}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinjty{#2}{#3}\to{#4}\,|\cdots|\iinjty{#5}{#6}\to{#7}}
-\newcommand{\ioblig}[3]{\textsf{assure}\,#1{:}#2\,\mathsf{in}\,#3}
-\newcommand{\isig}[1]{\textsf{sig}\,#1\,\mathsf{end}}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Output-specific syntax (did not bother to produce ASCII version yet)
+\newcommand{\obar}{\ |\ }
+%%%% types
+\newcommand{\oty}{\tau} % type
+\newcommand{\opty}{\alpha} % polymorphic type
+\newcommand{\oTY}{T} % type name
+\newcommand{\oprod}[2]{#1 \times #2} % product
+\newcommand{\oarrow}[2]{#1 \to #2} % arrow
+\newcommand{\ounit}{\mathsf{unit}} % unit type
+\newcommand{\oselect}[2]{#1{.}#2}  % projection from a module
+\newcommand{\osumty}[4]{[`#1\,\mathsf{of}\,#2 \mid \cdots \mid `#3\,\mathsf{of}\,#4]}
+\newcommand{\ol}{l} % label
+%%%% terms
+\renewcommand{\oe}{e} % expression
+\newcommand{\ox}{x} % variable
+\newcommand{\olambda}[3]{\mathsf{fun}\,#1{:}#2 \to #3} % abstraction
+\newcommand{\oapp}[2]{#1\,#2} % application
+\newcommand{\otuple}[2]{(#1,\ldots,#2)} % tuple
+\newcommand{\oproj}[2]{\mathsf{p}_{#2}\,#1} % projection
+\newcommand{\oinj}[2]{`#1\,#2} % sum injection
+\newcommand{\omatch}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}\to{#4}\obar\oinj{#5}{#6}\to{#7}}
+\newcommand{\omatches}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}\to{#4}\,|\cdots|\oinj{#5}{#6}\to{#7}}
+\newcommand{\ooblig}[4]{\mathsf{assure}\,#1{:}#2.\,#3\,\mathsf{in}\,#4}
+\newcommand{\oobligx}[2]{\mathsf{assure}\,#1\,\mathsf{in}\,#2}
+\newcommand{\olet}[3]{\mathsf{let}\,#1{=}#2\,\mathsf{in}\,#3}
+%%%% propositions
+\newcommand{\op}{p} % proposition
+\newcommand{\oP}{P} % atomic proposition
+\newcommand{\otrue}{\top} % true
+\newcommand{\ofalse}{\bot} % false
+\newcommand{\onot}[1]{\lnot #1} % not
+\newcommand{\oand}[2]{#1 \land #2} % and
+\newcommand{\oimply}[2]{#1 \Rightarrow #2} % imply
+\newcommand{\oiff}[2]{#1 \Leftrightarrow #2} % iff
+\newcommand{\ototal}[2]{#1{:}\support{#2}} % support membership
+\newcommand{\oper}[3]{#2\,{\approx_{#1}}\,#3} % per
+\newcommand{\oequal}[2]{#1{=}#2} % observational equality
+\newcommand{\oforall}[3]{\forall #1{:}#2.\,#3}
+\newcommand{\oforallt}[3]{\forall #1{:}\support{#2}.\,#3}
+%%% Modest sets?
+\newcommand{\oS}{S}
+\newcommand{\os}{s}
+%%% Modules
+\newcommand{\om}{m} % module
+\newcommand{\oM}{M} % module name
+%%% Proposition kinds
+\newcommand{\opt}{\Pi}
+\newcommand{\oProp}{\mathsf{Prop}}
+%%% Module type elements
+\newcommand{\ote}{\theta}
+\newcommand{\ovalspec}[2]{\mathsf{val}\,#1:#2}
+\newcommand{\otyspec}[1]{\mathsf{type}\,#1}
+\newcommand{\otydef}[2]{\mathsf{type}\,#1=#2}
+\newcommand{\omodulespec}[2]{\mathsf{module}\,#1:#2}
+\newcommand{\osignatdef}[2]{\mathsf{module}\,\mathsf{type}\,#1=#2}
+\newcommand{\ospropspec}[2]{\mathsf{prop}\,#1:#2}
+\newcommand{\oassertion}[2]{\mathsf{assertion}\,#1 : #2}
+%%% Module type
+\newcommand{\omt}{\Sigma}
+\newcommand{\oMT}{S}
+\newcommand{\osig}[1]{\mathsf{sig}\,#1\,\mathsf{end}}
+\newcommand{\ofunctor}[3]{\mathsf{functor}\, (#1{:}#2) \to #3}
 
 %%% Local Variables: 
 %%% mode: latex

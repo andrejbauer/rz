@@ -98,85 +98,76 @@ continued\dots
 \begin{figure}
 	\[
 	\begin{array}{rl@{\qquad}l}
-          \noalign{(I am going to change this to out syntax.)}
-		\noalign{\textbf{Assertions}}
-		\ip ::= 
-		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Atomic
-                      proposition}\\
-		  | & \itrue  \ibar \ifalse \ibar \inot{\ip_1} \ibar \iand{\ip_1}{\ip_2} \ibar 
-		      \iimply{\ip_1}{\ip_2} \ibar \iiff{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
-		  | & \ilambda{\ix}{\ity}{\ip}  \ibar \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
-                    | & \ie : \support{\iS}  \ibar \ie_1 \iper{\iS} \ie_2 & \mbox{Pers and support} \\
-		  | & \iequal{\ie_1}{\ie_2} & \mbox{(Observational) term equality}\\
-		  | & \iforall{\ix}{\ity}{\ip}  \ibar 
-		      \iforall{\ix}{\support{\iS}}{\ip} & \mbox{Term quantifiers}\\[5pt]
-		
 		\noalign{\textbf{Types}}
-		\ity ::= 
-		    & \iTy  \ibar \iselect{\im}{\iTy} &\mbox{Type names}\\
-		  | & \iunit \ibar \ity_1 \times \ity_2 &\mbox{Unit and cartesian product}\\
-		  | & \ity_1 \to \ity_2 & \mbox{Function type}\\
-		  | & \isumty{\il_1}{\ity_1}{\il_2}{\ity_2} &\mbox{Disjoint sum}\\
-                  | & & \mbox{Polymorphic types?}\\[5pt]
+		\oty ::= 
+		    & \oTY  \obar \oselect{\oM}{\oTY} &\mbox{Type names}\\
+		  | & \ounit \obar \oprod{\oty_1}{\oty_2} &\mbox{Unit and cartesian product}\\
+		  | & \oarrow{\oty_1}{\oty_2} & \mbox{Function type}\\
+		  | & \osumty{\ol_1}{\oty_1}{\ol_n}{\oty_n} &\mbox{Disjoint sum}\\
+                  | & \opty & \mbox{Polymorphic types}\\[5pt]
 		
 		\noalign{\textbf{Terms}}	
-		\ie ::=
-		    & \ix \ibar \iselect{\im}{\ix} &\mbox{Term names}\\
-		  | & \ilambda{\ix}{\ity_1}{\ie} \ibar 
-		      \iapp{\ie_1}{\ie_2} &\mbox{Function and application}\\
-		  | & \ituple{\ie_1}{\ie_2} 
-		      \ibar \iproj{\ie}{n}&\mbox{Tuple and projection}\\
-		  | & \iinjty{\il}{\ie} 
-		      \ibar (\imatchesty{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_n}{\ix_n}{\ie_n})&\mbox{Injection and projection from a union}\\
-		  | & \ioblig{\ix}{\ip}{\ie}&\mbox{Obligation}\\
-		  | & \ilet{\ix}{\ie_1}{\ie_2}&\mbox{Local definition}\\[5pt]
+		\oe ::=
+		    & \ox \obar \oselect{\oM}{\ox} &\mbox{Term names}\\
+		  | & \olambda{\ox}{\oty_1}{\oe} \obar 
+		      \oapp{\oe_1}{\oe_2} &\mbox{Abstraction and application}\\
+		  | & \otuple{\oe_1}{\oe_n} 
+		      \obar \oproj{\oe}{n}&\mbox{Tuple and projection}\\
+		  | & \oinj{\ol}{\oe} 
+		      \obar (\omatches{\oe_0}{\ol_1}{\ox_1}{\oe_1}{\ol_n}{\ox_n}{\oe_n})&\mbox{Injection and projection from a sum}\\
+		  | & \ooblig{\ox}{\op}{\oe} \obar \oobligx{\op}{\oe} &\mbox{Obligation}\\
+		  | & \olet{\ox}{\oe_1}{\oe_2}&\mbox{Local definition}\\[5pt]
 		
-		\noalign{\textbf{Models}}		
-		\im ::= 
-		    & \iM  \ibar \iselect{\im}{\iM}&\mbox{Model names}\\
-		  | & \iapp{\im_1}{\im_2}&\mbox{Application of parameterized model}\\[5pt]
+
+		\noalign{\textbf{Propositions (negative fragment)}}
+		\op ::= 
+		    & \oP \obar \oselect{\oM}{\oP}&\mbox{Atomic
+                      proposition}\\
+		  | & \otrue  \obar \ofalse \obar \onot{\op_1} \obar \oand{\op_1}{\op_2} \obar 
+		      \oimply{\op_1}{\op_2} \obar \oiff{\op_1}{\op_2} & \mbox{Predicate logic}\\
+		  | & \olambda{\ox}{\oty}{\op}  \obar \oapp{\op}{\oe} & \mbox{Predicates and application}\\
+                    | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
+		  | & \oequal{\oe_1}{\oe_2} & \mbox{(Observational) term equality}\\
+		  | & \oforall{\ox}{\oty}{\op}  \obar 
+		      \oforallt{\ox}{\os}{\op} & \mbox{Term quantifiers}\\[5pt]
+		
+		\noalign{\textbf{Basic modest sets}}
+                \os ::=
+                    & \oS \obar \oapp{\os}{\oe} & \\[5pt]
+
+		\noalign{\textbf{Modules}}		
+		\om ::= 
+		    & \oM  \obar \oselect{\om}{\oM}&\mbox{Model names}\\
+		  | & \oapp{\om_1}{\om_2}&\mbox{Application of parameterized model}\\[5pt]
 		
 		\noalign{\textbf{Proposition Kinds}}
-		\ipt ::=
-		    & \iProp & \mbox{Classifier for propositions}\\
-		    & \iStable & \mbox{Classifier for stable propositions}\\
-		    & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
-		    & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
+		\opt ::=
+		    & \oProp & \mbox{Classifier for propositions}\\
+		   |& \oarrow{\oty}{\opt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
 		
-		\noalign{\textbf{Set Kinds}}
-		\ik ::= 
-		    & \iSet &\mbox{Classifier for a proper set}\\
-		   | & \idarrow{\ix}{\is}{\ik} &\mbox{Classifier for a dependent set}\\[5pt]
-		
-
-		\noalign{\textbf{Module Elements}}
-		\ite ::=
-		     & \iDefinition{\ix}{\ie}&\mbox{Name for a term}\\
-		   | & \iDefinition{\iS}{\is}&\mbox{Name for a set}\\
-		   | & \iDefinition{\iP}{\ip}&\mbox{Name for a proposition/predicate}\\
-		   | & \iDefinition{\iTH}{\ith}&\mbox{Name for a theory}\\
-		   | & \iParameter{\ix}{\is}&\mbox{Require an element in the given set}\\
-		   | & \iParameter{\iS}{\ik}&\mbox{Require a set of the given kind}\\
-		   | & \iParameter{\iP}{\ipt}&\mbox{Require a proposition/predicate of the given sort}\\
-		   | & \iParameter{\iM}{\ith}&\mbox{Require a model of the given theory}\\
-		   | & \iAxiom{\iP}{\ip}&\mbox{Axiom that must hold}\\[5pt]
+		\noalign{\textbf{Module Type Elements}}
+		\ote ::=
+		     & \ovalspec{\ox}{\oty}&\mbox{Value specification}\\
+		   | & \otyspec{\oTY}&\mbox{Type specification}\\
+                   | & \otydef{\oTY}{\oty}&\mbox{Type definition}\\
+		   | & \omodulespec{\om}{\omt}&\mbox{Module specification}\\
+		   | & \osignatdef{\oMT}{\omt}&\mbox{Module type definition}\\
+                   | & \ospropspec{\oP}{\opt}&\mbox{Proposition specification}\\
+                   | & \oassertion{A}{\op}&\mbox{Assertion}\\[5pt]
 
   		\noalign{\textbf{Module Type}}
-		\ith ::= 
-		     & \iTH\\
-%		   | & \iselect{\im}{\iTH}\\
-		   	| & \isig{\ite_1 \ldots \ite_n}\\
-		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
-		  	| & \ilambda{\iM}{\ith_1}{\ith_2} \ibar \iapp{\ith}{\iM}\\
+		\omt ::= 
+		     & \oMT \obar \oselect{\om}{\oMT} & \mbox{Module type names}\\
+		   	| & \osig{\ote_1 \ldots \ote_n}\\
+                        | & \ofunctor{\om}{\omt_1}{\omt_2} & \mbox{Parametrized module type}\\
+		  	| & \oapp{\omt}{\om} & \mbox{Module type application}
 	\end{array}
 	\]
 	\label{fig:input}
-	\caption{Input Syntax (Simplified)}
+	\caption{Output Syntax (Simplified)}
 \end{figure}
 
 
-
-\internal{Andrej}{Do not forger to mention \emph{assure}!}
 \internal{Andrej}{Do we discuss functors here as well?}
 
 
