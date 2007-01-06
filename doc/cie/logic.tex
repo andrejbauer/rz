@@ -80,7 +80,7 @@ by other means; the output can then be trusted to the extent that the obligation
 		\ip,\ipp ::= 
 		    & \iP\ |\ \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
 		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip_1}\ |\ \iand{\ip_1}{\ip_2}\ |\ 
-		       \ior{\ip_1}{\ip_2}\ | \ \iimply{\ip_1}{\ip_2}\ |\ \iiff{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
+		       \ior{\ip_1}{\ip_2}\ | \ \iimply{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
 		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
 		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
 		  | & \iforall{\ix}{\is}{\ip} \ |\ 
@@ -90,8 +90,9 @@ by other means; the output can then be trusted to the extent that the obligation
 		\noalign{\textbf{Sets}}
 		\is ::= 
 		    & \iS \ |\ \iselect{\im}{\iS} &\mbox{Set names}\\
-		  | & ()\ |\ \iprod{\ix}{\is_1}{\is_2} &\mbox{Unit and cartesian product}\\
-		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Disjoint union}\\
+		  | & \isunit\ |\ \iprod{\ix}{\is_1}{\is_2} &\mbox{Unit and cartesian product}\\
+		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Void and disjoint union}\\
+		  | & \idarrow{\ix}{\is_1}{\is_2} & \mbox{Dependent function space}
 		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
 		      \iapp{\is}{\ie} &\mbox{Dependent set and application}\\
 		  | & \iquot{\is}{\ipp} & \mbox{Set quotient by an equivalence relation}\\
@@ -123,9 +124,9 @@ by other means; the output can then be trusted to the extent that the obligation
 		\noalign{\textbf{Proposition Kinds}}
 		\ipt ::=
 		    & \iProp & \mbox{Classifier for propositions}\\
-		    & \iStable & \mbox{Classifier for stable propositions}\\
-		    & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
-		    & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
+		  | & \iStable & \mbox{Classifier for stable propositions}\\
+		  | & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
+		  | & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
 		
 		\noalign{\textbf{Set Kinds}}
 		\ik ::= 
@@ -159,12 +160,6 @@ by other means; the output can then be trusted to the extent that the obligation
 	\caption{Input Syntax (Simplified)}
 \end{figure}
 
-\internal{AB}{Is the unit set really denoted by $()$?}
-
-\internal{AB}{Did we forget dependent function space?}
-
-Explain the input language and its semantics.
-
 
 
 
@@ -172,5 +167,4 @@ Explain the input language and its semantics.
 %%% mode: latex
 %%% TeX-master: "cie"
 %%% End: 
-%!TEX root = cie
 

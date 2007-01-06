@@ -9,7 +9,7 @@ $|\ipp_1(\ix)|\mathtt{*}|\ipp_2(\ix)|$ and $|\ipp_2(\ix)|\mathtt{*}|\ipp_1(\ix)|
 
 Next the realizability translation is performed as described in Section~\ref{sec:translation}, producing interface code.  The flexibility of the full input language (e.g., n-ary sum types and dependent product types) makes the translation code fairly involved, and so it is performed in a ``naive'' fashion whenever possible.  The immediate result of the translation is not easily readable.
  
-Thus, two more passes simplify the output before it is displayed to the user.  A \emph{thinning} pass removes all references to trivial realizers produced by stable formulas.  For example,  direct translation of the \texttt{initial} axiom in the output for Kuratowski-finite sets yields
+Thus, three more passes simplify the output before it is displayed to the user.  A \emph{thinning} pass removes all references to trivial realizers produced by stable formulas.  For example,  direct translation of the \texttt{initial} axiom in the output for Kuratowski-finite sets yields
 \begin{Verbatim}
 val initial: (A.a -> S.s) -> (fin -> S.s) * (top * (A.a -> top) * (fin -> fin -> top))
 \end{Verbatim}
@@ -19,25 +19,24 @@ val initial: (A.a -> S.s) -> fin -> S.s
 \end{Verbatim}
 and appropriately modifies references to \texttt{initial} in the assertions to account for this change in type.
 
-Finally, an \emph{optimization} pass applies an ad-hoc collection of basic simplifications in order to make the output more readable.  (It is convenient to separate this from thinning because thinning can change the types of constants, while simplification optimizations are always type-preserving.  Except that phase-splitting breaks this invariant.  Oops.)  Term-level simplifications include \ldots.
+Next, an \emph{optimization} pass applies an ad-hoc collection of basic simplifications in order to make the output more readable.  (It is convenient to separate this from thinning because thinning can change the types of constants, while simplification optimizations are always type-preserving.  Except that phase-splitting breaks this invariant.  Oops.)  Term-level simplifications include \ldots.
 Logical simplifications include applications of truth table rules ($\iand{\itrue}{\ip}$ becomes $\ip$), detection of syntactically identical premises and conclusions ($\iimply{\ip_1}{\iand{\ip_1}{\ip_2}}$ becomes $\iimply{\ip_1}{\ip_2}$), as well as other common patterns we have seen arise
 ($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes $\ipp(\ie)$).  We do not even attempt to do full theorem-proving here, so some redundancy may remain, but in practice the optimization pass can help significantly.
 
-\subsection{Phase-splitting}
-\label{sec:phase-splitting}
-
-I always wondered why it's called \emph{phase-splitting}.
-
-Phase-splitting:  functors into polymorphism
-
-
-Finally, the output is displayed to the user.
+Finally, an optional \emph{phase-splitting} pass~\cite{harper+:popl90} occurs.  This is an ML-specific transformation that replace certain uses of parameterized modules (a heavyweight language construct) by parameterized types and polymorphic values.  For example, ignoring assertions for the moment, the module
+\begin{Verbatim}
+module Initial : functor (S : Semilattice) ->
+                    sig
+                      val initial : (A.a -> S.s) -> fin -> S.s
+                    end	
+\end{Verbatim}   
+appearing in the output of the Kuratowski example can be replaced by the single polymorphic function
+\begin{Verbatim}
+val initial : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's	
+\end{Verbatim}
+with two added arguments (a \texttt{zero} and a \texttt{join} function) and an implicit argument for the type of lattice elements (here called \texttt{'s}).
 
 \label{sec:typechecking}
-(Maybe address
-``program extraction from proofs here?'')
-
-
 
 
 
