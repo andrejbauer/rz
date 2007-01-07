@@ -1,4 +1,4 @@
-module type AbelianGroup =
+module type Ab =
 sig
   type t
   val zero : t
@@ -6,7 +6,7 @@ sig
   val add : t * t -> t
 end
 
-module Z7 : AbelianGroup =
+module Z7 : Ab =
 struct
   type t = int
   let zero = 0
