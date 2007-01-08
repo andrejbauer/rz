@@ -145,7 +145,6 @@ let id nm = Id (ln_of_name nm)
 (* namedty: name -> ty *)
 let namedty nm = NamedTy (ln_of_name nm)
 
-
 let tupleOrTopTy = function
     [] -> TopTy
   | ts -> TupleTy ts

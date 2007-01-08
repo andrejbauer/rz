@@ -594,16 +594,21 @@ and bindings_of_setkind = function
       let m' = (if isWild m then fresh s'.ty else refresh m) in
 	(m', s') :: (bindings_of_setkind knd)
 
+and per_propkind n = function
+    L.KindSet -> PropArrow (NamedTy n, PropArrow (NamedTy n, Prop))
+  | L.KindArrow (_, s, knd) ->
+      let t = translateSet s in
+	PropArrow (t.ty, per_propkind n knd)
+
 and translateTheoryElement = function
   | L.Declaration(n, L.DeclSet (None, knd)) -> 
-      [Spec (n,
-	   TySpec None,
+      [Spec (n, TySpec None, []);
+       Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
 	   [{alabel = "per_" ^ string_of_name n;
 	     atyvars = [];
 	     apbnds = [];
 	     aannots = [Annot_NoOpt];
-	     aprop = (let binds = bindings_of_setkind knd in 
-	               isPer (ln_of_name n) binds)}
+	     aprop = isPer (ln_of_name n) (bindings_of_setkind knd)}
 	  ])]
 
   | L.Declaration(n, L.DeclSet(Some s, knd)) ->
@@ -615,7 +620,7 @@ and translateTheoryElement = function
       let x = fresh t in
       let y, y' = fresh2 t in
 	[Spec (n, TySpec (Some t),
-             [{alabel = string_of_name n ^ "_def_total";
+             [{alabel = string_of_name n ^ "_def_support";
 	       atyvars = [];
 	       apbnds = [];
 	       aannots = [];
@@ -723,7 +728,7 @@ and translateTheoryElement = function
   | L.Declaration(n, L.DeclTerm(None, s)) ->
       let {ty=t; tot=p} = translateSet s in
 	[ Spec (n, ValSpec ([],t), 
-		[{alabel = (string_of_name n) ^ "_total";
+		[{alabel = (string_of_name n) ^ "_support";
 		  atyvars = [];
 		  apbnds = [];
 		  aannots = [];

@@ -46,6 +46,8 @@ let string_of_name =
       | G (k, lst) -> "gen" ^ string_of_int k ^
 	  "<" ^ (String.concat ";" (List.map string_of_bare_name lst)) ^ ">"
 
+let perName n = N ("=" ^ string_of_name n ^ "=", Infix0)
+
 (** capitalize_name: name -> name *)
 let capitalize_name = function
     N (nm, fxty) -> N (String.capitalize nm, fxty)
