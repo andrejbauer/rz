@@ -2,11 +2,59 @@
 \section{Translation}
 \label{sec:translation}
 
-Explain the translation.
+Having seen the input and output languages for RZ, we now explain how
+the translation from one to the other works. The mathematical basis
+for the translation procedure is the \emph{realizability
+  interpretation} of constructive type theory and logic in the
+category of modest sets, which was described in
+Section~\ref{sec:modest-sets-pers}. A theory is translated to a
+specification, where the theory elements are translated as follows.
 
-\subsection{Realizability Interpretation}
-\label{sec:realizability-interpretation}
+A set declaration $\iParameter{s}{\iSet}$ is translated to
+%
+\begin{align*}
+  & \otyspec{s}. \\
+  & \opropspec{({\approx_{s}})}{\oarrow{s}{\oarrow{s}{\oProp}}}.\\
+  & \oassertion{\mathrm{per}_{s}}{
+    \begin{aligned}[t]
+      & \oforall{x\,y}{s}{(\oimply{\oper{s}{x}{y}}{\oper{s}{y}{x}})}
+        \land {} \\
+      & \oforall{x\,y\,z}{s}{(
+        \oimply{
+          \oper{s}{x}{y} \land \oper{s}{y}{z}
+          }{\oper{s}{x}{z}}
+        )}.
+    \end{aligned}
+  }
+\end{align*}
+%
+This says that the programmer should define a type~$s$, and a binary
+predicate~$\approx_s$ on $\values{s}$ which is symmetric and
+transitive.\footnote{The predicate is \emph{not} an ocaml value of
+  type $s \to s \to \mathtt{bool}$, but an abstract relation on the
+  set $\values{s} \times \values{s}$. Only in special cases can we
+  implement the per as a decidable test.} When a dependent set is
+declared in the input, e.g., $\iParameter{t}{s \to \iSet}$, the
+underlying output type is still non-dependent, but the per $\approx_t$
+receives an extra argument so and has the type
+$\oarrow{s}{\oarrow{t}{\oarrow{t}{\oProp}}}$. This is so because
+dependent sets are interpreted by uniform families, as was explained
+in Section~\ref{sec:uniform-families}.
 
+An element declaration $\iParameter{x}{s}$ is translated to
+%
+\begin{align*}
+  & \ovalspec{x}{s}. \\
+  & \oassertion{\mathrm{support}_x}{\ototal{x}{s}}.
+\end{align*}
+%
+which requires a definition of a value~$x$ of type~$s$ which is in the
+support of~$s$. When $s$ is not a basic set, RZ computes the
+interpretation of the underlying type and support.
+
+Set and term definitions.
+
+Predicates.
 
 
 %%% Local Variables: 
