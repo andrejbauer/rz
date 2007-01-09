@@ -86,53 +86,6 @@ such as the above module type~$\mathtt{Ab}$ with assertions
 \ref{enum:t-per}--~\ref{enum:ab-group-axiom-4}, in the language of
 specifications summarized in Figure~\ref{fig:input}.
 
-RZ ever outputs only a small subset of Ocaml types (the unit type,
-products, function types, polymorphic variant types, and parameter
-types). Correspondingly, the language of terms is fairly simple
-(tuples, functions, polymorphic variants, and local definitions).
-However, the programmer is free to implement a specification using any
-types and terms that exist in Ocaml. A special kind of term is an
-\emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
-$e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
-An obligation is equivalent to a combination of the indefinite
-description operator~\cite{epsilon-reference} and a local definition,
-$\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
-$\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
-such that $\op$''. RZ outputs obligations when it encounters an
-uncheckable typing constraint, or a term in the input whose
-well-formedness requires the existence of a suitable term in the
-output. (Include pointer to further discussion and/or example.) The
-programmer is supposed to replace an obligation with an instance of a
-value satisfying~$\op$. If such a value does not exist, the
-specification is unimplementable. The alternative form
-$\oobligx{\op}{\oe}$ is a shorthand for
-$\ooblig{\_}{\ounit}{\op}{\oe}$.
-
-Assertions are expressed in the \emph{negative fragment} of
-first-order logic, which contains constants for truth and falsehood,
-negation, conjunction, implication, equivalence, and universal
-quantification (but no disjunction or existential). This is the part
-of first-order logic that has no computational content in the
-realizability interpretation. Consequently, the classical and
-constructive interpretations of assertions agree. This is quite
-desirable, since RZ acts as a bridge between constructive mathematics
-and real-world programmers, which typically are not familiar with
-constructive logic. The basic predicates from which assertions are
-built are observatinal equality $\oequal{\oe_1}{\oe_2}$ and pers
-$\oper{s}{\oe_1}{\oe_2}$. The formula $\ototal{\oe}{\os}$ stands for
-$\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
-shorthand for
-$\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
-
-A specification is an Ocaml module type with assertions. It may
-contain value declarations, type declarations and definitions, module
-declarations, specification definitions, proposition declarations, and
-assertions, see~\ref{sec:examples-of-output} for examples. A
-specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a module type of an
-Ocaml functor. Such a parametrized specification may be applied to a
-module. Because Ocaml does not support such applications, RZ reduces
-them away.
-
 \begin{figure}
   \[
   \begin{array}{rl@{\qquad}l}
@@ -168,6 +121,7 @@ them away.
     \mbox{Propositional functions and application}\\
     | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
     | & \oequal{\oe_1}{\oe_2} & \mbox{(Observational) term equality}\\
+    | & \orz{\oe_1}{\oapp{\oP}{\oe_2}} & \mbox{Realizers of atomic propositions}\\
     | & \oforall{\ox}{\oty}{\op}  \obar 
     \oforallt{\ox}{\os}{\op} & \mbox{Term quantifiers}\\[5pt]
     
@@ -207,9 +161,53 @@ them away.
   \caption{The syntax of specifications (Simplified)}
 \end{figure}
 
-\internal{Andrej}{Actually, I don't think another example is going to
-  be very useful here because it would require us to say something
-  about the input langauge (or be totally boring).}
+RZ ever outputs only a small subset of Ocaml types (the unit type,
+products, function types, polymorphic variant types, and parameter
+types). Correspondingly, the language of terms is fairly simple
+(tuples, functions, polymorphic variants, and local definitions).
+However, the programmer is free to implement a specification using any
+types and terms that exist in Ocaml. A special kind of term is an
+\emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
+$e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
+An obligation is equivalent to a combination of the indefinite
+description operator~\cite{epsilon-reference} and a local definition,
+$\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
+$\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
+such that $\op$''. RZ outputs obligations when it encounters an
+uncheckable typing constraint, or a term in the input whose
+well-formedness requires the existence of a suitable term in the
+output. (Include pointer to further discussion and/or example.) The
+programmer is supposed to replace an obligation with an instance of a
+value satisfying~$\op$. If such a value does not exist, the
+specification is unimplementable. The alternative form
+$\oobligx{\op}{\oe}$ stands for $\ooblig{\_}{\ounit}{\op}{\oe}$.
+
+Assertions are expressed in the \emph{negative fragment} of
+first-order logic, which contains constants for truth and falsehood,
+negation, conjunction, implication, equivalence, and universal
+quantification (but no disjunction or existential). This is the part
+of first-order logic that has no computational content in the
+realizability interpretation. Consequently, the classical and
+constructive interpretations of assertions agree. This is quite
+desirable, since RZ acts as a bridge between constructive mathematics
+and real-world programmers, which typically are not familiar with
+constructive logic. The basic predicates from which assertions are
+built are observatinal equality $\oequal{\oe_1}{\oe_2}$, pers
+$\oper{s}{\oe_1}{\oe_2}$ on abstract types, and statements
+$\orz{\oe_1}{\oapp{\oP}{\oe_2}}$ which mean ``$\oe_1$ realizes
+$\oapp{\oP}{\oe_2}$'' where~$\oP$ is an atomic predicate.
+The formula $\ototal{\oe}{\os}$ stands for $\oper{\os}{\oe}{\oe}$,
+while $\oforallt{\ox}{\os}{\op}$ is a shorthand for
+$\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
+
+A specification is an Ocaml module type with assertions. It may
+contain value declarations, type declarations and definitions, module
+declarations, specification definitions, proposition declarations, and
+assertions, see~\ref{sec:examples-of-output} for examples. A
+specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a module type of an
+Ocaml functor. Such a parametrized specification may be applied to a
+module. Because Ocaml does not support such applications, RZ reduces
+them away.
 
 
 %%% Local Variables: 

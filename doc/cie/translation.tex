@@ -34,34 +34,45 @@ transitive.\footnote{The predicate is \emph{not} an ocaml value of
   set $\values{s} \times \values{s}$. Only in special cases can we
   implement the per as a decidable test.} When a dependent set is
 declared in the input, e.g., $\iParameter{t}{s \to \iSet}$, the
-underlying output type is still non-dependent, but the per $\approx_t$
-receives an extra argument so and has the type
-$\oarrow{s}{\oarrow{t}{\oarrow{t}{\oProp}}}$. This is so because
-dependent sets are interpreted by uniform families, as was explained
-in Section~\ref{sec:uniform-families}.
+translation follows the interpretation of dependent sets as uniform
+families, cf.\ Section~\ref{sec:uniform-families}. The underlying
+output type is still non-dependent, but the per
+$\approx_{\oapp{t}{{-}}}$ is parametrized by~$s$, so it is declared to
+have type $\oarrow{s}{\oarrow{t}{\oarrow{t}{\oProp}}}$.
 
 An element declaration $\iParameter{x}{s}$ is translated to
 %
 \begin{align*}
-  & \ovalspec{x}{s}. \\
-  & \oassertion{\mathrm{support}_x}{\ototal{x}{s}}.
+  & \ovalspec{x}{s} \\
+  & \oassertion{\mathrm{support}_x}{\ototal{x}{s}}
 \end{align*}
 %
-which requires a definition of a value~$x$ of type~$s$ which is in the
-support of~$s$. When $s$ is not a basic set, RZ computes the
+which requires the definition of a value~$x$ of type~$s$ which is in
+the support of~$s$. When $s$ is not a basic set, RZ computes the
 interpretation of the underlying type and support.
 
-Set and term definitions here.
+Constructions of sets in the input language are translated to
+corresponding constructions of modest sets. In
+Section~\ref{sec:modest-sets-pers} we saw how products, exponentials
+and their dependent versions are formed. We briefly review the
+remaining constructions. A disjoint union
+$t = \isum{\il_1}{\is_1}{\il_2}{\is_2}$ is translated to the variant type
+$t = \osumtyx{\il_1}{\is_1}{\il_2}{\is_2}$ with the per
+%
+\begin{align*}
+  \oper{t}{\oinj{\il_1}{u}}{\oinj{\il_1}{v}} &\iff \oper{s_1}{u}{v},
+  \\
+  \oper{t}{\oinj{\il_2}{u}}{\oinj{\il_2}{v}} &\iff \oper{s_2}{u}{v}.
+\end{align*}
+%
 
-In the realizability interpretation of constructive logic, a predicate
-$\phi$ on a modest sets $A$ is not just a subset of $\setOf{A}$, but
-rather a relationship $\rz$ between the values of an \emph{underlying
-  type} of realizers $\typeOf{\phi}$ and $\setOf{A}$. For $v \in
-\values{\typeOf{\phi}}$ and $t \in \setOf{A}$ we write $v \rz \phi(t)$
-when $v$ and $x$ are related. This can be read as ``$v$ realizes the
-fact that $\phi(t)$ holds.'' (Take further explanation from CLASE
-paper here.)
+quotient
 
+subsets
+
+rz
+
+Propositions and axioms.
 
 %%% Local Variables: 
 %%% mode: latex

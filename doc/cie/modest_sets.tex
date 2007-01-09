@@ -272,7 +272,8 @@ $\typeOf{\phi}$ of realizers. However, unlike in the
 propositions-as-types translation, not all terms of type
 $\typeOf{\phi}$ are necessarily valid realizers for~$\phi$, and some
 terms which are realizers may not correspond to any proofs, for
-example, if they use store and other computational effects.
+example, if they denote partial functions or use computational
+effects.
 
 We write $t \rz \phi$ when $t \in \values{\typeOf{\phi}}$ is a
 realizer for~$\phi$. The underlying types and the realizability
@@ -340,39 +341,47 @@ consider the statement that every cubic $x^3 + a x + b$ has a root,
   \iforall{a}{R}{\iforall{b}{R}{\iexists{x}{R}{\iequal{x^3 + a x + b}{0}}}}.
 \end{equation}
 %
-According to Figure~\ref{fig:rz-logic}, a realizer is a value~$r$ of
-type
+By computing according to Figure~\ref{fig:rz-logic}, we find out that
+a realizer is a value~$r$ of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\oprod{\mathtt{real}}{\mathtt{unit}}}}$
 such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
-\RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $w$ realizing a real
+\RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $v$ realizing a real
 number~$x$ such that $x^3 + a x + b = 0$, and $w$ is irrelevant. This
 can be ``optimized'' to a realizer of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ which
 does not bother to compute the irrelevant second component. In essence
-then, a realizer~$r$ for~\eqref{eq:square-root} computes \emph{a} root
-of the cubic equation. Beware though, $r$ is not \emph{extensional},
-i.e., different realizers~$t$ and~$u$ for the same~$a$ and~$b$ may
-result in different roots of the cubic. To put this in another way,
-$r$ realizes a \emph{multi-valued} function\footnote{The multi-valued
-  nature of the realizer lies in the fact that it computes \emph{any
-    one} of many values, not that it computes \emph{all} of the many
-  values.} rather than a modest set morphism. It is well known in
-computable mathematics that certain operations, such as equation
-solving, must necessarily be multi-valued in order to be computable as
-well. They arise naturally in RZ as translations of
-$\forall\exists$~statements.
+then, a realizer~$r$ for~\eqref{eq:square-root} computes a root of the
+cubic equation. Note that $r$ is \emph{not} extensional, i.e.,
+different realizers~$t$ and~$u$ for the same~$a$ and~$b$ may result in
+different roots of the cubic. To put this in another way, $r$ realizes
+a \emph{multi-valued} function\footnote{The multi-valued nature of the
+  realizer comes from the fact that it computes \emph{any one} of many
+  values, not that it computes \emph{all} of the many values.} rather
+than a modest set morphism. It is well known in computable mathematics
+that certain operations, such as equation solving, must necessarily be
+multi-valued in order to be computable as well. They arise naturally
+in RZ as translations of $\forall\exists$~statements.
 
 There are propositions whose realizers are ``irrelevant'' or free of
-computational content. For example, realizers for $\itrue$, $\ifalse$,
-and equality have type $\ounit$. Another example is a negation
+computational content. For example, realizers for $\itrue$ and
+equality have type $\ounit$. Another example is a negation
 $\inot{\phi}$, which is defined to be the same as
-$\iimply{\phi}{\ifalse}$, whose realizers has type
+$\iimply{\phi}{\ifalse}$, whose realizers have type
 $\oarrow{\typeOf{\phi}}{\ounit}$. Sometimes only a part of a realizer
-is computationally irrelevant, as we saw in the last example. It would
-be unproductive to bother a programmer with requirements for useless
-code, so RZ optimizes away specifications for irrelevant realizers
-with a process called \emph{thinning}, see Section~\ref{sec:translation}.
+is computationally irrelevant, as we saw in the last example.
+Propositions which are free of any computational content are
+characterized as the \emph{$\lnot\lnot$-stable propositions}. A
+proposition~$\phi$ is said to be $\lnot\lnot$-stable, or just
+\emph{stable} for short, when $\iimply{\inot{\inot{\phi}}}{\phi}$ is
+valid. Any \emph{negative} proposition, i.e., one built from $\itrue$,
+$\ifalse$, $=$, $\land$, $\Rightarrow$ and $\forall$ is stable, but
+there may be other propositions which are stable and are not written
+in the negative form.
 
+It would be unproductive to bother a programmer with requirements for
+useless code, so RZ has a \emph{thinning} phase, see
+Section~\ref{sec:translation}, which optimizes away specifications for
+computationally irrelevant realizers.
 
 \subsection{Uniform families of modest sets}
 \label{sec:uniform-families}

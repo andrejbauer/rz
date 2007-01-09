@@ -78,22 +78,23 @@ by other means; the output can then be trusted to the extent that the obligation
 	\begin{array}{rl@{\qquad}l}
 		\noalign{\textbf{Propositions/Predicates}}
 		\ip,\ipp ::= 
-		    & \iP\ |\ \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
-		  | & \itrue \ | \ \ifalse\ |\ \inot{\ip_1}\ |\ \iand{\ip_1}{\ip_2}\ |\ 
+		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
+		  | & \itrue \ | \ \ifalse \ibar \inot{\ip_1} \ibar \iand{\ip_1}{\ip_2} \ibar 
 		       \ior{\ip_1}{\ip_2}\ | \ \iimply{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
-		  | & \ilambda{\ix}{\is}{\ip} \ |\ \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
+		  | & \ilambda{\ix}{\is}{\ip}  \ibar \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
 		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
-		  | & \iforall{\ix}{\is}{\ip} \ |\ 
+		  | & \iforall{\ix}{\is}{\ip}  \ibar 
 		      \iexists{\ix}{\is}{\ip} \ |\
 		      \iunique{\ix}{\is}{\ip} & \mbox{Term quantifiers}\\[5pt]
 		
 		\noalign{\textbf{Sets}}
 		\is ::= 
-		    & \iS \ |\ \iselect{\im}{\iS} &\mbox{Set names}\\
-		  | & \isunit\ |\ \iprod{\ix}{\is_1}{\is_2} &\mbox{Unit and cartesian product}\\
-		  | & \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Void and disjoint union}\\
-		  | & \idarrow{\ix}{\is_1}{\is_2} & \mbox{Dependent function space} \\
-		  | & \ilambda{\ix}{\is_1}{\is_2}\ |\ 
+		    & \iS  \ibar \iselect{\im}{\iS} &\mbox{Set names}\\
+		  | & \isunit \ibar \iprod{\ix}{\is_1}{\is_2}
+                  &\mbox{Unit and (dependent) cartesian product}\\
+		  | & \isvoid \ibar \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Void and disjoint union}\\
+		  | & \idarrow{\ix}{\is_1}{\is_2} & \mbox{(Dependent) function space} \\
+		  | & \ilambda{\ix}{\is_1}{\is_2} \ibar 
 		      \iapp{\is}{\ie} &\mbox{Dependent set and application}\\
 		  | & \iquot{\is}{\ipp} & \mbox{Set quotient by an equivalence relation}\\
 		  | & \isubset{\ix}{\is}{\ipp} & \mbox{Subset satisfying a predicate}\\
@@ -101,8 +102,8 @@ by other means; the output can then be trusted to the extent that the obligation
 		
 		\noalign{\textbf{Terms}}	
 		\ie ::=
-		    & \ix\ |\ \iselect{\im}{\ix} &\mbox{Term names}\\
-		  | & \ilambda{\ix}{\is_1}{\ie}\ |\ 
+		    & \ix \ibar \iselect{\im}{\ix} &\mbox{Term names}\\
+		  | & \ilambda{\ix}{\is_1}{\ie} \ibar 
 		      \iapp{\ie_1}{\ie_2} &\mbox{Function and application}\\
 		  | & \ituple{\ie_1}{\ie_2} 
 		      \ibar \iproj{\ie}{n}&\mbox{Tuple and projection}\\
@@ -118,7 +119,7 @@ by other means; the output can then be trusted to the extent that the obligation
 		
 		\noalign{\textbf{Models}}		
 		\im ::= 
-		    & \iM \ |\ \iselect{\im}{\iM}&\mbox{Model names}\\
+		    & \iM  \ibar \iselect{\im}{\iM}&\mbox{Model names}\\
 		  | & \iapp{\im_1}{\im_2}&\mbox{Application of parameterized model}\\[5pt]
 		
 		\noalign{\textbf{Proposition Kinds}}
@@ -152,7 +153,7 @@ by other means; the output can then be trusted to the extent that the obligation
 %		   | & \iselect{\im}{\iTH}\\
 		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
 		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
-		  	| & \ilambda{\iM}{\ith_1}{\ith_2}\ |\ 
+		  	| & \ilambda{\iM}{\ith_1}{\ith_2} \ibar 
 		      \iapp{\ith}{\iM}\\
 	\end{array}
 	\]
