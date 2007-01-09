@@ -2,8 +2,8 @@
 \label{sec:typed-realizability}
 
 RZ is based on \emph{typed realizability} by John
-Longley~\cite{Longley99}. It is a variant of realizability that most
-directly corresponds to the informal view that a programmer has in
+Longley~\cite{Longley99}. It is the variant of realizability that most
+directly corresponds to the informal view that programmers have in
 mind when thinking about an implementation of a structure.
 
 We motivate and explain typed realizability and its relationship with
@@ -21,7 +21,7 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 \end{figure}
 %
 A common representation is a pair of lists $(\ell_V, \ell_A)$, where
-$\ell_V$ is the list of vertex labels and $\ell_A$ the \emph{adjacency list} 
+$\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
 representing the arrows by pairing the labels of each source and target.
 In our example, $\ell_V = [1; 2;
 3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$. Thus we
@@ -42,6 +42,8 @@ in the programming language, such as:
 \item The order in which vertices and arrows are listed is not
   important, e.g., $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
 \item Each vertex and arrow must be listed exactly once.
+\item The source and target of each arrow must appear in the list of vertices.
+\iffalse
 \item Infinite, cyclic lists, and non-terminating expressions are not
   valid representations, e.g.,
   %
@@ -59,9 +61,15 @@ in the programming language, such as:
   \end{equation*}
   %
   a valid adjacency list?
+\fi %\iffalse
 \end{enumerate}
-%
-To summarize, an implementation of the set~$\mathcal{G}$ should tell
+\internal{Chris}{The OCaml type actually \emph{does} tell us that the values of type \texttt{graph} are terminating and have no
+side-effects, since all
+values have this property.  Technically a value of type \texttt{int list} could be cyclic rather than finite, but cyclic lists are already
+ruled out by condition 2 above.}
+
+
+An implementation of the mathematical set~$\mathcal{G}$ must thus tell
 us not only what the underlying datatype $\mathtt{graph}$ is, but also
 which values of type $\mathtt{graph}$ represent which elements
 of~$\mathcal{G}$. As we shall see next, all of this can be expressed
@@ -73,13 +81,13 @@ either as a \emph{realizability relation} or a \emph{partial
 \label{sec:modest-sets-pers}
 
 We now give the formal definition of typed realizability, as it
-applies to Ocaml. Other general-purpose programming languages could be
+applies to OCaml. Other general-purpose programming languages could be
 used instead, as long as they provide the usual ground types, product
-and function types. Additionally, it is convenient to work with a
+and function types.\footnote{ It is also convenient to work with a
 language that supports sum types, as this allows a more natural
-representation of disjoint unions.
+representation of disjoint unions.}
 
-Let $\Type$ be the collection of all (non-parametric) Ocaml types. To
+Let $\Type$ be the collection of all (non-parametric) OCaml types. To
 each type $t \in \Type$ we assign the set $\values{t}$ of values of
 type~$t$ which behave \emph{functionally} in the sense
 of~\cite{longley99when}. Such values are represented by terminating
@@ -101,7 +109,7 @@ directed graphs $\mathcal{G}$ is to specify a datatype
 $\typeOf{\mathcal{G}} = \mathtt{graph}$ together with a
 \emph{realizability relation} $\rz_{\mathcal{G}}$ between
 $\mathcal{G}$ and $\values{\mathtt{graph}}$. The meaning of $(\ell_V,
-\ell_A) \rz_\mathcal{G} G$ is ``value $(\ell_V, \ell_A)$ represents
+\ell_A) \rz_\mathcal{G} G$ is ``OCaml value $(\ell_V, \ell_A)$ represents
 (realizes, implements) graph $G$''. There are two natural conditions
 that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G \in
 \mathcal{G}$ there should be at least one realizer $(\ell_V, \ell_A)$
