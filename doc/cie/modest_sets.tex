@@ -43,32 +43,8 @@ in the programming language, such as:
   important, e.g., $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
 \item Each vertex and arrow must be listed exactly once.
 \item The source and target of each arrow must appear in the list of vertices.
-\iffalse
-\item Infinite, cyclic lists, and non-terminating expressions are not
-  valid representations, e.g.,
-  %
-  \begin{equation*}
-    \cwhile{\ctrue}{()}; [(1,2);(2,2);(2,3);(3,2);(3;1)]
-  \end{equation*}
-  %
-  is not a valid adjacency list, and neither is an expression that
-  raises an exception.
-\item We ought to decide which computational effects, if any, are
-  allowed, e.g., is
-  %
-  \begin{equation*}
-    \cprint{\cstring{Hello}}; [(1,2);(2,2);(2,3);(3,2);(3;1)]
-  \end{equation*}
-  %
-  a valid adjacency list?
-\fi %\iffalse
 \end{enumerate}
-\internal{Chris}{The OCaml type actually \emph{does} tell us that the values of type \texttt{graph} are terminating and have no
-side-effects, since all
-values have this property.  Technically a value of type \texttt{int list} could be cyclic rather than finite, but cyclic lists are already
-ruled out by condition 2 above.}
-
-
+%
 An implementation of the mathematical set~$\mathcal{G}$ must thus tell
 us not only what the underlying datatype $\mathtt{graph}$ is, but also
 which values of type $\mathtt{graph}$ represent which elements
@@ -240,11 +216,11 @@ canonical constructions on modest sets.
 
 As an example we consider the cyclic group on seven elements $(\ZZ_7,
 0, {-}, {+})$. To implement the group, we must give a representation
-of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, provide
-a realizer for the neutral element~$0$, and show that negation~$-$ and
-addition~$+$ are realized. We represent the elements of~$\ZZ_7 =
-\set{0, 1, \ldots, 6}$ with values of type $\typeOf{Z} = \cint$. We
-allow any integer $v \in \values{\cint}$ to represent the element $v
+of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, and
+provide realizers for the neutral element~$0$, negation~$-$, and
+addition~$+$. We represent the elements of~$\ZZ_7 = \set{0, 1, \ldots,
+  6}$ with values of type $\typeOf{Z} = \cint$. We allow any integer
+$v \in \values{\cint}$ to represent the element $v
 \mathbin{\mathrm{mod}} 7$,
 %
 \begin{equation*}
@@ -261,11 +237,11 @@ addition are implemented by
 %
 The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
   k\; m}{k+m}$ do not work because of overflow at values that exceed
-$2^{30}$ (on a 32-bit machine). (We could avoid the overflow worries
-by taking an isomorphic representation in which the only valid
+$2^{30}$ (in Ocaml on a 32-bit machine). We could avoid the overflow
+worries by taking an isomorphic representation in which the only valid
 realizers are $0$, $1$, \ldots, $6$, and negation and addition
 realized by $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\;
-  k\; m}{(k + m) \cmod 7}$, respectively.)
+  k\; m}{(k + m) \cmod 7}$, respectively.
 
 The modest set~$Z$ also has \emph{decidable equality}, which means
 that the characteristic map $\mathrm{eq} : Z \times Z \to
@@ -280,6 +256,122 @@ equality, since there may not be a decision procedure for determining
 whether two realizers represent the same element. In particular, this
 would happen if we implemented a semigroup with an undecidable word
 problem~\cite{post47:_recur_unsol_probl_thue}.
+
+
+\subsection{Interpretation of logic}
+\label{sec:interpretation-logic}
+
+In the realizability interpretation of logic, each formula~$\phi$ is
+assigned a set of \emph{realizers} which can be thought of as
+computations that witness the validity of~$\phi$. The situation is
+somewhat similar (but not equivalent) to the propositions-as-types
+translation of logic into type theory, where the proofs of a
+proposition correspond to terms of the corresponding type. More
+precisely, to each formula~$\phi$ we assign an underlying type
+$\typeOf{\phi}$ of realizers. However, unlike in the
+propositions-as-types translation, not all terms of type
+$\typeOf{\phi}$ are necessarily valid realizers for~$\phi$, and some
+terms which are realizers may not correspond to any proofs, for
+example, if they use store and other computational effects.
+
+We write $t \rz \phi$ when $t \in \values{\typeOf{\phi}}$ is a
+realizer for~$\phi$. The underlying types and the realizability
+relation~$\rz$ are defined inductively on the structure of~$\phi$; an
+outline is shown in Figure~\ref{fig:rz-logic}. We say that a
+formula~$\phi$ is \emph{valid} if it has at least one realizer.
+%
+\begin{figure*}
+  \textbf{Underlying types of realizers:}
+  \begin{xalignat*}{2}
+    \typeOf{\itrue} &= \mathtt{unit} &
+    \typeOf{\ifalse} &= \mathtt{unit} \\
+    \typeOf{\iequal{x}{y}} &= \mathtt{unit} &
+    \typeOf{\iand{\phi}{\psi}} &= \oprod{\typeOf{\phi}}{\typeOf{\psi}} \\
+    \typeOf{\iimply{\phi}{\psi}} &= \oarrow{\typeOf{\phi}}{\typeOf{\psi}} &
+    \typeOf{\ior{\phi}{\psi}} &=
+    \osumtyx{\mathtt{or}_1}{\typeOf{\phi_1}}{\mathtt{or}_2}{\typeOf{\phi_2}} \\
+    \typeOf{\iforall{x}{A}{\phi}} &= \oarrow{\typeOf{A}}{\typeOf{\phi}} &
+    \typeOf{\iexists{x}{A}{\phi}} &= \oprod{\typeOf{A}}{\typeOf{\phi}}
+  \end{xalignat*}
+  \textbf{Realizers:}
+  \begin{align*}
+    () \rz \itrue & \\
+    () \rz \iequal{x}{y}
+    &\quad\text{iff}\quad 
+    x = y
+    \\
+    (t_1,t_2) \rz \iand{\phi}{\psi}
+    &\quad\text{iff}\quad
+    \text{$t_1 \rz \phi$ and $t_2 \rz \psi$}
+    \\
+    t \rz \iimply{\phi}{\psi}
+    &\quad\text{iff}\quad
+    \text{for all $u \in \typeOf{\phi}$, if $u \rz \phi$ then $t\,u
+      \rz \psi$}
+    \\
+    \oinj{\mathtt{or}_1}{t} \rz \ior{\phi}{\psi}
+    &\quad\text{iff}\quad
+    \text{$t \rz \phi$}
+    \\
+    \oinj{\mathtt{or}_2}{t} \rz \ior{\phi}{\psi}
+    &\quad\text{iff}\quad
+    \text{$t \rz \psi$}
+    \\
+    t \rz \iforall{x}{A}{\phi(x)}
+    &\quad\text{iff}\quad
+    \text{for all $u \in \typeOf{A}$, if $u \rz_A x$ then $t\,u \rz \phi(x)$}
+    \\
+    (t_1, t_2) \rz \iexists{x}{A}{\phi(x)}
+    &\quad\text{iff}\quad
+    \text{$t_1 \rz_A x$ and $t_2 \rz \phi(x)$}
+  \end{align*}
+  \caption{Realizability interpretation of logic (outline)}
+  \label{fig:rz-logic}
+\end{figure*}
+
+We illustrate how the realizability interpretation extracts the
+computational content of a proposition. To make an interesting
+example, suppose we already implemented the structure of real
+numbers~$\RR$ as a modest set~$R = (\RR, \mathtt{real}, {\rz_R})$, and
+consider the statement that every cubic $x^3 + a x + b$ has a root,
+%
+\begin{equation}
+  \label{eq:square-root}%
+  \iforall{a}{R}{\iforall{b}{R}{\iexists{x}{R}{\iequal{x^3 + a x + b}{0}}}}.
+\end{equation}
+%
+According to Figure~\ref{fig:rz-logic}, a realizer is a value~$r$ of
+type
+$\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\oprod{\mathtt{real}}{\mathtt{unit}}}}$
+such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
+\RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $w$ realizing a real
+number~$x$ such that $x^3 + a x + b = 0$, and $w$ is irrelevant. This
+can be ``optimized'' to a realizer of type
+$\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ which
+does not bother to compute the irrelevant second component. In essence
+then, a realizer~$r$ for~\eqref{eq:square-root} computes \emph{a} root
+of the cubic equation. Beware though, $r$ is not \emph{extensional},
+i.e., different realizers~$t$ and~$u$ for the same~$a$ and~$b$ may
+result in different roots of the cubic. To put this in another way,
+$r$ realizes a \emph{multi-valued} function\footnote{The multi-valued
+  nature of the realizer lies in the fact that it computes \emph{any
+    one} of many values, not that it computes \emph{all} of the many
+  values.} rather than a modest set morphism. It is well known in
+computable mathematics that certain operations, such as equation
+solving, must necessarily be multi-valued in order to be computable as
+well. They arise naturally in RZ as translations of
+$\forall\exists$~statements.
+
+There are propositions whose realizers are ``irrelevant'' or free of
+computational content. For example, realizers for $\itrue$, $\ifalse$,
+and equality have type $\ounit$. Another example is a negation
+$\inot{\phi}$, which is defined to be the same as
+$\iimply{\phi}{\ifalse}$, whose realizers has type
+$\oarrow{\typeOf{\phi}}{\ounit}$. Sometimes only a part of a realizer
+is computationally irrelevant, as we saw in the last example. It would
+be unproductive to bother a programmer with requirements for useless
+code, so RZ optimizes away specifications for irrelevant realizers
+with a process called \emph{thinning}, see Section~\ref{sec:translation}.
 
 
 \subsection{Uniform families of modest sets}
