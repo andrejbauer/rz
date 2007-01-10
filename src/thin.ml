@@ -201,7 +201,7 @@ let rec thinPattern ctx pat =
   | VarPat nm -> 
 (*      let (ctx', nm') = renameBoundTermVar ctx nm
       in let ctx'' = insertTermVariable ctx nm ??
-      in (ctx', VarPat nm')
+      in (ctx'', VarPat nm')
 *)
       failwith "Thin.thinPattern:  can't infer type of VarPat"
   | TuplePat pats -> 
@@ -211,11 +211,12 @@ let rec thinPattern ctx pat =
   | ConstrPat(lbl, Some(nm,ty)) ->
       begin
 	let ty' = thinTy ctx ty
-	in let ctx' = insertTermVariable ctx nm (ty,ty')
+	in let (ctx', nm') = renameBoundTermVar ctx nm
+	in let ctx' = insertTermVariable ctx' nm' (ty,ty')
 	in 
 	match ty' with
 	  TopTy -> (ctx', ConstrPat(lbl, None))
-	| _ -> (ctx', ConstrPat(lbl, Some (nm, ty')))
+	| _ -> (ctx', ConstrPat(lbl, Some (nm', ty')))
       end
 
 and thinPatterns ctx pats = 
