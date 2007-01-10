@@ -244,6 +244,18 @@ let rec translateSet = function
 	{
 	  ty = t;
 	  tot = makeTot (x, t)
+	    (PCase
+	       (id x,
+		List.map
+		  (function
+		     | (lb, None) -> ConstrPat (lb, None), True
+		     | (lb, Some {ty=u; tot=p}) ->
+			 let x' = fresh u in
+			   ConstrPat (lb, Some (x',u)), pApp p (id x')
+		  )
+		  lst'
+	       ));
+(****
 	    (Cor (List.map
 		   (function
 		       (lb, None) -> Equal (id x, Inj (lb, None))
@@ -252,7 +264,23 @@ let rec translateSet = function
 			   Cexists ((x', u), And [Equal (id x, Inj (lb, Some (id x'))); pApp p (id x')]))
 		   lst')
 	    );
+****)
 	  per = makePer (y, y', t)
+	    (PCase
+	       (Tuple [id y; id y'],
+		List.map
+		  (function
+		     | (lb, None) -> 
+			 TuplePat [ConstrPat (lb, None); ConstrPat (lb, None)], True
+		     | (lb, Some {ty=u; per=q}) ->
+			 let w = fresh u and w' = fresh u in
+			   (TuplePat [ConstrPat (lb, Some (w,u)); ConstrPat (lb, Some (w',u))],
+			    pApp (pApp q (id w)) (id w'))
+		  )
+		  lst'
+	       ))
+
+(***
 	    (Cor (List.map
 		   (function
 		       (lb, None) -> And [Equal (id y,  Inj (lb, None)); Equal (id y', Inj (lb, None))]
@@ -266,6 +294,7 @@ let rec translateSet = function
 					 pApp (pApp q (id w)) (id w')])))
 		   lst')
 	  )
+***)
 	}
 
   | L.Rz s ->
@@ -453,6 +482,14 @@ and translateProp = function
       let ty = SumTy (List.map2 (fun lb (t,_) -> (lb, Some t)) lbs lst') in
       let u = fresh ty in
 	makeProp (u, ty)
+	  (PCase
+	     (id u,
+	      List.map2 (fun lb (t,p) ->
+			   let x = fresh t in
+			     ConstrPat (lb, Some (x,t)), pApp p (id x)
+			) lbs lst'
+	     ))
+(****
 	 (Cor (
 	   List.map2
 		(fun lb (t,p) ->
@@ -460,7 +497,7 @@ and translateProp = function
 		     Cexists ((x,t), And [Equal(id u, Inj (lb, Some (id x))); pApp p (id x)]))
 		lbs lst'
 	 ))
-
+****)
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=q} = translateSet s in
       let (u, p') = translateProp p in
