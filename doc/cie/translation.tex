@@ -55,22 +55,101 @@ Constructions of sets in the input language are translated to
 corresponding constructions of modest sets. In
 Section~\ref{sec:modest-sets-pers} we saw how products, exponentials
 and their dependent versions are formed. We briefly review the
-remaining constructions. A disjoint union
-$t = \isum{\il_1}{\is_1}{\il_2}{\is_2}$ is translated to the variant type
-$t = \osumtyx{\il_1}{\is_1}{\il_2}{\is_2}$ with the per
+remaining constructions. A disjoint union of modest sets
+$\isum{\il_1}{A}{\il_2}{B}$ is the modest set whose underlying type is
+the sum of underlying types,
+%
+\begin{equation*}
+  \typeOf{\isum{\il_1}{A}{\il_2}{B}} =
+  \osumtyx{\il_1}{\typeOf{A}}{\il_2}{\typeOf{B}},
+\end{equation*}
+%
+and the per is the disjoint union of pers $\per_{A}$ and $\per{B}$, so
+that we have
 %
 \begin{align*}
-  \oper{t}{\oinj{\il_1}{u}}{\oinj{\il_1}{v}} &\iff \oper{s_1}{u}{v},
+  \oper{\isum{\il_1}{A}{\il_2}{B}}{\oinj{\il_1}{u}}{\oinj{\il_1}{v}}
+  &\iff \oper{s_1}{u}{v},
   \\
-  \oper{t}{\oinj{\il_2}{u}}{\oinj{\il_2}{v}} &\iff \oper{s_2}{u}{v}.
+  \oper{\isum{\il_1}{A}{\il_2}{B}}{\oinj{\il_2}{u}}{\oinj{\il_2}{v}}
+  &\iff \oper{s_2}{u}{v}.
 \end{align*}
 %
 
-quotient
+The construction of modest subsets may look surprising at first, but
+it makes sense computationally. Given a modest sets~$A$ and a
+predicate~$\phi$ on~$A$, the modest subset $\set{x : A \such \phi(x)}$
+has the underlying set
+%
+\begin{equation*}
+  \setOf{\set{x : A \such \phi(x)}} =
+  \set{x \in \setOf{A} \such \xsome{v}{\typeOf{\phi}}{v \rz \phi(x)}},
+\end{equation*}
+%
+and the underlying type with the realizability relation
+%
+\begin{align*}
+  \typeOf{\set{x : A \such \phi(x)}} &= \typeOf{A} \times
+  \typeOf{\phi},\\
+  (u,v) \rz_{\set{x : A \such \phi(x)}} x &\iff
+  u \rz_A x \land v \rz \phi(x).
+\end{align*}
+%
+This means that to represent an element~$x$ of a subset we must
+provide a realizer~$u$ for the element itself, as well as~$v$
+witnessing~$\phi(x)$. The per which we get from this is
+%
+\begin{equation*}
+    (u_1, v_1) \per_{\set{x : A \such \phi(x)}} (u_2, v_2) \iff
+    u_1 \per_A u_2.
+\end{equation*}
 
-subsets
+The category of modest sets has coequalizers, hence a quotient modest
+set $A/\rho$ may be constructed for an any equivalence relaton~$\rho$
+on~$A$. However, because equality does not carry any computational
+content, equality of equivalence classes $\ieclass{x}{\rho} =
+\ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, rather than
+the expected~$\rho(x,y)$. Because this may cause a great deal of
+confusion and mistakes, it is better to consider only quotients by
+\emph{stable} equivalence relations, which behave as expected.
+%
+Given a modest set~$A$ and a stable equivalence relation~$\rho$
+on~$A$, the quotient $A/\rho$ is the modest set determined by
+%
+\begin{align*}
+  \setOf{A/\rho} &= \set{\ieclass{x}{\rho} \such x \in A} \\
+  \typeOf{A/\rho} &= \typeOf{A} \\
+  u \rz_{A/\rho} \xi &\iff \some{y}{\xi}{u \rz_A y}.
+\end{align*}
+%
+Luckily, it seems that many equivalence relations occuring in
+computable mathematics are stable, or can be made stable with a little
+bit of manipulation. For example, Cauchy sequences $(a_n)_{n\in\NN}$
+and $(b_n)_{n\in\NN}$ represent the same real number when
+%
+\begin{equation*}
+  \xall{i}{\NN}{
+    \xsome{j}{\NN}{
+      \forall m,n \geq j.\,|a_m - b_n| < 2^{-i}
+    }
+  } \;.
+\end{equation*}
+%
+This defines an equivalence relation on the set of Cauchy sequences
+which does not seem to be stable. However, if we restrict attention
+just to the \emph{rapid} Cauchy sequences, i.e., those satisfying
+$\xall{i}{|a_{i+1} - a_i| < 2^{-i}}$, then the equivalence relation
+becomes
+%
+\begin{equation*}
+  \xall{i}{\NN}{|a_i - b_i| < 2^{-i+3}},
+\end{equation*}
+%
+which is stable.
 
 rz
+
+Translation of terms. Keep this short.
 
 Propositions and axioms.
 
