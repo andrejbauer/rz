@@ -405,7 +405,7 @@ and translateProp = function
       let ty =
 	(if L.is_stable pt
 	  then TopTy
-	  else NamedTy (translateSLN (L.sln_of_ln ln)))
+	  else NamedTy (translatePLN (L.sln_of_ln ln)))
       in
       let r = freshRz () in
       let binds = bindings_of_proptype pt in
@@ -641,7 +641,7 @@ and translateTheoryElement = function
 	)]
 
   | L.Declaration(n, L.DeclProp(None, pt)) ->
-      let tynm = L.typename_of_name n in
+      let tynm = L.prop_typename_of_name n in
       let ty =
 	(if L.is_stable pt then
 	   TopTy
@@ -682,7 +682,7 @@ and translateTheoryElement = function
 	)
 
   | L.Declaration(n, L.DeclProp(Some p, pt)) ->
-      let tynm =L.typename_of_name n in
+      let tynm = L.prop_typename_of_name n in
       let ty =
 	(if L.is_stable pt then
 	   TopTy
@@ -766,8 +766,12 @@ and translateTheoryElement = function
       [ Spec(n, SignatSpec (translateTheory thr), []) ]
 
 and translateSLN = function
-    L.SLN (None, nm) -> LN (None, L.typename_of_name nm)
+  | L.SLN (None, nm) -> LN (None, L.typename_of_name nm)
   | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), L.typename_of_name nm)
+
+and translatePLN = function
+  | L.SLN (None, nm) -> LN (None, L.prop_typename_of_name nm)
+  | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), L.prop_typename_of_name nm)
 
 and translateTheoryElements thy =
   List.fold_right (fun e elts -> translateTheoryElement e @ elts) thy []

@@ -160,11 +160,13 @@
 \newcommand{\isunit}{1}
 \newcommand{\isvoid}{0}
 
-\newcommand{\iDefinition}[2]{\mathsf{Definition}\ #1\ :=\ #2.}
-\newcommand{\iParameter}[2]{\mathsf{Parameter}\ #1\ : #2.}
-\newcommand{\iAxiom}[2]{\mathsf{Axiom}\ #1\ : #2.}
+% I removed periods because I use these in the middle of text.
+\newcommand{\iDefinition}[2]{\mathsf{Definition}\ #1 \mathbin{{:}{=}} #2}
+\newcommand{\iParameter}[2]{\mathsf{Parameter}\ #1 : #2}
+\newcommand{\iAxiom}[2]{\mathsf{Axiom}\ #1 : #2}
 \newcommand{\ipt}{\tau}
 \newcommand{\ik}{\kappa}
+\newcommand{\iarrow}[2]{#1{\to}#2}
 \newcommand{\idarrow}[3]{(#1{:}#2){\to}#3}
 \newcommand{\ite}{\theta}
 \newcommand{\ith}{\Theta}

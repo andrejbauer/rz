@@ -9,6 +9,14 @@ category of modest sets, which was described in
 Section~\ref{sec:modest-sets-pers}. A theory is translated to a
 specification, where the theory elements are translated as follows.
 
+
+\subsection{Translation of sets and terms}
+\label{sec:transl-sets-terms}
+
+\internal{Andrej}{I still have to insert interpretations of terms
+  here. Will keep it short and point out where obligations are
+  emitted.}
+
 A set declaration $\iParameter{s}{\iSet}$ is translated to
 %
 \begin{align*}
@@ -108,10 +116,10 @@ The category of modest sets has coequalizers, hence a quotient modest
 set $A/\rho$ may be constructed for an any equivalence relaton~$\rho$
 on~$A$. However, because equality does not carry any computational
 content, equality of equivalence classes $\ieclass{x}{\rho} =
-\ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, rather than
-the expected~$\rho(x,y)$. Because this may cause a great deal of
-confusion and mistakes, it is better to consider only quotients by
-\emph{stable} equivalence relations, which behave as expected.
+\ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, not the
+usual~$\rho(x,y)$. Because this may cause a great deal of confusion
+and mistakes, it is better to consider only quotients by \emph{stable}
+equivalence relations, which behave as expected.
 %
 Given a modest set~$A$ and a stable equivalence relation~$\rho$
 on~$A$, the quotient $A/\rho$ is the modest set determined by
@@ -127,31 +135,120 @@ computable mathematics are stable, or can be made stable with a little
 bit of manipulation. For example, Cauchy sequences $(a_n)_{n\in\NN}$
 and $(b_n)_{n\in\NN}$ represent the same real number when
 %
-\begin{equation*}
+\begin{equation}
+  \label{eq:cauchy}%
   \xall{i}{\NN}{
     \xsome{j}{\NN}{
-      \forall m,n \geq j.\,|a_m - b_n| < 2^{-i}
+      \forall m,n \geq j.\,|a_m - b_n| \leq 2^{-i}
     }
   } \;.
-\end{equation*}
+\end{equation}
 %
 This defines an equivalence relation on the set of Cauchy sequences
 which does not seem to be stable. However, if we restrict attention
 just to the \emph{rapid} Cauchy sequences, i.e., those satisfying
-$\xall{i}{|a_{i+1} - a_i| < 2^{-i}}$, then the equivalence relation
-becomes
+$\xall{i}{\NN}{|a_{i+1} - a_i| \leq 2^{-i}}$, then the equivalence
+relation becomes
 %
 \begin{equation*}
-  \xall{i}{\NN}{|a_i - b_i| < 2^{-i+3}},
+  \xall{i}{\NN}{|a_i - b_i| \leq 2^{-i+3}},
 \end{equation*}
 %
-which is stable.
+which is a negative formula. It is also interesting that most
+practical implementations of real numbers present real numbers with
+rapid Cauchy sequences so that they can avoid the overhead of carrying
+with each sequence a realizer for~\eqref{eq:cauchy}.
 
-rz
+A specific kind of construction on a modest set~$A$ is the underlying
+modest set of realizers $\irz{A}$, defined by
+%
+\begin{align*}
+  \setOf{\irz{A}} &= \values{\typeOf{A}} \\
+  \typeOf{\irz{A}} &= \typeOf{A} \\
+  u \rz_{\irz{A}} v &\iff u = v,
+\end{align*}
+%
+where by $u = v$ we mean observational equality of values~$u$ and~$v$.
+The corresponding per is
+%
+\begin{equation*}
+  u_1 \per_{\irz{A}} u_2 \iff u_1 \in \support{A} \land u_1 = u_2.
+\end{equation*}
+%
+It validates Aczel's presentation axiom, see
+Section~\ref{sec:axiom-choice}. In the input language it gives us
+access to realizers which is useful because many constructions in
+computable mathematics, such as those in Type Two
+Effectivity~\cite{Wei00}, are explicitly expressed in terms of
+realizers.
 
-Translation of terms. Keep this short.
 
-Propositions and axioms.
+\subsection{Translation of propositions}
+\label{sec:transl-prop}
+
+The driving force behind the translation of logic is a theorem, see
+e.g.\ \cite[Thm.~4.4.10]{Troelstra:van-Dalen:88:1}, which says that
+under the realizability interpretation every formula~$\phi$ is
+equivalent to one that says, informally speaking, ``there exists~$u$,
+such that $u$ realizes $\phi$''. Furthermore, the formula ``$u$
+realizes $\phi$'' is computationally trivial.
+
+The translation of a predicate $\phi$ then consists of its underlying
+type $\typeOf{\phi}$ and a description of the relation $u \rz \phi$,
+expressed as a negative formula. An axiom $\iAxiom{A}{\phi}$ in the
+input is translated to
+%
+\begin{align*}
+  & \ovalspec{u}{\typeOf{\phi}} \\
+  & \oassertion{A}{u \rz \phi},
+\end{align*}
+%
+which requires the programmer to validate~$\phi$ by providing a
+realizer for it. When $\phi$ is a compound statement RZ computes the
+meaning of $u \rz \phi$, as described in Figure~\ref{fig:rz-logic}.
+
+A predicate declaration $\iParameter{p}{\iarrow{t}{\iProp}}$ is
+translated to
+%
+\begin{align*}
+  & \otyspec{ty\_p} \\
+  & \opropspec{p}{s \to ty\_p \to \oProp} \\
+  & \oassertion{\mathsf{predicate}_p}{
+    \begin{aligned}[t]
+      & (\oforall{x}{s}{\oforall{a}{ty\_p}{
+          \oimply
+          {\orz{a}{\oapp{p}{x}}}
+          {\ototal{x}{s}}
+        }}) \land {} \\
+      & \oforallt{x,y}{s}{\oforall{a}{ty\_p}{
+          (\oimply{\oper{s}{x}{y}}
+          {\oimply{\orz{a}{\oapp{p}{x}}}{\orz{a}{\oapp{p}{y}}}})
+          }}
+    \end{aligned}
+    }
+\end{align*}
+%
+This requires that the programmer define a type of realizers $ty\_p$
+and a predicate $p : s \to ty\_p \to \oProp$. We write
+$\orz{a}{\oapp{p}{x}}$ instead of $\oapp{\oapp{p}{a}}{x}$. The
+assertion says that~$p$ must be \emph{strict} ($\orz{a}{\oapp{p}{x}}$
+holds only if $x$ realizes something) and \emph{extensional} (if $a$
+realizes $\oapp{p}{x}$ and $y$ is equivalent to~$x$, then $a$ realizes
+$\oapp{p}{y}$ as well).
+
+Frequently we know that a predicate is stable, which can be taken into
+account when computing its realizability interpretation. For this
+purpose the input language has the subkind $\iStable$ of $\iProp$.
+When RZ encounters a predicate which is declared to be stable, such as
+$p : \iarrow{s}{\iStable}$, it takes into account the fact that its
+realizers are trivial and removes any mention of them.
+
+Another special kind in RZ input language is the kind $\iEquiv{s}$ of
+stable equivalence relations on a set~$s$. When an equivalence
+relation is declared with $\iParameter{p}{iEquiv{s}}$, RZ will output
+assertions stating that $p$ is strict, extensional, as well as
+reflexive, symmetric and transitive.
+
 
 %%% Local Variables: 
 %%% mode: latex

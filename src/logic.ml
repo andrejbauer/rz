@@ -476,6 +476,16 @@ let typename_of_name = function
 		      | (str, _) -> (makeTypename str, Word))
 		    lst)
 
+let prop_typename_of_name = function
+    N (p, Word) -> N ("ty_" ^ p, Word)
+  | N (str, _) -> N (makeTypename str, Word)
+  | G (k, lst) -> 
+      Name.gensym (List.map
+		    (function
+			(p, Word) -> ("ty_" ^ p, Word)
+		      | (str, _) -> (makeTypename str, Word))
+		    lst)
+
 let typename_of_ln (LN (mdl, nm)) = LN (mdl, typename_of_name nm)
 
 let sln_of_ln (LN (mdl, nm)) = SLN (mdl, typename_of_name nm)
