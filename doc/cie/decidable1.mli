@@ -6,12 +6,12 @@ type s
        (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
 *)
  
-val decidable_eq : s -> s -> [`or0 of top | `or1 of top]
+val decidable_eq : s -> s -> [`or0 | `or1]
 (**  Assertion decidable_eq = 
        forall (x:||s||, y:||s||), 
          (match decidable_eq x y with
-            `or0(dagger:top) => x =s= y 
-          | `or1(dagger:top) => forall dagger':top,  not (x =s= y) 
+            `or0 => x =s= y 
+          | `or1 => not (x =s= y) 
           )
 *)
 
