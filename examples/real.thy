@@ -1,6 +1,8 @@
+Require Algebra.
+Require Integer.
+
 (* Real numbers. *)
 
-Require Integer.
 
 Parameter t : Set.
 
