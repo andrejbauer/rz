@@ -1,9 +1,10 @@
 type s
  
-(** predicate (=s=) : s->s->prop *)
-(**  Assertion per_s [Definitional] = 
-       (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-       (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+(** predicate (=s=) : s -> s -> bool *)
+(**  Assertion symmetric_s =  forall x:s, y:s,  x =s= y -> y =s= x
+      
+     Assertion transitive_s = 
+       forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
 *)
  
 val decidable_eq : s -> s -> [`or0 | `or1]

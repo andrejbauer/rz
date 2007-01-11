@@ -121,7 +121,6 @@ specifications summarized in Figure~\ref{fig:input}.
     \mbox{Propositional functions and application}\\
     | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
     | & \oequal{\oe_1}{\oe_2} & \mbox{(Observational) term equality}\\
-    | & \orz{\oe_1}{\oapp{\oP}{\oe_2}} & \mbox{Realizers of atomic propositions}\\
     | & \oforall{\ox}{\oty}{\op}  \obar 
     \oforallt{\ox}{\os}{\op} & \mbox{Term quantifiers}\\[5pt]
     
@@ -193,11 +192,10 @@ desirable, since RZ acts as a bridge between constructive mathematics
 and real-world programmers, which typically are not familiar with
 constructive logic. The basic predicates from which assertions are
 built are observatinal equality $\oequal{\oe_1}{\oe_2}$, pers
-$\oper{s}{\oe_1}{\oe_2}$ on abstract types, and statements
-$\orz{\oe_1}{\oapp{\oP}{\oe_2}}$ which mean ``$\oe_1$ realizes
-$\oapp{\oP}{\oe_2}$'' where~$\oP$ is an atomic predicate.
-The formula $\ototal{\oe}{\os}$ stands for $\oper{\os}{\oe}{\oe}$,
-while $\oforallt{\ox}{\os}{\op}$ is a shorthand for
+$\oper{s}{\oe_1}{\oe_2}$ on abstract types, and basic predicates
+declared as parameters. The formula $\ototal{\oe}{\os}$ stands for
+$\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
+shorthand for
 $\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
 
 A specification is an Ocaml module type with assertions. It may

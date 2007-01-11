@@ -207,34 +207,33 @@ which requires the programmer to validate~$\phi$ by providing a
 realizer for it. When $\phi$ is a compound statement RZ computes the
 meaning of $u \rz \phi$, as described in Figure~\ref{fig:rz-logic}.
 
-A predicate declaration $\iParameter{p}{\iarrow{t}{\iProp}}$ is
+A predicate declaration $\iParameter{p}{\iarrow{s}{\iProp}}$ is
 translated to
 %
 \begin{align*}
   & \otyspec{ty\_p} \\
   & \opropspec{p}{s \to ty\_p \to \oProp} \\
-  & \oassertion{\mathsf{predicate}_p}{
-    \begin{aligned}[t]
-      & (\oforall{x}{s}{\oforall{a}{ty\_p}{
-          \oimply
-          {\orz{a}{\oapp{p}{x}}}
-          {\ototal{x}{s}}
-        }}) \land {} \\
-      & \oforallt{x,y}{s}{\oforall{a}{ty\_p}{
-          (\oimply{\oper{s}{x}{y}}
-          {\oimply{\orz{a}{\oapp{p}{x}}}{\orz{a}{\oapp{p}{y}}}})
-          }}
-    \end{aligned}
+  & \oassertion{\mathsf{strict}_p}{
+    \oforall{x}{s}{
+      \oforall{a}{ty\_p}{
+        (\oimply
+        {\oapp{\oapp{p}{x}}{a}}
+        {\ototal{x}{s}
+        })
+      }
     }
+  } \\
+  & \oassertion{\mathsf{extensional}_p}{
+    \oforallt{x,y}{s}{
+      \oforall{a}{ty\_p}{
+          (\oimply{\oper{s}{x}{y}}
+          {\oimply{\oapp{\oapp{p}{x}}{a}}{\oapp{\oapp{p}{y}}{a}}})
+          }}}
 \end{align*}
 %
 This requires that the programmer define a type of realizers $ty\_p$
-and a predicate $p : s \to ty\_p \to \oProp$. We write
-$\orz{a}{\oapp{p}{x}}$ instead of $\oapp{\oapp{p}{a}}{x}$. The
-assertion says that~$p$ must be \emph{strict} ($\orz{a}{\oapp{p}{x}}$
-holds only if $x$ realizes something) and \emph{extensional} (if $a$
-realizes $\oapp{p}{x}$ and $y$ is equivalent to~$x$, then $a$ realizes
-$\oapp{p}{y}$ as well).
+and a predicate $p : s \to ty\_p \to \oProp$ which is strict and
+extensional with respect to $\per_s$.
 
 Frequently we know that a predicate is stable, which can be taken into
 account when computing its realizability interpretation. For this
@@ -245,7 +244,7 @@ realizers are trivial and removes any mention of them.
 
 Another special kind in RZ input language is the kind $\iEquiv{s}$ of
 stable equivalence relations on a set~$s$. When an equivalence
-relation is declared with $\iParameter{p}{iEquiv{s}}$, RZ will output
+relation is declared with $\iParameter{p}{\iEquiv{s}}$, RZ will output
 assertions stating that $p$ is strict, extensional, as well as
 reflexive, symmetric and transitive.
 
