@@ -2,9 +2,13 @@
 module type T =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
  end
 

@@ -2,20 +2,33 @@
 module type T =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    type t
-   (**  Assertion per_t [Definitional] = 
-          forall x:s,  x : ||s|| ->
-            (forall y:t, z:t,  y =(t x)= z -> z =(t x)= y) /\ 
-            (forall y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w -> y =(t x)= w)
+    
+   (** predicate (=t=) : s -> t -> t -> bool *)
+   (**  Assertion strict_t =  forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s||
+         
+        Assertion extensional_t = 
+          forall x:s, y:s, z:t, w:t,  x =s= y -> z =(t x)= w -> z =(t y)= w
+         
+        Assertion symmetric_t [Definitional] = 
+          forall x:s, y:t, z:t,  y =(t x)= z -> z =(t x)= y
+         
+        Assertion transitive_t [Definitional] = 
+          forall x:s, y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w ->
+            y =(t x)= w
    *)
     
    type www = t
-   (**  Assertion www_def_total = 
+   (**  Assertion www_def_support = 
           forall (x:||s||),  forall y:www,  y : ||www x|| <-> y : ||t x||
          
         Assertion www_def_per = 
@@ -24,16 +37,25 @@ module type T =
    *)
     
    type u
-   (**  Assertion per_u [Definitional] = 
-          forall x:s,  x : ||s|| ->
-            forall y:s,  y : ||s|| ->
-              (forall z:u, w:u,  z =(u x y)= w -> w =(u x y)= z) /\ 
-              (forall z:u, w:u, x':u,  z =(u x y)= w /\ w =(u x y)= x' ->
-                 z =(u x y)= x')
+    
+   (** predicate (=u=) : s -> s -> u -> u -> bool *)
+   (**  Assertion strict_u = 
+          forall x:s, y:s, z:u, w:u,  z =(u x y)= w -> x : ||s|| /\ y : ||s||
+         
+        Assertion extensional_u = 
+          forall x:s, y:s, z:s, w:s, x':u, y':u,  x =s= z /\ y =s= w ->
+            x' =(u x y)= y' -> x' =(u z w)= y'
+         
+        Assertion symmetric_u [Definitional] = 
+          forall x:s, y:s, z:u, w:u,  z =(u x y)= w -> w =(u x y)= z
+         
+        Assertion transitive_u [Definitional] = 
+          forall x:s, y:s, z:u, w:u, x':u,  z =(u x y)= w /\ 
+            w =(u x y)= x' -> z =(u x y)= x'
    *)
     
    type wwww = u
-   (**  Assertion wwww_def_total = 
+   (**  Assertion wwww_def_support = 
           forall (x:||s||, y:||s||), 
             forall z:wwww,  z : ||wwww x y|| <-> z : ||u x y||
          
@@ -43,25 +65,29 @@ module type T =
    *)
     
    val a : s -> s
-   (**  Assertion a_total =  forall x:s, y:s,  x =s= y -> a x =s= a y
+   (**  Assertion a_support =  forall x:s, y:s,  x =s= y -> a x =s= a y
    *)
     
    val b : s -> s
-   (**  Assertion b_total =  forall x:s, y:s,  x =s= y -> b x =s= b y
+   (**  Assertion b_support =  forall x:s, y:s,  x =s= y -> b x =s= b y
    *)
     
    val c : s
-   (**  Assertion c_total =  c : ||s||
+   (**  Assertion c_support =  c : ||s||
    *)
     
    val d : s
-   (**  Assertion d_total =  d : ||s||
+   (**  Assertion d_support =  d : ||s||
    *)
     
    val m : s -> s * [`or0 | `or1]
    (**  Assertion m = 
           forall (x:||s||), 
-            let (p,q) = m x in p : ||s|| /\ (q = `or0 cor q = `or1)
+            let (p,q) = m x in p : ||s|| /\ 
+            (match q with
+               `or0 => true 
+             | `or1 => true 
+             )
    *)
     
    val n : s
@@ -71,13 +97,13 @@ module type T =
    *)
     
    type uu = t
-   (**  Assertion uu_def_total =  forall x:uu,  x : ||uu|| <-> x : ||t n||
+   (**  Assertion uu_def_support =  forall x:uu,  x : ||uu|| <-> x : ||t n||
          
         Assertion uu_def_per =  forall x:uu, y:uu,  x =uu= y <-> x =(t n)= y
    *)
     
    type q = s -> s
-   (**  Assertion q_def_total = 
+   (**  Assertion q_def_support = 
           forall f:q,  f : ||q|| <->
             (forall x:s, y:s,  x =s= y -> f x =s= f y)
          
@@ -91,18 +117,18 @@ module type T =
    *)
     
    val yy : s * t * s
-   (**  Assertion yy_total =  pi0 yy : ||s|| /\ pi1 yy : ||t (pi0 yy)|| /\ 
+   (**  Assertion yy_support =  pi0 yy : ||s|| /\ pi1 yy : ||t (pi0 yy)|| /\ 
           pi2 yy : ||s||
    *)
     
    val zz : s -> t -> s
-   (**  Assertion zz_total = 
+   (**  Assertion zz_support = 
           forall x:s, y:s,  x =s= y ->
             forall z:t, w:t,  z =(t x)= w -> zz x z =s= zz y w
    *)
     
    val ww : s -> s -> u
-   (**  Assertion ww_total = 
+   (**  Assertion ww_support = 
           forall x:s, y:s,  x =s= y ->
             forall z:s, w:s,  z =s= w -> ww x z =(u x z)= ww y w
    *)
@@ -127,129 +153,155 @@ module type T =
 module type U =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    type t = s
-   (**  Assertion t_def_total =  forall x:t,  x : ||t|| <-> x : ||s||
+   (**  Assertion t_def_support =  forall x:t,  x : ||t|| <-> x : ||s||
          
         Assertion t_def_per =  forall x:t, y:t,  x =t= y <-> x =s= y
    *)
     
    val n : s * s
-   (**  Assertion n_total =  pi0 n : ||s|| /\ pi1 n : ||s||
+   (**  Assertion n_support =  pi0 n : ||s|| /\ pi1 n : ||s||
    *)
  end
  
 module type Iteration =
  sig
    type a
-   (**  Assertion per_a [Definitional] = 
-          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
-          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
+    
+   (** predicate (=a=) : a -> a -> bool *)
+   (**  Assertion symmetric_a [Definitional] = 
+          forall x:a, y:a,  x =a= y -> y =a= x
+         
+        Assertion transitive_a [Definitional] = 
+          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    val x : a
-   (**  Assertion x_total =  x : ||a||
+   (**  Assertion x_support =  x : ||a||
    *)
     
    val s : a -> a
-   (**  Assertion s_total =  forall y:a, z:a,  y =a= z -> s y =a= s z
+   (**  Assertion s_support =  forall y:a, z:a,  y =a= z -> s y =a= s z
    *)
  end
  
 module type DenseLinearOrder =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    type ty_less
     
-   (* predicate (<) : s->s->ty_less->prop *)
-   (**  Assertion predicate_(<) = 
-          (forall x:s, y:s, a:ty_less,  a |= (<) x y -> x : ||s|| /\ 
-             y : ||s||) /\ 
-          (forall (x:||s||, y:||s||, z:||s||, w:||s||), 
-             forall a:ty_less,  x =s= z /\ y =s= w -> a |= (<) x y ->
-               a |= (<) z w)
+   (** predicate (<) : s -> s -> ty_less -> bool *)
+   (**  Assertion strict_(<) = 
+          forall x:s, y:s, a:ty_less,  (<) x y a -> x : ||s|| /\ y : ||s||
+         
+        Assertion extensional_(<) = 
+          forall x:s, y:s, z:s, w:s, a:ty_less,  x =s= z /\ y =s= w ->
+            (<) x y a -> (<) z w a
    *)
     
    
    (**  Assertion irreflexive = 
-          forall (x:||s||),  forall y:ty_less,  not (y |= (<) x x)
+          forall (x:||s||),  forall y:ty_less,  not ((<) x x y)
    *)
     
    val transitive : s -> s -> s -> ty_less * ty_less -> ty_less
    (**  Assertion transitive = 
           forall (x:||s||, y:||s||, z:||s||), 
-            forall p:ty_less * ty_less,  pi0 p |= (<) x y /\ 
-              pi1 p |= (<) y z -> transitive x y z p |= (<) x z
+            forall p:ty_less * ty_less,  (<) x y (pi0 p) /\ 
+              (<) y z (pi1 p) -> (<) x z (transitive x y z p)
    *)
     
    
    (**  Assertion assymetric = 
           forall (x:||s||, y:||s||), 
             forall p:ty_less * ty_less, 
-              not (pi0 p |= (<) x y /\ pi1 p |= (<) y x)
+              not ((<) x y (pi0 p) /\ (<) y x (pi1 p))
    *)
     
    val linear : s -> s -> s -> ty_less -> [`or0 of ty_less | `or1 of ty_less]
    (**  Assertion linear = 
           forall (x:||s||, y:||s||, z:||s||), 
-            forall w:ty_less,  w |= (<) x y ->
-              let i = linear x y z w
-              in (exists t:ty_less,  i = `or0 t /\ t |= (<) x z) cor 
-              (exists t:ty_less,  i = `or1 t /\ t |= (<) z y)
+            forall w:ty_less,  (<) x y w ->
+              (match linear x y z w with
+                 `or0(t:ty_less) => (<) x z t 
+               | `or1(t:ty_less) => (<) z y t 
+               )
    *)
     
    val dense : s -> s -> ty_less -> s * (ty_less * ty_less)
    (**  Assertion dense = 
           forall (x:||s||, y:||s||), 
-            forall z:ty_less,  z |= (<) x y ->
-              let (p,q) = dense x y z in p : ||s|| /\ pi0 q |= (<) x p /\ 
-              pi1 q |= (<) p y
+            forall z:ty_less,  (<) x y z ->
+              let (p,q) = dense x y z in p : ||s|| /\ (<) x p (pi0 q) /\ 
+              (<) p y (pi1 q)
    *)
  end
  
 module type Sums =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    val a : s
-   (**  Assertion a_total =  a : ||s||
+   (**  Assertion a_support =  a : ||s||
    *)
     
    val b : s
-   (**  Assertion b_total =  b : ||s||
+   (**  Assertion b_support =  b : ||s||
    *)
     
    val c : s
-   (**  Assertion c_total =  c : ||s||
+   (**  Assertion c_support =  c : ||s||
    *)
     
    type sum = [`yes of s | `no of unit | `maybe]
-   (**  Assertion sum_def_total = 
+   (**  Assertion sum_def_support = 
           forall i:sum,  i : ||sum|| <->
-            (exists j:s,  i = `yes j /\ j : ||s||) cor i = `no () cor 
-            i = `maybe
+            (match i with
+               `yes(x:s) => x : ||s|| 
+             | `no(u:unit) => true 
+             | `maybe => true 
+             )
          
         Assertion sum_def_per = 
           forall i:sum, j:sum,  i =sum= j <->
-            (exists k:s, m:s,  i = `yes k /\ j = `yes m /\ k =s= m) cor 
-            i = `no () /\ j = `no () cor i = `maybe /\ j = `maybe
+            (match (i,j) with
+               (`yes(x:s),`yes(y:s)) => x =s= y 
+             | (`no(u:unit),`no(v:unit)) => true 
+             | (`maybe,`maybe) => true 
+             )
    *)
     
    val tmp1 : [`yes of s]
-   (**  Assertion tmp1_def =  (exists i:s,  tmp1 = `yes i /\ i =s= a)
+   (**  Assertion tmp1_def = 
+          match (tmp1,`yes a) with
+            (`yes(x:s),`yes(y:s)) => x =s= y 
+          
    *)
     
    val tmp2 : sum
@@ -273,140 +325,164 @@ module type Sums =
 module type TestSubset =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
-   type p
+   type ty_p
     
-   (* predicate p : s->p->prop *)
-   (**  Assertion predicate_p = 
-          (forall x:s, a:p,  a |= p x -> x : ||s||) /\ 
-          (forall (x:||s||, y:||s||), 
-             forall a:p,  x =s= y -> a |= p x -> a |= p y)
+   (** predicate p : s -> ty_p -> bool *)
+   (**  Assertion strict_p =  forall x:s, a:ty_p,  p x a -> x : ||s||
+         
+        Assertion extensional_p = 
+          forall x:s, y:s, a:ty_p,  x =s= y -> p x a -> p y a
    *)
     
-   type q
+   type ty_q
     
-   (* predicate q : s * p->q->prop *)
-   (**  Assertion predicate_q = 
-          (forall t:s * p, a:q,  a |= q t -> pi0 t : ||s|| /\ 
-             pi1 t |= p (pi0 t)) /\ 
-          (forall t:s * p,  pi0 t : ||s|| /\ pi1 t |= p (pi0 t) ->
-             forall u:s * p,  pi0 u : ||s|| /\ pi1 u |= p (pi0 u) ->
-               forall a:q,  pi0 t =s= pi0 u -> a |= q t -> a |= q u)
+   (** predicate q : s * ty_p -> ty_q -> bool *)
+   (**  Assertion strict_q = 
+          forall t:s * ty_p, a:ty_q,  q t a -> pi0 t : ||s|| /\ 
+            p (pi0 t) (pi1 t)
+         
+        Assertion extensional_q = 
+          forall t:s * ty_p, u:s * ty_p, a:ty_q,  p (pi0 t) (pi1 t) /\ 
+            p (pi0 u) (pi1 u) /\ pi0 t =s= pi0 u -> q t a -> q u a
    *)
     
-   type r
+   type ty_r
     
-   (* predicate r : s->s->r->prop *)
-   (**  Assertion predicate_r = 
-          (forall x:s, y:s, a:r,  a |= r x y -> x : ||s|| /\ y : ||s||) /\ 
-          (forall (x:||s||, y:||s||, z:||s||, w:||s||), 
-             forall a:r,  x =s= z /\ y =s= w -> a |= r x y -> a |= r z w)
+   (** predicate r : s -> s -> ty_r -> bool *)
+   (**  Assertion strict_r = 
+          forall x:s, y:s, a:ty_r,  r x y a -> x : ||s|| /\ y : ||s||
+         
+        Assertion extensional_r = 
+          forall x:s, y:s, z:s, w:s, a:ty_r,  x =s= z /\ y =s= w ->
+            r x y a -> r z w a
    *)
     
-   type t = s * r
-   (**  Assertion t_def_total = 
+   type t = s * ty_r
+   (**  Assertion t_def_support = 
           forall u:t,  u : ||t|| <-> pi0 u : ||s|| /\ 
-            pi1 u |= r (pi0 u) (pi0 u)
+            r (pi0 u) (pi0 u) (pi1 u)
          
         Assertion t_def_per = 
-          forall u:t, p':t,  u =t= p' <-> pi1 u |= r (pi0 u) (pi0 u) /\ 
-            pi1 p' |= r (pi0 p') (pi0 p') /\ pi0 u =s= pi0 p'
+          forall u:t, p':t,  u =t= p' <-> r (pi0 u) (pi0 u) (pi1 u) /\ 
+            r (pi0 p') (pi0 p') (pi1 p') /\ pi0 u =s= pi0 p'
    *)
     
    val c : t
-   (**  Assertion c_total =  c : ||t||
+   (**  Assertion c_support =  c : ||t||
    *)
     
-   val warning : q
+   val warning : ty_q
    (**  Assertion warning = 
-          warning |= q (pi0 c,(assure a:p. (a |= p (pi0 c)) in a))
+          q (pi0 c,(assure a:ty_p. (p (pi0 c) a) in a)) warning
    *)
     
-   val foo : s -> p -> q
+   val foo : s -> ty_p -> ty_q
    (**  Assertion foo = 
           forall (x:||s||), 
-            forall y:p,  y |= p x ->
-              foo x y |= q (x,(assure a:p. (a |= p x) in a))
+            forall y:ty_p,  p x y ->
+              q (x,(assure a:ty_p. (p x a) in a)) (foo x y)
    *)
     
-   val bar : s -> p -> q
+   val bar : s -> ty_p -> ty_q
    (**  Assertion bar = 
           forall (x:||s||), 
-            forall y:p,  y |= p x ->
-              bar x y |= q (x,(assure a:p. (a |= p x) in a))
+            forall y:ty_p,  p x y ->
+              q (x,(assure a:ty_p. (p x a) in a)) (bar x y)
    *)
     
-   val baz : t -> r
-   (**  Assertion baz =  forall (x:||t||),  baz x |= r (pi0 x) (pi0 x)
+   val baz : t -> ty_r
+   (**  Assertion baz =  forall (x:||t||),  r (pi0 x) (pi0 x) (baz x)
    *)
  end
  
 module type Choice =
  sig
    type a
-   (**  Assertion per_a [Definitional] = 
-          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
-          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
+    
+   (** predicate (=a=) : a -> a -> bool *)
+   (**  Assertion symmetric_a [Definitional] = 
+          forall x:a, y:a,  x =a= y -> y =a= x
+         
+        Assertion transitive_a [Definitional] = 
+          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    type b
-   (**  Assertion per_b [Definitional] = 
-          (forall x:b, y:b,  x =b= y -> y =b= x) /\ 
-          (forall x:b, y:b, z:b,  x =b= y /\ y =b= z -> x =b= z)
+    
+   (** predicate (=b=) : b -> b -> bool *)
+   (**  Assertion symmetric_b [Definitional] = 
+          forall x:b, y:b,  x =b= y -> y =b= x
+         
+        Assertion transitive_b [Definitional] = 
+          forall x:b, y:b, z:b,  x =b= y /\ y =b= z -> x =b= z
    *)
     
-   type r
+   type ty_r
     
-   (* predicate r : a->b->r->prop *)
-   (**  Assertion predicate_r = 
-          (forall x:a, y:b, c:r,  c |= r x y -> x : ||a|| /\ y : ||b||) /\ 
-          (forall (x:||a||, y:||b||, z:||a||, w:||b||), 
-             forall c:r,  x =a= z /\ y =b= w -> c |= r x y -> c |= r z w)
+   (** predicate r : a -> b -> ty_r -> bool *)
+   (**  Assertion strict_r = 
+          forall x:a, y:b, c:ty_r,  r x y c -> x : ||a|| /\ y : ||b||
+         
+        Assertion extensional_r = 
+          forall x:a, y:b, z:a, w:b, c:ty_r,  x =a= z /\ y =b= w ->
+            r x y c -> r z w c
    *)
     
-   val choice : (a -> b * r) -> (a -> b) * (a -> r)
+   val choice : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
    (**  Assertion choice = 
-          forall f:a -> b * r, 
-            (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ q |= r x p) ->
+          forall f:a -> b * ty_r, 
+            (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
             let (g,h) = choice f
             in (forall x:a, y:a,  x =a= y -> g x =b= g y) /\ 
-            (forall (x:||a||),  h x |= r x (g x))
+            (forall (x:||a||),  r x (g x) (h x))
    *)
     
-   val intensionalChoice : (a -> b * r) -> (a -> b) * (a -> r)
+   val intensionalChoice : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
    (**  Assertion intensionalChoice = 
-          forall f:a -> b * r, 
-            (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ q |= r x p) ->
+          forall f:a -> b * ty_r, 
+            (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
             let (g,h) = intensionalChoice f
             in (forall x:a,  x : ||a|| -> g x : ||b||) /\ 
-            (forall (x':||a||),  h x' |= r x' (g x'))
+            (forall (x':||a||),  r x' (g x') (h x'))
    *)
  end
  
 module type Quotients =
  sig
    type s
-   (**  Assertion per_s [Definitional] = 
-          (forall x:s, y:s,  x =s= y -> y =s= x) /\ 
-          (forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z)
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s [Definitional] = 
+          forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s [Definitional] = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
-   (* predicate (<<) : s->s->prop *)
-   (**  Assertion predicate_(<<) = 
-          (forall x:s, y:s,  (<<) x y -> x : ||s|| /\ y : ||s||) /\ 
-          (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
-             y =s= w -> (<<) x y -> (<<) z w)
+   (** predicate (<<) : s -> s -> bool *)
+   (**  Assertion strict_(<<) = 
+          forall x:s, y:s,  (<<) x y -> x : ||s|| /\ y : ||s||
+         
+        Assertion extensional_(<<) = 
+          forall x:s, y:s, z:s, w:s,  x =s= z /\ y =s= w -> (<<) x y ->
+            (<<) z w
    *)
     
-   (* predicate r : s->s->prop *)
-   (**  Assertion predicate_r = 
-          (forall x:s, y:s,  r x y -> x : ||s|| /\ y : ||s||) /\ 
-          (forall (x:||s||, y:||s||, z:||s||, w:||s||),  x =s= z /\ 
-             y =s= w -> r x y -> r z w)
+   (** predicate r : s -> s -> bool *)
+   (**  Assertion strict_r = 
+          forall x:s, y:s,  r x y -> x : ||s|| /\ y : ||s||
+         
+        Assertion extensional_r = 
+          forall x:s, y:s, z:s, w:s,  x =s= z /\ y =s= w -> r x y -> r z w
    *)
     
    
@@ -425,7 +501,7 @@ module type Quotients =
             (<<) x z
    *)
     
-   (* predicate eq : s->s->prop *)
+   (** predicate eq : s -> s -> bool *)
    (**  Assertion eq_def = 
           forall (x:||s||, y:||s||),  eq x y <->
             (assure (forall (z:||s||),  (<<) z z) /\ 
@@ -435,7 +511,7 @@ module type Quotients =
    *)
     
    type s2 = s
-   (**  Assertion s2_def_total =  forall x:s2,  x : ||s2|| <-> x : ||s||
+   (**  Assertion s2_def_support =  forall x:s2,  x : ||s2|| <-> x : ||s||
          
         Assertion s2_def_per =  forall x:s2, y:s2,  x =s2= y <-> eq x y
    *)

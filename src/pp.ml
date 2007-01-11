@@ -184,9 +184,9 @@ and output_modest ppf {ty=ty;tot=p} =
   
 
 and output_proptype ppf = function
-    Prop -> fprintf ppf "prop"
+    Prop -> fprintf ppf "bool"
   | PropArrow(ty, pt) ->
-      fprintf ppf "%a->%a"  output_ty ty   output_proptype pt
+      fprintf ppf "%a -> %a"  output_ty ty   output_proptype pt
 
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
@@ -293,7 +293,7 @@ and output_prop_14 ppf = function
       fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
   | PLambda ((n, ty), p) ->
-      fprintf ppf "@[<hov 2>pfun %a : %a =>@ @[%a@]@]" 
+      fprintf ppf "@[<hov 2>(pfun %a : %a =>@ @[%a@])@]" 
         output_name n  output_ty ty  output_prop_14 p
 
 (*
@@ -355,8 +355,8 @@ and output_prop_9 ppf = function
       fprintf ppf "%a %a"
         output_ln ln   output_term_apps lst
   | NamedProp (ln, t, lst) ->
-      fprintf ppf "%a |= %a %a"
-	output_term_4 t   output_ln ln   output_term_apps lst
+      fprintf ppf "%a %a"
+         output_ln ln   output_term_apps (lst@[t])
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp

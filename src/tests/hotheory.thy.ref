@@ -2,9 +2,13 @@
 module type T =
  sig
    type a
-   (**  Assertion per_a [Definitional] = 
-          (forall x:a, y:a,  x =a= y -> y =a= x) /\ 
-          (forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z)
+    
+   (** predicate (=a=) : a -> a -> bool *)
+   (**  Assertion symmetric_a [Definitional] = 
+          forall x:a, y:a,  x =a= y -> y =a= x
+         
+        Assertion transitive_a [Definitional] = 
+          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
  end
  
@@ -22,7 +26,7 @@ module type H =
  functor (M : T) ->
  sig
    val x : M.a
-   (**  Assertion x_total =  x : ||M.a||
+   (**  Assertion x_support =  x : ||M.a||
    *)
  end
  
@@ -47,9 +51,15 @@ module type PHI = functor (X : G) ->
                     
                   end
  
-module Q : PSI(G0)
+module Q : sig
+             
+           end
  
-module R : PSI(H0)
+module R : sig
+             
+           end
  
-module W : RHO(H0)
+module W : sig
+             
+           end
 

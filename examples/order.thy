@@ -22,7 +22,7 @@ end.
 Definition LinearOrder := thy
   include PartialOrder.
 
-  Axiom linear: forall x y z, leq x y -> leq x z \/ leq z y.
+  Axiom linear: forall x y z : s, leq x y -> leq x z \/ leq z y.
 end.
 
 

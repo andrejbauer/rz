@@ -74,32 +74,53 @@ let isPredicate n ty binds =
   let xs = List.map fst binds in
   let r = freshRz () in
   let ys = freshList (List.map (fun (_,{ty=t}) -> t) binds) in
-    And [
-	nest_forall_ty binds
-	  (Forall ((r, ty), Imply (NamedProp (n, id r, List.map id xs),
-				  And (List.map (fun (x,s) -> pApp s.tot (id x)) binds))));
-	nest_forall binds
-	  (nest_forall (List.map2 (fun (_,s) y -> (y,s)) binds ys)
-	    (Forall ((r, ty),
-		   Imply (And (List.map2 (fun (x,s) y -> pApp (pApp s.per (id x)) (id y)) binds ys),
-			 Imply (NamedProp (n, id r, List.map id xs),
-			       NamedProp (n, id r, List.map id ys))))))]
+    (nest_forall_ty binds
+      (Forall ((r, ty), Imply (NamedProp (n, id r, List.map id xs),
+			      And (List.map (fun (x,s) -> pApp s.tot (id x)) binds)))),
+      nest_forall_ty binds
+	(nest_forall_ty (List.map2 (fun (_,s) y -> (y,s)) binds ys)
+	  (Forall ((r, ty),
+		  Imply (And (List.map2 (fun (x,s) y -> pApp (pApp s.per (id x)) (id y)) binds ys),
+			Imply (NamedProp (n, id r, List.map id xs),
+			      NamedProp (n, id r, List.map id ys)))))))
 
 let isPer n binds =
+  let binds' = List.map (fun (_, s) -> (fresh s.ty, s)) binds in
   let ty = NamedTy n in
   let x, y, z = fresh3 ty in
   let p = 
     let p0 = NamedPer (n, List.map (fun (x, _) -> id x) binds) in
       fun t1 t2 -> PApp (PApp (p0, t1), t2)
   in
-    nest_forall binds
-      (And [
-	  Forall ((x,ty), Forall ((y,ty), Imply(p (id x) (id y), p (id y) (id x))));
-	  Forall ((x,ty),
-		 Forall ((y,ty),
-			Forall ((z,ty),
-			       Imply (And [p (id x) (id y); p (id y) (id z)], p (id x) (id z)))))
-      ])
+  let q = 
+    let q0 = NamedPer (n, List.map (fun (x, _) -> id x) binds') in
+      fun t1 t2 -> PApp (PApp (q0, t1), t2)
+  in
+  (* strict *)
+    (nest_forall_ty binds
+      (Forall ((x,ty), Forall ((y,ty), Imply (
+	  p (id x) (id y),
+	  And (List.map (fun (x,{tot=t}) -> pApp t (id x)) binds)
+      ))))
+    ),
+  (* extensional *)
+  (nest_forall_ty binds
+    (nest_forall_ty binds'
+      (Forall ((x,ty), Forall ((y,ty), Imply (
+	  And (List.map2 (fun (u,{per=p}) (v,_) -> pApp (pApp p (id u)) (id v)) binds binds'),
+	  Imply (p (id x) (id y), q (id x) (id y))
+      ))))
+    )),
+  (* symmteric *)
+  (nest_forall_ty binds
+    (Forall ((x,ty), Forall ((y,ty), Imply(p (id x) (id y), p (id y) (id x)))))),
+  (* transitive *)
+  (nest_forall_ty binds
+    (Forall ((x,ty),
+	    Forall ((y,ty),
+		   Forall ((z,ty),
+			  Imply (And [p (id x) (id y); p (id y) (id z)], p (id x) (id z)))))
+    ))
 
 let isEquiv p s =
   let q u v = pApp (pApp (pApp p (id u)) (id v)) Dagger in
@@ -434,7 +455,7 @@ and translateProp = function
       let ty =
 	(if L.is_stable pt
 	  then TopTy
-	  else NamedTy (translatePLN (L.sln_of_ln ln)))
+	  else NamedTy (translatePLN ln))
       in
       let r = freshRz () in
       let binds = bindings_of_proptype pt in
@@ -639,14 +660,33 @@ and per_propkind n = function
 
 and translateTheoryElement = function
   | L.Declaration(n, L.DeclSet (None, knd)) -> 
-      [Spec (n, TySpec None, []);
-       Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
-	   [{alabel = "per_" ^ string_of_name n;
-	     atyvars = [];
-	     apbnds = [];
-	     aannots = [Annot_NoOpt];
-	     aprop = isPer (ln_of_name n) (bindings_of_setkind knd)}
-	  ])]
+      let n = L.typename_of_name n in
+      let spec_strict, spec_extensional, spec_symm, spec_trans =
+	isPer (ln_of_name n) (bindings_of_setkind knd)
+      in
+	[Spec (n, TySpec None, []);
+	 Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
+	      [{alabel = "strict_" ^ string_of_name n;
+		atyvars = [];
+		apbnds = [];
+		aannots = [];
+		aprop = spec_strict};
+	       {alabel = "extensional_" ^ string_of_name n;
+		atyvars = [];
+		apbnds = [];
+		aannots = [];
+		aprop = spec_extensional};
+	       {alabel = "symmetric_" ^ string_of_name n;
+		atyvars = [];
+		apbnds = [];
+		aannots = [Annot_NoOpt];
+		aprop = spec_symm};
+	       {alabel = "transitive_" ^ string_of_name n;
+		atyvars = [];
+		apbnds = [];
+		aannots = [Annot_NoOpt];
+		aprop = spec_trans}
+	      ])]
 
   | L.Declaration(n, L.DeclSet(Some s, knd)) ->
       let {ty=t; tot=p; per=q} = translateSet s in
@@ -685,17 +725,23 @@ and translateTheoryElement = function
 	 else
 	   NamedTy (ln_of_name tynm))
       in
-      let spec = isPredicate (ln_of_name n) ty (bindings_of_proptype pt)
+      let spec_strict, spec_extensional = isPredicate (ln_of_name n) ty (bindings_of_proptype pt)
       in
 	(* Type of realizers *)
 	(if L.is_stable pt then [] else [Spec (tynm, TySpec None, [])]) @
 	(* Predicate specification *)
 	[Spec (n, PropSpec (translateProptype ty pt), [
-		 {alabel = "predicate_" ^ (string_of_name n);
+		 {alabel = "strict_" ^ (string_of_name n);
 		  atyvars = [];
 		  apbnds = [];
 		  aannots = [Annot_Declare n];
-		  aprop = spec
+		  aprop = spec_strict
+		 };
+		 {alabel = "extensional_" ^ (string_of_name n);
+		  atyvars = [];
+		  apbnds = [];
+		  aannots = [Annot_Declare n];
+		  aprop = spec_extensional
 		 }
 	       ])
 	] @ (if L.is_equiv pt then
@@ -807,8 +853,8 @@ and translateSLN = function
   | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), L.typename_of_name nm)
 
 and translatePLN = function
-  | L.SLN (None, nm) -> LN (None, L.prop_typename_of_name nm)
-  | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), L.prop_typename_of_name nm)
+  | L.LN (None, nm) -> LN (None, L.prop_typename_of_name nm)
+  | L.LN (Some mdl, nm) -> LN (Some (translateModel mdl), L.prop_typename_of_name nm)
 
 and translateTheoryElements thy =
   List.fold_right (fun e elts -> translateTheoryElement e @ elts) thy []
