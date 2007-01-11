@@ -430,8 +430,8 @@ and output_ty_0 ppf = function
 
 and output_annots ppf = function
     [] -> ()
-  | Annot_Declare _ :: rest -> output_annots ppf rest
-  | Annot_NoOpt::rest -> fprintf ppf "[Definitional] %a"  output_annots rest
+  | (Annot_Declare _ | Annot_NoOpt) :: rest -> output_annots ppf rest
+(*  | Annot_NoOpt::rest -> fprintf ppf "[Definitional] %a"  output_annots rest *)
 
 
 and output_assertion ppf asn =

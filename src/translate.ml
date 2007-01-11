@@ -658,6 +658,12 @@ and per_propkind n = function
       let t = translateSet s in
 	PropArrow (t.ty, per_propkind n knd)
 
+and total_propkind n = function
+    L.KindSet -> PropArrow (NamedTy n, Prop)
+  | L.KindArrow (_, s, knd) ->
+      let t = translateSet s in
+	PropArrow (t.ty, total_propkind n knd)
+
 and translateTheoryElement = function
   | L.Declaration(n, L.DeclSet (None, knd)) -> 
       let n = L.typename_of_name n in
@@ -696,26 +702,29 @@ and translateTheoryElement = function
       let idys = List.map id ys in
       let x = fresh t in
       let y, y' = fresh2 t in
-	[Spec (n, TySpec (Some t),
+	[Spec (n, TySpec (Some t), []);
+	 Spec (totalName n, PropSpec (total_propkind (ln_of_name n) knd),
              [{alabel = string_of_name n ^ "_def_support";
 	       atyvars = [];
 	       apbnds = [];
 	       aannots = [];
-	       aprop = nest_forall binds
-		(Forall((x, tyname),
-		       Iff (PApp (NamedTotal (ln_of_name n, idys), id x),
-			   pApp (List.fold_left pApp p idys) (id x))))};
-	      {alabel = string_of_name n ^ "_def_per";
+	       aprop =
+		 nest_forall_ty binds
+		   (Forall((x, tyname),
+			  Iff (PApp (NamedTotal (ln_of_name n, idys), id x),
+			      pApp (List.fold_left pApp p idys) (id x))))}]);
+	 Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
+	      [{alabel = string_of_name n ^ "_def_per";
 	       atyvars = [];
 	       apbnds = [];
 	       aannots = [];
 	       aprop = 
-	         nest_forall binds
+	         nest_forall_ty binds
 		 (Forall ((y,tyname),
 			  Forall ((y',tyname),
 				  Iff (PApp (PApp (NamedPer (ln_of_name n, idys), id y), id y'),
-				   pApp (pApp (List.fold_left pApp q idys) (id y)) (id y')))))}]
-	)]
+				      pApp (pApp (List.fold_left pApp q idys) (id y)) (id y')))))}]
+	 )]
 
   | L.Declaration(n, L.DeclProp(None, pt)) ->
       let tynm = L.prop_typename_of_name n in
