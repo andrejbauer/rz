@@ -4,10 +4,9 @@ module type A =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a [Definitional] = 
-          forall x:a, y:a,  x =a= y -> y =a= x
+   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a [Definitional] = 
+        Assertion transitive_a = 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
@@ -19,18 +18,22 @@ module type A =
                 type e
                  
                 (** predicate (=e=) : e -> e -> bool *)
-                (**  Assertion symmetric_e [Definitional] = 
+                (**  Assertion symmetric_e = 
                        forall x:e, y:e,  x =e= y -> y =e= x
                       
-                     Assertion transitive_e [Definitional] = 
+                     Assertion transitive_e = 
                        forall x:e, y:e, z:e,  x =e= y /\ y =e= z -> x =e= z
                 *)
                  
                 type f = e
+                 
+                (** predicate ||f|| : f -> bool *)
                 (**  Assertion f_def_support = 
                        forall x:f,  x : ||f|| <-> x : ||e||
-                      
-                     Assertion f_def_per = 
+                *)
+                 
+                (** predicate (=f=) : f -> f -> bool *)
+                (**  Assertion f_def_per = 
                        forall x:f, y:f,  x =f= y <-> x =e= y
                 *)
               end
@@ -41,26 +44,28 @@ module type B =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a [Definitional] = 
-          forall x:a, y:a,  x =a= y -> y =a= x
+   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a [Definitional] = 
+        Assertion transitive_a = 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    type b = a
+    
+   (** predicate ||b|| : b -> bool *)
    (**  Assertion b_def_support =  forall x:b,  x : ||b|| <-> x : ||a||
-         
-        Assertion b_def_per =  forall x:b, y:b,  x =b= y <-> x =a= y
+   *)
+    
+   (** predicate (=b=) : b -> b -> bool *)
+   (**  Assertion b_def_per =  forall x:b, y:b,  x =b= y <-> x =a= y
    *)
     
    type b'
     
    (** predicate (=b'=) : b' -> b' -> bool *)
-   (**  Assertion symmetric_b' [Definitional] = 
-          forall x:b', y:b',  x =b'= y -> y =b'= x
+   (**  Assertion symmetric_b' =  forall x:b', y:b',  x =b'= y -> y =b'= x
          
-        Assertion transitive_b' [Definitional] = 
+        Assertion transitive_b' = 
           forall x:b', y:b', z:b',  x =b'= y /\ y =b'= z -> x =b'= z
    *)
     
@@ -74,18 +79,26 @@ module type B =
     
    module E : sig
                 type e = a
+                 
+                (** predicate ||e|| : e -> bool *)
                 (**  Assertion e_def_support = 
                        forall x:e,  x : ||e|| <-> x : ||a||
-                      
-                     Assertion e_def_per = 
+                *)
+                 
+                (** predicate (=e=) : e -> e -> bool *)
+                (**  Assertion e_def_per = 
                        forall x:e, y:e,  x =e= y <-> x =a= y
                 *)
                  
                 type f = b
+                 
+                (** predicate ||f|| : f -> bool *)
                 (**  Assertion f_def_support = 
                        forall x:f,  x : ||f|| <-> x : ||b||
-                      
-                     Assertion f_def_per = 
+                *)
+                 
+                (** predicate (=f=) : f -> f -> bool *)
+                (**  Assertion f_def_per = 
                        forall x:f, y:f,  x =f= y <-> x =b= y
                 *)
               end
@@ -99,10 +112,14 @@ module type C =
                A
     
    type a = FF(BB).a
+    
+   (** predicate ||a|| : a -> bool *)
    (**  Assertion a_def_support = 
           forall x:a,  x : ||a|| <-> x : ||FF(BB).a||
-         
-        Assertion a_def_per =  forall x:a, y:a,  x =a= y <-> x =FF(BB).a= y
+   *)
+    
+   (** predicate (=a=) : a -> a -> bool *)
+   (**  Assertion a_def_per =  forall x:a, y:a,  x =a= y <-> x =FF(BB).a= y
    *)
  end
 
