@@ -7,10 +7,10 @@ type s
        forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
 *)
  
-val decidable_eq : s -> s -> [`or0 | `or1]
-(**  Assertion decidable_eq = 
+val eq : s -> s -> [`or0 | `or1]
+(**  Assertion eq = 
        forall (x:||s||, y:||s||), 
-         (match decidable_eq x y with
+         (match eq x y with
             `or0 => x =s= y 
           | `or1 => not (x =s= y) 
           )

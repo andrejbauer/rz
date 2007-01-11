@@ -3,18 +3,11 @@
 \section{The Input Language}
 \label{sec:input-language}
 
-\begin{figure}[htbp]
-\VerbatimInput{kuratowski.thy}
-	\caption{caption}
-	\label{fig:typicalinput}
-\end{figure}
-
-
 A RZ \emph{theory} is a generalized
 logical signature with associated axioms, similar to a Coq module signature.
 Theories are descriptions of \emph{models}, or implementations. The input is the
 definition of one or more \emph{theories}; 
-Figure~\ref{fig:typicalinput} shows a sample input for the RZ system. 
+Figure~\ref{fig:kuratowski} shows a sample input for the RZ system. 
 (RZ does not permit models to be written directly, but it does let you
 assume that a model of a theory exists.)
 
@@ -25,17 +18,17 @@ a named axiom that must hold. (i.e., \textsf{Axiom} specifications).
 More complex theories can be parameterized by models (e.g., a theory
 of real numbers can be written in terms of one unspecified but
 arbitrary model of the natural numbers); in
-figure~\ref{fig:typicalinput} \texttt{Kuratowski} is a theory
-parameterized by a model choosing an implementation of a single set.
-For any such model $\im$, then, $\mathtt{Kuratowski}(\im)$ is a theory
-describing a model of finite sets whose elements are in the set
-$\iselect{\im}{\mathtt{a}}$. Alternatively, a theory can describe a
-uniform family of models (e.g., a single model of real numbers written
-in terms of an arbitrary model of the natural numbers); this would
-correspond to a single implementation that works for any model $\im$
-satisfying the parameter theory. In contrast, a parameterized theory
-permits completely unrelated implementations for
-$\mathtt{Kuratowski}(\im_1)$ and $\mathtt{Kuratowski(\im_2)}$.
+figure~\ref{fig:kuratowski} \texttt{K} is a theory parameterized by a
+model choosing an implementation of a single set. For any such model
+$\im$, then, $\mathtt{K}(\im)$ is a theory describing a model of
+finite sets whose elements are in the set $\iselect{\im}{\mathtt{a}}$.
+Alternatively, a theory can describe a uniform family of models (e.g.,
+a single model of real numbers written in terms of an arbitrary model
+of the natural numbers); this would correspond to a single
+implementation that works for any model $\im$ satisfying the parameter
+theory. In contrast, a parameterized theory permits completely
+unrelated implementations for $\mathtt{K}(\im_1)$ and
+$\mathtt{K(\im_2)}$.
 
 As shown in in Figure~\ref{fig:typicalinput}, propositions and predicates
 appearing in theories may use full first-order constructive logic, not just the

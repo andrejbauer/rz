@@ -12,17 +12,112 @@ be presented separately.
 \label{sec:decidable-sets}
 
 A set $S$ is said to be decidable when, for all $x, y \in S$, $x = y$
-or $\lnot (x = y)$. Classically, all sets are decidable. In RZ a
-decidable set is described as
+or $\lnot (x = y)$. In classical mathematics all sets are decidable
+because decidability of equality is just an instance of the law of
+exluced middle. However, RZ computes from
 %
 \VerbatimInput{decidable1.thy}
 %
-The interesting part of the output is
+that the realizer for the axiom $\mathtt{eq}$ is specified by
 %
-\VerbatimInput{decidable1.mli}
+\begin{verbatim}
+val eq : s -> s -> [`or0 | `or1]
+(**  Assertion eq =
+       forall (x:||s||, y:||s||),
+         (match eq x y with
+            `or0 => x =s= y
+          | `or1 => not (x =s= y)
+          )
+*)
+\end{verbatim}
+%
+We read this as follows: $\mathtt{eq}$ is a function which takes
+arguments~$x$ and~$y$ of type~$s$ and returns $\mathtt{`or0}$ or
+$\mathtt{`or1}$. If it returns $\mathtt{`or0}$, then $x \per_s y$, and
+if it returns $\mathtt{`or1}$, then $\lnot (x \per_s y)$. In other
+words $\mathtt{eq}$ is a decision procedure which tells when
+values~$x$ and~$y$ represent the same element of the modest set.
+
 
 \subsection{Finite sets}
 \label{sec:finite-sets}
+
+There are many equivalent characterizations of finite sets. The one
+that works best constructively is due to Kuratowski. Given a set~$A$,
+let $K(A)$ be the smallest family of subsets of~$A$ satisfying, for
+all $x \in A$ and $S \in K(A)$,
+%
+\begin{xalignat*}{3}
+  &\emptyset \in K(A) &
+  &\text{and} &
+  &x \in A \land S \in K(A) \implies S \cup \set{x} \in K(A).
+\end{xalignat*}
+%
+Then $K(A)$ is precisely the family of all finite subsets of~$A$. This
+construction relies heavily on powersets, which are not available in
+RZ, but we can reformulate as follows. Given a set~$A$, let $K(A)$ be
+a structure consisting of a set~$S$, a constant $0 \in S$, and an
+operation $a : A \times S \to S$, satisfying, for all $x, y \in A$, $u
+\in S$, and $p$ a predicate on~$S$:
+%
+\begin{align*}
+  & \lnot (0 = a(x, 0)) \\
+  & a(x, u) = a(x, a(x,u)) \\
+  & a(x, a(y, u)) = a(y, a(x, u)) \\
+  & p(0) \implies (\xall{x}{A}{\all{u}{S}{p(u) \implies p(a(x,u))}}
+  \implies \xall{u}{S}{P(u)}
+\end{align*}
+%
+Think of $s \in S$ as a representation of a finite subset of~$A$, $0$
+represents the empty set, and $a(s,x)$ is the union of $s$ and
+$\set{x}$. The last line is an induction principle for finite sets.
+The set represented by~$u \in S$ is
+%
+\begin{equation*}
+  \mathrm{fin}(u) = \set{x \in A \such u = a(x, u)} \;.
+\end{equation*}
+%
+We may rewrite the above definition into RZ as shown in
+Figure~\ref{fig:kuratowski}. The theory $\mathtt{K}$ is a parametrized
+by a model~$\mathtt{A}$ which contains a set~$a$. We wrote
+$\mathtt{emptySet}$ instead of~$0$ and $\mathtt{add}$ instead of~$a$.
+For brevity we do not display the entire output here, but focus only
+on the most interesting part, which is the induction principle. It
+looks like a statement in higher-order logic because it quantifies
+over all models $\mathtt{P}$ containing a predicate~$\mathtt{p}$.
+However, since the quantifer is on the outside RZ accepts it and
+translates it to a functor mapping a module~$\mathtt{P}$ to a value
+$\mathtt{induction}$:
+%
+\begin{verbatim}
+module Induction : functor
+  (P : sig
+     type ty_p
+     (** predicate p : s -> ty_p -> bool *)
+     (**  Assertion strict_p = 
+            forall x:s, a:ty_p,  p x a -> x : ||s||           
+          Assertion extensional_p = 
+            forall x:s, y:s, a:ty_p, x =s= y -> p x a -> p y a
+     *)
+   end) ->
+sig
+  val induction : P.ty_p -> (A.a -> s -> P.ty_p -> P.ty_p) -> s -> P.ty_p
+  (**  Assertion induction = 
+         forall x:P.ty_p,  P.p emptySet x ->
+           forall f:A.a -> s -> P.ty_p -> P.ty_p, 
+             (forall (x':||A.a||, u:||s||), 
+                forall y:P.ty_p,  P.p u y -> P.p (add x' u) (f x' u y)) ->
+             forall (u:||s||),  P.p u (induction x f u)
+  *)
+end
+\end{verbatim}
+
+
+\begin{figure}
+  \VerbatimInput{kuratowski.thy}  
+  \caption{Kuratowski finite sets}
+  \label{fig:kuratowski}
+\end{figure}
 
 
 \subsection{Inductive types}
