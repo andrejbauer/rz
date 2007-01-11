@@ -78,16 +78,23 @@ The set represented by~$u \in S$ is
 \end{equation*}
 %
 We may rewrite the above definition into RZ as shown in
-Figure~\ref{fig:kuratowski}. The theory $\mathtt{K}$ is a parametrized
-by a model~$\mathtt{A}$ which contains a set~$a$. We wrote
-$\mathtt{emptySet}$ instead of~$0$ and $\mathtt{add}$ instead of~$a$.
-For brevity we do not display the entire output here, but focus only
-on the most interesting part, which is the induction principle. It
-looks like a statement in higher-order logic because it quantifies
-over all models $\mathtt{P}$ containing a predicate~$\mathtt{p}$.
-However, since the quantifer is on the outside RZ accepts it and
-translates it to a functor mapping a module~$\mathtt{P}$ to a value
-$\mathtt{induction}$:
+Figure~\ref{fig:kuratowski}.
+%
+\begin{figure}
+  \VerbatimInput{kuratowski.thy}  
+  \caption{Kuratowski finite sets}
+  \label{fig:kuratowski}
+\end{figure}
+%
+The theory $\mathtt{K}$ is parametrized by a model~$\mathtt{A}$ which
+contains a set~$a$. We wrote $\mathtt{emptySet}$ instead of~$0$ and
+$\mathtt{add}$ instead of~$a$. For brevity we do not display the
+entire output here, but focus only on the most interesting part, which
+is the induction principle. It looks like a statement in higher-order
+logic because it quantifies over all models $\mathtt{P}$ containing a
+predicate~$\mathtt{p}$. However, since the quantifer is on the outside
+RZ accepts it and translates it to a functor mapping a
+module~$\mathtt{P}$ to a value $\mathtt{induction}$:
 %
 \begin{verbatim}
 module Induction : functor
@@ -111,13 +118,13 @@ sig
   *)
 end
 \end{verbatim}
+%
+We explain the output, which is admittedly difficult to read, but
+see~\ref{wherever-we-discuss-polymorphization}. The value
+$\mathtt{induction}$ is a fold-like operation. It accepts a value~$x$,
+a function~$f$, and a finite set $u = \set{a_1, \ldots, a_n}$.
 
-
-\begin{figure}
-  \VerbatimInput{kuratowski.thy}  
-  \caption{Kuratowski finite sets}
-  \label{fig:kuratowski}
-\end{figure}
+\internal{Andrej}{Will explain this when we know what happened to polymoprhization.}
 
 
 \subsection{Inductive types}
@@ -128,11 +135,63 @@ end
 \subsection{Axiom of choice}
 \label{sec:axiom-choice}
 
-Axiom of choice, intensional axiom of choice, presentation axiom.
+In this example we show how RZ can help explain why a generally
+accepted axiom is not constructively valid. Consider the Axiom of
+Choice:
+%
+\VerbatimInput{choice.thy}
+%
+The output for the axiom of choice is
+%
+\begin{verbatim}
+val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
+(** Assertion ac =
+    forall f:a -> b * ty_r,
+      (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
+      let (g,h) = ac f in (forall x:a, y:a,  x =a= y -> g x =b= g y) /\
+      (forall (x:||a||),  r x (g x) (h x))
+*)
+\end{verbatim}
+%
+In general we cannot hope to implement this because
+$\iapp{\mathtt{ac}}{f}$ is supposed to compute a pair of functions
+$(g,h)$, where~$g$ is extensional. Because~$f$ is not required to be
+extensional, this is impossible in general.
 
+The \emph{Intensional} Axiom of Choice allows the choice function
+$\mathtt{c}$ to depend on the realizers:
+%
+\VerbatimInput{ichoice.thy}
+%
+This principle is related to Aczels's presentation
+axiom~\cite{aczel:presentation} (discuss further). Now the output is
+exactly the same as before \emph{except} for the requirement that the
+choice function be continuous:
+%
+\begin{verbatim}
+val iac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
+(** Assertion iac =
+    forall f:a -> b * ty_r,
+      (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
+      let (g,h) = iac f in (forall x:a,  x : ||a|| -> g x : ||b||) /\
+      (forall (x:||a||),  r x (g x) (h x))
+*)
+\end{verbatim}
+%
+The value $\mathtt{iac}$ can be easily implemented, e.g. with
+%
+\begin{verbatim}
+let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
+\end{verbatim}
 
 \subsection{Modulus of Continuity}
 \label{sec:we-show-modulus-of-continuity-example}
+
+As a last example we show how certain constructive principles require
+the use of computational effects. 
+
+\VerbatimInput{modulus.thy}
+
 
 %%% Local Variables: 
 %%% mode: latex
