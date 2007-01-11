@@ -16,11 +16,11 @@ or $\lnot (x = y)$. In classical mathematics all sets are decidable
 because decidability of equality is just an instance of the law of
 exluced middle. However, RZ computes from
 %
-\VerbatimInput{decidable1.thy}
+\sourcefile{decidable1.thy}
 %
 that the realizer for the axiom $\mathtt{eq}$ is specified by
 %
-\begin{verbatim}
+\begin{source}
 val eq : s -> s -> [`or0 | `or1]
 (**  Assertion eq =
        forall (x:||s||, y:||s||),
@@ -29,7 +29,7 @@ val eq : s -> s -> [`or0 | `or1]
           | `or1 => not (x =s= y)
           )
 *)
-\end{verbatim}
+\end{source}
 %
 We read this as follows: $\mathtt{eq}$ is a function which takes
 arguments~$x$ and~$y$ of type~$s$ and returns $\mathtt{`or0}$ or
@@ -81,7 +81,7 @@ We may rewrite the above definition into RZ as shown in
 Figure~\ref{fig:kuratowski}.
 %
 \begin{figure}
-  \VerbatimInput{kuratowski.thy}  
+  \sourcefile{kuratowski.thy}  
   \caption{Kuratowski finite sets}
   \label{fig:kuratowski}
 \end{figure}
@@ -96,7 +96,7 @@ predicate~$\mathtt{p}$. However, since the quantifer is on the outside
 RZ accepts it and translates it to a functor mapping a
 module~$\mathtt{P}$ to a value $\mathtt{induction}$:
 %
-\begin{verbatim}
+\begin{source}
 module Induction : functor
   (P : sig
      type ty_p
@@ -117,7 +117,7 @@ sig
              forall (u:||s||),  P.p u (induction x f u)
   *)
 end
-\end{verbatim}
+\end{source}
 %
 We explain the output, which is admittedly difficult to read, but
 see~\ref{wherever-we-discuss-polymorphization}. The value
@@ -135,7 +135,7 @@ dependent sets. They are trivially implemented.
 
 \begin{figure}
   \centering
-  \VerbatimInput{wtype.thy}
+  \sourcefile{wtype.thy}
   \caption{General inductive types}
   \label{fig:wtype}
 \end{figure}
@@ -147,11 +147,11 @@ In this example we show how RZ can help explain why a generally
 accepted axiom is not constructively valid. Consider the Axiom of
 Choice:
 %
-\VerbatimInput{choice.thy}
+\sourcefile{choice.thy}
 %
 The output for the axiom of choice is
 %
-\begin{verbatim}
+\begin{source}
 val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
 (** Assertion ac =
     forall f:a -> b * ty_r,
@@ -159,7 +159,7 @@ val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
       let (g,h) = ac f in (forall x:a, y:a,  x =a= y -> g x =b= g y) /\
       (forall (x:||a||),  r x (g x) (h x))
 *)
-\end{verbatim}
+\end{source}
 %
 In general we cannot hope to implement this because
 $\iapp{\mathtt{ac}}{f}$ is supposed to compute a pair of functions
@@ -169,14 +169,14 @@ extensional, this is impossible in general.
 The \emph{Intensional} Axiom of Choice allows the choice function
 $\mathtt{c}$ to depend on the realizers:
 %
-\VerbatimInput{ichoice.thy}
+\sourcefile{ichoice.thy}
 %
 This principle is related to Aczels's presentation
 axiom~\cite{aczel:presentation} (discuss further). Now the output is
 exactly the same as before \emph{except} for the requirement that the
 choice function be continuous:
 %
-\begin{verbatim}
+\begin{source}
 val iac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
 (** Assertion iac =
     forall f:a -> b * ty_r,
@@ -184,13 +184,13 @@ val iac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
       let (g,h) = iac f in (forall x:a,  x : ||a|| -> g x : ||b||) /\
       (forall (x:||a||),  r x (g x) (h x))
 *)
-\end{verbatim}
+\end{source}
 %
 The value $\mathtt{iac}$ can be easily implemented, e.g. with
 %
-\begin{verbatim}
+\begin{source}
 let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
-\end{verbatim}
+\end{source}
 
 \subsection{Modulus of Continuity}
 \label{sec:we-show-modulus-of-continuity-example}
@@ -198,7 +198,7 @@ let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
 As a last example we show how certain constructive principles require
 the use of computational effects. 
 
-\VerbatimInput{modulus.thy}
+\sourcefile{modulus.thy}
 
 
 %%% Local Variables: 

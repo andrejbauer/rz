@@ -16,6 +16,23 @@
 \input{macros.tex}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Slightly better macros for displaying source code.
+% We can fiddle with the style later, I just stole this.
+% (Use number=left to get source line numbers.)
+
+% To include a source file
+\newcommand{\sourcefile}[1]{%
+\VerbatimInput[xleftmargin=1.5em,fontsize=\small]{#1}}
+
+% To include lots of source
+\newcommand{\sourcefilex}[1]{%
+\VerbatimInput[xleftmargin=1.5em,fontsize=\scriptsize]{#1}}
+
+% To show source
+\DefineVerbatimEnvironment{source}{Verbatim}{xleftmargin=1.5em,fontsize=\small}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}
 \title{RZ (Working title)}
