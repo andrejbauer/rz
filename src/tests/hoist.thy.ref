@@ -32,7 +32,7 @@ module type HoistTerms =
    *)
     
    val f : s -> s
-   (**  Assertion f_support =  forall x:s, y:s,  x =s= y -> f x =s= f y
+   (**  Assertion f_support =  f : ||s -> s||
    *)
     
    val emptyTuple : unit
@@ -76,16 +76,11 @@ module type HoistTerms =
    val application : s
    (**  Assertion application_def = 
           application =s= (assure h:(s -> s) -> s.
-                               ((forall r:s -> s, f':s -> s, 
-                                   (forall x:s, y:s,  x =s= y -> r x =s= f' y) ->
-                                   h r =s= h f') /\ 
+                               (h : ||(s -> s) -> s|| /\ 
                                 (forall r:s -> s, f':s -> s, 
                                    (forall x:s, y:s,  x =s= y -> r x =s= f' y) ->
                                    g r =s= h f') /\ 
-                                (forall h':(s -> s) -> s, 
-                                   (forall r:s -> s, f':s -> s, 
-                                      (forall x:s, y:s,  x =s= y ->
-                                         r x =s= f' y) -> h' r =s= h' f') ->
+                                (forall (h':||(s -> s) -> s||), 
                                    (forall r:s -> s, f':s -> s, 
                                       (forall x:s, y:s,  x =s= y ->
                                          r x =s= f' y) -> g r =s= h' f') ->

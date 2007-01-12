@@ -691,6 +691,7 @@ and optProp ctx orig_prp =
                 to   trm : ||set||. *)
 	    optProp ctx (PApp(NamedSupport(n,lst), t1))
 	| SimpleSupport sty          -> SimpleSupport (optSimpleTy ctx sty)
+	| NamedSupport(n, [])        -> SimpleSupport (SNamedTy n)
 	| NamedSupport(n, lst)       -> NamedSupport (n, optTerms' ctx lst)
 	| NamedPer  (n, lst)         -> NamedPer (n, optTerms' ctx lst)
 	| NamedProp (n, Dagger, lst) -> 
@@ -803,10 +804,10 @@ and optProp ctx orig_prp =
 	| Forall((n,ty), p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n
             in let p' = optProp (insertTermVariable ctx n ty) p
-	    in let doForall(nm1,sty1,prp2) =
+	    in let doForall(nm1,ty1,prp2) =
 	      begin
 		match findEqPremise nm1 prp2 with
-		    None -> Forall((nm1,sty1),prp2)
+		    None -> Forall((nm1,ty1),prp2)
 		  | Some(trm,prp2') -> 
 		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
@@ -820,13 +821,8 @@ and optProp ctx orig_prp =
 	      | (VoidTy, _) -> 
 		  (* forall x:Void. p'  ===   True *)
 		  True
-	      | (NamedTy n1, Imply (PApp (NamedSupport (n2, []), Id n3), p'')) ->
-		  (* forall x:t. (x:||sty|| -> p'')   ===   forall x:||sty||. p'' *)
-		  if (n3 = LN(None,n)) && 
-		    (hnfTy ctx (NamedTy n1) = hnfTy ctx (NamedTy n2)) then
-		    ForallSupport((n, SNamedTy n2), p'')
-		  else
-		    doForall(n, NamedTy n1, p')
+	      | (ty1, Imply (PApp (SimpleSupport sty2, Id n3), p'')) when (ty1 = ty_of_simple_ty sty2 && n3 = LN(None,n)) ->
+		  ForallSupport((n,sty2), p'')
 	      | (ty',_) -> 
 		  (* forall x:t. ((... /\ x=e /\ ...) -> p) 
 		      ===  let x=e in ((... /\ ...) -> p)

@@ -70,11 +70,11 @@ module type T =
    *)
     
    val a : s -> s
-   (**  Assertion a_support =  forall x:s, y:s,  x =s= y -> a x =s= a y
+   (**  Assertion a_support =  a : ||s -> s||
    *)
     
    val b : s -> s
-   (**  Assertion b_support =  forall x:s, y:s,  x =s= y -> b x =s= b y
+   (**  Assertion b_support =  b : ||s -> s||
    *)
     
    val c : s
@@ -114,9 +114,7 @@ module type T =
    type q = s -> s
     
    (** predicate ||q|| : q -> bool *)
-   (**  Assertion q_def_support = 
-          forall f:q,  f : ||q|| <->
-            (forall x:s, y:s,  x =s= y -> f x =s= f y)
+   (**  Assertion q_def_support =  forall f:q,  f : ||q|| <-> f : ||s -> s||
    *)
     
    (** predicate (=q=) : q -> q -> bool *)
@@ -185,7 +183,7 @@ module type U =
    *)
     
    val n : s * s
-   (**  Assertion n_support =  pi0 n : ||s|| /\ pi1 n : ||s||
+   (**  Assertion n_support =  n : ||s * s||
    *)
  end
  
@@ -205,7 +203,7 @@ module type Iteration =
    *)
     
    val s : a -> a
-   (**  Assertion s_support =  forall y:a, z:a,  y =a= z -> s y =a= s z
+   (**  Assertion s_support =  s : ||a -> a||
    *)
  end
  
@@ -459,8 +457,7 @@ module type Choice =
    (**  Assertion choice = 
           forall f:a -> b * ty_r, 
             (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
-            let (g,h) = choice f
-            in (forall x:a, y:a,  x =a= y -> g x =b= g y) /\ 
+            let (g,h) = choice f in g : ||a -> b|| /\ 
             (forall (x:||a||),  r x (g x) (h x))
    *)
     
@@ -544,9 +541,8 @@ module type Quotients =
     
    
    (**  Assertion bar = 
-          forall f:s -> s,  (forall x:s, y:s,  x =s= y -> f x =s= f y) ->
-            forall (a:||s||, e:||s||), 
-              r a (assure (forall x:s,  r e x -> f e =s= f x) in f e)
+          forall (f:||s -> s||, a:||s||, e:||s||), 
+            r a (assure (forall x:s,  r e x -> f e =s= f x) in f e)
    *)
  end
 

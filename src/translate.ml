@@ -147,6 +147,13 @@ let rec translateSet = function
 	per = makePer (x, y, UnitTy) (Equal (id x, id y));
       }
 
+  | L.Basic (sln, L.KindSet) ->
+      let nm = translateSLN sln in
+	{ ty  = NamedTy nm;
+	  tot = SimpleSupport (SNamedTy nm);
+	  per = NamedPer (nm, []);
+	}
+
   | L.Basic (sln, knd) ->
       let nm = translateSLN sln in
       let binds = bindings_of_setkind knd in
@@ -168,16 +175,21 @@ let rec translateSet = function
       let v = TupleTy (List.map (fun w -> w.ty) ws) in
 	{
 	  ty = v;
-	  tot = (
-	    let t = fresh v in
-	      makeTot
-		(t, v)
-		(fst (List.fold_right
-		       (fun nm (p,k) -> PLet (VarPat nm, Proj (k, id t), p), k-1)
-		       nms
-		       (And (List.map2 (fun nm w -> pApp w.tot (id nm)) nms ws), n)
-		))
-	  );
+	  tot = 
+	    begin
+	      if L.isSimple (L.Product lst) then
+		SimpleSupport (simple_ty_of_ty v)
+	      else
+		(let t = fresh v in
+		   makeTot
+		     (t, v)
+		     (fst (List.fold_right
+			    (fun nm (p,k) -> PLet (VarPat nm, Proj (k, id t), p), k-1)
+			    nms
+			    (And (List.map2 (fun nm w -> pApp w.tot (id nm)) nms ws), n)
+		     ))
+	      )
+	    end;
 	  per = (
 	      let t, u = fresh2 v in
 	      let nms' = List.map refresh nms in
@@ -199,13 +211,19 @@ let rec translateSet = function
       let z, z' = fresh2 u in
       let f, g = fresh2 w in
 	{ ty = w;
-	  tot = makeTot (f, w)
-	    (Forall ((z, u),
-		    Forall ((z', u),
-			   Imply (
-			       pApp (pApp p (id z)) (id z'),
-			       pApp (pApp (sbp nm (id z) q) (App (id f, id z))) (App (id f, id z'))
-			   ))));
+	  tot =
+	    begin
+	      if L.isSimple (L.Exp (nm, s, t)) then
+		SimpleSupport (simple_ty_of_ty w)
+	      else
+		makeTot (f, w)
+		  (Forall ((z, u),
+			  Forall ((z', u),
+				 Imply (
+				     pApp (pApp p (id z)) (id z'),
+				     pApp (pApp (sbp nm (id z) q) (App (id f, id z))) (App (id f, id z'))
+				 ))))
+	    end;
 	  per = makePer (f, g, w)
 	    (Forall ((z, u),
 		    Forall ((z', u),

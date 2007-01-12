@@ -55,8 +55,7 @@ module type C =
    type d = a * b
     
    (** predicate ||d|| : d -> bool *)
-   (**  Assertion d_def_support = 
-          forall p:d,  p : ||d|| <-> pi0 p : ||a|| /\ pi1 p : ||b||
+   (**  Assertion d_def_support =  forall p:d,  p : ||d|| <-> p : ||a * b||
    *)
     
    (** predicate (=d=) : d -> d -> bool *)

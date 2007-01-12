@@ -141,15 +141,14 @@ module type P =
    (**  Assertion w_support = 
           match w with
             `foo => true 
-          | `bar(t:s * s) => pi0 t : ||s|| /\ pi1 t : ||s|| 
+          | `bar(t:s * s) => t : ||s * s|| 
           
    *)
     
    val tst_pcase : [`bar of ty_p | `foo of ty_p]
    (**  Assertion tst_pcase = 
           match (tst_pcase,w) with
-            (`bar(x:ty_p),`bar(u:s * s)) =>
-               pi0 u : ||s|| /\ pi1 u : ||s|| /\ p (pi0 u) x 
+            (`bar(x:ty_p),`bar(u:s * s)) => u : ||s * s|| /\ p (pi0 u) x 
           | (`foo(x:ty_p),`foo) => p x0 x 
           
    *)

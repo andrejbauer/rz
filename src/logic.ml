@@ -231,6 +231,16 @@ let maybePAssure reqs prp =
       [] -> prp
     | reqs -> PAssure(None, And reqs, prp)
 
+(** Is a set suitable for ||...|| abreviation? *)
+let rec isSimple = function
+  | Empty | Unit -> true
+  | Basic (_, KindSet) -> true
+  | Basic (_, _) -> false
+  | Product lst -> List.for_all (fun (_, s) -> isSimple s) lst
+  | Exp (x, s1, s2) -> isWild x && isSimple s1 && isSimple s2
+  | Sum _ | Subset _ | Rz _ | Quotient _ | SApp _ | SLambda _ -> false
+
+
 (****************************************)
 (** (Not-Very)-Pretty-Printing Routines *)
 (****************************************)
