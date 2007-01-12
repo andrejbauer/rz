@@ -12,13 +12,11 @@ val zero : nat
 *)
  
 val s : nat -> nat
-(**  Assertion s_support =  forall x:nat, y:nat,  x =nat= y -> s x =nat= s y
+(**  Assertion s_support =  s : ||nat -> nat||
 *)
  
 val (+) : nat -> nat -> nat
-(**  Assertion (+)_support = 
-       forall x:nat, y:nat,  x =nat= y ->
-         forall z:nat, w:nat,  z =nat= w -> (x + z) =nat= (y + w)
+(**  Assertion (+)_support =  (+) : ||nat -> nat -> nat||
 *)
  
 
@@ -40,27 +38,15 @@ type ty_leq = nat
  
 (** predicate eq_prefix : nat -> (nat -> nat) -> (nat -> nat) -> bool *)
 (**  Assertion eq_prefix_def = 
-       forall (k:||nat||), 
-         forall a:nat -> nat, 
-           (forall x:nat, y:nat,  x =nat= y -> a x =nat= a y) ->
-           forall b:nat -> nat, 
-             (forall x:nat, y:nat,  x =nat= y -> b x =nat= b y) ->
-             eq_prefix k a b <->
-             (forall (m:||nat||), 
-                forall x:ty_leq,  (<=) m k x -> a m =nat= b m)
+       forall (k:||nat||, a:||nat -> nat||, b:||nat -> nat||), 
+         eq_prefix k a b <->
+         (forall (m:||nat||),  forall x:ty_leq,  (<=) m k x -> a m =nat= b m)
 *)
  
 val continuity : ((nat -> nat) -> nat) -> (nat -> nat) -> nat
 (**  Assertion continuity = 
-       forall f:(nat -> nat) -> nat, 
-         (forall g:nat -> nat, h:nat -> nat, 
-            (forall x:nat, y:nat,  x =nat= y -> g x =nat= h y) ->
-            f g =nat= f h) ->
-         forall a:nat -> nat, 
-           (forall x:nat, y:nat,  x =nat= y -> a x =nat= a y) ->
-           let p = continuity f a in p : ||nat|| /\ 
-           (forall b:nat -> nat, 
-              (forall x:nat, y:nat,  x =nat= y -> b x =nat= b y) ->
-              eq_prefix p a b -> f a =nat= f b)
+       forall (f:||(nat -> nat) -> nat||, a:||nat -> nat||), 
+         let p = continuity f a in p : ||nat|| /\ 
+         (forall (b:||nat -> nat||),  eq_prefix p a b -> f a =nat= f b)
 *)
 

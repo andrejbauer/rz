@@ -189,26 +189,16 @@ realizers.
 The driving force behind the translation of logic is a theorem, see
 e.g.\ \cite[Thm.~4.4.10]{Troelstra:van-Dalen:88:1}, which says that
 under the realizability interpretation every formula~$\phi$ is
-equivalent to one that says, informally speaking, ``there exists~$u$,
-such that $u$ realizes $\phi$''. Furthermore, the formula ``$u$
-realizes $\phi$'' is computationally trivial.
+equivalent to one that says, informally speaking, ``there exists~$u
+\in \typeOf{\phi}$, such that $u$ realizes $\phi$''. Furthermore, the
+formula ``$u$ realizes $\phi$'' is computationally trivial. The
+translation of a predicate $\phi$ then consists of its underlying type
+$\typeOf{\phi}$ and the relation $u \rz \phi$, expressed as a negative
+formula.
 
-The translation of a predicate $\phi$ then consists of its underlying
-type $\typeOf{\phi}$ and a description of the relation $u \rz \phi$,
-expressed as a negative formula. An axiom $\iAxiom{A}{\phi}$ in the
-input is translated to
-%
-\begin{align*}
-  & \ovalspec{u}{\typeOf{\phi}} \\
-  & \oassertion{A}{u \rz \phi},
-\end{align*}
-%
-which requires the programmer to validate~$\phi$ by providing a
-realizer for it. When $\phi$ is a compound statement RZ computes the
-meaning of $u \rz \phi$, as described in Figure~\ref{fig:rz-logic}.
-
-A predicate declaration $\iParameter{p}{\iarrow{s}{\iProp}}$ is
-translated to
+In RZ we avoid the explicit realizer notation $u \rz \phi$ in order to
+make the output easier to read. A basic predicate declaration
+$\iParameter{p}{\iarrow{s}{\iProp}}$ is translated to
 %
 \begin{align*}
   & \otyspec{ty\_p} \\
@@ -231,22 +221,36 @@ translated to
           }}}
 \end{align*}
 %
-This requires that the programmer define a type of realizers $ty\_p$
-and a predicate $p : s \to ty\_p \to \oProp$ which is strict and
+We see that the predicate~$p$ has gained an additional argument of
+type $ty\_p$ (which the programmer is supposed to define in an
+implementation), and we write $\oapp{\oapp{p}{x}{a}}$ instead of $a
+\rz \oapp{p}{x}$. The two assertions require that $p$ be strict and
 extensional with respect to $\per_s$.
 
 Frequently we know that a predicate is stable, which can be taken into
 account when computing its realizability interpretation. For this
 purpose the input language has the subkind $\iStable$ of $\iProp$.
 When RZ encounters a predicate which is declared to be stable, such as
-$p : \iarrow{s}{\iStable}$, it takes into account the fact that its
-realizers are trivial and removes any mention of them.
+$p : \iarrow{s}{\iStable}$, it does not generate a declaration of
+$ty\_p$ and it does not give $p$ an extra argument.
 
 Another special kind in RZ input language is the kind $\iEquiv{s}$ of
 stable equivalence relations on a set~$s$. When an equivalence
 relation is declared with $\iParameter{p}{\iEquiv{s}}$, RZ will output
 assertions stating that $p$ is strict, extensional, as well as
 reflexive, symmetric and transitive.
+
+An axiom $\iAxiom{A}{\phi}$ in the input is translated to
+%
+\begin{align*}
+  & \ovalspec{u}{\typeOf{\phi}} \\
+  & \oassertion{A}{u \rz \phi},
+\end{align*}
+%
+which requires the programmer to validate~$\phi$ by providing a
+realizer for it. When $\phi$ is a compound statement RZ computes the
+meaning of $u \rz \phi$, as described in Figure~\ref{fig:rz-logic}.
+
 
 
 %%% Local Variables: 

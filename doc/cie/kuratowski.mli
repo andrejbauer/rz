@@ -25,9 +25,7 @@ module type K =
    *)
     
    val add : A.a -> s -> s
-   (**  Assertion add_support = 
-          forall x:A.a, y:A.a,  x =A.a= y ->
-            forall z:s, w:s,  z =s= w -> add x z =s= add y w
+   (**  Assertion add_support =  add : ||A.a -> s -> s||
    *)
     
    type fin = A.a
@@ -59,29 +57,29 @@ module type K =
             add x (add y u) =s= add y (add x u)
    *)
     
-module Induction : functor
-  (P : sig
-     type ty_p
-     (** predicate p : s -> ty_p -> bool *)
-     (**  Assertion strict_p = 
-            forall x:s, a:ty_p,  p x a ->
-              x : ||s||
-           
-          Assertion extensional_p = 
-            forall x:s, y:s, a:ty_p, 
-              x =s= y -> p x a -> p y a
-     *)
-   end) ->
-sig
-  val induction : P.ty_p -> (A.a -> s -> P.ty_p -> P.ty_p) -> s -> P.ty_p
-  (**  Assertion induction = 
-         forall x:P.ty_p,  P.p emptySet x ->
-           forall f:A.a -> s -> P.ty_p -> P.ty_p, 
-             (forall (x':||A.a||, u:||s||), 
-                forall y:P.ty_p,  P.p u y ->
-                  P.p (add x' u) (f x' u y)) ->
-             forall (u:||s||),  P.p u (induction x f u)
-  *)
-end
+   module Induction : functor (P : sig
+                                     type ty_p
+                                      
+                                     (** predicate p : s -> ty_p -> bool *)
+                                     (**  Assertion strict_p = 
+                                            forall x:s, a:ty_p,  p x a ->
+                                              x : ||s||
+                                           
+                                          Assertion extensional_p = 
+                                            forall x:s, y:s, a:ty_p, 
+                                              x =s= y -> p x a -> p y a
+                                     *)
+                                   end) ->
+                      sig
+                        val induction : P.ty_p -> (A.a -> s -> P.ty_p -> P.ty_p) -> s -> P.ty_p
+                        (**  Assertion induction = 
+                               forall x:P.ty_p,  P.p emptySet x ->
+                                 forall f:A.a -> s -> P.ty_p -> P.ty_p, 
+                                   (forall (x':||A.a||, u:||s||), 
+                                      forall y:P.ty_p,  P.p u y ->
+                                        P.p (add x' u) (f x' u y)) ->
+                                   forall (u:||s||),  P.p u (induction x f u)
+                        *)
+                      end
  end
 
