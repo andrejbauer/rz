@@ -186,7 +186,7 @@ and output_modest ppf {ty=ty;tot=p} =
 and output_proptype ppf = function
     Prop -> fprintf ppf "bool"
   | PropArrow(ty, pt) ->
-      fprintf ppf "%a -> %a"  output_ty ty   output_proptype pt
+      fprintf ppf "%a -> %a"  output_ty_2 ty   output_proptype pt
 
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
