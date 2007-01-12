@@ -200,8 +200,8 @@ and output_assertion_binds ppf lst =
 	output_loop ppf lst
 
 and output_totalbinds ppf lst =
-      let outputer ppf (n,ln) = 
-	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ln ln
+      let outputer ppf (n,sty) = 
+	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_simple_ty sty
       in let rec output_loop ppf = function
 	    [] -> ()
 	| [trm] -> outputer ppf trm
@@ -269,26 +269,16 @@ and output_prop_14 ppf = function
       in
 	fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
 	  output_bnds alls   output_prop_14 prp'
-  | ForallTotal ((n, ln), p) as all_ty -> 
+  | ForallSupport ((n, _), p) as all_sty -> 
       let rec extract_foralls = function
-	  (ForallTotal((nm,lnm),prp)) ->
+	  (ForallSupport((nm,sty),prp)) ->
 	    let (alls,prp') = extract_foralls prp
-	    in ((nm,lnm) ::alls,prp')
+	    in ((nm,sty) ::alls,prp')
 	| prp -> ([],prp)
-      in let (alls, prp') = extract_foralls all_ty
+      in let (alls, prp') = extract_foralls all_sty
       in
 	fprintf ppf "@[<hov 2>forall (%a), @ %a@]" 
 	  output_totalbinds alls   output_prop_14 prp'
-  | Cexists ((n, ty), p) as cexists_ty -> 
-      let rec extract_somes = function
-	  (Cexists((nm,typ),prp)) ->
-	    let (somes,prp') = extract_somes prp
-	    in ((nm,typ) ::somes,prp')
-	| prp -> ([],prp)
-      in let (somes, prp') = extract_somes cexists_ty
-      in
-	fprintf ppf "@[<hov 2>exists %a, @ %a@]" 
-	  output_bnds  somes   output_prop_14 prp'
   | Imply (p, q) -> 
       fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
@@ -326,8 +316,7 @@ and output_prop_13 ppf = function
   | prp -> output_prop_11 ppf prp
   
 and output_prop_11 ppf = function
-   Cor (_::_ as lst) -> 
-      output_components output_prop_11 " cor " ppf lst
+  (* used to be Cor *)
   | prp -> output_prop_10 ppf prp
 
 and output_prop_10 ppf = function
@@ -342,12 +331,15 @@ and output_prop_9 ppf = function
   | PApp (PApp (NamedPer (ln, lst), t), u) -> 
       fprintf ppf "%a =(%a %a)= %a" 
         output_term_4 t   output_ln ln   output_term_apps lst   output_term_4 u
-  | PApp (NamedTotal (ln, []), t) ->
+  | PApp (NamedSupport (ln, []), t) ->
       fprintf ppf "%a : ||%a||"
 	output_term_9 t   output_ln ln
-  | PApp (NamedTotal (ln, lst), t) ->
+  | PApp (NamedSupport (ln, lst), t) ->
       fprintf ppf "%a : ||%a %a||"
 	output_term_9 t   output_ln ln   output_term_apps lst
+  | PApp (SimpleSupport sty, t) ->
+      fprintf ppf "%a : ||%a||"
+	output_term_9 t   output_simple_ty sty
   | PApp (p, t) ->
       fprintf ppf "%a %a"
 	output_prop_9 p   output_term_0 t
@@ -373,12 +365,14 @@ and output_prop_0 ppf = function
   | NamedPer (ln, lst) ->
       fprintf ppf "=(%a %a)="
 	output_ln ln   output_term_apps lst
-  | NamedTotal (ln, []) -> fprintf ppf "||%a||" output_ln ln
-  | NamedTotal (ln, lst) ->
+  | NamedSupport (ln, []) -> fprintf ppf "||%a||" output_ln ln
+  | NamedSupport (ln, lst) ->
       fprintf ppf "||%a %a||"
 	output_ln ln   output_term_apps lst
+  | SimpleSupport sty ->
+      fprintf ppf "||%a||"
+	output_simple_ty sty
   | And [] -> fprintf ppf "true"
-  | Cor [] -> fprintf ppf "false"
   | prp ->
 (*      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp)); *)
       fprintf ppf "(@[<hov>%a@])"   output_prop prp
@@ -427,6 +421,8 @@ and output_ty_0 ppf = function
   | SumTy []   -> fprintf ppf "void"
   | typ        -> ((* print_string (string_of_ty typ); *)
 		   fprintf ppf "(%a)"  output_ty typ)
+
+and output_simple_ty ppf sty = output_ty ppf (ty_of_simple_ty sty)
 
 and output_annots ppf = function
     [] -> ()

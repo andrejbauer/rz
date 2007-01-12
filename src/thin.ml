@@ -188,8 +188,7 @@ let rec thinTy (ctx: context) orig_type =
 	else
 	  orig_type
 
-
-
+let thinSimpleTy ctx sty = simple_ty_of_ty (thinTy ctx (ty_of_simple_ty sty))
 
 let rec thinTyOption ctx = function
     None    -> None
@@ -478,9 +477,12 @@ and thinProp (ctx: context) orig_prp =
     match orig_prp with
 	True                    -> True
       | False                   -> False
-      | NamedTotal (n, lst)     -> 
+      | SimpleSupport sty ->
+	  let sty' = thinSimpleTy ctx sty
+	  in SimpleSupport sty'
+      | NamedSupport (n, lst)     -> 
 	  let (obs, lst') = thinTerms' ctx lst
-	  in foldPObligation obs (NamedTotal (n, lst'))
+	  in foldPObligation obs (NamedSupport (n, lst'))
       | NamedPer (n, lst)       -> 
 	  let (obs, lst') = thinTerms' ctx lst
 	  in foldPObligation obs (NamedPer (n, lst'))
@@ -492,7 +494,6 @@ and thinProp (ctx: context) orig_prp =
 	  in let e2' = thinTerm' ctx e2
 	  in Equal(e1',e2')
       | And ps -> And (List.map (thinProp ctx) ps)
-      | Cor ps -> Cor (List.map (thinProp ctx) ps)
       | Imply (p1, p2) -> Imply(thinProp ctx p1, thinProp ctx p2)
       | Iff (p1, p2) -> Iff(thinProp ctx p1, thinProp ctx p2)
       | Not p -> Not (thinProp ctx p)
@@ -505,21 +506,13 @@ and thinProp (ctx: context) orig_prp =
 	    | TopTy -> p'
 	    | _ -> Forall((n,ty'), p'))
 	    
-      | ForallTotal((n,ln),p) ->
-	  let ty = NamedTy ln
-	  in let ty' = thinTy ctx ty
+      | ForallSupport((n,sty),p) ->
+	  let sty' = thinSimpleTy ctx sty
 	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n (ty,ty')) p
-	  in ForallTotal((n,ln), p')
+	  in let p' = thinProp
+	      (insertTermVariable ctx n (ty_of_simple_ty sty, ty_of_simple_ty sty')) p
+	  in ForallSupport((n,sty'), p')
 	    
-      | Cexists ((n, ty), p) ->
-	  let ty' = thinTy ctx ty
-	  in let (ctx,n) = renameBoundTermVar ctx n
-	  in let p' = thinProp (insertTermVariable ctx n (ty,ty')) p in
-	    (match ty' with
-	      | TopTy -> p'
-	      | _ -> Cexists((n, ty'), p'))
-
       | PObligation (bnds, p, q) ->
 	  let (names,tys) = List.split bnds
 	  in let tys'  = List.map (thinTy ctx) tys

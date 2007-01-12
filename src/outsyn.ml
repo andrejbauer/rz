@@ -38,6 +38,17 @@ and ty =
   | ArrowTy of ty * ty                     (* 3 *)
   | PolyTy of name list * ty
 
+(** Simple types may appear in totality predicates *)
+and simple_ty =
+  | SNamedTy of longname
+  | SUnitTy
+  | SVoidTy
+  | STopTy
+  | STupleTy of simple_ty list
+  | SArrowTy of simple_ty * simple_ty
+(* Note: hoistProp will break if simple_ty may contain terms. *)
+(* Note: simple types must be closed under thinning. *)
+
 (** Modest set, or a uniform family of modest sets. *)
 and modest = {
   ty : ty;
@@ -71,18 +82,17 @@ and term =
 and proposition =
   | True                                      (* truth *)
   | False                                     (* falsehood *)
-  | NamedTotal of longname * term list        (* totality of a term *)
+  | SimpleSupport of simple_ty                (* support of a simple set *)
+  | NamedSupport  of longname * term list     (* support of a named set *)
   | NamedPer   of longname * term list        (* ext. equality of terms *)
   | NamedProp  of longname * term * term list (* basic prop with a realizer *)
   | Equal      of term * term                 (* (obs?) equality of terms *)
   | And        of proposition list            (* conjunction *)
-  | Cor of proposition list                    (* classical disjunction *)
   | Imply      of proposition * proposition   (* implication *)
   | Iff        of proposition * proposition   (* equivalence *)
   | Not        of proposition                 (* negation *)
   | Forall     of binding * proposition       (* universal quantifier *)
-  | ForallTotal of (name * longname) * proposition (* universal ranging over total elements *)
-  | Cexists of binding * proposition           (* classical existential *)
+  | ForallSupport of (name * simple_ty) * proposition (* universal over total elements *)
   | PApp       of proposition * term          (* application of propositional function *)
   | PLambda    of binding * proposition       (* abstraction of a proposition over a type *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
@@ -144,6 +154,23 @@ let id nm = Id (ln_of_name nm)
 
 (* namedty: name -> ty *)
 let namedty nm = NamedTy (ln_of_name nm)
+
+let rec ty_of_simple_ty = function
+  | SNamedTy nm -> NamedTy nm
+  | SUnitTy -> UnitTy
+  | SVoidTy -> VoidTy
+  | STopTy -> TopTy
+  | STupleTy lst -> TupleTy (List.map ty_of_simple_ty lst)
+  | SArrowTy (sty1, sty2) -> ArrowTy (ty_of_simple_ty sty1, ty_of_simple_ty sty2)
+
+let rec simple_ty_of_ty = function
+  | NamedTy nm -> SNamedTy nm
+  | UnitTy -> SUnitTy
+  | VoidTy -> SVoidTy
+  | TopTy -> STopTy
+  | TupleTy lst -> STupleTy (List.map simple_ty_of_ty lst)
+  | ArrowTy (ty1, ty2) -> SArrowTy (simple_ty_of_ty ty1, simple_ty_of_ty ty2)
+  | _ -> failwith "simple_ty_of_ty: invalid type"
 
 let tupleOrTopTy = function
     [] -> TopTy
@@ -272,18 +299,17 @@ and fvCaseArms' flt acc arms = fvList' fvCaseArm' flt acc arms
 and fvProp' flt acc = function
     True  -> acc
   | False -> acc
-  | NamedTotal (_, lst) 
+  | SimpleSupport sty -> fvSimpleTy' flt acc sty
+  | NamedSupport (_, lst)
   | NamedPer   (_, lst) -> fvTermList' flt acc lst
   | Not p -> fvProp' flt acc p
-  | And lst 
-  | Cor lst -> fvPropList' flt acc lst
+  | And lst -> fvPropList' flt acc lst
   | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
   | Imply (p, q) 
   | Iff   (p, q) -> fvProp' flt (fvProp' flt acc p) q
   | Forall      ((n, s), p)
-  | Cexists     ((n, s), p)
   | PLambda     ((n, s), p) -> fvProp' (n::flt) (fvTy' flt acc s) p
-  | ForallTotal ((n, ln), p) -> fvProp' (n::flt) (fvTy' flt acc (NamedTy ln)) p
+  | ForallSupport ((n, sty), p) -> fvProp' (n::flt) (fvSimpleTy' flt acc sty) p
   | PApp  (p, t) -> fvProp' flt (fvTerm' flt acc t) p
   | NamedProp (LN(None,nm), t, lst) ->
       let acc' = fvTerm' flt (fvTermList' flt acc lst) t in
@@ -311,6 +337,8 @@ and fvModestList' flt acc = List.fold_left (fun a t -> fvModest' flt a (snd t)) 
 
 and fvTyList' flt acc lst = fvList' fvTy' flt acc lst
 
+and fvSimpleTyList' flt acc lst = fvList' fvSimpleTy' flt acc lst
+
 and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
 and fvTy' flt acc = function
@@ -324,6 +352,15 @@ and fvTy' flt acc = function
       fvTy' flt (fvTy' flt acc ty1) ty2
   | PolyTy(nms,ty) ->
       fvTy' (nms @ flt) acc ty
+
+and fvSimpleTy' flt acc = function
+  | SNamedTy _
+  | SUnitTy
+  | SVoidTy
+  | STopTy -> acc
+  | STupleTy lst -> fvSimpleTyList' flt acc lst
+  | SArrowTy (sty1, sty2) ->
+      fvSimpleTy' flt (fvSimpleTy' flt acc sty1) sty2
 
 and fvSum' flt acc (_,tyopt) = fvTyOpt' flt acc tyopt
 
@@ -360,6 +397,7 @@ types, or predicates) that is discovered match a predicate.
 
 type countPred = {termPred: term -> bool;
                   tyPred  : ty -> bool;
+		  styPred : simple_ty -> bool;
 		  propPred: proposition -> bool}
 
 (* occurrencesOfTermName : nm -> countPred
@@ -380,6 +418,7 @@ let occurrencesOfTermName nm =
   in
   {termPred = isMatchingTermName;
    tyPred   = isFalse;
+   styPred  = isFalse;
    propPred = isFalse}
 
 (* occurrencesOfTermName : nm -> countPred
@@ -397,9 +436,8 @@ let occurrencesOfNameInProj nm =
   in
   {termPred = isMatchingProj;
    tyPred   = isFalse;
+   styPred  = isFalse;
    propPred = isFalse}
-
-
 
 let countList countFn cpred lst = 
   List.fold_left (fun a p -> a + countFn cpred p) 0 lst
@@ -440,15 +478,14 @@ and countProp cp prp =
       match prp with
 	True -> 0
       | False -> 0
-      | NamedTotal (_, lst) -> countTermList cp lst
+      | SimpleSupport sty -> countSimpleTy cp sty
+      | NamedSupport (_, lst) -> countTermList cp lst
       | NamedPer (_, lst) -> countTermList cp lst
       | Equal (u, v) -> countTerm cp u + countTerm cp v
       | And lst -> countPropList cp lst
-      | Cor lst -> countPropList cp lst
       | Imply (u, v) -> countProp cp u + countProp cp v
       | Forall ((n, _), p) -> countProp cp p
-      | ForallTotal ((n, _), p) -> countProp cp p
-      | Cexists ((n, _), p)    -> countProp cp p
+      | ForallSupport ((n, sty), p) -> countSimpleTy cp sty + countProp cp p
       | Not p -> countProp cp p
       | Iff (p, q) -> countProp cp p + countProp cp q
       | NamedProp (_, t, lst) -> countTerm cp t + countTermList cp lst
@@ -488,6 +525,16 @@ and countTy cp ty =
     | ArrowTy (ty1,ty2) -> countTy cp ty1 + countTy cp ty2
     | PolyTy (_,ty) -> countTy cp ty
 
+and countSimpleTy cp sty = 
+  if (cp.styPred sty) then
+    1
+  else
+    match sty with
+      | SNamedTy(LN(None,_)) | SUnitTy | SVoidTy | STopTy -> 0
+      | SNamedTy(LN(Some mdl, _)) -> countModul cp mdl
+      | STupleTy lst -> countSimpleTys cp lst
+      | SArrowTy (sty1,sty2) -> countSimpleTy cp sty1 + countSimpleTy cp sty2
+
 and countTyOpt cp = function
     None -> 0
   | Some ty -> countTy cp ty
@@ -497,7 +544,14 @@ and countSumArms cp lst =
 
 and countTys cp lst = countList countTy cp lst
 
-and countModul cp _ = 0 (* XXX wrong if we ever use explicit modul defs *)
+and countSimpleTys cp lst = countList countSimpleTy cp lst
+
+and countModul cp = function
+  | ModulName _
+  | ModulProj _
+  | ModulApp  _ -> 0
+  | ModulStruct _ -> failwith "countModule: ModulStruct not implemented"
+
 
 
 (** ====== SUBSTITUTION FUNCTIONS ========= *)
@@ -666,13 +720,14 @@ and substDefs ?occ sbst = function
 and substProp ?occ sbst = function
     True -> True
   | False -> False
-  | NamedTotal (ln, lst) -> 
+  | SimpleSupport sty -> SimpleSupport (substSimpleTy ?occ sbst sty)
+  | NamedSupport (ln, lst) -> 
       let ln' = 
 	match getPropLN sbst ln with
 	  None -> substLN ?occ sbst ln
 	| Some ln' -> ln'
       in
-         NamedTotal (ln', substTermList ?occ sbst lst)
+         NamedSupport (ln', substTermList ?occ sbst lst)
   | NamedPer (ln, lst) -> 
       let ln' = 
 	match getPropLN sbst ln with
@@ -689,19 +744,16 @@ and substProp ?occ sbst = function
         NamedProp (ln', substTerm ?occ sbst t, substTermList ?occ sbst lst)
   | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
   | And lst -> And (substPropList ?occ sbst lst)
-  | Cor lst -> Cor (substPropList ?occ sbst lst)
   | Imply (p, q) -> Imply (substProp ?occ sbst p, substProp ?occ sbst q)
   | Iff (p, q) -> Iff (substProp ?occ sbst p, substProp ?occ sbst q)
   | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
       let n' = refresh n in
 	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
-  | ForallTotal ((n, ln), q) ->
+  | ForallSupport ((n, sty), q) ->
       let n' = refresh n in
-	ForallTotal ((n', substLN ?occ sbst ln), substProp ?occ (insertTermvar sbst n (id n')) q)
-  | Cexists ((n, ty), q) ->
-      let n' = refresh n in
-	Cexists ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
+	ForallSupport ((n', substSimpleTy ?occ sbst sty),
+		       substProp ?occ (insertTermvar sbst n (id n')) q)
   | PApp (p, t) -> PApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PLambda ((n, s), p) ->
       let n' = refresh n in
@@ -817,9 +869,8 @@ and substPropList ?occ sbst =
 and substModestList ?occ sbst = 
   List.map (substModest ?occ sbst)
 
-and substTy ?occ sbst orig_type = 
-  match orig_type with
-    NamedTy ln ->
+and substTy ?occ sbst = function
+  | NamedTy ln ->
       begin
 	match getTyLN sbst (substLN ?occ sbst ln) with
 	  None -> NamedTy (substLN ?occ sbst ln)
@@ -842,6 +893,13 @@ and substTy ?occ sbst orig_type =
 and substTyOption ?occ sbst = function
     None    -> None
   | Some ty -> Some ( substTy ?occ sbst ty )
+
+and substSimpleTy ?occ sbst = function
+  | SNamedTy ln -> SNamedTy (substLN ?occ sbst ln)
+  | (SUnitTy | SVoidTy | STopTy) as sty -> sty
+  | STupleTy lst -> STupleTy (List.map (substSimpleTy ?occ sbst) lst)
+  | SArrowTy (sty1, sty2) ->
+      SArrowTy (substSimpleTy ?occ sbst sty1, substSimpleTy ?occ sbst sty2)
 
 and substModest ?occ sbst {ty=ty; tot=p; per=q} =
   { ty = substTy ?occ sbst ty;
@@ -1003,6 +1061,8 @@ and string_of_ty' level t =
 
 and string_of_ty t = string_of_ty' 999 t
 
+and string_of_sty sty = string_of_ty (ty_of_simple_ty sty)
+
 and string_of_infix t op u =
   match op with
       LN(None, N(str,_)) -> t ^ " " ^ str ^ " " ^ u
@@ -1072,28 +1132,26 @@ and string_of_prop level p =
   let (level', str) = match p with
       True -> (0, "true")
     | False -> (0, "false")
-    | NamedTotal (n, []) -> (0, "||" ^ (string_of_ln n) ^ "||")
-    | NamedTotal (n, lst) -> (0, "||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
+    | SimpleSupport sty -> (0, "||" ^ string_of_sty sty ^ "||")
+    | NamedSupport (n, []) -> (0, "||" ^ (string_of_ln n) ^ "||")
+    | NamedSupport (n, lst) -> (0, "||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
     | NamedPer (n, lst) -> (0, "(=" ^ string_of_name_app (string_of_ln n) lst ^"=)")
     | NamedProp (n, Dagger, lst) -> (0, string_of_name_app (string_of_ln n) lst)
     | NamedProp (n, t, lst) -> (9, string_of_term t ^ " |= " ^ string_of_name_app (string_of_ln n) lst)
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
     | And [] -> (0, "true")
     | And lst -> (10, string_of_prop_list " and " 10 lst)
-    | Cor [] -> (0, "false")
-    | Cor lst -> (11, string_of_prop_list " or " 11 lst)
     | Imply (p, q) -> (13, (string_of_prop 12 p) ^ " ==> " ^ (string_of_prop 13 q))
     | Iff (p, q) -> (13, (string_of_prop 12 p) ^ " <=> " ^ (string_of_prop 12 q))
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
     | Forall ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : " ^
 			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
-    | ForallTotal ((n, ln), p) -> (14, "all (" ^ (string_of_name n) ^ " : ||" ^
-			      (string_of_ln ln) ^ "||) . " ^ (string_of_prop 14 p))
-    | Cexists ((n, ty), p) -> (14, "some (" ^ (string_of_name n) ^ " : " ^
-			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
+    | ForallSupport ((n, sty), p) -> (14, "all (" ^ (string_of_name n) ^ " : ||" ^
+			      (string_of_sty sty) ^ "||) . " ^ (string_of_prop 14 p))
     | PLambda ((n, ty), p) ->
 	(14, "Pfun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
-    | PApp (NamedTotal (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
+    | PApp (SimpleSupport sty, t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_sty sty ^ "||")
+    | PApp (NamedSupport (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
     | PApp (PApp (NamedPer (n, []), t), u) ->
 	(9, (string_of_term' 9 t) ^ " =" ^ (string_of_ln n) ^ "= " ^ (string_of_term' 9 u))
     | PApp (PApp (NamedPer (n, lst), t), u) ->
@@ -1769,7 +1827,7 @@ and hoistCaseArm (pat, trm) =
    obligations *)
 and quantifyOb nm ty (bnd, prp) = (bnd, Forall((nm,ty), prp))
 
-and quantifyObTotal nm ty (bnd, prp) = (bnd, ForallTotal((nm,ty), prp))
+and quantifyObTotal nm sty (bnd, prp) = (bnd, ForallSupport((nm,sty), prp))
 
 and quantifyObPat pat (ob : binding list * proposition) =
   match pat with
@@ -1788,9 +1846,12 @@ and hoistProp orig_prp =
 	True
       | False -> ([], orig_prp)
 	  
-      | NamedTotal(nm, trms) ->
+      | SimpleSupport _ -> ([], orig_prp)
+	  (* XXX this ain't gonna work if simple types contain variables. *)
+
+      | NamedSupport(nm, trms) ->
 	  let (obs, trms') = hoistTerms trms
-	  in (obs, NamedTotal(nm,trms'))
+	  in (obs, NamedSupport(nm,trms'))
 	    
       | NamedPer(nm, trms) ->
 	  let (obs, trms') = hoistTerms trms
@@ -1811,10 +1872,6 @@ and hoistProp orig_prp =
       | And prps ->
 	  let (obs, prps') = hoistProps prps
 	  in (obs, And prps')
-	    
-      | Cor prps ->
-	  let (obs, prps') = hoistProps prps
-	  in (obs, Cor prps')
 	    
       | Imply(prp1, prp2) ->
 	  let (obs1, prp1') = hoistProp prp1
@@ -1837,15 +1894,10 @@ and hoistProp orig_prp =
 	  in let obs' = List.map (quantifyOb nm ty) obs
 	  in (obs', Forall((nm,ty), prp') )
 	    
-      | ForallTotal((nm,ty),prp) ->
+      | ForallSupport((nm,sty),prp) ->
 	  let (obs, prp') = hoistProp prp
-	  in let obs' = List.map (quantifyObTotal nm ty) obs
-	  in (obs', ForallTotal((nm,ty), prp') )
-	    
-      | Cexists((nm,ty), prp) ->
-	  let (obs, prp') = hoistProp prp
-	  in let obs' = List.map (quantifyOb nm ty) obs
-	  in (obs', Cexists((nm,ty), prp') )
+	  in let obs' = List.map (quantifyObTotal nm sty) obs
+	  in (obs', ForallSupport((nm,sty), prp') )
 	    
       | PLambda((nm,ty), prp) ->
 	  let (obs, prp') = hoistProp prp

@@ -420,7 +420,6 @@ let rec checkFact ({facts = facts} as ctx) prp =
   List.mem prp facts ||
     (match prp with 
 	And prps -> List.for_all (checkFact ctx) prps
-      | Cor prps -> List.exists (checkFact ctx) prps
       | Imply (prp1,prp2) -> 
 	  checkFact (insertFact ctx prp1) prp2 ||
 	  (* Don't call checkFact recursively here, or we'll

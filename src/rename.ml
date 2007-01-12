@@ -169,10 +169,20 @@ and renTyOpt ctx = function
     None -> None
   | Some ty -> Some (renTy ctx ty)
 
+and renSimpleTy ctx = function
+  | SNamedTy ln -> SNamedTy (renLN ctx ln)
+  | (SUnitTy | SVoidTy | STopTy) as sty -> sty
+  | STupleTy lst -> STupleTy (renSimpleTyList ctx lst)
+  | SArrowTy (sty1, sty2) -> SArrowTy (renSimpleTy ctx sty1, renSimpleTy ctx sty2)
+
+and renSimpleTyList ctx lst = renList' renSimpleTy ctx lst
+
 and renProp ctx = function
     (True | False) as p -> p
 
-  | NamedTotal (ln, lst) -> NamedTotal (renLN ctx ln, renTermList ctx lst)
+  | SimpleSupport sty -> SimpleSupport (renSimpleTy ctx sty)
+
+  | NamedSupport (ln, lst) -> NamedSupport (renLN ctx ln, renTermList ctx lst)
 
   | NamedPer (ln, lst) -> NamedPer (renLN ctx ln, renTermList ctx lst)
       
@@ -181,8 +191,6 @@ and renProp ctx = function
   | Equal (t1, t2) -> Equal (renTerm ctx t1, renTerm ctx t2)
 
   | And ps -> And (renPropList ctx ps)
-
-  | Cor ps -> Cor (renPropList ctx ps)
 
   | Imply (p1, p2) -> Imply (renProp ctx p1, renProp ctx p2)
 
@@ -194,14 +202,10 @@ and renProp ctx = function
       let bnd, ctx = renBinding ctx bnd in
 	Forall (bnd, renProp ctx p)
 
-  | ForallTotal ((nm, ln), p) ->
-      let ln = renLN ctx ln in
+  | ForallSupport ((nm, sty), p) ->
+      let sty = renSimpleTy ctx sty in
       let nm, ctx = renName ctx nm in
-	ForallTotal ((nm, ln), renProp ctx p)
-
-  | Cexists (bnd, p) ->
-      let bnd, ctx = renBinding ctx bnd in
-	Cexists (bnd, renProp ctx p)
+	ForallSupport ((nm, sty), renProp ctx p)
 
   | PApp (p, t) -> PApp (renProp ctx p, renTerm ctx t)
 

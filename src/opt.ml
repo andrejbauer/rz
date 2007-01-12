@@ -291,6 +291,8 @@ let tryPolymorph ctx nm signat =
  *)
 let rec optTy ctx ty = ty
 
+let rec optSimpleTy ctx sty = sty
+
 let rec optTyOption ctx = function
     None    -> None
   | Some ty -> Some (optTy ctx ty)
@@ -687,9 +689,10 @@ and optProp ctx orig_prp =
 	| PApp(PApp(NamedPer(n,lst),t1),t2) when optTerm ctx t1 = optTerm ctx t2 ->
 	    (** The comparision   trm =set= trm   can be simplified
                 to   trm : ||set||. *)
-	    optProp ctx (PApp(NamedTotal(n,lst), t1))
-	| NamedTotal(n, lst)         -> NamedTotal(n, optTerms' ctx lst)
-	| NamedPer  (n, lst)         -> NamedPer  (n, optTerms' ctx lst)
+	    optProp ctx (PApp(NamedSupport(n,lst), t1))
+	| SimpleSupport sty          -> SimpleSupport (optSimpleTy ctx sty)
+	| NamedSupport(n, lst)       -> NamedSupport (n, optTerms' ctx lst)
+	| NamedPer  (n, lst)         -> NamedPer (n, optTerms' ctx lst)
 	| NamedProp (n, Dagger, lst) -> 
 	    let n' = applyPropRenamingLN ctx n
 	    in NamedProp (n', Dagger, optTerms' ctx lst)
@@ -765,23 +768,6 @@ and optProp ctx orig_prp =
 			      (ps, extendRaccum p' raccum))
 	    in loop ctx (ps,[])
 
-	| Cor ps ->
-	    (** Optimize all the subexpressions, dropping any Falses,
-		and replacing the whole thing with True if any term
-		is known to be true.  
-
-		`Someday we might want to implement duplicate removal.
-	    *)
-	    let rec loop = function
-              | ([], []) -> False
-	      |  ([], raccum) -> Cor (List.rev raccum)
-	      | (p::ps, raccum) -> 
-		  (match optProp ctx p with
-		      True -> True
-		    | False -> loop(ps,raccum)
-		    | p' -> loop(ps, p' :: raccum))
-	    in loop(ps,[])
-
 	| Imply (p1, p2) -> 
 	    (** Optimize subexpressions, using the truth of the
 		premise in optimizing the conclusion.  This has the
@@ -817,10 +803,10 @@ and optProp ctx orig_prp =
 	| Forall((n,ty), p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n
             in let p' = optProp (insertTermVariable ctx n ty) p
-	    in let doForall(nm1,ty1,prp2) =
+	    in let doForall(nm1,sty1,prp2) =
 	      begin
 		match findEqPremise nm1 prp2 with
-		    None -> Forall((nm1,ty1),prp2)
+		    None -> Forall((nm1,sty1),prp2)
 		  | Some(trm,prp2') -> 
 		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
@@ -834,11 +820,11 @@ and optProp ctx orig_prp =
 	      | (VoidTy, _) -> 
 		  (* forall x:Void. p'  ===   True *)
 		  True
-	      | (NamedTy n1, Imply (PApp (NamedTotal (n2, []), Id n3), p'')) ->
-		  (* forall x:t. (||t|| -> p'')   ===   forall x:||t||. p'' *)
+	      | (NamedTy n1, Imply (PApp (NamedSupport (n2, []), Id n3), p'')) ->
+		  (* forall x:t. (x:||sty|| -> p'')   ===   forall x:||sty||. p'' *)
 		  if (n3 = LN(None,n)) && 
 		    (hnfTy ctx (NamedTy n1) = hnfTy ctx (NamedTy n2)) then
-		    ForallTotal((n, n2), p'')
+		    ForallSupport((n, SNamedTy n2), p'')
 		  else
 		    doForall(n, NamedTy n1, p')
 	      | (ty',_) -> 
@@ -847,40 +833,23 @@ and optProp ctx orig_prp =
 		     when x is not free in e.  *)
 		  doForall(n, ty', p'))
 	      
-	| ForallTotal((n,ln),p) ->
+	| ForallSupport((n,sty),p) ->
 	    let (ctx, n) = renameBoundTermVar ctx n
-	    in let doForallTotal(nm1,ln1,prp2) =
+	    in let doForallSupport(nm1,sty1,prp2) =
 	      begin
 		match findEqPremise nm1 prp2 with
-		    None -> ForallTotal((nm1,ln1),prp2)
+		    None -> ForallSupport((nm1,sty1),prp2)
 		  | Some(trm,prp2') -> 
 		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
 	      end
-	    in let ctx' = insertTermVariable ctx n (NamedTy ln)
+	    in let ctx' = insertTermVariable ctx n (ty_of_simple_ty sty)
 	    in let ctx'' = ctx'  (* XXX Should insert fact that n is total! *)
 	    in let p' = optProp ctx'' p
-	    in (match (optTy ctx (NamedTy ln), p') with
+	    in (match (optSimpleTy ctx sty, p') with
 		(_, True) -> True
-	      | (UnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
-	      | (VoidTy, _) -> True
-	      | (NamedTy ln',_) -> doForallTotal(n, ln', p')
-	      | (_, _) -> failwith "XXX Andrej messed up here.")
-	      
-	| Cexists ((n, ty), p) ->
-	    let (ctx, n) = renameBoundTermVar ctx n
-	    in let doExists(nm1,ty1,prp2) =
-	      begin
-		match findEq nm1 prp2 with
-		    None -> Cexists((nm1,ty1),prp2)
-		  | Some(trm,prp2') -> 
-		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
-	      end
-	    in let p' = optProp (insertTermVariable ctx n ty) p in
-		 (match optTy ctx ty, p' with
-		     (_, False) -> False
-		   | (VoidTy, _) -> False
-		   | (UnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
-		   | (ty', _) -> doExists(n, ty', p'))
+	      | (SUnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
+	      | (SVoidTy, _) -> True
+	      | (sty',_) -> doForallSupport(n, sty', p'))
 
 	| PObligation (bnds, p, q) ->
 	  let (names,tys) = List.split bnds
@@ -940,7 +909,7 @@ and optProp ctx orig_prp =
 		| PLet(VarPat nm1, (Obligation([(nm2,ty2)], prp2, 
 				       Id(LN(None,nm2'))) as obprp), prp3) 
 		    when nm2 = nm2' ->
-		    (** Now that assures start out looking like indefinite
+	       		    (** Now that assures start out looking like indefinite
 			descriptions, one pattern that has cropped up 
 			occasionally is:
 		        let y = (assure x:s. phi(x) in x) in prp3.

@@ -51,9 +51,9 @@ let rec map3 f lst1 lst2 lst3 =
 
 let pApp p t = match p with
     PLambda ((n, _), q) -> sbp n t q
-  | NamedTotal _ | NamedPer _ | NamedProp _ | PApp _ | PObligation _ | PLet _ -> PApp (p, t)
+  | NamedSupport _ | SimpleSupport _ | NamedPer _ | NamedProp _ | PApp _ | PObligation _ | PLet _ -> PApp (p, t)
   | True | False | Equal _ | And _
-  | Cor _ | Imply _ | Iff _ | Not _ | Forall _ | ForallTotal _ | Cexists _ | PCase _ ->
+  | Imply _ | Iff _ | Not _ | Forall _ | ForallSupport _ | PCase _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let forall_tot (x, s) p = Forall ((x, s.ty), Imply (pApp s.tot (id x), p))
@@ -151,7 +151,7 @@ let rec translateSet = function
       let nm = translateSLN sln in
       let binds = bindings_of_setkind knd in
 	{ ty  = NamedTy nm;
-	  tot = nest_lambda binds (NamedTotal (nm, List.map (fun (y,_) -> id y) binds));
+	  tot = nest_lambda binds (NamedSupport (nm, List.map (fun (y,_) -> id y) binds));
 	  per = nest_lambda binds (NamedPer (nm, List.map (fun (y,_) -> id y) binds));
 	}
 
@@ -276,16 +276,6 @@ let rec translateSet = function
 		  )
 		  lst'
 	       ));
-(****
-	    (Cor (List.map
-		   (function
-		       (lb, None) -> Equal (id x, Inj (lb, None))
-		     | (lb, Some {ty=u; tot=p}) ->
-			 let x' = refresh x in
-			   Cexists ((x', u), And [Equal (id x, Inj (lb, Some (id x'))); pApp p (id x')]))
-		   lst')
-	    );
-****)
 	  per = makePer (y, y', t)
 	    (PCase
 	       (Tuple [id y; id y'],
@@ -301,21 +291,6 @@ let rec translateSet = function
 		  lst'
 	       ))
 
-(***
-	    (Cor (List.map
-		   (function
-		       (lb, None) -> And [Equal (id y,  Inj (lb, None)); Equal (id y', Inj (lb, None))]
-		     | (lb, Some {ty=u; per=q}) ->
-			 let w = refresh y in
-			 let w' = refresh y' in
-			   Cexists ((w,u),
-		           Cexists ((w',u),
-				    And [Equal (id y, Inj (lb, Some (id w)));
-					 Equal (id y', Inj (lb, Some (id w')));
-					 pApp (pApp q (id w)) (id w')])))
-		   lst')
-	  )
-***)
 	}
 
   | L.Rz s ->
@@ -510,15 +485,7 @@ and translateProp = function
 			     ConstrPat (lb, Some (x,t)), pApp p (id x)
 			) lbs lst'
 	     ))
-(****
-	 (Cor (
-	   List.map2
-		(fun lb (t,p) ->
-		   let x = fresh t in
-		     Cexists ((x,t), And [Equal(id u, Inj (lb, Some (id x))); pApp p (id x)]))
-		lbs lst'
-	 ))
-****)
+
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=q} = translateSet s in
       let (u, p') = translateProp p in
@@ -711,7 +678,7 @@ and translateTheoryElement = function
 	       aprop =
 		 nest_forall_ty binds
 		   (Forall((x, tyname),
-			  Iff (PApp (NamedTotal (ln_of_name n, idys), id x),
+			  Iff (PApp (NamedSupport (ln_of_name n, idys), id x),
 			      pApp (List.fold_left pApp p idys) (id x))))}]);
 	 Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
 	      [{alabel = string_of_name n ^ "_def_per";
