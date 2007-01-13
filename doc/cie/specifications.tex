@@ -184,14 +184,14 @@ implementation of a local value inside a term, e.g.,
 %
 \begin{equation*}
   \olambda{x}{\mathtt{real}}{(
-    \ooblig{y}{\mathtt{real}}{\phi(x^2+y^2)}{x+y}
+    \ooblig{y}{\mathtt{real}}{\phi(x,y)}{x+y}
     )},
 \end{equation*}
 %
-requires that the programer define a local value~$y$ such that
-$\phi(x^2+y^2)$ holds. In principle, local specifications could be
-expressed as global ones, but at a significant cost to clarity and
-verbosity.
+requires that the programer define a local value~$y$ such
+that$\phi(x,y)$ holds. In principle, local specifications could always
+be expressed as global ones, but at a significant cost to clarity and
+conciseness.
 
 RZ outputs obligations when it encounters an uncheckable typing
 constraint, or a term in the input whose well-formedness requires the
