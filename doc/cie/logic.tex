@@ -3,26 +3,34 @@
 \section{The Input Language}
 \label{sec:input-language}
 
-A RZ \emph{theory} is a generalized
-logical signature with associated axioms, similar to a Coq module signature.
-Theories are descriptions of \emph{models}, or implementations. The input is the
-definition of one or more \emph{theories}; 
-Figure~\ref{fig:kuratowski} shows a sample input for the RZ system. 
-(RZ does not permit models to be written directly, but it does let you
-assume that a model of a theory exists.)
+A RZ \emph{theory} is a generalized logical signature with associated
+axioms, similar to a Coq module signature. Theories are descriptions
+of \emph{models}, or implementations. The input is the definition of
+one or more \emph{theories}; Figure~\ref{fig:kuratowski} shows a
+sample input for the RZ system. RZ does not permit models to be
+written directly, but it does allow a declaration of a model of a
+given theory.
 
-The simplest theory $\ith$ is a list of \emph{theory element}\/s $\ite$. A theory element may specify that a certain set, set element, proposition or predicate, or model must exist (i.e.,
-\textsf{Parameter} specifications). It may also provide a definition of a set, term, proposition, predicate, or theory (i.e., \textsf{Definition} specifications). Finally, a theory element can be
+The simplest theory $\ith$ is a list of \emph{theory element}\/s
+$\ite_1 \ldots \ite_n$. A theory element may specify that a certain
+set, set element, proposition or predicate, or model must exist (i.e.,
+\textsf{Parameter} specifications). It may also provide a definition
+of a set, term, proposition, predicate, or theory (i.e.,
+\textsf{Definition} specifications). Finally, a theory element can be
 a named axiom that must hold. (i.e., \textsf{Axiom} specifications).
 
-More complex theories can be parameterized by models (e.g., a theory
-of real numbers can be written in terms of one unspecified but
-arbitrary model of the natural numbers); in
+A more complex theory is one parametrized by a model
+$\ilambda{\iM}{\ith_1}{\ith_2}$. A typical example in mathematics is
+the theory of a vector space, parameterized by a field of scalars. In
 Figure~\ref{fig:kuratowski}, \texttt{K} is a theory parameterized by a
-model choosing an implementation of a single set. For any such model
-$\im$, then, $\mathtt{K}(\im)$ is a theory describing a model of
+model choosing an implementation of a single set. For any such
+model~$\im$, then, $\mathtt{K}(\im)$ is a theory describing a model of
 finite sets whose elements are in the set $\iselect{\im}{\mathtt{a}}$.
-Alternatively, a theory can describe a uniform family of models (e.g.,
+
+A theory may also describe a uniform family of models
+$\idarrow{\im}{\ith_1}{\ith_2}$. 
+
+
 a single model of real numbers written in terms of an arbitrary model
 of the natural numbers); this would correspond to a single
 implementation that works for any model $\im$ satisfying the parameter
@@ -33,8 +41,8 @@ $\mathtt{K(\im_2)}$.
 Propositions and predicates appearing in theories may use full
 first-order constructive logic, not just the negative fragment. The
 grammar for logical inputs is shown in Figure~\ref{fig:input}. Most of
-this should be familiar, including the use of lambda abstraction are
-to define predicates.
+this should be familiar, including the use of lambda abstraction to
+define predicates.
 
 The language of sets is rich, going well beyond the type systems of typical
 programming languages. In addition to any base sets postulated in a theory, one

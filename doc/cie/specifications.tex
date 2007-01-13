@@ -188,9 +188,10 @@ implementation of a local value inside a term, e.g.,
     )},
 \end{equation*}
 %
-requires that $y$ be a real values such that $\phi(x^2+y^2)$ holds. In
-principle, such local specifications can be expressed as global ones,
-but that requires unnatural manipulations and unnecessary verbosity.
+requires that the programer define a local value~$y$ such that
+$\phi(x^2+y^2)$ holds. In principle, local specifications could be
+expressed as global ones, but at a significant cost to clarity and
+verbosity.
 
 RZ outputs obligations when it encounters an uncheckable typing
 constraint, or a term in the input whose well-formedness requires the
@@ -220,12 +221,14 @@ $\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
 A specification is an OCaml module type with assertions. It may
 contain value declarations, type declarations and definitions, module
 declarations, specification definitions, proposition declarations, and
-assertions, see~\ref{sec:examples-of-output} for examples. A
-specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a module type of an
-OCaml functor. Such a parametrized specification may be applied to a
-module. Because OCaml does not support such applications, RZ reduces
-them away.
+assertions. A specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a
+module type of an OCaml functor. Such a parametrized specification may
+be applied to a module. Because OCaml does not support such
+applications, RZ reduces them away.
 
+\internal{Andrej}{Maybe you can clarify the point about parameterized
+  specifications applied to models (modules)? I seem to remember you
+  once compared this to something that Automath has.}
 
 %%% Local Variables: 
 %%% mode: latex
