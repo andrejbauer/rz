@@ -110,13 +110,13 @@ $\values{\typeOf{A}}$ and $\setOf{A}$, satisfying
 % 
 \begin{enumerate}
 \item \emph{totality:} for every $x \in \setOf{A}$ there is $v \in
-  \typeOf{A}$ such that $v \rz_A x$, and
+  \values{\typeOf{A}}$ such that $v \rz_A x$, and
 \item \emph{modesty:} if $u \rz_A x$ and $u \rz_A y$ then $x = y$.
 \end{enumerate}
 %
 The \emph{support} of $A$ is the set $\support{A} = \set{v \in
-  \typeOf{A} \such \xsome{x}{\setOf{A}}{v \rz_A x}}$ of those values
-which realize something. We define the relation $\per_A$ on
+  \values{\typeOf{A}} \such \xsome{x}{\setOf{A}}{v \rz_A x}}$ of those
+values which realize something. We define the relation $\per_A$ on
 $\values{\typeOf{A}}$ by
 %
 \begin{equation*}
@@ -125,7 +125,7 @@ $\values{\typeOf{A}}$ by
   \some{x}{\setOf{A}}{u \rz_A x \land v \rz_A x} \;.
 \end{equation*}
 %
-From totality and modesty of $\rz_A$ it follows that $\rz_A$ is a per,
+From totality and modesty of $\rz_A$ it follows that $\per_A$ is a per,
 i.e., symmetric and transitive. Observe that $\support{A} = \set{v \in
   \values{\typeOf{A}} \such v \per_A v}$, whence $\per_A$
 restricted to $\support{A}$ is an equivalence relation. In fact, we
@@ -135,10 +135,13 @@ $\per_A$, and $v \rz_A x$ to mean $v \in x$.
 
 The two views of implementations, as modest sets $(\setOf{A},
 \typeOf{A}, {\rz_A})$, and as pers $(\typeOf{A}, {\per_A})$, are
-equivalent. In RZ we use pers because they refer only to types and
-values, as opposed to arbitrary sets. Nevertheless, it is useful to
-understand how modest sets and pers arise from natural considerations
-about programming practice.
+equivalent.\footnote{And there is a third one, as a partial surjection
+  $\delta_A : {\subseteq}\values{\typeOf{A}} \epito \setOf{A}$, with
+  $\delta_A(v) = x$ when $v \rz_A x$. This is how realizability is
+  presented in Type Two Effectivity~\cite{Wei00}.} In RZ we use pers
+because they refer only to types and values, as opposed to arbitrary
+sets. Nevertheless, it is useful to understand how modest sets and
+pers arise from natural considerations about programming practice.
 
 Modest sets form a category whose objects are modest sets and
 morphisms are the realized functions. A \emph{realized function} $f :
@@ -209,8 +212,8 @@ $\cfun{(u,v)}{u\;v}$. If a function $f : C \times A \to B$ is realized
 by $v$, then its transpose $\tilde{f} : C \to B^A$, $\tilde{f}(z)(x) =
 f(z,x)$, is realized by $\cfun{z\;x}{v \; (z,x)}$. This shows that the
 category of modest sets is cartesian closed. In
-Section~\ref{sec:realizability-interpretation} we review other
-canonical constructions on modest sets.
+Section~\ref{sec:transl-sets-terms} we review other canonical
+constructions on modest sets.
 
 \bigskip
 
@@ -228,7 +231,7 @@ $v \in \values{\cint}$ to represent the element $v
 \end{equation*}
 %
 The neutral elements $0$ is represented by~$0$, while negation and
-addition are implemented by
+addition are respectively implemented by
 %
 \begin{align*}
   &\clet{\mathtt{neg}\; k}{-(k \cmod 7)} \\
@@ -237,18 +240,18 @@ addition are implemented by
 %
 The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
   k\; m}{k+m}$ do not work because of overflow at values that exceed
-$2^{30}$ (in Ocaml on a 32-bit machine). We could avoid the overflow
+$2^{30}$ (in OCaml on a 32-bit machine). We could avoid the overflow
 worries by taking an isomorphic representation in which the only valid
 realizers are $0$, $1$, \ldots, $6$, and negation and addition
 realized by $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\;
   k\; m}{(k + m) \cmod 7}$, respectively.
 
 The modest set~$Z$ also has \emph{decidable equality}, which means
-that the characteristic map $\mathrm{eq} : Z \times Z \to
+that the characteristic map $\mathrm{eq} : \ZZ_7 \times \ZZ_7 \to
 \set{\mathtt{false}, \mathtt{true}}$ of equality is realized, namely
 by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod 7 = 0}$ does not
   decide equality because of possible overflow in subtraction, whereas
-  $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not work because in Ocaml
+  $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not work because in OCaml
   $a \cmod b$ is negative when~$a$ is negative, e.g., $(-10) \cmod 7 =
   -3$ instead of the expected $4$.} $\cfun{(k,m)}{(k \cmod 7 - m \cmod
   7) \cmod 7 = 0}$. However, not all modest sets have decidable
@@ -264,16 +267,15 @@ problem~\cite{post47:_recur_unsol_probl_thue}.
 In the realizability interpretation of logic, each formula~$\phi$ is
 assigned a set of \emph{realizers} which can be thought of as
 computations that witness the validity of~$\phi$. The situation is
-somewhat similar (but not equivalent) to the propositions-as-types
+somewhat similar, but not equivalent, to the propositions-as-types
 translation of logic into type theory, where the proofs of a
 proposition correspond to terms of the corresponding type. More
 precisely, to each formula~$\phi$ we assign an underlying type
-$\typeOf{\phi}$ of realizers. However, unlike in the
-propositions-as-types translation, not all terms of type
-$\typeOf{\phi}$ are necessarily valid realizers for~$\phi$, and some
-terms which are realizers may not correspond to any proofs, for
-example, if they denote partial functions or use computational
-effects.
+$\typeOf{\phi}$ of realizers, but unlike in the propositions-as-types
+translation, not all terms of type $\typeOf{\phi}$ are necessarily
+valid realizers for~$\phi$, and some terms which are realizers may not
+correspond to any proofs, for example, if they denote partial
+functions or use computational effects.
 
 We write $t \rz \phi$ when $t \in \values{\typeOf{\phi}}$ is a
 realizer for~$\phi$. The underlying types and the realizability
@@ -330,6 +332,24 @@ formula~$\phi$ is \emph{valid} if it has at least one realizer.
   \label{fig:rz-logic}
 \end{figure*}
 
+In classical mathematics, a predicate on a set~$X$ may be viewed as a
+subset of~$X$ or a (possibly non-computable) function $X \to \oProp$,
+where $\oProp = \set{\ofalse, \otrue}$ is the set of truth values.
+Accordingly, since in realizability propositions are witnessed by
+realizers, a predicate~$\phi$ on a modest set~$A$ may be viewed as a
+subset of $\setOf{A} \times \values{\typeOf{\phi}}$, or a (possibly
+non-computable) function $\setOf{A} \times \values{\typeOf{\phi}} \to
+\set{\ofalse, \otrue}$. In terms of pers, which is what RZ uses, a
+predicate~$\phi$ on a per~$A = (\typeOf{A}, {\per_A})$ is a (possibly
+non-computable) function $\phi : \values{\typeOf{A}} \times
+\values{\typeOf{\phi}} \to \oProp$ which is
+%
+\begin{itemize}
+\item \emph{strict:} if $\phi(u,v)$ then $u \in \support{A}$, and
+\item \emph{extensional:} if $\phi(u_1,v)$ and $u_1 \per_A u_2$ then
+  $\phi(u_2,v)$.
+\end{itemize}
+
 We illustrate how the realizability interpretation extracts the
 computational content of a proposition. To make an interesting
 example, suppose we already implemented the structure of real
@@ -349,28 +369,29 @@ such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
 number~$x$ such that $x^3 + a x + b = 0$, and $w$ is irrelevant. This
 can be ``optimized'' to a realizer of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ which
-does not bother to compute the irrelevant second component. In essence
-then, a realizer~$r$ for~\eqref{eq:square-root} computes a root of the
-cubic equation. Note that $r$ is \emph{not} extensional, i.e.,
-different realizers~$t$ and~$u$ for the same~$a$ and~$b$ may result in
-different roots of the cubic. To put this in another way, $r$ realizes
-a \emph{multi-valued} function\footnote{The multi-valued nature of the
-  realizer comes from the fact that it computes \emph{any one} of many
-  values, not that it computes \emph{all} of the many values.} rather
-than a modest set morphism. It is well known in computable mathematics
-that certain operations, such as equation solving, must necessarily be
-multi-valued in order to be computable as well. They arise naturally
-in RZ as translations of $\forall\exists$~statements.
+does not bother to compute~$w$. In essence then, a realizer~$r$
+for~\eqref{eq:square-root} computes a root of the cubic equation. Note
+that $r$ is \emph{not} extensional, i.e., different realizers~$t$
+and~$u$ for the same~$a$ and~$b$ may result in different roots of the
+cubic. To put this in another way, $r$ realizes a \emph{multi-valued}
+function\footnote{The multi-valued nature of the realizer comes from
+  the fact that it computes \emph{any one} of many values, not that it
+  computes \emph{all} of the many values.} rather than a modest set
+morphism. It is well known in computable mathematics that certain
+operations, such as equation solving, are only computable if we allow
+them to be multi-valued. They arise naturally in RZ as translations of
+$\forall\exists$~statements.
 
 There are propositions whose realizers are ``irrelevant'' or free of
 computational content. For example, realizers for $\itrue$ and
 equality have type $\ounit$. Another example is a negation
 $\inot{\phi}$, which is defined to be the same as
 $\iimply{\phi}{\ifalse}$, whose realizers have type
-$\oarrow{\typeOf{\phi}}{\ounit}$. Sometimes only a part of a realizer
-is computationally irrelevant, as we saw in the last example.
-Propositions which are free of any computational content are
-characterized as the \emph{$\lnot\lnot$-stable propositions}. A
+$\oarrow{\typeOf{\phi}}{\ounit}$. Such realizers do not compute
+anything useful, and we may as well throw them away. Sometimes only a
+part of a realizer is computationally irrelevant, as we saw in the
+last example. Propositions which are free of any computational content
+are characterized as the \emph{$\lnot\lnot$-stable propositions}. A
 proposition~$\phi$ is said to be $\lnot\lnot$-stable, or just
 \emph{stable} for short, when $\iimply{\inot{\inot{\phi}}}{\phi}$ is
 valid. Any \emph{negative} proposition, i.e., one built from $\itrue$,
@@ -378,10 +399,13 @@ $\ifalse$, $=$, $\land$, $\Rightarrow$ and $\forall$ is stable, but
 there may be other propositions which are stable and are not written
 in the negative form.
 
-It would be unproductive to bother a programmer with requirements for
-useless code, so RZ has a \emph{thinning} phase, see
-Section~\ref{sec:translation}, which optimizes away specifications for
-computationally irrelevant realizers.
+It would be unproductive to bother the programmer with requirements
+for useless code, so RZ has a subkind $\iStable \subseteq \iProp$ of
+stable propositions which allows us to declare a computationally
+irrelevant basic proposition. In the translation there is a
+\emph{thinning} phase, see Section~\ref{sec:translation}, which
+optimizes away specifications for computationally irrelevant
+realizers.
 
 \subsection{Uniform families of modest sets}
 \label{sec:uniform-families}
@@ -407,6 +431,17 @@ point of view, because it removes dependencies at the level of types.
 Note also that there is no dependency on the realizers, only on the
 elements of the underlying set.
 
+We may express uniform families in terms of pers, just like we did for
+predicates. A uniform family $\family{A_i}{i \in I}$ of pers indexed
+by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
+of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ which is
+% 
+\begin{itemize}
+\item \emph{strict:} if $u \per_{A_i} v$ then $i \in \support{I}$, and
+\item \emph{extensional:} if $u \per_{A_i} v$ and $i \per_I j$ then $u
+  \per_{A_j} v$.
+\end{itemize}
+%
 A morphism $f : \family{A_i}{i \in I} \to \family{B_i}{i \in I}$ is a
 family $\family{f_i : \setOf{A_i} \to \setOf{B_i}}{i \in I}$ of
 uniformly realized maps, which means that there exists $u \in
@@ -487,8 +522,6 @@ any $n \in \setOf{N}$, but for too large a value overflow might occur.
 If we expect the implementation to be used with such values, it is
 more prudent to replace the type~$\cint$ with an implementation of
 arbitrary size integers.
-
-\internal{Andrej}{I will polish this up when I see how the rest goes.}
 
 %%% Local Variables: 
 %%% mode: latex

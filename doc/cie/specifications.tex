@@ -7,11 +7,11 @@ In programming we distinguish between \emph{impementation} and
 expressed with modules and module types, respectively.\footnote{In
   object-oriented languages implementations and specifications are
   expressed with classes and interfaces, while in Haskell they
-  correspond to ??? and ???.} A module defines types and values, while
-a module type simply lists the types and values provided by a module.
-For a complete specification, a module type must also be annotated
-with \emph{assertions} which specify the required properties of
-declared types and values.
+  correspond to modules and declarations.} A module defines types and
+values, while a module type simply lists the types, type definitions,
+and values provided by a module. For a complete specification, a
+module type must also be annotated with \emph{assertions} which
+specify the required properties of declared types and values.
 %
 \begin{figure}
   \centering
@@ -21,14 +21,13 @@ declared types and values.
   \label{fig:module-example}
 \end{figure}
 %
-For example, if we look at the definition of module type
-$\mathtt{AbelianGroup}$ and module~$\mathtt{Z7}$ in
-Figure~\ref{fig:module-example}, we can probably guess that
-$\mathtt{Z7}$ implements the group~$\ZZ_7$ and that $\mathtt{Ab}$ is a
-signature for an Abelian group. However, for a complete description
-of~$\mathtt{Z7}$ we still need to define a per~$\perty{t}$ on
-$\values{\mathtt{t}}$ that tells us when two integers represent the
-same element of~$\ZZ_7$, e.g.,
+For example, if we look at the definition of module type $\mathtt{Ab}$
+and module~$\mathtt{Z7}$ in Figure~\ref{fig:module-example}, we can
+probably guess that $\mathtt{Z7}$ implements the group~$\ZZ_7$ and
+that $\mathtt{Ab}$ is a signature for an Abelian group. However, for a
+complete description of~$\mathtt{Z7}$ we still need to define a
+per~$\perty{t}$ on $\values{\mathtt{t}}$ that tells us when two
+integers represent the same element of~$\ZZ_7$, e.g.,
 %
 \begin{equation*}
   u \perty{t} v \iff
@@ -45,8 +44,7 @@ following further \emph{assertions}:
   there is a per $\perty{t}$ on $\values{\mathtt{t}}$,
 \item
   \label{enum:zero-total}%
-  $\mathtt{zero} \in \support{\mathtt{t}}$, where $\support{t} =
-  \set{u \in \values{\mathtt{t}} \such u \perty{t} u}$.
+  $\mathtt{zero} \in \support{\mathtt{t}}$.
 \item
   \label{enum:neg-total}%
   for all $u, v \in \values{\mathtt{t}}$, if $u \perty{t} v$ then
@@ -79,12 +77,12 @@ Assertions \ref{enum:zero-total}--\ref{enum:add-total} state that
 $\mathtt{zero}$, $\mathtt{neg}$, and $\mathtt{add}$ realize a
 constant, a unary, and a binary operation, respectively, while
 assertions \ref{enum:ab-group-axiom-1}--\ref{enum:ab-group-axiom-4}
-correspond to axioms for Abelian groups.
-
-RZ generates complete specifications (module types with assertions),
-such as the above module type~$\mathtt{Ab}$ with assertions
-\ref{enum:t-per}--~\ref{enum:ab-group-axiom-4}, in the language of
-specifications summarized in Figure~\ref{fig:input}.
+correspond to axioms for Abelian groups. RZ generates complete
+specifications (module types with assertions), such as the above
+module type~$\mathtt{Ab}$ with assertions
+\ref{enum:t-per}--~\ref{enum:ab-group-axiom-4}. The output is written
+in the language of specifications summarized in
+Figure~\ref{fig:input}.
 
 \begin{figure}
   \[
@@ -160,26 +158,47 @@ specifications summarized in Figure~\ref{fig:input}.
   \caption{The syntax of specifications (Simplified)}
 \end{figure}
 
-RZ ever outputs only a small subset of Ocaml types (the unit type,
+RZ ever produces only a small subset of OCaml types (the unit type,
 products, function types, polymorphic variant types, and parameter
 types). Correspondingly, the language of terms is fairly simple
 (tuples, functions, polymorphic variants, and local definitions).
 However, the programmer is free to implement a specification using any
-types and terms that exist in Ocaml. A special kind of term is an
+types and terms that exist in OCaml. A special kind of term is an
 \emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
 $e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
 An obligation is equivalent to a combination of the indefinite
 description operator~\cite{epsilon-reference} and a local definition,
 $\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
 $\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
-such that $\op$''. RZ outputs obligations when it encounters an
-uncheckable typing constraint, or a term in the input whose
-well-formedness requires the existence of a suitable term in the
-output. (Include pointer to further discussion and/or example.) The
-programmer is supposed to replace an obligation with an instance of a
-value satisfying~$\op$. If such a value does not exist, the
-specification is unimplementable. The alternative form
-$\oobligx{\op}{\oe}$ stands for $\ooblig{\_}{\ounit}{\op}{\oe}$.
+such that $\op$''. The alternative form $\oobligx{\op}{\oe}$ stands
+for $\ooblig{\_}{\ounit}{\op}{\oe}$. Obligations serve a double role.
+On one hand they are \emph{local assertions} that refer to local
+values inside a term, e.g.,
+%
+\begin{equation*}
+  \olambda{x}{\mathtt{real}}{(\oobligx{x^2-x+1 \neq 0}{x/(x^2-x+1)})}.
+\end{equation*}
+%
+On the other hand they are \emph{local declarations} that require the
+implementation of a local value inside a term, e.g.,
+%
+\begin{equation*}
+  \olambda{x}{\mathtt{real}}{(
+    \ooblig{y}{\mathtt{real}}{\phi(x^2+y^2)}{x+y}
+    )},
+\end{equation*}
+%
+requires that $y$ be a real values such that $\phi(x^2+y^2)$ holds. In
+principle, such local specifications can be expressed as global ones,
+but that requires unnatural manipulations and unnecessary verbosity.
+
+RZ outputs obligations when it encounters an uncheckable typing
+constraint, or a term in the input whose well-formedness requires the
+existence of a suitable term in the output, see
+Section~\ref{sec:exampl-with-oblig}. The programmer is supposed to
+replace an obligation with an instance of a value satisfying the
+obligation. If such a value does not exist, the specification is
+unimplementable.
 
 Assertions are expressed in the \emph{negative fragment} of
 first-order logic, which contains constants for truth and falsehood,
@@ -198,13 +217,13 @@ $\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
 shorthand for
 $\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
 
-A specification is an Ocaml module type with assertions. It may
+A specification is an OCaml module type with assertions. It may
 contain value declarations, type declarations and definitions, module
 declarations, specification definitions, proposition declarations, and
 assertions, see~\ref{sec:examples-of-output} for examples. A
 specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a module type of an
-Ocaml functor. Such a parametrized specification may be applied to a
-module. Because Ocaml does not support such applications, RZ reduces
+OCaml functor. Such a parametrized specification may be applied to a
+module. Because OCaml does not support such applications, RZ reduces
 them away.
 
 
