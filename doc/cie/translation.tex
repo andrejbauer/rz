@@ -13,40 +13,72 @@ specification, where the theory elements are translated as follows.
 \subsection{Translation of sets and terms}
 \label{sec:transl-sets-terms}
 
-\internal{Andrej}{I still have to insert interpretations of terms
-  here. Will keep it short and point out where obligations are
-  emitted.}
-
 A set declaration $\iParameter{s}{\iSet}$ is translated to
 %
 \begin{align*}
-  & \otyspec{s}. \\
-  & \opropspec{({\approx_{s}})}{\oarrow{s}{\oarrow{s}{\oProp}}}.\\
-  & \oassertion{\mathrm{per}_{s}}{
-    \begin{aligned}[t]
-      & \oforall{x\,y}{s}{(\oimply{\oper{s}{x}{y}}{\oper{s}{y}{x}})}
-        \land {} \\
-      & \oforall{x\,y\,z}{s}{(
-        \oimply{
-          \oper{s}{x}{y} \land \oper{s}{y}{z}
-          }{\oper{s}{x}{z}}
-        )}.
-    \end{aligned}
+  & \otyspec{s} \\
+  & \opropspec{({\approx_{s}})}{\oarrow{s}{\oarrow{s}{\oProp}}}\\
+  & \oassertion{\mathrm{symmetric}\_{s}}{
+    \oforall{x,y}{s}{(\oimply{\oper{s}{x}{y}}{\oper{s}{y}{x}})}
+  }
+  \\
+  & \oassertion{\mathrm{transitive}\_{s}}{
+    \oforall{x,y,z}{s}{(
+      \oimply{
+        \oper{s}{x}{y} \land \oper{s}{y}{z}
+      }{\oper{s}{x}{z}}
+      )}
   }
 \end{align*}
 %
-This says that the programmer should define a type~$s$, and a binary
-predicate~$\approx_s$ on $\values{s}$ which is symmetric and
-transitive.\footnote{The predicate is \emph{not} an ocaml value of
-  type $s \to s \to \mathtt{bool}$, but an abstract relation on the
-  set $\values{s} \times \values{s}$. Only in special cases can we
-  implement the per as a decidable test.} When a dependent set is
-declared in the input, e.g., $\iParameter{t}{s \to \iSet}$, the
-translation follows the interpretation of dependent sets as uniform
-families, cf.\ Section~\ref{sec:uniform-families}. The underlying
-output type is still non-dependent, but the per
-$\approx_{\oapp{t}{{-}}}$ is parametrized by~$s$, so it is declared to
-have type $\oarrow{s}{\oarrow{t}{\oarrow{t}{\oProp}}}$.
+This says that the programmer should define a type~$s$ and a per
+$\per_s$ on~$\values{s}$. Here~$\per_s$ is \emph{not} an ocaml value
+of type $s \to s \to \mathtt{bool}$, but an abstract relation on the
+set $\values{s} \times \values{s}$. Only in special cases can we
+expect to be able to implement~$\per_s$ as a decidable test.
+
+The translation of the declaration of a dependent set
+$\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
+sets as uniform families, cf.\ Section~\ref{sec:uniform-families}:
+%
+\begin{align*}  
+  & \otyspec{t} \\
+  & \opropspec{({\approx_{t}})}{\oarrow{s}{\oarrow{t}{\oarrow{t}{\oProp}}}}\\
+  & \oassertion{\mathrm{strict}\_{t}}{
+    \oforall{x}{s}{
+      \oforall{y,z}{t}{
+        (\oimply{\oper{\oapp{t}{x}}{y}{z}}{\ototal{x}{s}})
+      }
+    }
+  } \\
+  & \oassertion{\mathrm{extensional}\_{t}}{
+    \oforall{x,y}{s}{
+      \oforall{z,w}{t}{
+        (\oimply{\oper{s}{x}{y}}{
+          \oimply{\oper{\oapp{t}{x}}{z}{w}}{\oper{\oapp{t}{y}}{z}{w}}
+        })
+      }
+    }
+  } \\
+  & \oassertion{\mathrm{symmetric}\_{t}}{
+    \oforall{x}{s}{
+      \oforall{y,z}{t}{(\oimply{\oper{\oapp{t}{x}}{y}{z}}{\oper{\oapp{t}{x}}{z}{y}})}
+    }
+  }
+  \\
+  & \oassertion{\mathrm{transitive}\_{t}}{
+    \oforall{x}{s}{
+      \oforall{y,z,w}{t}{(
+        \oimply{
+          \oper{\oapp{t}{x}}{y}{z} \land \oper{\oapp{t}{x}}{z}{w}
+        }{\oper{\oapp{t}{x}}{y}{w}}
+        )}
+    }
+  }
+\end{align*}
+%
+The underlying output type~$t$ is still non-dependent, but the per is
+parametrized by~$s$.
 
 An element declaration $\iParameter{x}{s}$ is translated to
 %
@@ -72,7 +104,7 @@ the sum of underlying types,
   \osumtyx{\il_1}{\typeOf{A}}{\il_2}{\typeOf{B}},
 \end{equation*}
 %
-and the per is the disjoint union of pers $\per_{A}$ and $\per{B}$, so
+and the per is the disjoint union of pers $\per_{A}$ and $\per_{B}$, so
 that we have
 %
 \begin{align*}
@@ -203,7 +235,7 @@ $\iParameter{p}{\iarrow{s}{\iProp}}$ is translated to
 \begin{align*}
   & \otyspec{ty\_p} \\
   & \opropspec{p}{s \to ty\_p \to \oProp} \\
-  & \oassertion{\mathsf{strict}_p}{
+  & \oassertion{\mathsf{strict}\_p}{
     \oforall{x}{s}{
       \oforall{a}{ty\_p}{
         (\oimply
@@ -213,7 +245,7 @@ $\iParameter{p}{\iarrow{s}{\iProp}}$ is translated to
       }
     }
   } \\
-  & \oassertion{\mathsf{extensional}_p}{
+  & \oassertion{\mathsf{extensional}\_p}{
     \oforallt{x,y}{s}{
       \oforall{a}{ty\_p}{
           (\oimply{\oper{s}{x}{y}}
@@ -223,9 +255,13 @@ $\iParameter{p}{\iarrow{s}{\iProp}}$ is translated to
 %
 We see that the predicate~$p$ has gained an additional argument of
 type $ty\_p$ (which the programmer is supposed to define in an
-implementation), and we write $\oapp{\oapp{p}{x}{a}}$ instead of $a
+implementation), and we write $\oapp{\oapp{p}{x}}{a}$ instead of $a
 \rz \oapp{p}{x}$. The two assertions require that $p$ be strict and
 extensional with respect to $\per_s$.
+
+\internal{Andrej}{Maybe we should mention the kinds $\iStable$ and
+  $\iEquiv{s}$ in Section~\ref{sec:input-language} so we do not have
+  to introduce them here.}
 
 Frequently we know that a predicate is stable, which can be taken into
 account when computing its realizability interpretation. For this

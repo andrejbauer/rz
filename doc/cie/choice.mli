@@ -31,7 +31,7 @@ val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
 (**  Assertion ac = 
        forall f:a -> b * ty_r, 
          (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
-         let (g,h) = ac f in g : ||a -> b|| /\ 
+         let (g,h) = ac f in (forall x:a, y:a,  x =a= y -> g x =b= g y) /\ 
          (forall (x:||a||),  r x (g x) (h x))
 *)
 
