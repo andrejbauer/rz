@@ -46,11 +46,33 @@ val initial: (A.a -> S.s) -> fin -> S.s
 \end{source}
 and appropriately modifies references to \texttt{initial} in the assertions to account for this change in type.
 
-Next, an \emph{optimization} pass applies an ad-hoc collection of basic simplifications in order to make the output more readable.  (It is convenient to separate this from thinning because thinning can change the types of constants, while simplification optimizations are always type-preserving.  Except that phase-splitting breaks this invariant.  Oops.)  Term-level simplifications include \ldots.
-Logical simplifications include applications of truth table rules ($\iand{\itrue}{\ip}$ becomes $\ip$), detection of syntactically identical premises and conclusions ($\iimply{\ip_1}{\iand{\ip_1}{\ip_2}}$ becomes $\iimply{\ip_1}{\ip_2}$), as well as other common patterns we have seen arise
-($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes $\ipp(\ie)$).  We do not even attempt to do full theorem-proving here, so some redundancy may remain, but in practice the optimization pass can help significantly.
+Next, an \emph{optimization} pass applies an ad-hoc collection of
+basic simplifications in order to make the output more readable. (It
+is convenient to separate this from thinning because thinning can
+change the types of constants, while simplification optimizations are
+always type-preserving.)
+%
+\internal{Chris}{Except that phase-splitting breaks this invariant.
+  Oops.}
+%
+\internal{Chris}{Term-level simplifications include \ldots}
+%
+Logical simplifications include applications of truth table rules
+($\iand{\itrue}{\ip}$ becomes $\ip$), detection of syntactically
+identical premises and conclusions
+($\iimply{\ip_1}{\iand{\ip_1}{\ip_2}}$ becomes
+$\iimply{\ip_1}{\ip_2}$), as well as other common patterns we have
+seen arise
+($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes
+$\ipp(\ie)$). We do not even attempt to do full theorem-proving here,
+so some redundancy may remain, but in practice the optimization pass
+can help significantly.
 
-Finally, an optional \emph{phase-splitting} pass~\cite{harper+:popl90} occurs.  This is an ML-specific transformation that replace certain uses of parameterized modules (a heavyweight language construct) by parameterized types and polymorphic values.  For example, ignoring assertions for the moment, the module
+Finally, an optional \emph{phase-splitting} pass~\cite{harper+:popl90}
+occurs. This is an ML-specific transformation that replace certain
+uses of parameterized modules (a heavyweight language construct) by
+parameterized types and polymorphic values. For example, ignoring
+assertions for the moment, the module
 \begin{source}
 module Initial : functor (S : Semilattice) ->
                     sig
