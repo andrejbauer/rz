@@ -25,9 +25,7 @@ module type K =
    *)
     
    val add : A.a -> s -> s
-   (**  Assertion add_support = 
-          forall x:A.a, y:A.a,  x =A.a= y ->
-            forall z:s, w:s,  z =s= w -> add x z =s= add y w
+   (**  Assertion add_support =  add : ||A.a -> s -> s||
    *)
     
    type fin = A.a

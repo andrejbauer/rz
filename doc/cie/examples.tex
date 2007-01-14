@@ -97,31 +97,38 @@ is the induction principle. It looks like a statement in higher-order
 logic because it quantifies over all models $\mathtt{P}$ containing a
 predicate~$\mathtt{p}$. However, since the quantifer is on the outside
 RZ accepts it and translates it to a functor mapping a
-module~$\mathtt{P}$ to a value $\mathtt{induction}$:
-%
-\begin{source}
-module Induction : functor
-  (P : sig
-     type ty_p
-     (** predicate p : s -> ty_p -> bool *)
-     (**  Assertion strict_p = 
-            forall x:s, a:ty_p,  p x a -> x : ||s||           
-          Assertion extensional_p = 
-            forall x:s, y:s, a:ty_p, x =s= y -> p x a -> p y a
-     *)
-   end) ->
-sig
-  val induction : P.ty_p -> (A.a -> s -> P.ty_p -> P.ty_p) -> s -> P.ty_p
-  (**  Assertion induction = 
-         forall x:P.ty_p,  P.p emptySet x ->
-           forall f:A.a -> s -> P.ty_p -> P.ty_p, 
-             (forall (x':||A.a||, u:||s||), 
-                forall y:P.ty_p,  P.p u y -> P.p (add x' u) (f x' u y)) ->
-             forall (u:||s||),  P.p u (induction x f u)
-  *)
-end
+module~$\mathtt{P}$ to a value $\mathtt{induction}$, as shown in
+Figure~\ref{fig:induction-output}.
+
+\begin{figure}
+  \centering
+  \begin{source}
+module Induction :
+  functor (P : sig
+    type ty_p
+    (** predicate p : s -> ty_p -> bool *)
+    (**  Assertion strict_p = 
+           forall x:s, a:ty_p,  p x a -> x : ||s||
+         Assertion extensional_p = 
+           forall x:s, y:s, a:ty_p, x =s= y -> p x a -> p y a
+    *)
+  end) ->
+  sig
+    val induction : P.ty_p -> (A.a -> s -> P.ty_p -> P.ty_p) -> s -> P.ty_p
+    (**  Assertion induction = 
+       forall x:P.ty_p,  P.p emptySet x ->
+         forall f:A.a -> s -> P.ty_p -> P.ty_p, 
+           (forall (x':||A.a||, u:||s||), 
+              forall y:P.ty_p,  P.p u y -> P.p (add x' u) (f x' u y)) ->
+           forall (u:||s||),  P.p u (induction x f u)
+    *)
+  end
 \end{source}
-%
+\caption{Translation of induction on finite sets.}
+\label{fig:induction-output}
+\end{figure}
+
+The output is somewhat difficult to read, but the value $\mathtt{inducution}$.
 We explain the output, which is admittedly difficult to read, but
 see~\ref{wherever-we-discuss-polymorphization}. The value
 $\mathtt{induction}$ is a fold-like operation. It accepts a value~$x$,
