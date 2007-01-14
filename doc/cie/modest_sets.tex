@@ -2,11 +2,10 @@
 \label{sec:typed-realizability}
 
 RZ is based on \emph{typed realizability} by John
-Longley~\cite{Longley99}. It is the variant of realizability that most
-directly corresponds to the informal view that programmers have in
-mind when thinking about an implementation of a structure.
+Longley~\cite{Longley99}.   This variant of realizability corresponds most
+directly to programmers' intuition about implementations.
 
-We motivate and explain typed realizability and its relationship with
+We motivate and explain typed realizability and its relationship to
 real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
 simple\footnote{At most one arrow between any two vertices.}
@@ -20,12 +19,12 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
   \label{fig:digraph}
 \end{figure}
 %
-A common representation is a pair of lists $(\ell_V, \ell_A)$, where
+A common representation is \textbf{a} pair of lists $(\ell_V, \ell_A)$, where
 $\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
 representing the arrows by pairing the labels of each source and target.
 In our example, $\ell_V = [1; 2;
 3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$. Thus we
-define the datatype of graphs to be\footnote{We use Ocaml notation in
+define the datatype of graphs to be\footnote{We use OCaml notation in
   which $\clist{t}$ classifies finite lists of elements of type~$t$, and
   $t_1 * t_2$ classifies pairs containing a value of type $t_1$ and and 
   value of type $t_2$.}
@@ -36,22 +35,21 @@ define the datatype of graphs to be\footnote{We use Ocaml notation in
 %
 However, this is not a complete description of the representation, as
 there are invariants and conditions which are not expressed directly
-in the programming language, such as:
+in this type, such as:
 %
 \begin{enumerate}
 \item The order in which vertices and arrows are listed is not
-  important, e.g., $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
+  important; for example, $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
 \item Each vertex and arrow must be listed exactly once.
 \item The source and target of each arrow must appear in the list of vertices.
 \end{enumerate}
 %
-An implementation of the mathematical set~$\mathcal{G}$ must thus tell
-us not only what the underlying datatype $\mathtt{graph}$ is, but also
+An implementation of the mathematical set~$\mathcal{G}$ must determine
+not only what the underlying datatype $\mathtt{graph}$ is, but also
 which values of type $\mathtt{graph}$ represent which elements
 of~$\mathcal{G}$. As we shall see next, all of this can be expressed
 either as a \emph{realizability relation} or a \emph{partial
   equivalence relation (per)}.
-
 
 \subsection{Modest sets and pers}
 \label{sec:modest-sets-pers}
@@ -59,7 +57,7 @@ either as a \emph{realizability relation} or a \emph{partial
 We now give the formal definition of typed realizability, as it
 applies to OCaml. Other general-purpose programming languages could be
 used instead, as long as they provide the usual ground types, product
-and function types.\footnote{ It is also convenient to work with a
+and function types.\footnote{It is also convenient to work with a
 language that supports sum types, as this allows a more natural
 representation of disjoint unions.}
 
@@ -69,10 +67,10 @@ type~$t$ which behave \emph{functionally} in the sense
 of~\cite{longley99when}. Such values are represented by terminating
 expressions which do not raise exceptions or return different results
 on different invocations, although they \emph{may} use exceptions,
-store, and other computational effects, provided they behave as if
-they did not. A useful example of a functional value using store is
+store, and other computational effects, provided they behave from outside
+as if they did not. A useful example of a functional value using store is
 presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
-Note also that a functional value of a functional type may diverge as
+Note also that a functional value with a function type may diverge as
 soon as it is applied, e.g., if we define
 $\cletrec{f\;(x:\cint):\cint}{f\;x}$ then $f \in \values{\cint \to
   \cint}$. The collection $\Type$ with the assignment of functional
@@ -80,20 +78,21 @@ values $|t|$ to each $t \in \Type$ forms a \emph{typed partial
   combinatory algebra (TPCA)}, which provides a theoretical basis for
 the definition of a realizability model that suits our needs.
 
-Going back to our example, we see that to implement the set of
-directed graphs $\mathcal{G}$ is to specify a datatype
+Going back to our example, we see that an implementation of 
+directed graphs $\mathcal{G}$ specifies a datatype
 $\typeOf{\mathcal{G}} = \mathtt{graph}$ together with a
 \emph{realizability relation} $\rz_{\mathcal{G}}$ between
 $\mathcal{G}$ and $\values{\mathtt{graph}}$. The meaning of $(\ell_V,
-\ell_A) \rz_\mathcal{G} G$ is ``OCaml value $(\ell_V, \ell_A)$ represents
-(realizes, implements) graph $G$''. There are two natural conditions
+\ell_A) \rz_\mathcal{G} G$ is ``OCaml value $(\ell_V, \ell_A)$ 
+represents/realizes/implements graph $G$''. There are two natural conditions
 that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G \in
 \mathcal{G}$ there should be at least one realizer $(\ell_V, \ell_A)$
 representing it, and (2) if $(\ell_V, \ell_A)$ represents both $G$ and
 $G'$ then $G = G'$. The latter condition is called \emph{modesty} and
 is not strictly necessary for the development of the theory, though it
 is something that programmers would naturally expect to hold. If
-$(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$ represent the same graph,
+$(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$ represent the same graph 
+(e.g., because $\ell_V$ is a permutation of $\ell'_V$, and similarly for $\ell_A$ and $\ell'_A$)
 we say that they are \emph{equivalent} and write $(\ell_V, \ell_A)
 \per_\mathcal{G} (\ell'_V, \ell'_A)$. The relation $\per_\mathcal{G}$
 is a \emph{partial} equivalence relation (symmetric and transitive,
@@ -207,7 +206,7 @@ the underlying type
 %
 and the realizability relation $\rz_{B^A}$ defined
 by~\eqref{eq:rz-function-space}. The evaluation map $e : B^A \times A
-\to B$, $e(f,x) = f(x)$ is realized by Ocaml application,
+\to B$, $e(f,x) = f(x)$ is realized by OCaml application,
 $\cfun{(u,v)}{u\;v}$. If a function $f : C \times A \to B$ is realized
 by $v$, then its transpose $\tilde{f} : C \to B^A$, $\tilde{f}(z)(x) =
 f(z,x)$, is realized by $\cfun{z\;x}{v \; (z,x)}$. This shows that the
@@ -240,13 +239,15 @@ addition are respectively implemented by
 %
 The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
   k\; m}{k+m}$ do not work because of overflow at values that exceed
-$2^{30}$ (in OCaml on a 32-bit machine). We could avoid the overflow
-worries by taking an isomorphic representation in which the only valid
-realizers are $0$, $1$, \ldots, $6$, and negation and addition
+$2^{30}$ (in OCaml on a 32-bit machine). 
+
+We could avoid the overflow
+worries by choosing a different, although isomorphic, implementation in which the only valid
+realizers are $0$, $1$, \ldots, $6$, and negation and addition are
 realized by $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\;
   k\; m}{(k + m) \cmod 7}$, respectively.
 
-The modest set~$Z$ also has \emph{decidable equality}, which means
+This particular modest set~$\Z$ also has \emph{decidable equality}, which means
 that the characteristic map $\mathrm{eq} : \ZZ_7 \times \ZZ_7 \to
 \set{\mathtt{false}, \mathtt{true}}$ of equality is realized, namely
 by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod 7 = 0}$ does not
@@ -254,9 +255,11 @@ by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod 7 = 0}$ does not
   $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not work because in OCaml
   $a \cmod b$ is negative when~$a$ is negative, e.g., $(-10) \cmod 7 =
   -3$ instead of the expected $4$.} $\cfun{(k,m)}{(k \cmod 7 - m \cmod
-  7) \cmod 7 = 0}$. However, not all modest sets have decidable
-equality, since there may not be a decision procedure for determining
-whether two realizers represent the same element. In particular, this
+  7) \cmod 7 = 0}$. 
+
+However, not all modest sets have decidable
+equality; there may not be a decision procedure for determining
+whether two realizers represent the same element. For example, this
 would happen if we implemented a semigroup with an undecidable word
 problem~\cite{post47:_recur_unsol_probl_thue}.
 
@@ -400,12 +403,13 @@ there may be other propositions which are stable and are not written
 in the negative form.
 
 It would be unproductive to bother the programmer with requirements
-for useless code, so RZ has a subkind $\iStable \subseteq \iProp$ of
-stable propositions which allows us to declare a computationally
-irrelevant basic proposition. In the translation there is a
-\emph{thinning} phase, see Section~\ref{sec:translation}, which
-optimizes away specifications for computationally irrelevant
-realizers.
+for useless code.  On input, RZ allows users to identify basic propositions
+as computationally irrelevant.  The extracted
+realizers also go through a \emph{thinning} phase, see Section~\ref{sec:translation}, which
+optimizes away references to irrelevant realizers.
+
+\internal{Chris}{It seemed out of place to introduce
+the idea of subkinds and syntax for $\iStable$ and $\iProp$ here.}
 
 \subsection{Uniform families of modest sets}
 \label{sec:uniform-families}
