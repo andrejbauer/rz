@@ -1,3 +1,42 @@
+module type Semilattice =
+ sig
+   type s
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  Assertion symmetric_s =  forall x:s, y:s,  x =s= y -> y =s= x
+         
+        Assertion transitive_s = 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+   *)
+    
+   val zero : s
+   (**  Assertion zero_support =  zero : ||s||
+   *)
+    
+   val join : s -> s -> s
+   (**  Assertion join_support =  join : ||s -> s -> s||
+   *)
+    
+   
+   (**  Assertion commutative = 
+          forall (x:||s||, y:||s||),  join x y =s= join y x
+   *)
+    
+   
+   (**  Assertion associative = 
+          forall (x:||s||, y:||s||, z:||s||), 
+            join (join x y) z =s= join x (join y z)
+   *)
+    
+   
+   (**  Assertion idempotent =  forall (x:||s||),  join x x =s= x
+   *)
+    
+   
+   (**  Assertion neutral =  forall (x:||s||),  join x zero =s= x
+   *)
+ end
+ 
 module type K =
  functor (A : sig
                 type a
@@ -20,66 +59,77 @@ module type K =
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
-   val emptySet : s
-   (**  Assertion emptySet_support =  emptySet : ||s||
+   val zero : s
+   (**  Assertion zero_support =  zero : ||s||
    *)
     
-   val add : A.a -> s -> s
-   (**  Assertion add_support =  add : ||A.a -> s -> s||
-   *)
-    
-   type fin = A.a
-    
-   (** predicate ||fin|| : s -> fin -> bool *)
-   (**  Assertion fin_def_support = 
-          forall u:s, p:fin,  p : ||fin u|| <-> p : ||A.a|| /\ u =s= add p u
-   *)
-    
-   (** predicate (=fin=) : s -> fin -> fin -> bool *)
-   (**  Assertion fin_def_per = 
-          forall u:s, p:fin, q:fin,  p =(fin u)= q <-> u =s= add p u /\ 
-            u =s= add q u /\ p =A.a= q
+   val join : s -> s -> s
+   (**  Assertion join_support =  join : ||s -> s -> s||
    *)
     
    
-   (**  Assertion emptySet_empty = 
-          forall (x:||A.a||),  not (emptySet =s= add x emptySet)
+   (**  Assertion commutative = 
+          forall (x:||s||, y:||s||),  join x y =s= join y x
    *)
     
    
-   (**  Assertion add_idem = 
-          forall (x:||A.a||, u:||s||),  add x (add x u) =s= add x u
+   (**  Assertion associative = 
+          forall (x:||s||, y:||s||, z:||s||), 
+            join (join x y) z =s= join x (join y z)
    *)
     
    
-   (**  Assertion add_comm = 
-          forall (x:||A.a||, y:||A.a||, u:||s||), 
-            add x (add y u) =s= add y (add x u)
+   (**  Assertion idempotent =  forall (x:||s||),  join x x =s= x
    *)
     
-   module Induction : functor (P : sig
-                                     type ty_p
-                                      
-                                     (** predicate p : s -> ty_p -> bool *)
-                                     (**  Assertion strict_p = 
-                                            forall x:s, a:ty_p,  p x a ->
-                                              x : ||s||
-                                           
-                                          Assertion extensional_p = 
-                                            forall x:s, y:s, a:ty_p, 
-                                              x =s= y -> p x a -> p y a
-                                     *)
-                                   end) ->
-                      sig
-                        val induction : P.ty_p -> (A.a -> s -> P.ty_p -> P.ty_p) -> s -> P.ty_p
-                        (**  Assertion induction = 
-                               forall x:P.ty_p,  P.p emptySet x ->
-                                 forall f:A.a -> s -> P.ty_p -> P.ty_p, 
-                                   (forall (x':||A.a||, u:||s||), 
-                                      forall y:P.ty_p,  P.p u y ->
-                                        P.p (add x' u) (f x' u y)) ->
-                                   forall (u:||s||),  P.p u (induction x f u)
-                        *)
-                      end
+   
+   (**  Assertion neutral =  forall (x:||s||),  join x zero =s= x
+   *)
+    
+   val singleton : A.a -> s
+   (**  Assertion singleton_support =  singleton : ||A.a -> s||
+   *)
+    
+   type fin = s
+    
+   (** predicate ||fin|| : fin -> bool *)
+   (**  Assertion fin_def_support =  forall x:fin,  x : ||fin|| <-> x : ||s||
+   *)
+    
+   (** predicate (=fin=) : fin -> fin -> bool *)
+   (**  Assertion fin_def_per =  forall x:fin, y:fin,  x =fin= y <-> x =s= y
+   *)
+    
+   val emptyset : s
+   (**  Assertion emptyset_def =  emptyset =s= zero
+   *)
+    
+   val union : s -> s -> s
+   (**  Assertion union_def = 
+          forall x:s, y:s,  x =s= y ->
+            forall z:s, w:s,  z =s= w -> union x z =s= join y w
+   *)
+    
+   module Initial : functor (S : Semilattice) ->
+                    sig
+                      val initial : (A.a -> S.s) -> fin -> S.s
+                      (**  Assertion initial = 
+                             forall (f:||A.a -> S.s||), 
+                               let g = initial f in g : ||fin -> S.s|| /\ 
+                               g emptyset =S.s= S.zero /\ 
+                               (forall (x:||A.a||), 
+                                  f x =S.s= g (singleton x)) /\ 
+                               (forall (u:||fin||, v:||fin||), 
+                                  g (union u v) =S.s= S.join (g u) (g v)) /\ 
+                               (forall h:fin -> S.s,  h : ||fin -> S.s|| /\ 
+                                  h emptyset =S.s= S.zero /\ 
+                                  (forall (x:||A.a||), 
+                                     f x =S.s= h (singleton x)) /\ 
+                                  (forall (u:||fin||, v:||fin||), 
+                                     h (union u v) =S.s= S.join (h u) (h v)) ->
+                                  forall x:fin, y:fin,  x =fin= y ->
+                                    g x =S.s= h y)
+                      *)
+                    end
  end
 
