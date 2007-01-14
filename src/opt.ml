@@ -610,7 +610,9 @@ and optPattern ctx pat =
     | ConstrPat(_, None) -> (ctx, pat)
     | ConstrPat(lbl, Some (nm,ty)) ->
 	let (ctx', nm') = renameBoundTermVar ctx nm
-	in (ctx', ConstrPat(lbl, Some(nm', optTy ctx' ty)))
+	in (match optTy ctx' ty with
+	      | TopTy -> (ctx', ConstrPat(lbl, None))
+	      | ty' -> (ctx', ConstrPat(lbl, Some(nm', ty'))))
   with e ->
     (print_endline ("\n\n...in " ^ string_of_pat pat);
      raise e)
