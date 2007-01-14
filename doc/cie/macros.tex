@@ -103,7 +103,8 @@
 
 \newcommand{\ituples}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
 \newcommand{\iproj}[2]{#1\texttt{.}#2}
-\newcommand{\iconstrain}[2]{#1\,\texttt{:}\,#2}
+\newcommand{\isubin}[2]{#1\,\texttt{:>}\,#2}
+\newcommand{\isubout}[2]{#1\,\texttt{:<}\,#2}
 \newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
 \newcommand{\ilet}[3]{\texttt{let}\,#1\,\texttt{=}\,#2\,\texttt{in}\, #3}
 \newcommand{\iquot}[2]{#1\,\texttt{\%}\,#2}
@@ -140,14 +141,15 @@
 
 \newcommand{\ituple}[2]{(#1,\ldots,#2)}
 \newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
-\newcommand{\iconstrain}[2]{#1:#2}
+\newcommand{\isubin}[2]{#1\,{{:}{>}}\,#2}
+\newcommand{\isubout}[2]{#1\,{{:}{<}}\,#2}
 \newcommand{\ithe}[3]{\iota\,#1{:}#2{.}\, #3}
 \newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
 \newcommand{\ieclass}[2]{[#1]_{#2}}
 \newcommand{\ileteclass}[4]{\textsf{let}\ [#1]_{#2}\,{=}#3\ \textsf{in}\ #4}
 \newcommand{\irz}[1]{\textsf{rz}\,#1}
 \newcommand{\iletrz}[3]{\textsf{let}\ \textsf{rz}\,#1\,{=}\,#2\ \textsf{in}\ #3}
-\newcommand{\iinj}[2]{#1\,#2}
+\newcommand{\iinj}[2]{`{#1}\,#2}
 \newcommand{\imatches}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\cdots|\iinj{#5}{#6}\Rightarrow{#7}}
 \newcommand{\imatch}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\,\iinj{#5}{#6}\Rightarrow{#7}}
 \newcommand{\iselect}[2]{#1{.}#2}
@@ -156,7 +158,7 @@
 \newcommand{\iprod}[3]{#1{:}#2\times#3}
 \newcommand{\isum}[4]{#1{:}#2+#3{:}#4}
 \newcommand{\iquot}[2]{#1{\bigm/} #2}
-\newcommand{\isubset}[3]{\{\,#1{:}#2\ |\ #3\,\}}
+\newcommand{\isubset}[3]{\{#1{:}#2\ |\ #3\}}
 \newcommand{\isunit}{1}
 \newcommand{\isvoid}{0}
 

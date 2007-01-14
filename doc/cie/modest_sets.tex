@@ -241,21 +241,21 @@ The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
   k\; m}{k+m}$ do not work because of overflow at values that exceed
 $2^{30}$ (in OCaml on a 32-bit machine). 
 
-We could avoid the overflow
-worries by choosing a different, although isomorphic, implementation in which the only valid
-realizers are $0$, $1$, \ldots, $6$, and negation and addition are
-realized by $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\;
-  k\; m}{(k + m) \cmod 7}$, respectively.
+We could avoid the overflow worries by choosing a different, although
+isomorphic, implementation in which the only valid realizers are $0$,
+$1$, \ldots, $6$, and negation and addition are realized by
+$\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\; k\; m}{(k +
+  m) \cmod 7}$, respectively.
 
-This particular modest set~$\Z$ also has \emph{decidable equality}, which means
-that the characteristic map $\mathrm{eq} : \ZZ_7 \times \ZZ_7 \to
-\set{\mathtt{false}, \mathtt{true}}$ of equality is realized, namely
-by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod 7 = 0}$ does not
-  decide equality because of possible overflow in subtraction, whereas
-  $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not work because in OCaml
-  $a \cmod b$ is negative when~$a$ is negative, e.g., $(-10) \cmod 7 =
-  -3$ instead of the expected $4$.} $\cfun{(k,m)}{(k \cmod 7 - m \cmod
-  7) \cmod 7 = 0}$. 
+This particular modest set~$Z$ also has \emph{decidable equality},
+which means that the characteristic map $\mathrm{eq} : \ZZ_7 \times
+\ZZ_7 \to \set{\mathtt{false}, \mathtt{true}}$ of equality is
+realized, namely by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod
+    7 = 0}$ does not decide equality because of possible overflow in
+  subtraction, whereas $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not
+  work because in OCaml $a \cmod b$ is negative when~$a$ is negative,
+  e.g., $(-10) \cmod 7 = -3$ instead of the expected $4$.}
+$\cfun{(k,m)}{(k \cmod 7 - m \cmod 7) \cmod 7 = 0}$.
 
 However, not all modest sets have decidable
 equality; there may not be a decision procedure for determining

@@ -13,7 +13,7 @@ details are fairly standard, so are omitted here. One non-obvious
 consequence of the realizability translation, however, is that the
 subset types $\isubset{\ix}{\iS}{\iand{\ipp_1(\ix)}{\ipp_2(\ix)}}$ and
 $\isubset{\ix}{\iS}{\iand{\ipp_2(\ix)}{\ipp_1(\ix)}}$ are not
-equivalent in general (even ignoring decidability concerns!). An
+equal, but only isomorphic in general. An
 explicit coercion is required to go from one type to the other,
 because subset values are pairs containing realizers for
 $\iand{\ipp_1(\ix)}{\ipp_2(\ix)}$ and
@@ -23,7 +23,7 @@ $|\ipp_2(\ix)|\mathtt{*}|\ipp_1(\ix)|$ respectively.
 
 Next the realizability translation is performed as described in
 Section~\ref{sec:translation}, producing interface code. The
-flexibility of the full input language (e.g., n-ary sum types and
+flexibility of the full input language (e.g., $n$-ary sum types and
 dependent product types) makes the translation code fairly involved,
 and so it is performed in a ``naive'' fashion whenever possible. The
 immediate result of the translation is not easily readable.
