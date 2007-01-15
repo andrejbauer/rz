@@ -261,7 +261,7 @@ Russell's definite description operator $\ithe{x}{s}{\phi(x)}$ denotes
 the unique element of $\isubset{x}{s}{\phi(x)}$. In case such an~$x$
 does not exists, or if there are several, the term is not well formed.
 The RZ translation essentially just asks the programmer to provide a
-suitable realizers,
+suitable realizer $(x,b)$,
 %
 \begin{equation*}
   \ooblig{x{:}s,b}{\typeOf{\phi}}{
@@ -271,11 +271,11 @@ suitable realizers,
         (\oimply{\oapp{\oapp{\phi}{x'}}{c}}{\oper{s}{x}{x'}})
       }
     })
-    }{(x,b)},
+    }{(x,b)}.
 \end{equation*}
 %
-but it is the best RZ can do, since it cannot check that~$x$ exists,
-or that it is unique.
+This is the best RZ can do, since in general it can check neither
+that~$x$ exists, nor that it is unique.
 
 
 \subsection{Translation of propositions}

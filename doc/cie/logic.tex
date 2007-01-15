@@ -29,13 +29,13 @@ finite sets whose elements are in the set $\iselect{\im}{\mathtt{a}}$.
 
 A theory may also describe a uniform family of models
 $\idarrow{\im}{\ith_1}{\ith_2}$, i.e., a single implementation of a
-mapping\footnote{In OCaml such mappings are called \emph{functors}.}
-that maps any model~$\im$ satisfying~$\ith_1$ to a model of~$\ith2$.
-In contrast, a parameterized theory $T =
-\ilambda{\iM}{\ith_1}{\ith_2}$ permits completely unrelated
-implementations for $T(\im_1)$ and $T(\im_2)$. An example of a uniform
-family of models would be a mapping from fields to vectors spaces that
-maps a field~$F$ to the 1-dimensional vector space over~$F$.
+mapping (in OCaml such mappings are called \emph{functors}) that takes
+a model~$\im$ satisfying~$\ith_1$ to a model of~$\ith_2$. In contrast,
+a parameterized theory $T = \ilambda{\iM}{\ith_1}{\ith_2}$ permits
+completely unrelated implementations for $T(\im_1)$ and $T(\im_2)$. An
+example of a uniform family of models would be a mapping from fields
+to vectors spaces that maps a field~$F$ to the 1-dimensional vector
+space over~$F$.
 
 \internal{Andrej}{I wanted to clarify the previous two paragraphs a
   bit, but I am not sure it's an improvement. Please improve some
