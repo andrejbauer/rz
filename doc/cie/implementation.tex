@@ -28,10 +28,6 @@ dependent product types) makes the translation code fairly involved,
 and so it is performed in a ``naive'' fashion whenever possible. The
 immediate result of the translation is not easily readable.
  
-
-\internal{Andrej}{I am afraid the Kuratowski example has changed so
-  the examples below are not in sync with the example. Will try to
-  think of another example.}
 Thus, three more passes simplify the output before it is displayed to
 the user. A \emph{thinning} pass removes all references to trivial
 realizers produced by stable formulas. For example, direct translation
@@ -47,32 +43,31 @@ val initial: (A.a -> S.s) -> fin -> S.s
 and appropriately modifies references to \texttt{initial} in the assertions to account for this change in type.
 
 Next, an \emph{optimization} pass applies an ad-hoc collection of
-basic simplifications in order to make the output more readable. (It
-is convenient to separate this from thinning because thinning can
-change the types of constants, while simplification optimizations are
-always type-preserving.)
-%
-\internal{Chris}{Except that phase-splitting breaks this invariant.
-  Oops.}
-%
-\internal{Chris}{Term-level simplifications include \ldots}
-%
+basic logical and term simplifications in order to make the output more readable. 
 Logical simplifications include applications of truth table rules
 ($\iand{\itrue}{\ip}$ becomes $\ip$), detection of syntactically
 identical premises and conclusions
 ($\iimply{\ip_1}{\iand{\ip_1}{\ip_2}}$ becomes
-$\iimply{\ip_1}{\ip_2}$), as well as other common patterns we have
+$\iimply{\ip_1}{\ip_2}$), and optimization of other common patterns we have
 seen arise
 ($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes
-$\ipp(\ie)$). We do not even attempt to do full theorem-proving here,
+$\ipp(\ie)$). We do not attempt real theorem proving 
 so some redundancy may remain, but in practice the optimization pass
 can help significantly.
 
-Finally, an optional \emph{phase-splitting} pass~\cite{harper+:popl90}
-occurs. This is an ML-specific transformation that replace certain
+Finally, the user can specify whether two optional steps occur.
+RZ can optionally performs a \emph{phase-splitting} pass~\cite{harper+:popl90}. 
+This is an ML-specific transformation that replace certain
 uses of parameterized modules (a heavyweight language construct) by
-parameterized types and polymorphic values. For example, ignoring
-assertions for the moment, the module
+parameterized types and polymorphic values. The idea is that although
+functors map modules containing types and terms to other modules containing types
+and terms, constraints on the programming language ensure that output types
+depend only on input types (and not input terms).  Thus, we can split each
+functor into a mapping from input types to output types, and then a separate
+(polymorphic) term mapping input types and terms to an output term.
+
+For example (ignoring
+assertions for simplicity) the entire module
 \begin{source}
 module Initial : functor (S : Semilattice) ->
                     sig
@@ -83,9 +78,13 @@ appearing in the output of the Kuratowski example can be replaced by the single 
 \begin{source}
 val initial : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's	
 \end{source}
-with two added arguments (a \texttt{zero} and a \texttt{join} function) and an implicit argument for the type of lattice elements (here called \texttt{'s}).
+which replaces the module parameter \texttt{S} by two added term arguments term (corresponding to the module inputs \texttt{S.zero} and \texttt{S.join}) 
+and a type argument \texttt{'s} for the type of lattice elements (corresponding to the module input \texttt{S.s}).
 
-\internal{Chris}{Hoisting?}
+The other optional transformation is a \emph{hoisting} pass which lifts obligations in the output out to top-level positions.  This can make it easier to see exactly what one is obliged to provide.  When identical obligations appear in separate subterms of a term, hoisting can lift and merge these obligations, reducing redundancy.  However, moving obligations far from where they are used can make it harder to see why the obligation is required at all (and hence how one might satisfy the obligation), and so hoisting is turned off by default.
+
+\internal{Chris}{Should I provide a hoisting example?}
+
 
 \label{sec:typechecking}
 
