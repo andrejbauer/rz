@@ -220,7 +220,24 @@ As an example we consider the cyclic group on seven elements $(\ZZ_7,
 0, {-}, {+})$. To implement the group, we must give a representation
 of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, and
 provide realizers for the neutral element~$0$, negation~$-$, and
-addition~$+$. We represent the elements of~$\ZZ_7 = \set{0, 1, \ldots,
+addition~$+$. 
+
+One possibility is to choose $\cint$ as the underlying type $\typeOf{Z}$,
+and to let $\support{Z}$ be only the integers \texttt{0} through \texttt{6}.
+Then negation and addition must work modulo \texttt{7} (i.e., must return an integer in the
+range \texttt{0}--\texttt{6} when given integers in this range).
+The neutral element would be the integer constant \texttt{0}, and the
+equivalence $\per_Z$ would be integer equality.
+
+Alternatively, we could take $\cint$ as the underlying type $\typeOf{Z}$, 
+but let $\support{Z}$ include all integers.  In this case, negation and addition could be
+simply integer addition and negation\footnote{taking care to avoid integer overflow}.   
+Here the neutral element could be implemented as 
+any integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
+equivalence-modulo-7.
+
+\iffalse
+We represent the elements of~$\ZZ_7 = \set{0, 1, \ldots,
   6}$ with values of type $\typeOf{Z} = \cint$. We allow any integer
 $v \in \values{\cint}$ to represent the element $v
 \mathbin{\mathrm{mod}} 7$,
@@ -246,22 +263,32 @@ isomorphic, implementation in which the only valid realizers are $0$,
 $1$, \ldots, $6$, and negation and addition are realized by
 $\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\; k\; m}{(k +
   m) \cmod 7}$, respectively.
+\fi
 
-This particular modest set~$Z$ also has \emph{decidable equality},
-which means that the characteristic map $\mathrm{eq} : \ZZ_7 \times
-\ZZ_7 \to \set{\mathtt{false}, \mathtt{true}}$ of equality is
-realized, namely by\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod
+Both of these modest sets happen to have \emph{decidable equality},
+i.e., the characteristic map $\mathrm{eq} : \ZZ_7 \times
+\ZZ_7 \to \set{\mathtt{false}, \mathtt{true}}$ of equality can be 
+realized, by code for integer equality and code for integer equivalence-modulo-7
+respectively.
+\iffalse
+\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod
     7 = 0}$ does not decide equality because of possible overflow in
   subtraction, whereas $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not
   work because in OCaml $a \cmod b$ is negative when~$a$ is negative,
   e.g., $(-10) \cmod 7 = -3$ instead of the expected $4$.}
 $\cfun{(k,m)}{(k \cmod 7 - m \cmod 7) \cmod 7 = 0}$.
+\fi
 
-However, not all modest sets have decidable
-equality; there may not be a decision procedure for determining
-whether two realizers represent the same element. For example, this
-would happen if we implemented a semigroup with an undecidable word
-problem~\cite{post47:_recur_unsol_probl_thue}.
+Not all modest sets have decidable
+equality.  Examples include implementations of semigroups with an undecidable word
+problem~\cite{post47:_recur_unsol_probl_thue}, implementations of computable sets of integers (which might be realized by
+membership functions of type $\cint\to\cbool$), and implications of computable real numbers (which might be realized
+by infinite Cauchy sequences.  Every modest set induces a partial equivalence relation, but there is no
+presupposition that this equivalence actually be computable (implementable).
+
+We can require decidable equivalence
+by adding an axiom that any two elements are either equivalent
+or not equivalent; see Section~\ref{sec:decidable-sets}.
 
 
 \subsection{Interpretation of logic}
@@ -493,6 +520,9 @@ and the \emph{product} $\depprod{i \in I}{A_i}$ as
 %
 These constructions allow us to interpret (extensional) dependent type
 theory in the category of modest sets.
+
+\internal{Chris}{I simplified the discussion of $Z_7$ above, and so we might need to make
+changes to the discussion of $Z_n$ to make it fit better.}
 
 As an example of a uniform family we consider the cyclic group
 $(\ZZ_n, 0, {-}, {+})$ of order~$n$. To keep things simple, we assume
