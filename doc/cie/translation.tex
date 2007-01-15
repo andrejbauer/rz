@@ -32,10 +32,10 @@ A set declaration $\iParameter{s}{\iSet}$ is translated to
 \end{align*}
 %
 This says that the programmer should define a type~$s$ and a per
-$\per_s$ on~$\values{s}$. Here~$\per_s$ is \emph{not} an ocaml value
+$\per_s$ on~$\values{s}$. Here~$\per_s$ is \emph{not} an OCaml value
 of type $s \to s \to \mathtt{bool}$, but an abstract relation on the
 set $\values{s} \times \values{s}$. Only in special cases can we
-expect to be able to implement~$\per_s$ as a decidable test.
+expect to be able to implement~$\per_s$ as a decidable test.  
 
 The translation of the declaration of a dependent set
 $\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
@@ -78,7 +78,7 @@ sets as uniform families, cf.\ Section~\ref{sec:uniform-families}:
 \end{align*}
 %
 The underlying output type~$t$ is still non-dependent, but the per is
-parametrized by~$s$.
+parameterized by~$s$.
 
 An element declaration $\iParameter{x}{s}$ is translated to
 %
@@ -160,12 +160,12 @@ to an element of the subset. This is only well-formed when $\phi(e)$
 is valid. Then, if $u \rz_t e$ and $v \rz \phi(e)$, a realizer for
 $\isubin{e}{s}$ is $(u, v)$. However, since RZ cannot in general find
 a~$v$ which validates~$\phi(e)$, it emits an obligation $(u,
-(\ooblig{v}{\typeOf{\phi}}{\oapp{\oapp{\phi}{u}}{v}}{v})$.
+(\ooblig{v}{\typeOf{\phi}}{\oapp{\oapp{\phi}{u}}{v}}{v}))$.
 
 \paragraph{Quotients.}
 %
 The category of modest sets has coequalizers, hence a quotient modest
-set $A/\rho$ may be constructed for an any equivalence relaton~$\rho$
+set $A/\rho$ may be constructed for an any equivalence relation~$\rho$
 on~$A$. However, because equality does not carry any computational
 content, equality of equivalence classes $\ieclass{x}{\rho} =
 \ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, not the
@@ -192,7 +192,7 @@ but this is something RZ cannot check. Therefore, if $u$ realizes
 $\xi$, RZ uses $u$ as a realizer for~$x$ and emits an obligation
 saying that the choice of a realizer for~$x$ does not affect~$e$.
 
-Luckily, it seems that many equivalence relations occuring in
+Luckily, it seems that many equivalence relations occurring in
 computable mathematics are stable, or can be made stable with a little
 bit of manipulation. For example, Cauchy sequences $(a_n)_{n\in\NN}$
 and $(b_n)_{n\in\NN}$ represent the same real number when
@@ -207,7 +207,13 @@ and $(b_n)_{n\in\NN}$ represent the same real number when
 \end{equation}
 %
 This defines an equivalence relation on the set of Cauchy sequences
-which does not seem to be stable. However, if we restrict attention
+which does not seem to be stable; intuitively a realizer for this
+equivalence would be a computation telling us at what point
+in the sequence the terms converge to within $2^{-i}$.
+
+\internal{Chris}{Did I get the intuition right?}
+
+ However, if we restrict attention
 just to the \emph{rapid} Cauchy sequences, i.e., those satisfying
 $\xall{i}{\NN}{|a_{i+1} - a_i| \leq 2^{-i}}$, then the equivalence
 relation becomes
@@ -216,7 +222,8 @@ relation becomes
   \xall{i}{\NN}{|a_i - b_i| \leq 2^{-i+3}},
 \end{equation*}
 %
-which is a negative formula. It is also interesting that most
+which is a negative formula; the above realizer is rendered
+unnecessary. It is also interesting that most
 practical implementations of real numbers present real numbers with
 rapid Cauchy sequences so that they can avoid the overhead of carrying
 with each sequence a realizer for~\eqref{eq:cauchy}.
@@ -247,9 +254,9 @@ not depend on the choice of~$x$. This is an uncheckable conditions,
 hence RZ emits a suitable obligation in the output, and uses for $x$
 the same realizer as for~$e_2$.
 
-The construction $\irz{A}$ validates Aczel's presentation axiom, see
-Section~\ref{sec:axiom-choice}. In the input language it gives us
-access to realizers which is useful because many constructions in
+The construction $\irz{A}$ validates Aczel's presentation axiom. (See
+Section~\ref{sec:axiom-choice}.) In the input language it gives us
+access to realizers. This is useful because many constructions in
 computable mathematics, such as those in Type Two
 Effectivity~\cite{Wei00}, are explicitly expressed in terms of
 realizers.
@@ -281,8 +288,8 @@ that~$x$ exists, nor that it is unique.
 \subsection{Translation of propositions}
 \label{sec:transl-prop}
 
-The driving force behind the translation of logic is a theorem, see
-e.g.\ \cite[Thm.~4.4.10]{Troelstra:van-Dalen:88:1}, which says that
+The driving force behind the translation of logic is a theorem 
+(see\ \cite[Thm.~4.4.10]{Troelstra:van-Dalen:88:1}) that says that
 under the realizability interpretation every formula~$\phi$ is
 equivalent to one that says, informally speaking, ``there exists~$u
 \in \typeOf{\phi}$, such that $u$ realizes $\phi$''. Furthermore, the

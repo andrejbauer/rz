@@ -34,7 +34,8 @@ realizers produced by stable formulas. For example, direct translation
 of the \texttt{initial} axiom in the output for Kuratowski-finite sets
 yields
 \begin{source}
-val initial: (A.a -> S.s) -> (fin -> S.s) * (top * (A.a -> top) * (fin -> fin -> top))
+val initial: (A.a -> S.s) -> 
+               (fin -> S.s) * (top * (A.a -> top) * (fin -> fin -> top))
 \end{source}
 where \texttt{top} is the unit (terminal) type classifying the trivial realizer.  Thinning replaces this by the isomorphic type
 \begin{source}
