@@ -160,10 +160,12 @@ Figure~\ref{fig:input}.
 
 RZ ever produces only a small subset of OCaml types (the unit type,
 products, function types, polymorphic variant types, and parameter
-types). Correspondingly, the language of terms is fairly simple
+types). Correspondingly, the language of terms produced is fairly simple
 (tuples, functions, polymorphic variants, and local definitions).
 However, the programmer is free to implement a specification using any
-types and terms that exist in OCaml. A special kind of term is an
+types and terms that exist in OCaml. 
+
+A special kind of term is an
 \emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
 $e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
 An obligation is equivalent to a combination of the indefinite
@@ -171,7 +173,19 @@ description operator~\cite{epsilon-reference} and a local definition,
 $\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
 $\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
 such that $\op$''. The alternative form $\oobligx{\op}{\oe}$ stands
-for $\ooblig{\_}{\ounit}{\op}{\oe}$. Obligations serve a double role.
+for $\ooblig{\_}{\ounit}{\op}{\oe}$. 
+
+Obligations arise from the fact that well-formedness 
+of the input language is undecidable; see Section~\ref{sec:input-language}.  
+In such cases the system computes a realizability translation, but also produces obligations 
+to be checked.  The programmer must
+replace each obligation with a value satisfying the
+obligation (i.e., demonstrate that the obligation can be satisfied). 
+If such values do not exist, the specification is
+unimplementable.
+
+\iffalse
+Obligations serve a double role.
 On one hand they are \emph{local assertions} that refer to local
 values inside a term, e.g.,
 %
@@ -196,11 +210,8 @@ conciseness.
 RZ outputs obligations when it encounters an uncheckable typing
 constraint, or a term in the input whose well-formedness requires the
 existence of a suitable term in the output, see
-Section~\ref{sec:exampl-with-oblig}. The programmer is supposed to
-replace an obligation with an instance of a value satisfying the
-obligation. If such a value does not exist, the specification is
-unimplementable.
-
+Section~\ref{sec:exampl-with-oblig}.
+\fi
 Assertions are expressed in the \emph{negative fragment} of
 first-order logic, which contains constants for truth and falsehood,
 negation, conjunction, implication, equivalence, and universal
@@ -210,13 +221,16 @@ realizability interpretation. Consequently, the classical and
 constructive interpretations of assertions agree. This is quite
 desirable, since RZ acts as a bridge between constructive mathematics
 and real-world programmers, which typically are not familiar with
-constructive logic. The basic predicates from which assertions are
+constructive logic. 
+\iffalse
+The basic predicates from which assertions are
 built are observatinal equality $\oequal{\oe_1}{\oe_2}$, pers
 $\oper{s}{\oe_1}{\oe_2}$ on abstract types, and basic predicates
 declared as parameters. The formula $\ototal{\oe}{\os}$ stands for
 $\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
 shorthand for
 $\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
+\fi
 
 A specification is an OCaml module type with assertions. It may
 contain value declarations, type declarations and definitions, module

@@ -19,7 +19,7 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
   \label{fig:digraph}
 \end{figure}
 %
-A common representation is \textbf{a} pair of lists $(\ell_V, \ell_A)$, where
+A common representation is a pair of lists $(\ell_V, \ell_A)$, where
 $\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
 representing the arrows by pairing the labels of each source and target.
 In our example, $\ell_V = [1; 2;
@@ -45,16 +45,16 @@ in this type, such as:
 \end{enumerate}
 %
 An implementation of the mathematical set~$\mathcal{G}$ must determine
-not only what the underlying datatype $\mathtt{graph}$ is, but also
-which values of type $\mathtt{graph}$ represent which elements
+an underlying datatype $\mathtt{graph}$, but also
+which values that type represent which elements
 of~$\mathcal{G}$. As we shall see next, all of this can be expressed
-either as a \emph{realizability relation} or a \emph{partial
+either using a \emph{realizability relation} or a \emph{partial
   equivalence relation (per)}.
 
 \subsection{Modest sets and pers}
 \label{sec:modest-sets-pers}
 
-We now give the formal definition of typed realizability, as it
+We now define typed realizability as it
 applies to OCaml. Other general-purpose programming languages could be
 used instead, as long as they provide the usual ground types, product
 and function types.\footnote{It is also convenient to work with a
@@ -67,8 +67,8 @@ type~$t$ which behave \emph{functionally} in the sense
 of~\cite{longley99when}. Such values are represented by terminating
 expressions which do not raise exceptions or return different results
 on different invocations, although they \emph{may} use exceptions,
-store, and other computational effects, provided they behave from outside
-as if they did not. A useful example of a functional value using store is
+store, and other computational effects, provided they behave from the outside
+as if they do not. A useful example of a functional value using store is
 presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
 Note also that a functional value with a function type may diverge as
 soon as it is applied, e.g., if we define
