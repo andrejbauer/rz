@@ -42,7 +42,17 @@ values~$x$ and~$y$ represent the same element of the modest set.
 \subsection{Examples with obligations}
 \label{sec:exampl-with-oblig}
 
-\internal{Andrej}{How badly do we need these?}
+In this section we show several small examples in which RZ outputs
+obligations.
+
+Consider how we might define division of real numbers. Given the set
+of real numbers~$\mathtt{real}$ and a constant $\mathtt{zero}$
+denoting~$0$, we might write
+%
+\sourcefile{real.thy}
+
+\internal{Andrej}{Unfinished section.}
+
 
 \subsection{Finite sets}
 \label{sec:finite-sets}
@@ -160,6 +170,13 @@ meaning of $\mathtt{free}$ is a folding operation on finite sets: take
 a map $f : A.a \to S.s$ and a finite set~$u = \set{x_1, \ldots, x_n}$,
 and return $f(x_1) \vee \cdots \vee f(x_n)$, where $\vee$ is the join
 operation on the semilattice~$S$.
+
+The OCaml standard library contains a module $\mathtt{Set}$
+implementing finite sets, which however is \emph{not} an
+implementation of Kuratowski finite sets presented here. Rather,
+$\mathtt{Set}$ implements something close to Kuratowski finite sets
+over a set~$A$ equipped with a decidable linear order.
+
 
 \subsection{Inductive types}
 \label{sec:inductive-types}
