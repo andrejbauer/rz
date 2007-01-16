@@ -661,6 +661,13 @@ let renamingList' subst ns ns' =
   List.fold_left2 renaming' subst ns ns'
 let renamingList ns ns' = renamingList' emptysubst ns ns'
 
+let tyrenaming' subst n n' = insertTyvar subst n (namedty n')
+let tyrenaming n n'        = tyrenaming' emptysubst n n'
+
+let tyrenamingList' subst ns ns' =
+  List.fold_left2 tyrenaming' subst ns ns'
+let tyrenamingList ns ns' = tyrenamingList' emptysubst ns ns'
+
 
 (** The substitution functions accept an optional occ argument which
     is used for extra occur checks (for example in a context). The occ
@@ -897,7 +904,12 @@ and substTyOption ?occ sbst = function
   | Some ty -> Some ( substTy ?occ sbst ty )
 
 and substSimpleTy ?occ sbst = function
-  | SNamedTy ln -> SNamedTy (substLN ?occ sbst ln)
+  | SNamedTy ln -> 
+	begin
+		match getTyLN sbst ln with
+	  	  None -> SNamedTy (substLN ?occ sbst ln)
+        | Some ty' -> simple_ty_of_ty ty'
+    end	
   | (SUnitTy | SVoidTy | STopTy) as sty -> sty
   | STupleTy lst -> STupleTy (List.map (substSimpleTy ?occ sbst) lst)
   | SArrowTy (sty1, sty2) ->

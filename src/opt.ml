@@ -190,7 +190,7 @@ let getFunctorInfo ctx sg =
 
 let tryPolymorph ctx nm signat =
   match (getFunctorInfo ctx signat) with
-    Some(nm1,Signat argElems, Signat[resSpec]) ->
+    Some(nm1,Signat argElems, Signat[Spec(nm3,ValSpec([],ty3),assns3)]) ->
       begin
 	match extractPolyInfo argElems with
 	  Some (tynames, vals, prps, argassns) ->
@@ -200,7 +200,7 @@ let tryPolymorph ctx nm signat =
 		
 	    in let arg_subst = 
 	      (* Mapping from t -> 't, for type parameters *)
-	      renamingList tynames tyvars
+	      tyrenamingList tynames tyvars
 		
 	    in let (argnames,argtypes) = 
 	      (* Functor's term arguments and their types *)
@@ -243,6 +243,17 @@ let tryPolymorph ctx nm signat =
 		(List.map resSubstTermIn argprpnames)
 		(List.map (fun n -> LN(None,n)) argprpnames)
 
+    in let res_name = uncapitalize nm3
+
+    in let res_subst_term =
+      (* EXTEND term mapping with induct -> induct arg1 arg2, 
+	     i.e, assertions about the result value now need to
+	     have the extra term parameters applied *)
+	  insertTermvar res_subst_term  (* exstending subst! *)
+   	     res_name
+         (curried_app (id res_name) (List.map id argnames))
+
+
 (*		
 	    in let _ = 
 	      (print_endline "\nres_subst_ty:";
@@ -270,15 +281,13 @@ let tryPolymorph ctx nm signat =
 	       aprop = nested_forall (List.combine argnames argtypes') 
 	                  (nested_imply premise_asns aprop'')}
 
-        in let updateResSpec = function
-		    Spec(nm3,ValSpec([],ty3),assns3) -> 
-			   	Some(Spec(uncapitalize nm3,
-				     ValSpec(tyvars, nested_arrowty argtypes' (substTy res_subst_ty ty3)), 
-				     List.map updateResAssertion assns3))
-   		   | _ -> None
+
 				
 	    in
-	       updateResSpec resSpec
+	       	Some(Spec(uncapitalize nm3,
+			     ValSpec(tyvars, 
+				         nested_arrowty argtypes' (substTy res_subst_ty ty3)), 
+			     List.map updateResAssertion assns3))
 	  | _ -> None
       end
   | _ -> None
