@@ -110,26 +110,25 @@ module type K =
             forall z:s, w:s,  z =s= w -> union x z =s= join y w
    *)
     
-   module Initial : functor (S : Semilattice) ->
-                    sig
-                      val initial : (A.a -> S.s) -> fin -> S.s
-                      (**  Assertion initial = 
-                             forall (f:||A.a -> S.s||), 
-                               let g = initial f in g : ||fin -> S.s|| /\ 
-                               g emptyset =S.s= S.zero /\ 
+   module Free : functor (S : Semilattice) ->
+                 sig
+                   val free : (A.a -> S.s) -> fin -> S.s
+                   (**  Assertion free = 
+                          forall (f:||A.a -> S.s||), 
+                            let g = free f in g : ||fin -> S.s|| /\ 
+                            g emptyset =S.s= S.zero /\ 
+                            (forall (x:||A.a||),  f x =S.s= g (singleton x)) /\ 
+                            (forall (u:||fin||, v:||fin||), 
+                               g (union u v) =S.s= S.join (g u) (g v)) /\ 
+                            (forall h:fin -> S.s,  h : ||fin -> S.s|| /\ 
+                               h emptyset =S.s= S.zero /\ 
                                (forall (x:||A.a||), 
-                                  f x =S.s= g (singleton x)) /\ 
+                                  f x =S.s= h (singleton x)) /\ 
                                (forall (u:||fin||, v:||fin||), 
-                                  g (union u v) =S.s= S.join (g u) (g v)) /\ 
-                               (forall h:fin -> S.s,  h : ||fin -> S.s|| /\ 
-                                  h emptyset =S.s= S.zero /\ 
-                                  (forall (x:||A.a||), 
-                                     f x =S.s= h (singleton x)) /\ 
-                                  (forall (u:||fin||, v:||fin||), 
-                                     h (union u v) =S.s= S.join (h u) (h v)) ->
-                                  forall x:fin, y:fin,  x =fin= y ->
-                                    g x =S.s= h y)
-                      *)
-                    end
+                                  h (union u v) =S.s= S.join (h u) (h v)) ->
+                               forall x:fin, y:fin,  x =fin= y ->
+                                 g x =S.s= h y)
+                   *)
+                 end
  end
 

@@ -209,24 +209,21 @@ and $(b_n)_{n\in\NN}$ represent the same real number when
 This defines an equivalence relation on the set of Cauchy sequences
 which does not seem to be stable; intuitively a realizer for this
 equivalence would be a computation telling us at what point
-in the sequence the terms converge to within $2^{-i}$.
-
-\internal{Chris}{Did I get the intuition right?}
-
- However, if we restrict attention
-just to the \emph{rapid} Cauchy sequences, i.e., those satisfying
-$\xall{i}{\NN}{|a_{i+1} - a_i| \leq 2^{-i}}$, then the equivalence
-relation becomes
+in the sequence the terms will be within~$2^{-i}$ of each other.
+%
+However, if we restrict attention just to the \emph{rapid} Cauchy
+sequences, i.e., those satisfying $\xall{i}{\NN}{|a_{i+1} - a_i| \leq
+  2^{-i}}$, then the equivalence relation becomes
 %
 \begin{equation*}
   \xall{i}{\NN}{|a_i - b_i| \leq 2^{-i+3}},
 \end{equation*}
 %
 which is a negative formula; the above realizer is rendered
-unnecessary. It is also interesting that most
-practical implementations of real numbers present real numbers with
-rapid Cauchy sequences so that they can avoid the overhead of carrying
-with each sequence a realizer for~\eqref{eq:cauchy}.
+unnecessary. It is interesting that most practical implementations of
+real numbers follow this line of reasoning and present real numbers in
+such a way that they avoid the overhead of carrying with each sequence
+explicit information about the rate of convergence.
 
 
 \paragraph{The underlying set of realizers.}
@@ -254,9 +251,9 @@ not depend on the choice of~$x$. This is an uncheckable conditions,
 hence RZ emits a suitable obligation in the output, and uses for $x$
 the same realizer as for~$e_2$.
 
-The construction $\irz{A}$ validates Aczel's presentation axiom. (See
-Section~\ref{sec:axiom-choice}.) In the input language it gives us
-access to realizers. This is useful because many constructions in
+The construction $\irz{A}$ validates the Presentation Axiom (see
+Section~\ref{sec:axiom-choice}). In the input language it gives us
+access to realizers, which is useful because many constructions in
 computable mathematics, such as those in Type Two
 Effectivity~\cite{Wei00}, are explicitly expressed in terms of
 realizers.

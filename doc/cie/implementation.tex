@@ -31,17 +31,24 @@ immediate result of the translation is not easily readable.
 Thus, three more passes simplify the output before it is displayed to
 the user. A \emph{thinning} pass removes all references to trivial
 realizers produced by stable formulas. For example, direct translation
-of the \texttt{initial} axiom in the output for Kuratowski-finite sets
-yields
-\begin{source}
-val initial: (A.a -> S.s) -> 
-               (fin -> S.s) * (top * (A.a -> top) * (fin -> fin -> top))
-\end{source}
-where \texttt{top} is the unit (terminal) type classifying the trivial realizer.  Thinning replaces this by the isomorphic type
-\begin{source}
-val initial: (A.a -> S.s) -> fin -> S.s
-\end{source}
-and appropriately modifies references to \texttt{initial} in the assertions to account for this change in type.
+of the $\mathtt{free}$ axiom in the output for Kuratowski-finite sets
+yields a value specification for $\mathtt{free}$ of type
+%
+\begin{equation*}
+  (\mathtt{A.a} \to \mathtt{S.s}) \to 
+  (\mathtt{fin} \to \mathtt{S.s}) * (\ounit * (\mathtt{A.a} \to
+  \ounit) *
+  (\mathtt{fin} \to \mathtt{fin} \to \ounit))
+\end{equation*}
+%
+where $\ounit$ is the unit (terminal) type classifying the trivial
+realizer. Thinning replaces this by the isomorphic type
+%
+\begin{equation*}
+  (\mathtt{A.a} \to \mathtt{S.s}) \to \mathtt{fin} \to \mathtt{S.s}
+\end{equation*}
+%
+and appropriately modifies references to $\mathtt{free}$ in the assertions to account for this change in type.
 
 Next, an \emph{optimization} pass applies an ad-hoc collection of
 basic logical and term simplifications in order to make the output more readable. 
@@ -70,24 +77,22 @@ functor into a mapping from input types to output types, and then a separate
 For example (ignoring
 assertions for simplicity) the entire module
 \begin{source}
-module Initial : functor (S : Semilattice) ->
+module Free : functor (S : Semilattice) ->
                     sig
-                      val initial : (A.a -> S.s) -> fin -> S.s
+                      val free : (A.a -> S.s) -> fin -> S.s
                     end	
 \end{source}   
 appearing in the output of the Kuratowski example can be replaced by the single polymorphic function
 \begin{source}
-val initial : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's	
+val free : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's	
 \end{source}
 which replaces the module parameter \texttt{S} by two added term arguments term (corresponding to the module inputs \texttt{S.zero} and \texttt{S.join}) 
 and a type argument \texttt{'s} for the type of lattice elements (corresponding to the module input \texttt{S.s}).
 
 The other optional transformation is a \emph{hoisting} pass which lifts obligations in the output out to top-level positions.  This can make it easier to see exactly what one is obliged to provide.  When identical obligations appear in separate subterms of a term, hoisting can lift and merge these obligations, reducing redundancy.  However, moving obligations far from where they are used can make it harder to see why the obligation is required at all (and hence how one might satisfy the obligation), and so hoisting is turned off by default.
 
-\internal{Chris}{Should I provide a hoisting example?}
-
-
-\label{sec:typechecking}
+\internal{Andrej}{Yes, please, a simple hoisting example would be
+  nice. I've never seen one.}
 
 
 

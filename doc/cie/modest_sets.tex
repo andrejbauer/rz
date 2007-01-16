@@ -229,11 +229,12 @@ range \texttt{0}--\texttt{6} when given integers in this range).
 The neutral element would be the integer constant \texttt{0}, and the
 equivalence $\per_Z$ would be integer equality.
 
-Alternatively, we could take $\cint$ as the underlying type $\typeOf{Z}$, 
-but let $\support{Z}$ include all integers.  In this case, negation and addition could be
-simply integer addition and negation\footnote{taking care to avoid integer overflow}.   
-Here the neutral element could be implemented as 
-any integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
+Alternatively, we could take $\cint$ as the underlying type
+$\typeOf{Z}$, but let $\support{Z}$ include all integers. In this
+case, negation and addition could be simply integer addition and
+negation.\footnote{We should also take care to avoid integer
+  overflow.} Here the neutral element could be implemented as any
+integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
 equivalence-modulo-7.
 
 \iffalse
@@ -283,7 +284,7 @@ Not all modest sets have decidable
 equality.  Examples include implementations of semigroups with an undecidable word
 problem~\cite{post47:_recur_unsol_probl_thue}, implementations of computable sets of integers (which might be realized by
 membership functions of type $\cint\to\cbool$), and implications of computable real numbers (which might be realized
-by infinite Cauchy sequences.  Every modest set induces a partial equivalence relation, but there is no
+by infinite Cauchy sequences).  Every modest set induces a partial equivalence relation, but there is no
 presupposition that this equivalence actually be computable (implementable).
 
 We can require decidable equivalence

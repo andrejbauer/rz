@@ -28,25 +28,18 @@ val (+) : nat -> nat -> nat
        forall (k:||nat||, m:||nat||),  (s k + m) =nat= s (k + m)
 *)
  
-type ty_leq = nat
- 
-(** predicate (<=) : nat -> nat -> ty_leq -> bool *)
+(** predicate (<=) : nat -> nat -> bool *)
 (**  Assertion (<=)_def = 
-       forall (k:||nat||, m:||nat||), 
-         forall a:ty_leq,  (<=) k m a <-> a : ||nat|| /\ (k + a) =nat= m
-*)
- 
-(** predicate eq_prefix : nat -> (nat -> nat) -> (nat -> nat) -> bool *)
-(**  Assertion eq_prefix_def = 
-       forall (k:||nat||, a:||nat -> nat||, b:||nat -> nat||), 
-         eq_prefix k a b <->
-         (forall (m:||nat||),  forall x:ty_leq,  (<=) m k x -> a m =nat= b m)
+       forall (k:||nat||, m:||nat||),  (<=) k m <->
+         not (forall (n:||nat||),  not ((k + n) =nat= m))
 *)
  
 val continuity : ((nat -> nat) -> nat) -> (nat -> nat) -> nat
 (**  Assertion continuity = 
        forall (f:||(nat -> nat) -> nat||, a:||nat -> nat||), 
          let p = continuity f a in p : ||nat|| /\ 
-         (forall (b:||nat -> nat||),  eq_prefix p a b -> f a =nat= f b)
+         (forall (b:||nat -> nat||), 
+            (forall (m:||nat||),  (<=) m p -> a m =nat= b m) -> f a =nat= 
+            f b)
 *)
 

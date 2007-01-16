@@ -20,7 +20,7 @@ thy
   Definition emptyset := zero.
   Definition union := join.
 
-  Axiom initial :
+  Axiom free :
     forall S : Semilattice, forall f : A.a -> S.s,
     exists1 g : fin -> S.s, 
       g emptyset = S.zero /\

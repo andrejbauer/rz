@@ -8,12 +8,9 @@ Implicit Type k m n : nat.
 Axiom plus_zero: forall k, k + zero = k.
 Axiom plus_succ: forall k m, (s k) + m = s (k + m).
 
-Definition (<=) k m := exists n, k + n = m.
-
-Implicit Type a b : nat -> nat.
-
-Definition eq_prefix k a b := forall m, m <= k -> a m = b m.
+Definition (<=) k m := (not forall n, not (k + n = m)).
 
 Axiom continuity:
-  forall f : (nat -> nat) -> nat, forall a,
-    exists k, forall b, eq_prefix k a b -> f a = f b.
+forall f : (nat -> nat) -> nat, forall a : nat -> nat,
+  exists k, forall b : nat -> nat,
+    (forall m, m <= k -> a m = b m) -> f a = f b.
