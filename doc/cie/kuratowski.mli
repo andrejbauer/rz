@@ -110,25 +110,29 @@ module type K =
             forall z:s, w:s,  z =s= w -> union x z =s= join y w
    *)
     
-   module Free : functor (S : Semilattice) ->
-                 sig
-                   val free : (A.a -> S.s) -> fin -> S.s
-                   (**  Assertion free = 
-                          forall (f:||A.a -> S.s||), 
-                            let g = free f in g : ||fin -> S.s|| /\ 
-                            g emptyset =S.s= S.zero /\ 
-                            (forall (x:||A.a||),  f x =S.s= g (singleton x)) /\ 
-                            (forall (u:||fin||, v:||fin||), 
-                               g (union u v) =S.s= S.join (g u) (g v)) /\ 
-                            (forall h:fin -> S.s,  h : ||fin -> S.s|| /\ 
-                               h emptyset =S.s= S.zero /\ 
-                               (forall (x:||A.a||), 
-                                  f x =S.s= h (singleton x)) /\ 
-                               (forall (u:||fin||, v:||fin||), 
-                                  h (union u v) =S.s= S.join (h u) (h v)) ->
-                               forall x:fin, y:fin,  x =fin= y ->
-                                 g x =S.s= h y)
-                   *)
-                 end
+   val free : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's
+   (**  Assertion 's [(=s=):'s -> 's -> bool] free = 
+          forall zero:'s, join:'s -> 's -> 's, 
+            (forall x:'s, y:'s,  x ='s= y -> y ='s= x) ->
+            (forall x:'s, y:'s, z:'s,  x ='s= y /\ y ='s= z -> x ='s= z) ->
+            zero : ||'s|| -> join : ||'s -> 's -> 's|| ->
+            (forall (x:||'s||, y:||'s||),  join x y ='s= join y x) ->
+            (forall (x:||'s||, y:||'s||, z:||'s||), 
+               join (join x y) z ='s= join x (join y z)) ->
+            (forall (x:||'s||),  join x x ='s= x) ->
+            (forall (x:||'s||),  join x zero ='s= x) ->
+            forall (f:||A.a -> 's||), 
+              let g = free zero join f in g : ||fin -> 's|| /\ 
+              g emptyset ='s= zero /\ 
+              (forall (x:||A.a||),  f x ='s= g (singleton x)) /\ 
+              (forall (u:||fin||, v:||fin||), 
+                 g (union u v) ='s= join (g u) (g v)) /\ 
+              (forall h:fin -> 's,  h : ||fin -> 's|| /\ 
+                 h emptyset ='s= zero /\ 
+                 (forall (x:||A.a||),  f x ='s= h (singleton x)) /\ 
+                 (forall (u:||fin||, v:||fin||), 
+                    h (union u v) ='s= join (h u) (h v)) ->
+                 forall x:fin, y:fin,  x =fin= y -> g x ='s= h y)
+   *)
  end
 

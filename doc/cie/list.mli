@@ -30,29 +30,15 @@ module type List =
    (**  Assertion cons_support =  cons : ||S.s -> list -> list||
    *)
     
-   module Fold : functor (P : sig
-                                type ty_p
-                                 
-                                (** predicate p : list -> ty_p -> bool *)
-                                (**  Assertion strict_p = 
-                                       forall x:list, a:ty_p,  p x a ->
-                                         x : ||list||
-                                      
-                                     Assertion extensional_p = 
-                                       forall x:list, y:list, a:ty_p, 
-                                         x =list= y -> p x a -> p y a
-                                *)
-                              end) ->
-                 sig
-                   val fold : P.ty_p -> (S.s -> list -> P.ty_p -> P.ty_p) -> list -> P.ty_p
-                   (**  Assertion fold = 
-                          forall x:P.ty_p,  P.p nil x ->
-                            forall f:S.s -> list -> P.ty_p -> P.ty_p, 
-                              (forall (x':||S.s||, u:||list||), 
-                                 forall y:P.ty_p,  P.p u y ->
-                                   P.p (cons x' u) (f x' u y)) ->
-                              forall (u:||list||),  P.p u (fold x f u)
-                   *)
-                 end
+   val fold : 'ty_p -> (S.s -> list -> 'ty_p -> 'ty_p) -> list -> 'ty_p
+   (**  Assertion 'ty_p [p:list -> 'ty_p -> bool] fold = 
+          (forall x:list, a:'ty_p,  p x a -> x : ||list||) ->
+          (forall x:list, y:list, a:'ty_p,  x =list= y -> p x a -> p y a) ->
+          forall x:'ty_p,  p nil x ->
+            forall f:S.s -> list -> 'ty_p -> 'ty_p, 
+              (forall (x':||S.s||, u:||list||), 
+                 forall y:'ty_p,  p u y -> p (cons x' u) (f x' u y)) ->
+              forall (u:||list||),  p u (fold x f u)
+   *)
  end
 
