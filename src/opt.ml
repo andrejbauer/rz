@@ -171,20 +171,28 @@ let rec extractPolyInfo = function
 		  Some (nm::tynames, vals, prps, assns @ assns_rest)
 	      | Spec(nm, ValSpec([], ty), assns)  ->
 		  Some (tynames, (nm,ty)::vals, prps, assns @ assns_rest)
-	      | Assertion asn ->
+	      | Assertion asn when
+	           (asn.atyvars = [] && asn.apbnds = []) ->
 		  Some (tynames, vals, prps, asn :: assns_rest)
 	      | Spec(nm, PropSpec pt, assns) ->
 		  Some (tynames, vals, (nm,pt)::prps, assns @ assns_rest)
-	      | _ -> None
+	      | _ -> (print_endline ("Nope: " ^ string_of_spec first);
+              None)
 
+let getFunctorInfo ctx sg =
+	match (hnfSignat ctx sg) with
+    	SignatFunctor((nm1, argsg), ressg) ->
+		   Some (nm1, hnfSignat ctx argsg,
+			hnfSignat (insertModulVariable ctx nm1 argsg) ressg)
+	   | _ -> None
+		
 
 let tryPolymorph ctx nm signat =
-  match (hnfSignat ctx signat) with
-    SignatFunctor((nm1,Signat argElems),
-		  Signat[Spec(nm3,ValSpec([],ty3),assns3)]) ->
+  match (getFunctorInfo ctx signat) with
+    Some(nm1,Signat argElems, Signat[resSpec]) ->
       begin
 	match extractPolyInfo argElems with
-	  Some (tynames, vals, prps, ([] as argassns)) ->
+	  Some (tynames, vals, prps, argassns) ->
 	    let tyvars =
 	      (* Functor's type parameters but with a leading ' character *)
 	      List.map tyvarize tynames
@@ -241,38 +249,35 @@ let tryPolymorph ctx nm signat =
 	       print_endline "\nres_subst_term:";
 	       display_subst res_subst_term)
 *)
-	    in let final_ty =
-	      (* Type of the final polymorphic value [without any
-		 type foralls] *)
-	      nested_arrowty argtypes' (substTy res_subst_ty ty3)
-
 
 	    in let updateResAssertion asn =
-   	      (* XXX Something's not quite right here --- there
-   		 should be an implication where the And of the argument
-   		 assertions implies the result assertion. 
-
-		 So, this whole optimization has been disabled if
-		 argassns is non-empty.
-	       *)
 	      let aprop' = substProp res_subst_term asn.aprop
 	      in let aprop'' = substProp res_subst_ty aprop'
 	      in let apbnds' = 
 		(List.combine argprpnames argpts') @
 		(fst (substPBnds res_subst_term asn.apbnds))
+		  in let premise_asns = 
+			 (* Invariant enforced by extractPolyInfo: 
+				none of the argument assertions
+				quantified over types or predicates *)
+		     List.map (fun a -> a.aprop) argassns'
 	      in
 	      {alabel = asn.alabel;
 	       atyvars = tyvars @ asn.atyvars;
 	       apbnds = apbnds';
 	       aannots = asn.aannots;
-	       aprop = nested_forall (List.combine argnames argtypes') aprop''}
-		
-	    in let assns3' =
-	      List.map updateResAssertion assns3
+	       aprop = nested_forall (List.combine argnames argtypes') 
+	                  (nested_imply premise_asns aprop'')}
+
+        in let updateResSpec = function
+		    Spec(nm3,ValSpec([],ty3),assns3) -> 
+			   	Some(Spec(uncapitalize nm3,
+				     ValSpec(tyvars, nested_arrowty argtypes' (substTy res_subst_ty ty3)), 
+				     List.map updateResAssertion assns3))
+   		   | _ -> None
+				
 	    in
-	    Some(Spec(uncapitalize nm3,
-		      ValSpec(tyvars, final_ty), 
-		      argassns' @ assns3'))
+	       updateResSpec resSpec
 	  | _ -> None
       end
   | _ -> None

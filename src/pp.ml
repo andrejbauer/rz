@@ -176,8 +176,9 @@ and output_mbnds ppf lst =
 and output_pbnd ppf (n,pt) = 
   fprintf ppf "%s:%a" (Name.string_of_name n)  output_proptype pt
 
-and output_pbnds ppf lst =
-  output_components output_pbnd ", " ppf lst
+and output_pbnds ppf = function
+    [] -> ()
+  | lst -> fprintf ppf "[%a]"   (output_components output_pbnd ", ") lst
 
 and output_modest ppf {ty=ty;tot=p} =
   fprintf ppf "%a(%a)"  output_ty ty  output_prop p
