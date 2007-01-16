@@ -723,16 +723,18 @@ and substProp ?occ sbst = function
   | SimpleSupport sty -> SimpleSupport (substSimpleTy ?occ sbst sty)
   | NamedSupport (ln, lst) -> 
       let ln' = 
-	match getPropLN sbst ln with
+	match getTyLN sbst ln with
 	  None -> substLN ?occ sbst ln
-	| Some ln' -> ln'
+	| Some (NamedTy ln') -> ln'
+	| Some _ -> failwith "impossible substProp in NamedSupport"
       in
          NamedSupport (ln', substTermList ?occ sbst lst)
   | NamedPer (ln, lst) -> 
       let ln' = 
-	match getPropLN sbst ln with
+	match getTyLN sbst ln with
 	  None -> substLN ?occ sbst ln
-	| Some ln' -> ln'
+	| Some (NamedTy ln') -> ln'
+	| Some _ -> failwith "impossible substProp in NamedPer"
       in
          NamedPer (ln', substTermList ?occ sbst lst)
   | NamedProp (ln, t, lst) ->

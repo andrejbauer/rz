@@ -145,6 +145,7 @@ and findEqPremise nm = function
       end
   | _ -> None
 
+
 (************************************)
 (** {2: Polymorphization functions} *)
 (***********************************)
