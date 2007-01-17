@@ -518,8 +518,7 @@ and the \emph{product} $\depprod{i \in I}{A_i}$ as
 These constructions allow us to interpret (extensional) dependent type
 theory in the category of modest sets.
 
-\internal{Chris}{I simplified the discussion of $Z_7$ above, and so we might need to make
-changes to the discussion of $Z_n$ to make it fit better.}
+\bigskip
 
 As an example of a uniform family we consider the cyclic group
 $(\ZZ_n, 0, {-}, {+})$ of order~$n$. To keep things simple, we assume
@@ -539,20 +538,21 @@ of the cyclic group of order~$7$, with $7$ replaced by~$n$:
   & \setOf{Z_n} = \ZZ_n = \set{0, 1, \ldots, n - 1}
   \\
   & \typeOf{Z_n} = \cint
-  \\
-  & v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k
-  \\
-  & \clet{\mathtt{neg} \; n \; k }{- (k \cmod n)}
-  \\
-  & \clet{\mathtt{add} \; n \; (k,m)}{k \cmod n + m \cmod n}.
+%  \\
+%  & v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k
 \end{align*}
 %
-Another change is the additional parameter~$n$ accepted by the
-realizers for negation and addition. The definitions make sense for
-any $n \in \setOf{N}$, but for too large a value overflow might occur.
-If we expect the implementation to be used with such values, it is
-more prudent to replace the type~$\cint$ with an implementation of
-arbitrary size integers.
+Negation would now be specified as a constant of type
+$\forall n{:}N.\ \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
+would then have type $\typeOf{N}\to\typeOf{\ZZ_n}\to{\typeOf{\ZZ_n}}$,
+i.e., $\cint\to\cint\to\cint$, so that $\mathtt{neg}(n)$ would
+be a realizer for negation on $\ZZ_n$,   The realizer for addition must
+similarly take an extra $n$ parameter.  
+
+Any of the implementations suggested for $\ZZ_7$ would work here, with
+$7$ replaced by the parameter $n$; in one case we would have
+$v \rz_{Z_n} k \iff v = k$ and in the other
+$v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k$.
 
 %%% Local Variables: 
 %%% mode: latex

@@ -13,29 +13,21 @@ and values provided by a module. For a complete specification, a
 module type must also be annotated with \emph{assertions} which
 specify the required properties of declared types and values.
 %
-\begin{figure}
+\begin{figure}[t]
   \centering
   \sourcefile{group.ml}
-  \caption{The module type $\mathtt{Ab}$ and module
-    $\mathtt{Z7}$.}
+  \caption{The module type $\mathtt{Ab}$.}
   \label{fig:module-example}
 \end{figure}
 %
 For example, if we look at the definition of module type $\mathtt{Ab}$
-and module~$\mathtt{Z7}$ in Figure~\ref{fig:module-example}, we can
-probably guess that $\mathtt{Z7}$ implements the group~$\ZZ_7$ and
-that $\mathtt{Ab}$ is a signature for an Abelian group. However, for a
-complete description of~$\mathtt{Z7}$ we still need to define a
-per~$\perty{t}$ on $\values{\mathtt{t}}$ that tells us when two
-integers represent the same element of~$\ZZ_7$, e.g.,
+in Figure~\ref{fig:module-example}, we might guess 
+that $\mathtt{Ab}$ is a signature for an Abelian group. 
 %
-\begin{equation*}
-  u \perty{t} v \iff
-  u \mathbin{\mathrm{mod}} 7 = v \mathbin{\mathrm{mod}} 7 \;.
-\end{equation*}
-%
-Similiarly, $\mathtt{Ab}$ by itself does not describe an Abelian
-group, only its signature. A complete description would contain the
+But $\mathtt{Ab}$ by itself requires an implementation satisfy
+the signature of an Abelian
+group, but does not guarantee it behaves as an Abelian group.
+A complete description would contain the
 following further \emph{assertions}:
 %
 \begin{enumerate}
@@ -77,12 +69,20 @@ Assertions \ref{enum:zero-total}--\ref{enum:add-total} state that
 $\mathtt{zero}$, $\mathtt{neg}$, and $\mathtt{add}$ realize a
 constant, a unary, and a binary operation, respectively, while
 assertions \ref{enum:ab-group-axiom-1}--\ref{enum:ab-group-axiom-4}
-correspond to axioms for Abelian groups. RZ generates complete
-specifications (module types with assertions), such as the above
-module type~$\mathtt{Ab}$ with assertions
-\ref{enum:t-per}--~\ref{enum:ab-group-axiom-4}. The output is written
-in the language of specifications summarized in
+correspond to axioms for Abelian groups. 
+
+The output of RZ thus consists of \emph{module specifications}, each of which consists of a module type
+plus assertions about its components.  More specifically, a specification
+may contain value declarations, type declarations and definitions, module
+declarations, specification definitions, proposition declarations, and
+assertions.  The language of specifications is summarized in
 Figure~\ref{fig:output}.
+
+A specification can describe an OCaml structure (a collection of 
+definitions for types and values) or an OCaml functor (a parameterized
+module, i.e., a function mapping modules to modules).  The latter would
+be appropriate, for example, when describing a uniform implementation of the real numbers
+that works given any implementation of natural numbers.
 
 \begin{figure}
   \[
@@ -231,18 +231,6 @@ $\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
 shorthand for
 $\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
 \fi
-
-A specification is an OCaml module type with assertions. It may
-contain value declarations, type declarations and definitions, module
-declarations, specification definitions, proposition declarations, and
-assertions. A specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a
-module type of an OCaml functor. Such a parametrized specification may
-be applied to a module. Because OCaml does not support such
-applications, RZ reduces them away.
-
-\internal{Andrej}{Maybe you can clarify the point about parameterized
-  specifications applied to models (modules)? I seem to remember you
-  once compared this to something that Automath has.}
 
 %%% Local Variables: 
 %%% mode: latex
