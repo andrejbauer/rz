@@ -431,13 +431,10 @@ there may be other propositions which are stable and are not written
 in the negative form.
 
 It would be unproductive to bother the programmer with requirements
-for useless code.  On input, RZ allows users to identify basic propositions
-as computationally irrelevant.  The extracted
+for useless code.  On input, RZ allows users to specify that  
+predicates will have no computational content.  On output, extracted
 realizers also go through a \emph{thinning} phase, see Section~\ref{sec:translation}, which
 optimizes away references to irrelevant realizers.
-
-\internal{Chris}{It seemed out of place to introduce
-the idea of subkinds and syntax for $\iStable$ and $\iProp$ here.}
 
 \subsection{Uniform families of modest sets}
 \label{sec:uniform-families}
