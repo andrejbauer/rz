@@ -1,0 +1,176 @@
+% Macros were moved to macros.tex because I need them in an earlier section.
+
+\section{The Input Language}
+\label{sec:input-language}
+
+A RZ \emph{theory} is a generalized logical signature with associated
+axioms, similar to a Coq module signature. Theories are descriptions
+of \emph{models}, or implementations. The input is the definition of
+one or more \emph{theories}; Figure~\ref{fig:kuratowski} shows a
+sample input for the RZ system. RZ does not permit models to be
+written directly, but it does allow a declaration of a model of a
+given theory.
+
+The simplest theory $\ith$ is a list of \emph{theory element}\/s
+$\ite_1 \ldots \ite_n$. A theory element may specify that a certain
+set, set element, proposition or predicate, or model must exist (i.e.,
+\textsf{Parameter} specifications). It may also provide a definition
+of a set, term, proposition, predicate, or theory (i.e.,
+\textsf{Definition} specifications). Finally, a theory element can be
+a named axiom that must hold. (i.e., \textsf{Axiom} specifications).
+
+A theory may be parametrized by models of another theory,
+$\ilambda{\iM}{\ith_1}{\ith_2}$. A typical example in mathematics is
+the theory of a vector space, parameterized by a field of scalars. In
+Figure~\ref{fig:kuratowski}, \texttt{K} is a theory parameterized by a
+model choosing an implementation of a single set. For any such
+model~$\im$, then, $\mathtt{K}(\im)$ is a theory describing a model of
+finite sets whose elements are in the set $\iselect{\im}{\mathtt{a}}$.
+
+A theory may also describe a uniform family of models
+$\idarrow{\im}{\ith_1}{\ith_2}$, i.e., a single implementation of a
+mapping (in OCaml such mappings are called \emph{functors}) that takes
+a model~$\im$ satisfying~$\ith_1$ to a model of~$\ith_2$. In contrast,
+a parameterized theory $T = \ilambda{\iM}{\ith_1}{\ith_2}$ permits
+completely unrelated implementations for $T(\im_1)$ and $T(\im_2)$. An
+example of a uniform family of models would be a mapping from fields
+to vectors spaces that maps a field~$F$ to the 1-dimensional vector
+space over~$F$.
+
+\internal{Andrej}{I wanted to clarify the previous two paragraphs a
+  bit, but I am not sure it's an improvement. Please improve some
+  more. At some point we should say that both, parameterized theories
+  and uniform families get translated to functor signatures. But where
+  is the best place for that?}
+
+\begin{figure}
+	\[
+	\begin{array}{rl@{\qquad}l}
+		\noalign{\textbf{Propositions/Predicates}}
+		\ip,\ipp ::= 
+		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
+		  | & \itrue \ | \ \ifalse \ibar \inot{\ip_1} \ibar \iand{\ip_1}{\ip_2} \ibar 
+		       \ior{\ip_1}{\ip_2}\ | \ \iimply{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
+		  | & \ilambda{\ix}{\is}{\ip}  \ibar \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
+		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
+		  | & \iforall{\ix}{\is}{\ip}  \ibar 
+		      \iexists{\ix}{\is}{\ip} \ |\
+		      \iunique{\ix}{\is}{\ip} & \mbox{Term quantifiers}\\[5pt]
+		
+		\noalign{\textbf{Sets}}
+		\is ::= 
+		    & \iS  \ibar \iselect{\im}{\iS} &\mbox{Set names}\\
+		  | & \isunit \ibar \iprod{\ix}{\is_1}{\is_2}
+                  &\mbox{Unit and (dependent) cartesian product}\\
+		  | & \isvoid \ibar \isum{\il_1}{\is_1}{\il_2}{\is_2} &\mbox{Void and disjoint union}\\
+		  | & \idarrow{\ix}{\is_1}{\is_2} & \mbox{(Dependent) function space} \\
+		  | & \ilambda{\ix}{\is_1}{\is_2} \ibar 
+		      \iapp{\is}{\ie} &\mbox{Dependent set and application}\\
+		  | & \iquot{\is}{\ipp} & \mbox{Set quotient by an equivalence relation}\\
+		  | & \isubset{\ix}{\is}{\ipp} & \mbox{Subset satisfying a predicate}\\
+		  | & \irz{\is}&\mbox{Realizers of a set}\\[5pt] 
+		
+		\noalign{\textbf{Terms}}	
+		\ie ::=
+		    & \ix \ibar \iselect{\im}{\ix} &\mbox{Term names}\\
+		  | & \ilambda{\ix}{\is_1}{\ie} \ibar 
+		      \iapp{\ie_1}{\ie_2} &\mbox{Function and application}\\
+		  | & \ituple{\ie_1}{\ie_2} 
+		      \ibar \iproj{\ie}{n}&\mbox{Tuple and projection}\\
+		  | & \iinj{\il}{\ie} 
+		      \ibar (\imatch{\ie_0}{\il_1}{\ix_1}{\ie_1}{\il_2}{\ix_2}{\ie_2})&\mbox{Injection and projection from a union}\\
+		  | & \ieclass{\ie}{\ipp}
+		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}&\mbox{Equivalence class and picking a representative}\\
+		  | & \irz{\ie}
+		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}&\mbox{Realized value and picking a realizer}\\
+		  | & \isubin{\ie}{\is} \ibar \isubout{\ie}{\is} &\mbox{Type coercion in and out of a subset}\\
+		  | & \ithe{\ix}{\is}{\ip}&\mbox{Definite description}\\
+		  | & \ilet{\ix}{\ie_1}{\ie_2}&\mbox{Local definition}\\[5pt]
+		
+		\noalign{\textbf{Models}}		
+		\im ::= 
+		    & \iM  \ibar \iselect{\im}{\iM}&\mbox{Model names}\\
+		  | & \iapp{\im_1}{\im_2}&\mbox{Application of parameterized model}\\[5pt]
+		
+		\noalign{\textbf{Proposition Kinds}}
+		\ipt ::=
+		    & \iProp & \mbox{Classifier for propositions}\\
+		  | & \iStable & \mbox{Classifier for stable propositions}\\
+		  | & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
+		  | & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
+		
+		\noalign{\textbf{Set Kinds}}
+		\ik ::= 
+		    & \iSet &\mbox{Classifier for a proper set}\\
+		   | & \idarrow{\ix}{\is}{\ik} &\mbox{Classifier for a dependent set}\\[5pt]
+		
+
+		\noalign{\textbf{Theory Elements}}
+		\ite ::=
+		     & \iDefinition{\ix}{\ie}.&\mbox{Name for a term}\\
+		   | & \iDefinition{\iS}{\is}.&\mbox{Name for a set}\\
+		   | & \iDefinition{\iP}{\ip}.&\mbox{Name for a proposition/predicate}\\
+		   | & \iDefinition{\iTH}{\ith}.&\mbox{Name for a theory}\\
+		   | & \iParameter{\ix}{\is}.&\mbox{Require an element in the given set}\\
+		   | & \iParameter{\iS}{\ik}.&\mbox{Require a set of the given kind}\\
+		   | & \iParameter{\iP}{\ipt}.&\mbox{Require a proposition/predicate of the given sort}\\
+		   | & \iParameter{\iM}{\ith}.&\mbox{Require a model of the given theory}\\
+		   | & \iAxiom{\iP}{\ip}.&\mbox{Axiom that must hold}\\[5pt]
+
+  		\noalign{\textbf{Theory}}
+		\ith ::= 
+		     & \iTH\\
+%		   | & \iselect{\im}{\iTH}\\
+		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
+		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
+		  	| & \ilambda{\iM}{\ith_1}{\ith_2} \ibar 
+		      \iapp{\ith}{\iM}\\
+	\end{array}
+	\]
+	\label{fig:input}
+	\caption{Input Syntax (Simplified)}
+\end{figure}
+
+Propositions and predicates appearing in theories may use full
+first-order constructive logic, not just the negative fragment. The
+grammar for logical inputs is shown in Figure~\ref{fig:input}. Most of
+this should be familiar, including the use of lambda abstraction to
+define predicates.
+
+The language of sets is rich, going well beyond the type systems of
+typical programming languages. In addition to any base sets postulated
+in a theory, one can construct dependent cartesian products and
+dependent function spaces. We also supports disjoint unions (with
+labeled tags), quotient spaces (a set modulo a stable equivalence
+relation), subsets (elements of a set satisfying a predicate). RZ even
+permits explicit references to sets of realizers.
+
+The term language follows the structure of the set level by providing
+introduction and elimination constructs. For product sets we have
+tuples and projections ($\iproj{\ie}{1}$, $\iproj{\ie}{2}$, \ldots),
+and for function spaces we have lambda abstractions and application.
+One can inject a term into a tagged disjoin union, or do case analyses
+on the members of a union. We can produce the equivalence class of a
+given term, or pick a representative of a given equivalence class (as
+long as what we do with it does not depend on the particular
+representative). Very similarly, we can produce the set of realizers
+for a term, or choose a representative from a given set of realizers
+(as long as what we do with it does not depend on the particular
+representative). We can inject a term into a subset (if it satisfies
+the appropriate predicate), or project an element of a subset into the
+enclosing set. Finally, the term language also allows local
+definitions of term variables, and definite descriptions (as long as
+there is a unique element satisfying the predicate in question).
+
+From the parenthesized qualifiers in the previous paragraph, it is
+clear that checking the well-formedness of terms is not decidable. RZ
+checks what it can, but does not attempt any serious theorem proving.
+Uncheckable constraints remain as explicitly-marked obligations
+in the final output, and must be verified by other means; the output
+can then be trusted to the extent that the obligations are satisfied.
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "cie"
+%%% End: 
+

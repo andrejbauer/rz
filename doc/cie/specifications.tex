@@ -1,0 +1,250 @@
+\section{Specifications as signatures with assertions}
+\label{sec:spec-sign-assert}
+
+
+In programming we distinguish between \emph{implementation} and
+\emph{specification} of a structure. In OCaml these two notions are
+expressed with modules and module types, respectively.\footnote{In
+  object-oriented languages implementations and specifications are
+  expressed with classes and interfaces, while in Haskell they
+  correspond to modules and declarations.} A module defines types and
+values, while a module type simply lists the types, type definitions,
+and values provided by a module. For a complete specification, a
+module type must also be annotated with \emph{assertions} which
+specify the required properties of declared types and values.
+%
+\begin{figure}
+  \centering
+  \sourcefile{group.ml}
+  \caption{The module type $\mathtt{Ab}$ and module
+    $\mathtt{Z7}$.}
+  \label{fig:module-example}
+\end{figure}
+%
+For example, if we look at the definition of module type $\mathtt{Ab}$
+and module~$\mathtt{Z7}$ in Figure~\ref{fig:module-example}, we can
+probably guess that $\mathtt{Z7}$ implements the group~$\ZZ_7$ and
+that $\mathtt{Ab}$ is a signature for an Abelian group. However, for a
+complete description of~$\mathtt{Z7}$ we still need to define a
+per~$\perty{t}$ on $\values{\mathtt{t}}$ that tells us when two
+integers represent the same element of~$\ZZ_7$, e.g.,
+%
+\begin{equation*}
+  u \perty{t} v \iff
+  u \mathbin{\mathrm{mod}} 7 = v \mathbin{\mathrm{mod}} 7 \;.
+\end{equation*}
+%
+Similiarly, $\mathtt{Ab}$ by itself does not describe an Abelian
+group, only its signature. A complete description would contain the
+following further \emph{assertions}:
+%
+\begin{enumerate}
+\item
+  \label{enum:t-per}%
+  there is a per $\perty{t}$ on $\values{\mathtt{t}}$,
+\item
+  \label{enum:zero-total}%
+  $\mathtt{zero} \in \support{\mathtt{t}}$.
+\item
+  \label{enum:neg-total}%
+  for all $u, v \in \values{\mathtt{t}}$, if $u \perty{t} v$ then
+  $\mathtt{neg} \; u \perty{t} \mathtt{neg} \; v$,
+\item
+  \label{enum:add-total}%
+  for all $u_1, u_2, v_1, v_2 \in \values{\mathtt{t}}$, if $u_1
+  \perty{t} v_1$ and $u_2 \perty{t} v_2$ then $\mathtt{add} \; (u_1,
+  u_2) \perty{t} \mathtt{add} \; (v_1, v_2)$,
+\item 
+  \label{enum:ab-group-axiom-1}%
+  for all $u \in \support{\mathtt{t}}$, $\mathtt{add} \;
+  (\mathtt{zero}, u) \perty{t} u$,
+\item
+  \label{enum:ab-group-axiom-2}%
+  for all $u \in \support{\mathtt{t}}$, $\mathtt{add} \; (u,
+  \mathtt{neg} \; u) \perty{t} \mathtt{zero}$,
+\item
+  \label{enum:ab-group-axiom-3}%
+  for all $u, v, w \in \support{\mathtt{t}}$, $\mathtt{add} \;
+  (\mathtt{add} \; (u, v), w) \perty{t} \mathtt{add} \; (u,
+  \mathtt{add} \; (v, w))$,
+\item
+  \label{enum:ab-group-axiom-4}%
+  for all $u, v \in \support{\mathtt{t}}$, $\mathtt{add} \; (u, v)
+  \perty{t} \mathtt{add} (v, u)$.
+\end{enumerate}
+%
+Assertions \ref{enum:zero-total}--\ref{enum:add-total} state that
+$\mathtt{zero}$, $\mathtt{neg}$, and $\mathtt{add}$ realize a
+constant, a unary, and a binary operation, respectively, while
+assertions \ref{enum:ab-group-axiom-1}--\ref{enum:ab-group-axiom-4}
+correspond to axioms for Abelian groups. RZ generates complete
+specifications (module types with assertions), such as the above
+module type~$\mathtt{Ab}$ with assertions
+\ref{enum:t-per}--~\ref{enum:ab-group-axiom-4}. The output is written
+in the language of specifications summarized in
+Figure~\ref{fig:output}.
+
+\begin{figure}
+  \[
+  \begin{array}{rl@{\qquad}l}
+    \noalign{\textbf{Types}}
+    \oty ::= 
+    & \oTY  \obar \oselect{\oM}{\oTY} &\mbox{Type names}\\
+    | & \ounit \obar \oprod{\oty_1}{\oty_2} &\mbox{Unit and cartesian product}\\
+    | & \oarrow{\oty_1}{\oty_2} & \mbox{Function type}\\
+    | & \osumty{\ol_1}{\oty_1}{\ol_n}{\oty_n} &\mbox{Disjoint sum}\\
+    | & \opty & \mbox{Polymorphic types}\\[5pt]
+    
+    \noalign{\textbf{Terms}}	
+    \oe ::=
+    & \ox \obar \oselect{\oM}{\ox} &\mbox{Term names}\\
+    | & \olambda{\ox}{\oty_1}{\oe} \obar 
+    \oapp{\oe_1}{\oe_2} &\mbox{Functions and application}\\
+    | & ()
+    \obar \otuple{\oe_1}{\oe_n} 
+    \obar \oproj{\oe}{n}&\mbox{Tuples and projection}\\
+    | & \oinj{\ol}{\oe} 
+    \obar (\omatches{\oe_0}{\ol_1}{\ox_1}{\oe_1}{\ol_n}{\ox_n}{\oe_n})&\mbox{Injection and projection from a sum}\\
+    | & \ooblig{\ox}{\oty}{\op}{\oe} \obar \oobligx{\op}{\oe} &\mbox{Obligations}\\
+    | & \olet{\ox}{\oe_1}{\oe_2}&\mbox{Local definitions}\\[5pt]
+    
+
+    \noalign{\textbf{Propositions (negative fragment)}}
+    \op ::= 
+    & \oP \obar \oselect{\oM}{\oP}&\mbox{Atomic
+      proposition}\\
+    | & \otrue  \obar \ofalse \obar \onot{\op_1} \obar \oand{\op_1}{\op_2} \obar 
+    \oimply{\op_1}{\op_2} \obar \oiff{\op_1}{\op_2} & \mbox{Predicate logic}\\
+    | & \olambda{\ox}{\oty}{\op}  \obar \oapp{\op}{\oe} &
+    \mbox{Propositional functions and application}\\
+    | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
+    | & \oequal{\oe_1}{\oe_2} & \mbox{(Observational) term equality}\\
+    | & \oforall{\ox}{\oty}{\op}  \obar 
+    \oforallt{\ox}{\os}{\op} & \mbox{Term quantifiers}\\[5pt]
+    
+    \noalign{\textbf{Basic modest sets}}
+    \os ::=
+    & \oS \obar \oapp{\os}{\oe} & \\[5pt]
+
+    \noalign{\textbf{Modules}}		
+    \om ::= 
+    & \oM  \obar \oselect{\om}{\oM}&\mbox{Model names}\\
+    | & \oapp{\om_1}{\om_2}&\mbox{Application of parameterized model}\\[5pt]
+    
+    \noalign{\textbf{Proposition Kinds}}
+    \opt ::=
+    & \oProp & \mbox{Classifier for propositions}\\
+    |& \oarrow{\oty}{\opt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
+    
+    \noalign{\textbf{Specification elements}}
+    \ote ::=
+    & \ovalspec{\ox}{\oty}&\mbox{Value declaration}\\
+    | & \otyspec{\oTY}&\mbox{Type declaration}\\
+    | & \otydef{\oTY}{\oty}&\mbox{Type definition}\\
+    | & \omodulespec{\om}{\omt}&\mbox{Module declaration}\\
+    | & \osignatdef{\oMT}{\omt}&\mbox{Specification definition}\\
+    | & \opropspec{\oP}{\opt}&\mbox{Proposition declaration}\\
+    | & \oassertion{\oA}{\op}&\mbox{Assertion}\\[5pt]
+
+    \noalign{\textbf{Specifications (module types with assertions)}}
+    \omt ::= 
+    & \oMT \obar \oselect{\om}{\oMT} & \mbox{Specification names}\\
+    | & \osig{\ote_1 \ldots \ote_n} & \mbox{Specification elements}\\
+    | & \ofunctor{\om}{\omt_1}{\omt_2} & \mbox{Parametrized specification}\\
+    | & \oapp{\omt}{\om} & \mbox{Specification application}
+  \end{array}
+  \]
+  \label{fig:output}
+  \caption{The syntax of specifications (Simplified)}
+\end{figure}
+
+RZ ever produces only a small subset of OCaml types (the unit type,
+products, function types, polymorphic variant types, and parameter
+types). Correspondingly, the language of terms produced is fairly simple
+(tuples, functions, polymorphic variants, and local definitions).
+However, the programmer is free to implement a specification using any
+types and terms that exist in OCaml. 
+
+A special kind of term is an
+\emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
+$e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
+An obligation is equivalent to a combination of the indefinite
+description operator~\cite{epsilon-reference} and a local definition,
+$\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
+$\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
+such that $\op$''. The alternative form $\oobligx{\op}{\oe}$ stands
+for $\ooblig{\_}{\ounit}{\op}{\oe}$. 
+
+Obligations arise from the fact that well-formedness 
+of the input language is undecidable; see Section~\ref{sec:input-language}.  
+In such cases the system computes a realizability translation, but also produces obligations 
+to be checked.  The programmer must
+replace each obligation with a value satisfying the
+obligation (i.e., demonstrate that the obligation can be satisfied). 
+If such values do not exist, the specification is
+unimplementable.
+
+\iffalse
+Obligations serve a double role.
+On one hand they are \emph{local assertions} that refer to local
+values inside a term, e.g.,
+%
+\begin{equation*}
+  \olambda{x}{\mathtt{real}}{(\oobligx{x^2-x+1 \neq 0}{x/(x^2-x+1)})}.
+\end{equation*}
+%
+On the other hand they are \emph{local declarations} that require the
+implementation of a local value inside a term, e.g.,
+%
+\begin{equation*}
+  \olambda{x}{\mathtt{real}}{(
+    \ooblig{y}{\mathtt{real}}{\phi(x,y)}{x+y}
+    )},
+\end{equation*}
+%
+requires that the programer define a local value~$y$ such
+that$\phi(x,y)$ holds. In principle, local specifications could always
+be expressed as global ones, but at a significant cost to clarity and
+conciseness.
+
+RZ outputs obligations when it encounters an uncheckable typing
+constraint, or a term in the input whose well-formedness requires the
+existence of a suitable term in the output, see
+Section~\ref{sec:exampl-with-oblig}.
+\fi
+Assertions are expressed in the \emph{negative fragment} of
+first-order logic, which contains constants for truth and falsehood,
+negation, conjunction, implication, equivalence, and universal
+quantification (but no disjunction or existential). This is the part
+of first-order logic that has no computational content in the
+realizability interpretation. Consequently, the classical and
+constructive interpretations of assertions agree. This is quite
+desirable, since RZ acts as a bridge between constructive mathematics
+and real-world programmers, which typically are not familiar with
+constructive logic. 
+\iffalse
+The basic predicates from which assertions are
+built are observatinal equality $\oequal{\oe_1}{\oe_2}$, pers
+$\oper{s}{\oe_1}{\oe_2}$ on abstract types, and basic predicates
+declared as parameters. The formula $\ototal{\oe}{\os}$ stands for
+$\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
+shorthand for
+$\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
+\fi
+
+A specification is an OCaml module type with assertions. It may
+contain value declarations, type declarations and definitions, module
+declarations, specification definitions, proposition declarations, and
+assertions. A specification $\ofunctor{\om}{\omt_1}{\omt_2}$ is a
+module type of an OCaml functor. Such a parametrized specification may
+be applied to a module. Because OCaml does not support such
+applications, RZ reduces them away.
+
+\internal{Andrej}{Maybe you can clarify the point about parameterized
+  specifications applied to models (modules)? I seem to remember you
+  once compared this to something that Automath has.}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "cie"
+%%% End: 
