@@ -91,9 +91,38 @@ and a type argument \texttt{'s} for the type of lattice elements (corresponding 
 
 The other optional transformation is a \emph{hoisting} pass which lifts obligations in the output out to top-level positions.  This can make it easier to see exactly what one is obliged to provide.  When identical obligations appear in separate subterms of a term, hoisting can lift and merge these obligations, reducing redundancy.  However, moving obligations far from where they are used can make it harder to see why the obligation is required at all (and hence how one might satisfy the obligation), and so hoisting is turned off by default.
 
-\internal{Andrej}{Yes, please, a simple hoisting example would be
-  nice. I've never seen one.}
+For example, in the following input (extracted from a larger description of an ordered field)
+\begin{Verbatim}
+Parameter s : Set.
+Parameter zero : s.
+Parameter inverse : {x : s | not (x = zero)} -> s.
 
+Parameter lt : s -> s -> Stable.
+Definition positive (x:s) := lt zero x.
+Axiom lt_irr: forall x:s, not (lt x x).
+
+Axiom order_inv: forall x:s, positive x -> positive (inverse x).
+\end{Verbatim}
+the axiom translates to the assertion:
+\begin{Verbatim}
+	(**  Assertion order_inv = 
+          forall (x:||s||),  positive x ->
+            positive (inv (assure (not (x =real= zero)) in x))
+   *).
+\end{Verbatim}
+Here the system has noticed that for \Verb|inverse x| to make sense, we must know that
+\Verb|x| is non-zero.   This requires non-trivial theorem proving and hence remains as 
+an obligation for the user.  
+
+We must prove \Verb|not (x =s= zero)| not for all \Verb|x|, but only under
+the premises in force where the obligation occurs.  This is slightly clearer when hoisting moves the
+obligation to the top level, after which it could be verified in the same way as all other assertions:
+\begin{Verbatim}
+   (**  Assertion order_inv = 
+          assure (forall (x:||real||),  positive x -> not (x =real= zero))
+            in forall (x:||real||),  positive x -> positive (inv x)
+   *)	
+\end{Verbatim}
 
 
 %%% Local Variables: 
