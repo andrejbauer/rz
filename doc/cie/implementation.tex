@@ -28,6 +28,10 @@ dependent product types) makes the translation code fairly involved,
 and so it is performed in a ``naive'' fashion whenever possible. The
 immediate result of the translation is not easily readable.
  
+\internal{Chris}{Uh oh...Kuratowski has been moved to a later section.
+Should we move this section after
+the examples?}
+
 Thus, three more passes simplify the output before it is displayed to
 the user. A \emph{thinning} pass removes all references to trivial
 realizers produced by stable formulas. For example, direct translation
@@ -92,7 +96,7 @@ and a type argument \texttt{'s} for the type of lattice elements (corresponding 
 The other optional transformation is a \emph{hoisting} pass which lifts obligations in the output out to top-level positions.  This can make it easier to see exactly what one is obliged to provide.  When identical obligations appear in separate subterms of a term, hoisting can lift and merge these obligations, reducing redundancy.  However, moving obligations far from where they are used can make it harder to see why the obligation is required at all (and hence how one might satisfy the obligation), and so hoisting is turned off by default.
 
 For example, in the following input (extracted from a larger description of an ordered field)
-\begin{Verbatim}
+\begin{source}
 Parameter s : Set.
 Parameter zero : s.
 Parameter inverse : {x : s | not (x = zero)} -> s.
@@ -102,14 +106,14 @@ Definition positive (x:s) := lt zero x.
 Axiom lt_irr: forall x:s, not (lt x x).
 
 Axiom order_inv: forall x:s, positive x -> positive (inverse x).
-\end{Verbatim}
+\end{source}
 the axiom translates to the assertion:
-\begin{Verbatim}
+\begin{source}
 	(**  Assertion order_inv = 
           forall (x:||s||),  positive x ->
             positive (inv (assure (not (x =real= zero)) in x))
    *).
-\end{Verbatim}
+\end{source}
 Here the system has noticed that for \Verb|inverse x| to make sense, we must know that
 \Verb|x| is non-zero.   This requires non-trivial theorem proving and hence remains as 
 an obligation for the user.  
@@ -117,12 +121,12 @@ an obligation for the user.
 We must prove \Verb|not (x =s= zero)| not for all \Verb|x|, but only under
 the premises in force where the obligation occurs.  This is slightly clearer when hoisting moves the
 obligation to the top level, after which it could be verified in the same way as all other assertions:
-\begin{Verbatim}
+\begin{source}
    (**  Assertion order_inv = 
           assure (forall (x:||real||),  positive x -> not (x =real= zero))
             in forall (x:||real||),  positive x -> positive (inv x)
    *)	
-\end{Verbatim}
+\end{source}
 
 
 %%% Local Variables: 
