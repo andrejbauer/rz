@@ -2126,8 +2126,8 @@ and reduceProp prp =
 
   | PLambda((nm1,_), PApp(prp1, Id(LN(None,nm2))))  ->
       (** Eta-reduction ! *)
-      (print_endline (Name.string_of_name nm1);
-       print_endline (Name.string_of_name nm2);
+      ((* print_endline (Name.string_of_name nm1);
+       print_endline (Name.string_of_name nm2); *)
        if (List.mem nm1 (fvProp prp1)) then
 	 prp
        else
