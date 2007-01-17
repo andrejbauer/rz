@@ -30,24 +30,25 @@ define the datatype of graphs to be\footnote{We use OCaml notation in
   value of type $t_2$.}
 %
 \begin{equation*}
-  \ctype \mathtt{graph} = \clist{\cint} * \clist{(\cint * \cint)}
+  \ctype \mathtt{graph} = \clist{\cint} \ \ * \ \ \clist{(\cint * \cint)}
 \end{equation*}
 %
 However, this is not a complete description of the representation, as
-there are invariants and conditions which are not expressed directly
-in this type, such as:
+there are invariants and conditions that are not expressed by the type, such as:
 %
 \begin{enumerate}
 \item The order in which vertices and arrows are listed is not
-  important; for example, $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.
+  important; for example, $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.\footnote{
+  A different implementation with the same representation type could require
+  that only sorted vertex lists are legal.}
 \item Each vertex and arrow must be listed exactly once.
 \item The source and target of each arrow must appear in the list of vertices.
 \end{enumerate}
 %
-An implementation of the mathematical set~$\mathcal{G}$ must determine
-an underlying datatype $\mathtt{graph}$, but also
-which values that type represent which elements
-of~$\mathcal{G}$. As we shall see next, all of this can be expressed
+To implement the mathematical set~$\mathcal{G}$, we must not
+only decide on the underlying datatype $\mathtt{graph}$, but also
+determine what values of that type represent which elements
+of~$\mathcal{G}$.  As we shall see next, all of this can be expressed
 either using a \emph{realizability relation} or a \emph{partial
   equivalence relation (per)}.
 
@@ -63,17 +64,15 @@ representation of disjoint unions.}
 
 Let $\Type$ be the collection of all (non-parametric) OCaml types. To
 each type $t \in \Type$ we assign the set $\values{t}$ of values of
-type~$t$ which behave \emph{functionally} in the sense
-of~\cite{longley99when}. Such values are represented by terminating
-expressions which do not raise exceptions or return different results
-on different invocations, although they \emph{may} use exceptions,
-store, and other computational effects, provided they behave from the outside
-as if they do not. A useful example of a functional value using store is
+type~$t$ that behave \emph{functionally} in the sense
+of Longley~\cite{longley99when}. Such values are represented by terminating
+expressions that do not throw exceptions or return different results
+on different invocations.  They may \emph{use} exceptions,
+store, and other computational effects, provided they appear
+functional from the outside; a useful example using side-effects is
 presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
 Note also that a functional value with a function type may diverge as
-soon as it is applied, e.g., if we define
-$\cletrec{f\;(x:\cint):\cint}{f\;x}$ then $f \in \values{\cint \to
-  \cint}$. The collection $\Type$ with the assignment of functional
+soon as it is applied.   The collection $\Type$ with the assignment of functional
 values $|t|$ to each $t \in \Type$ forms a \emph{typed partial
   combinatory algebra (TPCA)}, which provides a theoretical basis for
 the definition of a realizability model that suits our needs.
@@ -88,9 +87,9 @@ represents/realizes/implements graph $G$''. There are two natural conditions
 that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G \in
 \mathcal{G}$ there should be at least one realizer $(\ell_V, \ell_A)$
 representing it, and (2) if $(\ell_V, \ell_A)$ represents both $G$ and
-$G'$ then $G = G'$. The latter condition is called \emph{modesty} and
-is not strictly necessary for the development of the theory, though it
-is something that programmers would naturally expect to hold. If
+$G'$ then $G = G'$.\footnote{The latter condition is called \emph{modesty} and
+is not strictly necessary for the development of the theory, though 
+programmers would naturally expect it to hold.} If
 $(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$ represent the same graph 
 (e.g., because $\ell_V$ is a permutation of $\ell'_V$, and similarly for $\ell_A$ and $\ell'_A$)
 we say that they are \emph{equivalent} and write $(\ell_V, \ell_A)
@@ -115,7 +114,7 @@ $\values{\typeOf{A}}$ and $\setOf{A}$, satisfying
 %
 The \emph{support} of $A$ is the set $\support{A} = \set{v \in
   \values{\typeOf{A}} \such \xsome{x}{\setOf{A}}{v \rz_A x}}$ of those
-values which realize something. We define the relation $\per_A$ on
+values that realize something. We define the relation $\per_A$ on
 $\values{\typeOf{A}}$ by
 %
 \begin{equation*}
@@ -168,7 +167,7 @@ $\values{\typeOf{A}}$. A morphism $A \to B$ is represented by $v
   u \per_A u' \implies v\;u \per_B v\;u' \;.
 \end{equation}
 %
-Values $v$ and $v'$ which both satisfy~\eqref{eq:per-exponential}
+Values $v$ and $v'$ that both satisfy~\eqref{eq:per-exponential}
 represent the same morphism if, for all $u, u' \in \support{A}$,
 %
 \begin{equation*}
@@ -232,8 +231,8 @@ equivalence $\per_Z$ would be integer equality.
 Alternatively, we could take $\cint$ as the underlying type
 $\typeOf{Z}$, but let $\support{Z}$ include all integers. In this
 case, negation and addition could be simply integer addition and
-negation.\footnote{We should also take care to avoid integer
-  overflow.} Here the neutral element could be implemented as any
+negation\footnote{Taking care to prevent integer
+  overflow.}. Here the neutral element could be implemented as any
 integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
 equivalence-modulo-7.
 
@@ -296,7 +295,7 @@ or not equivalent; see Section~\ref{sec:decidable-sets}.
 \label{sec:interpretation-logic}
 
 In the realizability interpretation of logic, each formula~$\phi$ is
-assigned a set of \emph{realizers} which can be thought of as
+assigned a set of \emph{realizers} that can be thought of as
 computations that witness the validity of~$\phi$. The situation is
 somewhat similar, but not equivalent, to the propositions-as-types
 translation of logic into type theory, where the proofs of a
@@ -304,7 +303,7 @@ proposition correspond to terms of the corresponding type. More
 precisely, to each formula~$\phi$ we assign an underlying type
 $\typeOf{\phi}$ of realizers, but unlike in the propositions-as-types
 translation, not all terms of type $\typeOf{\phi}$ are necessarily
-valid realizers for~$\phi$, and some terms which are realizers may not
+valid realizers for~$\phi$, and some terms that are realizers may not
 correspond to any proofs, for example, if they denote partial
 functions or use computational effects.
 
@@ -373,7 +372,7 @@ non-computable) function $\setOf{A} \times \values{\typeOf{\phi}} \to
 \set{\ofalse, \otrue}$. In terms of pers, which is what RZ uses, a
 predicate~$\phi$ on a per~$A = (\typeOf{A}, {\per_A})$ is a (possibly
 non-computable) function $\phi : \values{\typeOf{A}} \times
-\values{\typeOf{\phi}} \to \oProp$ which is
+\values{\typeOf{\phi}} \to \oProp$ that is
 %
 \begin{itemize}
 \item \emph{strict:} if $\phi(u,v)$ then $u \in \support{A}$, and
@@ -399,7 +398,7 @@ such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
 \RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $v$ realizing a real
 number~$x$ such that $x^3 + a x + b = 0$, and $w$ is irrelevant. This
 can be ``optimized'' to a realizer of type
-$\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ which
+$\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ that
 does not bother to compute~$w$. In essence then, a realizer~$r$
 for~\eqref{eq:square-root} computes a root of the cubic equation. Note
 that $r$ is \emph{not} extensional, i.e., different realizers~$t$
@@ -421,13 +420,13 @@ $\iimply{\phi}{\ifalse}$, whose realizers have type
 $\oarrow{\typeOf{\phi}}{\ounit}$. Such realizers do not compute
 anything useful, and we may as well throw them away. Sometimes only a
 part of a realizer is computationally irrelevant, as we saw in the
-last example. Propositions which are free of any computational content
+last example. Propositions that are free of any computational content
 are characterized as the \emph{$\lnot\lnot$-stable propositions}. A
 proposition~$\phi$ is said to be $\lnot\lnot$-stable, or just
 \emph{stable} for short, when $\iimply{\inot{\inot{\phi}}}{\phi}$ is
 valid. Any \emph{negative} proposition, i.e., one built from $\itrue$,
 $\ifalse$, $=$, $\land$, $\Rightarrow$ and $\forall$ is stable, but
-there may be other propositions which are stable and are not written
+there may be other propositions that are stable and are not written
 in the negative form.
 
 It would be unproductive to bother the programmer with requirements
@@ -463,7 +462,7 @@ elements of the underlying set.
 We may express uniform families in terms of pers, just like we did for
 predicates. A uniform family $\family{A_i}{i \in I}$ of pers indexed
 by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
-of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ which is
+of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
 % 
 \begin{itemize}
 \item \emph{strict:} if $u \per_{A_i} v$ then $i \in \support{I}$, and
