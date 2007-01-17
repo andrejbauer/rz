@@ -10,6 +10,10 @@ module type T =
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
+   (** predicate ||s|| : s -> bool *)
+   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
+   *)
+    
    type t
     
    (** predicate (=t=) : s -> t -> t -> bool *)
@@ -24,6 +28,11 @@ module type T =
         Assertion transitive_t = 
           forall x:s, y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w ->
             y =(t x)= w
+   *)
+    
+   (** predicate ||t|| : s -> t -> bool *)
+   (**  Assertion total_def_t = 
+          forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y
    *)
     
    val a : s * t

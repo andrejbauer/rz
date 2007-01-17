@@ -174,7 +174,7 @@ and output_mbnds ppf lst =
   output_components output_mbnd ", " ppf lst
 
 and output_pbnd ppf (n,pt) = 
-  fprintf ppf "%s:%a" (Name.string_of_name n)  output_proptype pt
+  fprintf ppf "%a:%a" output_name n  output_proptype pt
 
 and output_pbnds ppf = function
     [] -> ()
@@ -189,6 +189,7 @@ and output_proptype ppf = function
   | PropArrow(ty, pt) ->
       fprintf ppf "%a -> %a"  output_ty_2 ty   output_proptype pt
 
+(* NOT USED
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
 	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ty t
@@ -199,6 +200,7 @@ and output_assertion_binds ppf lst =
 	    outputer trm  ", "  output_loop trms
       in
 	output_loop ppf lst
+*)
 
 and output_totalbinds ppf lst =
       let outputer ppf (n,sty) = 
@@ -225,8 +227,13 @@ and output_term_0 ppf = function
 and output_term_apps ppf lst = 
   output_components_nobreak output_term_0 " " ppf lst
 
-and output_name ppf nm = 
-  fprintf ppf "%s" (Name.string_of_name nm)
+and output_name ppf = function
+  | Name.N (_, Name.Per) as nm ->
+      fprintf ppf "(=%s=)" (Name.string_of_name nm)
+  | Name.N (_, Name.Support) as nm ->
+      fprintf ppf "||%s||" (Name.string_of_name nm)
+  | nm ->
+      fprintf ppf "%s" (Name.string_of_name nm)
       
 and output_ln ppf ln = 
   fprintf ppf "%s" (string_of_ln ln)
@@ -326,30 +333,21 @@ and output_prop_10 ppf = function
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
-    PApp (PApp (NamedPer (ln, []), t), u) -> 
-      fprintf ppf "%a =%a= %a" 
-        output_term_4 t   output_ln ln   output_term_4 u
-  | PApp (PApp (NamedPer (ln, lst), t), u) -> 
-      fprintf ppf "%a =(%a %a)= %a" 
-        output_term_4 t   output_ln ln   output_term_apps lst   output_term_4 u
-  | PApp (NamedSupport (ln, []), t) ->
-      fprintf ppf "%a : ||%a||"
-	output_term_9 t   output_ln ln
-  | PApp (NamedSupport (ln, lst), t) ->
-      fprintf ppf "%a : ||%a %a||"
-	output_term_9 t   output_ln ln   output_term_apps lst
-  | PApp (SimpleSupport sty, t) ->
-      fprintf ppf "%a : ||%a||"
-	output_term_9 t   output_simple_ty sty
+    PApp (PApp (p, t), u) when isPerProp p -> 
+      fprintf ppf "%a %a %a" 
+        output_term_4 t   output_per p   output_term_4 u
+  | PApp (p, t) when isSupportProp p ->
+      fprintf ppf "%a : %a"
+	output_term_9 t   output_support p
+(* XXX the commented lines below do not work when something like "(<) x y z" appears because
+   it would print "x < y z" when probably it should print "(<) x y z" or "(x < y) z":
+  | PApp (PApp (BasicProp (LN(None, Name.N(op, Name.Infix0))), t), u) ->
+      fprintf ppf "%a %s %a"
+	output_term_8 u   op   output_term_8 u
+*)
   | PApp (p, t) ->
       fprintf ppf "%a %a"
 	output_prop_9 p   output_term_0 t
-  | NamedProp (ln, Dagger, lst) ->
-      fprintf ppf "%a %a"
-        output_ln ln   output_term_apps lst
-  | NamedProp (ln, t, lst) ->
-      fprintf ppf "%a %a"
-         output_ln ln   output_term_apps (lst@[t])
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
@@ -362,29 +360,60 @@ and output_prop_8 ppf = function
 and output_prop_0 ppf = function
     True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
-  | NamedPer (ln, []) -> fprintf ppf "=%a=" output_ln ln
-  | NamedPer (ln, lst) ->
-      fprintf ppf "=(%a %a)="
-	output_ln ln   output_term_apps lst
-  | NamedSupport (ln, []) -> fprintf ppf "||%a||" output_ln ln
-  | NamedSupport (ln, lst) ->
-      fprintf ppf "||%a %a||"
-	output_ln ln   output_term_apps lst
-  | SimpleSupport sty ->
+  | BasicProp (LN (_, Name.N(_, Name.Per)) as ln) ->
+      fprintf ppf "=%a="
+	output_ln ln
+  | BasicProp (LN (_, Name.N(_, Name.Support)) as ln) ->
       fprintf ppf "||%a||"
-	output_simple_ty sty
+	output_ln ln
+  | BasicProp ln -> output_ln ppf ln
+  | SimpleSupport sty -> fprintf ppf "||%a||" output_simple_ty sty
+  | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_ty sty
   | And [] -> fprintf ppf "true"
   | prp ->
 (*      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp)); *)
       fprintf ppf "(@[<hov>%a@])"   output_prop prp
     
-and output_app ppf = function
-    ((LN(None, Name.N(op, (Name.Infix0|Name.Infix1|Name.Infix2|Name.Infix3|Name.Infix4)))), [u;v]) ->
-       fprintf ppf "%a %s %a" 
-         output_term u  op  output_term v
-  | (ln, trms) -> 
-      fprintf ppf "%a %a" 
-	 output_ln ln   (output_components_nobreak output_term_8 " ") trms
+and output_per ppf p =
+  let rec output_per' ppf = function
+    | BasicProp ln -> output_ln ppf ln
+    | PApp (p, t) ->
+	fprintf ppf "%a %a"
+	  output_per' p   output_term_0 t
+    | _ -> failwith "pp.ml: invalid call to output_per"
+  in
+    match p with
+      | BasicProp ((LN (_, Name.N(_, Name.Per))) as ln) ->
+	  fprintf ppf "=%a="
+	    output_ln ln
+      | SimplePer sty ->
+	  fprintf ppf "=%a="
+	    output_simple_ty sty
+      | _ ->
+	  fprintf ppf "=(%a)="
+	    output_per' p
+
+and output_support ppf p =
+  let rec output_support' ppf = function
+    | BasicProp ln -> output_ln ppf ln
+    | SimpleSupport sty ->
+	fprintf ppf "%a"
+	  output_simple_ty sty
+    | PApp (p, t) ->
+	fprintf ppf "%a %a"
+	  output_support' p   output_term_0 t
+    | _ -> failwith "pp.ml: invalid call to output_support"
+  in
+    match p with
+      | BasicProp ((LN (_, Name.N(_, Name.Support))) as ln) ->
+	  fprintf ppf "||%a||"
+	    output_ln ln
+      | SimpleSupport sty ->
+	  fprintf ppf "||%a||"
+	    output_simple_ty sty
+      | _ ->
+	  fprintf ppf "||%a||"
+	    output_support' p
 
 (** Outputs a type to the pretty-printing formatter ppf.
       The various output_ty_n functions each will display a type of 
@@ -483,8 +512,8 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
 	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, PropSpec pt, assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>(** predicate %s : %a *)@]%a@]" 
-	(Name.string_of_name nm)   output_proptype pt
+      fprintf ppf "@[<v>@[<hov 2>(** predicate %a : %a *)@]%a@]" 
+	output_name nm   output_proptype pt
 	output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->

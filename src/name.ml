@@ -4,7 +4,17 @@
 
 type label = string
 
-type fixity = Word | Prefix | Infix0 | Infix1 | Infix2 | Infix3 | Infix4 | Wild
+type fixity =
+  | Word
+  | Prefix
+  | Per
+  | Support
+  | Infix0
+  | Infix1
+  | Infix2
+  | Infix3
+  | Infix4
+  | Wild
 
 type bare_name = string * fixity
 
@@ -37,6 +47,8 @@ let string_of_name =
   let string_of_bare_name = function 
     | (n,   Wild) -> n
     | (str, Word) -> str
+    | (str, Per) -> str
+    | (str, Support) -> str
     | ("*"  ,_) -> "( * )"
     | (str,_) -> "(" ^ str ^ ")"
   in
@@ -46,11 +58,9 @@ let string_of_name =
       | G (k, lst) -> "gen" ^ string_of_int k ^
 	  "<" ^ (String.concat ";" (List.map string_of_bare_name lst)) ^ ">"
 
-(* this is an ugly hack *)
-let perName n = N ("=" ^ string_of_name n ^ "=", Infix0)
+let perName n = N (string_of_name n, Per)
 
-(* this is an ugly hack *)
-let totalName n = N ("||" ^ string_of_name n ^ "||", Word)
+let supportName n = N (string_of_name n, Support)
 
 (** capitalize_name: name -> name *)
 let capitalize_name = function

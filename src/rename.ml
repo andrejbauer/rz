@@ -182,11 +182,9 @@ and renProp ctx = function
 
   | SimpleSupport sty -> SimpleSupport (renSimpleTy ctx sty)
 
-  | NamedSupport (ln, lst) -> NamedSupport (renLN ctx ln, renTermList ctx lst)
+  | SimplePer sty -> SimplePer (renSimpleTy ctx sty)
 
-  | NamedPer (ln, lst) -> NamedPer (renLN ctx ln, renTermList ctx lst)
-      
-  | NamedProp (ln, t, lst) -> NamedProp (renLN ctx ln, renTerm ctx t, renTermList ctx lst)
+  | BasicProp ln -> BasicProp (renLN ctx ln)
 
   | Equal (t1, t2) -> Equal (renTerm ctx t1, renTerm ctx t2)
 

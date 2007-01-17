@@ -9,6 +9,11 @@ module type List =
                      Assertion transitive_s = 
                        forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
                 *)
+                 
+                (** predicate ||s|| : s -> bool *)
+                (**  Assertion total_def_s = 
+                       forall x:s,  x : ||s|| <-> x =s= x
+                *)
               end) ->
  sig
    type list
@@ -20,6 +25,11 @@ module type List =
         Assertion transitive_list = 
           forall x:list, y:list, z:list,  x =list= y /\ y =list= z ->
             x =list= z
+   *)
+    
+   (** predicate ||list|| : list -> bool *)
+   (**  Assertion total_def_list = 
+          forall x:list,  x : ||list|| <-> x =list= x
    *)
     
    val nil : list

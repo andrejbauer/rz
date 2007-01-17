@@ -421,11 +421,7 @@ let rec checkFact ({facts = facts} as ctx) prp =
     (match prp with 
 	And prps -> List.for_all (checkFact ctx) prps
       | Imply (prp1,prp2) -> 
-	  checkFact (insertFact ctx prp1) prp2 ||
-	  (* Don't call checkFact recursively here, or we'll
-	     go into an infinite loop *)
-	  List.mem (Iff(prp1,prp2)) facts ||
-	  List.mem (Iff(prp2,prp1)) facts
+	  checkFact (insertFact ctx prp1) prp2
       | Iff(prp1,prp2) ->
 	  checkFact ctx (Imply(prp1,prp2)) &&
 	    checkFact ctx (Imply(prp2,prp1))
@@ -438,9 +434,9 @@ let rec checkFact ({facts = facts} as ctx) prp =
 	  (* Don't call checkFact recursively here, or we'll
 	     go into an infinite loop *)
 	  List.mem (Equal(t2,t1)) facts
-      | PApp(PApp(NamedPer(nm,args), t1), t2) ->
+      | PApp(PApp (p, t1), t2) when isPerProp p ->
 	  (* Ditto *)
-	  List.mem (PApp(PApp(NamedPer(nm,args), t2), t1)) facts
+	  List.mem (PApp(PApp(p, t2), t1)) facts
       | _ -> false)
 
 and insertFact ({facts=facts} as ctx) prp =
@@ -449,7 +445,9 @@ and insertFact ({facts=facts} as ctx) prp =
   else
     (match prp with
 	And prps -> insertFacts ctx prps
-      | Not(Not prp) -> insertFact ctx prp (* Classical logic! *)
+      | Not (Not prp) -> insertFact ctx prp (* Classical logic! *)
+      | Iff(prp1,prp2) ->
+	  insertFact (insertFact ctx (Imply(prp1,prp2))) (Imply(prp2,prp1))
       | _ -> { ctx with facts = prp::facts })
 
 and insertFacts ctx prps =

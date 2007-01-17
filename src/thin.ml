@@ -477,18 +477,9 @@ and thinProp (ctx: context) orig_prp =
     match orig_prp with
 	True                    -> True
       | False                   -> False
-      | SimpleSupport sty ->
-	  let sty' = thinSimpleTy ctx sty
-	  in SimpleSupport sty'
-      | NamedSupport (n, lst)     -> 
-	  let (obs, lst') = thinTerms' ctx lst
-	  in foldPObligation obs (NamedSupport (n, lst'))
-      | NamedPer (n, lst)       -> 
-	  let (obs, lst') = thinTerms' ctx lst
-	  in foldPObligation obs (NamedPer (n, lst'))
-      | NamedProp (n, t, lst)   -> 
-	  let (obs, lst') = thinTerms' ctx lst
-	  in foldPObligation obs (NamedProp (n, thinTerm' ctx t, lst'))
+      | SimpleSupport sty       -> SimpleSupport (thinSimpleTy ctx sty)
+      | SimplePer sty           -> SimplePer (thinSimpleTy ctx sty)
+      | BasicProp _ as p        -> p
       | Equal(e1, e2) -> 
 	  let (_,e1',ty1') = thinTerm ctx e1
 	  in let e2' = thinTerm' ctx e2

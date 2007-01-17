@@ -10,6 +10,10 @@ module type A =
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
+   (** predicate ||a|| : a -> bool *)
+   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   *)
+    
    val c : a
    (**  Assertion c_support =  c : ||a||
    *)
@@ -23,6 +27,11 @@ module type A =
                       
                      Assertion transitive_e = 
                        forall x:e, y:e, z:e,  x =e= y /\ y =e= z -> x =e= z
+                *)
+                 
+                (** predicate ||e|| : e -> bool *)
+                (**  Assertion total_def_e = 
+                       forall x:e,  x : ||e|| <-> x =e= x
                 *)
                  
                 type f = e
@@ -50,6 +59,10 @@ module type B =
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
+   (** predicate ||a|| : a -> bool *)
+   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   *)
+    
    type b = a
     
    (** predicate ||b|| : b -> bool *)
@@ -67,6 +80,10 @@ module type B =
          
         Assertion transitive_b' = 
           forall x:b', y:b', z:b',  x =b'= y /\ y =b'= z -> x =b'= z
+   *)
+    
+   (** predicate ||b'|| : b' -> bool *)
+   (**  Assertion total_def_b' =  forall x:b',  x : ||b'|| <-> x =b'= x
    *)
     
    val c : a

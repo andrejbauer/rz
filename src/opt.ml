@@ -701,16 +701,16 @@ and optProp ctx orig_prp =
   try
     let result_prop = 
       match orig_prp with
-	  True                      -> True
-	| False                     -> False
-	| PApp(PApp(NamedPer(n,lst),t1),t2) when optTerm ctx t1 = optTerm ctx t2 ->
+	  True                       -> True
+	| False                      -> False
+	| SimpleSupport sty          -> SimpleSupport (optSimpleTy ctx sty)
+	| SimplePer sty              -> SimplePer (optSimpleTy ctx sty)
+	| PApp(PApp(p, t1), t2) when (isPerProp p && optTerm ctx t1 = optTerm ctx t2) ->
 	    (** The comparision   trm =set= trm   can be simplified
                 to   trm : ||set||. *)
-	    optProp ctx (PApp(NamedSupport(n,lst), t1))
-	| SimpleSupport sty          -> SimpleSupport (optSimpleTy ctx sty)
-	| NamedSupport(n, [])        -> SimpleSupport (SNamedTy n)
-	| NamedSupport(n, lst)       -> NamedSupport (n, optTerms' ctx lst)
-	| NamedPer  (n, lst)         -> NamedPer (n, optTerms' ctx lst)
+	    optProp ctx (PApp(support_of_per p, t1))
+	| BasicProp ln -> BasicProp (applyPropRenamingLN ctx ln)
+(*
 	| NamedProp (n, Dagger, lst) -> 
 	    let n' = applyPropRenamingLN ctx n
 	    in NamedProp (n', Dagger, optTerms' ctx lst)
@@ -718,6 +718,7 @@ and optProp ctx orig_prp =
 	    let n' = applyPropRenamingLN ctx n
 	    in NamedProp (n', optTerm' ctx t, optTerms' ctx lst)
 	    
+*)
 	| Equal(e1, e2) -> 
 	    begin
 	      (** Optimize subexpressions *)

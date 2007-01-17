@@ -83,9 +83,8 @@ and proposition =
   | True                                      (* truth *)
   | False                                     (* falsehood *)
   | SimpleSupport of simple_ty                (* support of a simple set *)
-  | NamedSupport  of longname * term list     (* support of a named set *)
-  | NamedPer   of longname * term list        (* ext. equality of terms *)
-  | NamedProp  of longname * term * term list (* basic prop with a realizer *)
+  | SimplePer of simple_ty                    (* per of a simple set *)
+  | BasicProp  of longname                    (* basic prop with a realizer *)
   | Equal      of term * term                 (* (obs?) equality of terms *)
   | And        of proposition list            (* conjunction *)
   | Imply      of proposition * proposition   (* implication *)
@@ -151,6 +150,26 @@ let ln_of_name nm = LN (None, nm)
 
 (* id: name -> term *)
 let id nm = Id (ln_of_name nm)
+
+(* Is a proposition a per? *)
+let rec isPerProp = function
+  | BasicProp (LN (_, N(_, Per))) -> true
+  | SimplePer _ -> true
+  | PApp (p, _) -> isPerProp p
+  | _ -> false
+
+(* Is a proposition a support? *)
+let rec isSupportProp = function
+  | BasicProp (LN (_, N(_, Support))) -> true
+  | SimpleSupport _ -> true
+  | PApp (p, _) -> isSupportProp p
+  | _ -> false
+
+let rec support_of_per = function
+  | BasicProp (LN (m, N(s, Per))) -> BasicProp (LN (m, N(s, Support)))
+  | SimplePer sty -> SimpleSupport sty
+  | PApp (p, t) -> PApp (support_of_per p, t)
+  | _ -> failwith "outsyn.ml: invalid call to support_of_per"
 
 (* namedty: name -> ty *)
 let namedty nm = NamedTy (ln_of_name nm)
@@ -300,8 +319,9 @@ and fvProp' flt acc = function
     True  -> acc
   | False -> acc
   | SimpleSupport sty -> fvSimpleTy' flt acc sty
-  | NamedSupport (_, lst)
-  | NamedPer   (_, lst) -> fvTermList' flt acc lst
+  | SimplePer sty -> fvSimpleTy' flt acc sty
+  | BasicProp (LN(Some _, _)) -> acc
+  | BasicProp (LN(None,nm)) -> if List.mem nm flt then acc else nm :: acc
   | Not p -> fvProp' flt acc p
   | And lst -> fvPropList' flt acc lst
   | Equal (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
@@ -311,11 +331,6 @@ and fvProp' flt acc = function
   | PLambda     ((n, s), p) -> fvProp' (n::flt) (fvTy' flt acc s) p
   | ForallSupport ((n, sty), p) -> fvProp' (n::flt) (fvSimpleTy' flt acc sty) p
   | PApp  (p, t) -> fvProp' flt (fvTerm' flt acc t) p
-  | NamedProp (LN(None,nm), t, lst) ->
-      let acc' = fvTerm' flt (fvTermList' flt acc lst) t in
-	if List.mem nm flt then acc' else nm :: acc'
-  | NamedProp (LN(Some _, _), t, lst) -> 
-      fvTerm' flt (fvTermList' flt acc lst) t
   | PObligation (bnds, p, q) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvProp' flt' (fvProp' flt' acc p) q
@@ -478,9 +493,9 @@ and countProp cp prp =
       match prp with
 	True -> 0
       | False -> 0
+      | BasicProp _ -> 0
       | SimpleSupport sty -> countSimpleTy cp sty
-      | NamedSupport (_, lst) -> countTermList cp lst
-      | NamedPer (_, lst) -> countTermList cp lst
+      | SimplePer sty -> countSimpleTy cp sty
       | Equal (u, v) -> countTerm cp u + countTerm cp v
       | And lst -> countPropList cp lst
       | Imply (u, v) -> countProp cp u + countProp cp v
@@ -488,7 +503,6 @@ and countProp cp prp =
       | ForallSupport ((n, sty), p) -> countSimpleTy cp sty + countProp cp p
       | Not p -> countProp cp p
       | Iff (p, q) -> countProp cp p + countProp cp q
-      | NamedProp (_, t, lst) -> countTerm cp t + countTermList cp lst
       | PApp (p, t) -> countProp cp p + countTerm cp t
       | PLambda ((n, _), p) -> countProp cp p
       | PObligation (bnds, p, q) -> 
@@ -728,29 +742,11 @@ and substProp ?occ sbst = function
     True -> True
   | False -> False
   | SimpleSupport sty -> SimpleSupport (substSimpleTy ?occ sbst sty)
-  | NamedSupport (ln, lst) -> 
-      let ln' = 
-	match getTyLN sbst ln with
-	  None -> substLN ?occ sbst ln
-	| Some (NamedTy ln') -> ln'
-	| Some _ -> failwith "impossible substProp in NamedSupport"
-      in
-         NamedSupport (ln', substTermList ?occ sbst lst)
-  | NamedPer (ln, lst) -> 
-      let ln' = 
-	match getTyLN sbst ln with
-	  None -> substLN ?occ sbst ln
-	| Some (NamedTy ln') -> ln'
-	| Some _ -> failwith "impossible substProp in NamedPer"
-      in
-         NamedPer (ln', substTermList ?occ sbst lst)
-  | NamedProp (ln, t, lst) ->
-      let ln' = 
-	match getPropLN sbst ln with
-	  None -> substLN ?occ sbst ln
-	| Some ln' -> ln'
-      in
-        NamedProp (ln', substTerm ?occ sbst t, substTermList ?occ sbst lst)
+  | SimplePer sty -> SimplePer (substSimpleTy ?occ sbst sty)
+  | BasicProp ln ->
+      BasicProp (match getPropLN sbst ln with
+		   | None -> substLN ?occ sbst ln
+		   | Some ln -> ln)
   | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
   | And lst -> And (substPropList ?occ sbst lst)
   | Imply (p, q) -> Imply (substProp ?occ sbst p, substProp ?occ sbst q)
@@ -1147,11 +1143,8 @@ and string_of_prop level p =
       True -> (0, "true")
     | False -> (0, "false")
     | SimpleSupport sty -> (0, "||" ^ string_of_sty sty ^ "||")
-    | NamedSupport (n, []) -> (0, "||" ^ (string_of_ln n) ^ "||")
-    | NamedSupport (n, lst) -> (0, "||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
-    | NamedPer (n, lst) -> (0, "(=" ^ string_of_name_app (string_of_ln n) lst ^"=)")
-    | NamedProp (n, Dagger, lst) -> (0, string_of_name_app (string_of_ln n) lst)
-    | NamedProp (n, t, lst) -> (9, string_of_term t ^ " |= " ^ string_of_name_app (string_of_ln n) lst)
+    | SimplePer sty -> (0, "=(" ^ string_of_sty sty ^ ")=")
+    | BasicProp n -> (0, string_of_ln n)
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
     | And [] -> (0, "true")
     | And lst -> (10, string_of_prop_list " and " 10 lst)
@@ -1165,15 +1158,11 @@ and string_of_prop level p =
     | PLambda ((n, ty), p) ->
 	(14, "Pfun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
     | PApp (SimpleSupport sty, t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_sty sty ^ "||")
-    | PApp (NamedSupport (n, lst), t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_name_app (string_of_ln n) lst ^ "||")
-    | PApp (PApp (NamedPer (n, []), t), u) ->
-	(9, (string_of_term' 9 t) ^ " =" ^ (string_of_ln n) ^ "= " ^ (string_of_term' 9 u))
-    | PApp (PApp (NamedPer (n, lst), t), u) ->
-	(9, (string_of_term' 9 t) ^ " =(" ^ string_of_name_app (string_of_ln n) lst ^ ")= " ^ (string_of_term' 9 u))
-    | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, Dagger, []), u), t) ->
+    | PApp (PApp (SimplePer sty, t), u) -> (0, (string_of_term t) ^ "=(" ^ string_of_sty sty ^ ")=" ^ string_of_term u)
+    | PApp (PApp (BasicProp (LN(_,N(_,(Per|Infix0|Infix1|Infix2|Infix3|Infix4))) as op), t), u) ->
 	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
-    | PApp (PApp (NamedProp (LN(_,N(_,(Infix0|Infix1|Infix2|Infix3|Infix4))) as op, r, []), u), t) ->
-	(9, string_of_term r ^ " |= " ^ (string_of_infix (string_of_term u) op (string_of_term t)))
+    | PApp (BasicProp (LN(_,N(_,Support)) as op), u) ->
+	(9, string_of_term u ^ " : " ^ (string_of_ln op))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (bnds, p, q) ->
 	(14,
@@ -1860,22 +1849,10 @@ and hoistProp orig_prp =
 	True
       | False -> ([], orig_prp)
 	  
-      | SimpleSupport _ -> ([], orig_prp)
+      | SimpleSupport _ | SimplePer _ -> ([], orig_prp)
 	  (* XXX this ain't gonna work if simple types contain variables. *)
 
-      | NamedSupport(nm, trms) ->
-	  let (obs, trms') = hoistTerms trms
-	  in (obs, NamedSupport(nm,trms'))
-	    
-      | NamedPer(nm, trms) ->
-	  let (obs, trms') = hoistTerms trms
-	  in (obs, NamedPer(nm,trms'))
-	    
-      | NamedProp(lnm, trm, trms) ->
-	  let (obs1, trm') = hoist trm
-	  in let (obs2, trms') = hoistTerms trms
-	  in let (obs', trm'', trms'') = merge2ObsTermTerms obs1 obs2 trm' trms'
-	  in (obs', NamedProp(lnm, trm'', trms''))
+      | BasicProp _ -> ([], orig_prp)
 	    
       | Equal(trm1, trm2) ->
 	  let (obs1, trm1') = hoist trm1

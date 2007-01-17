@@ -8,6 +8,10 @@ let rec translateModel = function
   | L.ModelApp (mdl1, mdl2) -> ModulApp (translateModel mdl1, translateModel mdl2)
   | L.ModelOf _ -> failwith "Translate.translateModel: unimplemented"
 
+let translateModelOpt = function
+  | None -> None
+  | Some mdl -> Some (translateModel mdl)
+
 let translateLN = function
     L.LN (None, nm) -> LN (None, nm)
   | L.LN (Some mdl, nm) -> LN (Some (translateModel mdl), nm)
@@ -51,7 +55,7 @@ let rec map3 f lst1 lst2 lst3 =
 
 let pApp p t = match p with
     PLambda ((n, _), q) -> sbp n t q
-  | NamedSupport _ | SimpleSupport _ | NamedPer _ | NamedProp _ | PApp _ | PObligation _ | PLet _ -> PApp (p, t)
+  | SimpleSupport _ | SimplePer _ | BasicProp _ | PApp _ | PObligation _ | PLet _ -> PApp (p, t)
   | True | False | Equal _ | And _
   | Imply _ | Iff _ | Not _ | Forall _ | ForallSupport _ | PCase _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
@@ -64,6 +68,8 @@ let nest_forall_ty = List.fold_right (fun (y, {ty=t}) p -> Forall ((y,t), p))
 
 let nest_lambda = List.fold_right (fun (x,{ty=t}) p -> PLambda ((x,t), p))
 
+let nest_app p lst = List.fold_left pApp p lst
+
 let makeTot (x, t) p = PLambda ((x,t), p)
 
 let makePer (x, y, t) p = PLambda ((x,t), PLambda ((y,t), p))
@@ -75,25 +81,29 @@ let isPredicate n ty binds =
   let r = freshRz () in
   let ys = freshList (List.map (fun (_,{ty=t}) -> t) binds) in
     (nest_forall_ty binds
-      (Forall ((r, ty), Imply (NamedProp (n, id r, List.map id xs),
-			      And (List.map (fun (x,s) -> pApp s.tot (id x)) binds)))),
+      (Forall ((r, ty), Imply (pApp (nest_app (BasicProp n) (List.map id xs)) (id r),
+			       And (List.map (fun (x,s) -> pApp s.tot (id x)) binds)))),
       nest_forall_ty binds
 	(nest_forall_ty (List.map2 (fun (_,s) y -> (y,s)) binds ys)
 	  (Forall ((r, ty),
 		  Imply (And (List.map2 (fun (x,s) y -> pApp (pApp s.per (id x)) (id y)) binds ys),
-			Imply (NamedProp (n, id r, List.map id xs),
-			      NamedProp (n, id r, List.map id ys)))))))
+			Imply (pApp (nest_app (BasicProp n) (List.map id xs)) (id r),
+			       pApp (nest_app (BasicProp n) (List.map id ys)) (id r)))))))
 
-let isPer n binds =
+let setDecl tynm totnm pernm binds =
+  let tynm = ln_of_name tynm in
+  let totnm = ln_of_name totnm in
+  let pernm = ln_of_name pernm in
   let binds' = List.map (fun (_, s) -> (fresh s.ty, s)) binds in
-  let ty = NamedTy n in
+  let idxs = List.map (fun (x, _) -> id x) binds in
+  let ty = NamedTy tynm in
   let x, y, z = fresh3 ty in
   let p = 
-    let p0 = NamedPer (n, List.map (fun (x, _) -> id x) binds) in
+    let p0 = nest_app (BasicProp pernm) idxs in
       fun t1 t2 -> PApp (PApp (p0, t1), t2)
   in
   let q = 
-    let q0 = NamedPer (n, List.map (fun (x, _) -> id x) binds') in
+    let q0 = nest_app (BasicProp pernm) (List.map (fun (x, _) -> id x) binds') in
       fun t1 t2 -> PApp (PApp (q0, t1), t2)
   in
   (* strict *)
@@ -120,7 +130,13 @@ let isPer n binds =
 	    Forall ((y,ty),
 		   Forall ((z,ty),
 			  Imply (And [p (id x) (id y); p (id y) (id z)], p (id x) (id z)))))
-    ))
+    )),
+  (* definition of support *)
+  (nest_forall_ty binds
+     (Forall ((x, ty),
+	      Iff (pApp (nest_app (BasicProp totnm) idxs) (id x),
+		   p (id x) (id x)
+	     ))))
 
 let isEquiv p s =
   let q u v = pApp (pApp (pApp p (id u)) (id v)) Dagger in
@@ -148,18 +164,17 @@ let rec translateSet = function
       }
 
   | L.Basic (sln, L.KindSet) ->
-      let nm = translateSLN sln in
-	{ ty  = NamedTy nm;
-	  tot = SimpleSupport (SNamedTy nm);
-	  per = NamedPer (nm, []);
+      let tynm, _, _ = translateSLN sln in
+	{ ty  = NamedTy tynm;
+	  tot = SimpleSupport (SNamedTy tynm);
+	  per = SimplePer (SNamedTy tynm);
 	}
 
-  | L.Basic (sln, knd) ->
-      let nm = translateSLN sln in
-      let binds = bindings_of_setkind knd in
-	{ ty  = NamedTy nm;
-	  tot = nest_lambda binds (NamedSupport (nm, List.map (fun (y,_) -> id y) binds));
-	  per = nest_lambda binds (NamedPer (nm, List.map (fun (y,_) -> id y) binds));
+  | L.Basic (sln, _) ->
+      let tynm, totnm, pernm = translateSLN sln in
+	{ ty  = NamedTy tynm;
+	  tot = BasicProp totnm;
+	  per = BasicProp pernm;
 	}
 
   | L.Product lst ->
@@ -450,10 +465,7 @@ and translateProp = function
 	  then TopTy
 	  else NamedTy (translatePLN ln))
       in
-      let r = freshRz () in
-      let binds = bindings_of_proptype pt in
-	(ty, nest_lambda binds
-	  (PLambda ((r, ty), NamedProp (translateLN ln, id r, List.map (fun (y,_) -> id y) binds))))
+	(ty, BasicProp (translateLN ln))
 
   | L.And lst ->
       let lst' = List.map (translateProp) lst in
@@ -637,26 +649,26 @@ and bindings_of_setkind = function
       let m' = (if isWild m then fresh s'.ty else refresh m) in
 	(m', s') :: (bindings_of_setkind knd)
 
-and per_propkind n = function
-    L.KindSet -> PropArrow (NamedTy n, PropArrow (NamedTy n, Prop))
+and per_propkind ty = function
+    L.KindSet -> PropArrow (ty, PropArrow (ty, Prop))
   | L.KindArrow (_, s, knd) ->
       let t = translateSet s in
-	PropArrow (t.ty, per_propkind n knd)
+	PropArrow (t.ty, per_propkind ty knd)
 
-and total_propkind n = function
-    L.KindSet -> PropArrow (NamedTy n, Prop)
+and total_propkind ty = function
+    L.KindSet -> PropArrow (ty, Prop)
   | L.KindArrow (_, s, knd) ->
       let t = translateSet s in
-	PropArrow (t.ty, total_propkind n knd)
+	PropArrow (t.ty, total_propkind ty knd)
 
 and translateTheoryElement = function
   | L.Declaration(n, L.DeclSet (None, knd)) -> 
-      let n = L.typename_of_name n in
-      let spec_strict, spec_extensional, spec_symm, spec_trans =
-	isPer (ln_of_name n) (bindings_of_setkind knd)
+      let tynm, totnm, pernm = translateTyName n in
+      let spec_strict, spec_extensional, spec_symm, spec_trans, total_def =
+	setDecl tynm totnm pernm (bindings_of_setkind knd)
       in
-	[Spec (n, TySpec None, []);
-	 Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
+	[Spec (tynm, TySpec None, []);
+	 Spec (pernm, PropSpec (per_propkind (NamedTy (ln_of_name n)) knd),
 	      [{alabel = "strict_" ^ string_of_name n;
 		atyvars = [];
 		apbnds = [];
@@ -677,39 +689,48 @@ and translateTheoryElement = function
 		apbnds = [];
 		aannots = [Annot_NoOpt];
 		aprop = spec_trans}
-	      ])]
+	      ]);
+	 Spec (totnm, PropSpec (total_propkind (NamedTy (ln_of_name n)) knd),
+		[{alabel = "total_def_" ^ string_of_name n;
+		  atyvars = [];
+		  apbnds = [];
+		  aannots = [Annot_NoOpt];
+		  aprop = total_def}
+		])]
 
   | L.Declaration(n, L.DeclSet(Some s, knd)) ->
-      let {ty=t; tot=p; per=q} = translateSet s in
-      let tyname = NamedTy (ln_of_name (L.typename_of_name n)) in
+      let {ty=t1; tot=p1; per=q1} = translateSet s in
+      let {ty=t2; tot=p2; per=q2} = translateSet (L.Basic (L.set_longname_of_name n, knd)) in
+      let tyname, totname, pername = translateTyName n in
       let binds = bindings_of_setkind knd in
       let ys = List.map fst binds in
       let idys = List.map id ys in
-      let x = fresh t in
-      let y, y' = fresh2 t in
-	[Spec (n, TySpec (Some t), []);
-	 Spec (totalName n, PropSpec (total_propkind (ln_of_name n) knd),
-             [{alabel = string_of_name n ^ "_def_support";
-	       atyvars = [];
-	       apbnds = [];
-	       aannots = [];
-	       aprop =
-		 nest_forall_ty binds
-		   (Forall((x, tyname),
-			  Iff (PApp (NamedSupport (ln_of_name n, idys), id x),
-			      pApp (List.fold_left pApp p idys) (id x))))}]);
-	 Spec (perName n, PropSpec (per_propkind (ln_of_name n) knd),
-	      [{alabel = string_of_name n ^ "_def_per";
-	       atyvars = [];
-	       apbnds = [];
-	       aannots = [];
-	       aprop = 
-	         nest_forall_ty binds
-		 (Forall ((y,tyname),
-			  Forall ((y',tyname),
-				  Iff (PApp (PApp (NamedPer (ln_of_name n, idys), id y), id y'),
-				      pApp (pApp (List.fold_left pApp q idys) (id y)) (id y')))))}]
-	 )]
+      let x = fresh t1 in
+      let y, y' = fresh2 t1 in
+	[Spec (tyname, TySpec (Some t1), []);
+	 Spec (totname, PropSpec (total_propkind t2 knd),
+               [{alabel = string_of_name n ^ "_def_support";
+		 atyvars = [];
+		 apbnds = [];
+		 aannots = [];
+		 aprop =
+		    nest_forall_ty binds
+		      (Forall((x, t2),
+			      Iff (pApp (nest_app p2 idys) (id x),
+				   pApp (nest_app p1 idys) (id x))))}]);
+	 Spec (perName n, PropSpec (per_propkind t2 knd),
+	       [{alabel = string_of_name n ^ "_def_per";
+		 atyvars = [];
+		 apbnds = [];
+		 aannots = [];
+		 aprop = 
+	            nest_forall_ty binds
+		      (Forall ((y, t2),
+			  Forall ((y', t2),
+				  Iff (pApp (pApp (nest_app q2 idys) (id y)) (id y'),
+				       pApp (pApp (nest_app q1 idys) (id y)) (id y')))))
+		}
+	       ])]
 
   | L.Declaration(n, L.DeclProp(None, pt)) ->
       let tynm = L.prop_typename_of_name n in
@@ -751,7 +772,7 @@ and translateTheoryElement = function
 			      PLambda ((x,s'.ty),
                               PLambda ((y,s'.ty),
        			      PLambda ((any(), TopTy), 
-                                NamedProp (ln_of_name n, Dagger, (List.map id xs) @ [id x; id y]))))
+				       pApp (pApp (nest_app (BasicProp (ln_of_name n)) (List.map id xs)) (id x)) (id y))))
 			    in
 			      nest_forall bnds1 (isEquiv p s')
 		      }]
@@ -784,7 +805,7 @@ and translateTheoryElement = function
 		      binds
 		      (Forall ((r, ty),
 			       Iff (
-				 NamedProp (ln_of_name n, id r, idys),
+				 pApp (nest_app (BasicProp (ln_of_name n)) idys) (id r),
 				 pApp (List.fold_left pApp p' idys) (id r)
 			       )))
 		  )
@@ -842,9 +863,17 @@ and translateTheoryElement = function
   | L.Declaration(n, L.DeclTheory (thr,_)) ->
       [ Spec(n, SignatSpec (translateTheory thr), []) ]
 
-and translateSLN = function
-  | L.SLN (None, nm) -> LN (None, L.typename_of_name nm)
-  | L.SLN (Some mdl, nm) -> LN (Some (translateModel mdl), L.typename_of_name nm)
+and translateTyName nm =
+  let tynm = L.typename_of_name nm in
+    (tynm, supportName tynm, perName tynm)
+  
+
+and translateSLN (L.SLN (mdl, nm)) =
+  let tynm, totnm, pernm = translateTyName nm in
+  let mdl' = translateModelOpt mdl in
+    (LN (mdl', tynm),
+     LN (mdl', totnm),
+     LN (mdl', pernm))
 
 and translatePLN = function
   | L.LN (None, nm) -> LN (None, L.prop_typename_of_name nm)

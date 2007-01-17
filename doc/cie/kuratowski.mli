@@ -9,6 +9,10 @@ module type Semilattice =
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
+   (** predicate ||s|| : s -> bool *)
+   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
+   *)
+    
    val zero : s
    (**  Assertion zero_support =  zero : ||s||
    *)
@@ -48,6 +52,11 @@ module type K =
                      Assertion transitive_a = 
                        forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
                 *)
+                 
+                (** predicate ||a|| : a -> bool *)
+                (**  Assertion total_def_a = 
+                       forall x:a,  x : ||a|| <-> x =a= x
+                *)
               end) ->
  sig
    type s
@@ -57,6 +66,10 @@ module type K =
          
         Assertion transitive_s = 
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+   *)
+    
+   (** predicate ||s|| : s -> bool *)
+   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    val zero : s
@@ -111,11 +124,12 @@ module type K =
    *)
     
    val free : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's
-   (**  Assertion 's [(=s=):'s -> 's -> bool] free = 
+   (**  Assertion 's [(=s=):'s -> 's -> bool, ||s||:'s -> bool] free = 
           forall zero:'s, join:'s -> 's -> 's, 
-            (forall x:'s, y:'s,  x ='s= y -> y ='s= x) ->
-            (forall x:'s, y:'s, z:'s,  x ='s= y /\ y ='s= z -> x ='s= z) ->
-            zero : ||'s|| -> join : ||'s -> 's -> 's|| ->
+            (forall x:'s, y:'s,  x =s= y -> y =s= x) ->
+            (forall x:'s, y:'s, z:'s,  x =s= y /\ y =s= z -> x =s= z) ->
+            (forall x:'s,  x : ||s|| <-> x =s= x) -> zero : ||'s|| ->
+            join : ||'s -> 's -> 's|| ->
             (forall (x:||'s||, y:||'s||),  join x y ='s= join y x) ->
             (forall (x:||'s||, y:||'s||, z:||'s||), 
                join (join x y) z ='s= join x (join y z)) ->

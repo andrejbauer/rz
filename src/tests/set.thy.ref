@@ -9,5 +9,9 @@ module type T =
         Assertion transitive_s = 
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
+    
+   (** predicate ||s|| : s -> bool *)
+   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
+   *)
  end
 
