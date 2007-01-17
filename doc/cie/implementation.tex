@@ -86,7 +86,7 @@ appearing in the output of the Kuratowski example can be replaced by the single 
 \begin{source}
 val free : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's	
 \end{source}
-which replaces the module parameter \texttt{S} by two added term arguments term (corresponding to the module inputs \texttt{S.zero} and \texttt{S.join}) 
+which replaces the module parameter \texttt{S} by two extra term arguments term (corresponding to the module components \texttt{S.zero} and \texttt{S.join}) 
 and a type argument \texttt{'s} for the type of lattice elements (corresponding to the module input \texttt{S.s}).
 
 The other optional transformation is a \emph{hoisting} pass which lifts obligations in the output out to top-level positions.  This can make it easier to see exactly what one is obliged to provide.  When identical obligations appear in separate subterms of a term, hoisting can lift and merge these obligations, reducing redundancy.  However, moving obligations far from where they are used can make it harder to see why the obligation is required at all (and hence how one might satisfy the obligation), and so hoisting is turned off by default.
