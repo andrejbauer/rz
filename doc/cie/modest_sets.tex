@@ -284,7 +284,7 @@ equality.  Examples include implementations of semigroups with an undecidable wo
 problem~\cite{post47:_recur_unsol_probl_thue}, implementations of computable sets of integers (which might be realized by
 membership functions of type $\cint\to\cbool$), and implications of computable real numbers (which might be realized
 by infinite Cauchy sequences).  Every modest set induces a partial equivalence relation, but there is no
-presupposition that this equivalence actually be computable (implementable).
+presupposition that this equivalence actually is computable (implementable).
 
 We can require decidable equivalence
 by adding an axiom that any two elements are either equivalent
@@ -295,7 +295,7 @@ or not equivalent; see Section~\ref{sec:decidable-sets}.
 \label{sec:interpretation-logic}
 
 In the realizability interpretation of logic, each formula~$\phi$ is
-assigned a set of \emph{realizers} that can be thought of as
+assigned a set of \emph{realizers}, which can be thought of as
 computations that witness the validity of~$\phi$. The situation is
 somewhat similar, but not equivalent, to the propositions-as-types
 translation of logic into type theory, where the proofs of a
@@ -396,7 +396,7 @@ a realizer is a value~$r$ of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\oprod{\mathtt{real}}{\mathtt{unit}}}}$
 such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
 \RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $v$ realizing a real
-number~$x$ such that $x^3 + a x + b = 0$, and $w$ is irrelevant. This
+number~$x$ such that $x^3 + a x + b = 0$, and $w$ is trivial. This
 can be ``optimized'' to a realizer of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ that
 does not bother to compute~$w$. In essence then, a realizer~$r$
@@ -420,7 +420,7 @@ $\iimply{\phi}{\ifalse}$, whose realizers have type
 $\oarrow{\typeOf{\phi}}{\ounit}$. Such realizers do not compute
 anything useful, and we may as well throw them away. Sometimes only a
 part of a realizer is computationally irrelevant, as we saw in the
-last example. Propositions that are free of any computational content
+last example. Propositions that are free of computational content
 are characterized as the \emph{$\lnot\lnot$-stable propositions}. A
 proposition~$\phi$ is said to be $\lnot\lnot$-stable, or just
 \emph{stable} for short, when $\iimply{\inot{\inot{\phi}}}{\phi}$ is
@@ -459,7 +459,7 @@ point of view, because it removes dependencies at the level of types.
 Note also that there is no dependency on the realizers, only on the
 elements of the underlying set.
 
-We may express uniform families in terms of pers, just like we did for
+We may express uniform families in terms of pers, just as for
 predicates. A uniform family $\family{A_i}{i \in I}$ of pers indexed
 by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
 of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
