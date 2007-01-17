@@ -38,14 +38,11 @@ thy
 
   Definition nat := {k : integer| leq zero k}.
 
-  Axiom lt_reflexive:
-    forall x, lt x x.
-
   Axiom lt_transitive:
     forall x y z, lt x y /\ lt y z -> lt x z.
 
-  Axiom lt_antisymmetric:
-    forall x y, lt x y /\ lt y x -> x = y.
+  Axiom lt_asymmetric:
+    forall x y, lt x y -> not (lt y x).
 
   Axiom lt_dichotomy:
     forall x y, lt x y \/ x = y \/ lt y x.
@@ -96,14 +93,11 @@ Definition leq x y := not (gt x y).
 
 Definition geq x y := not (lt x y).
 
-Axiom lt_reflexive:
-  forall x, lt x x.
-
 Axiom lt_transitive:
   forall x y z, lt x y /\ lt y z -> lt x z.
 
-Axiom lt_antisymmetric:
-  forall x y, lt x y /\ lt y x -> x = y.
+Axiom lt_asymmetric:
+  forall x y, lt x y -> not (lt y x).
 
 Axiom lt_linear:
   forall x y z, lt x y -> lt x z \/ lt z y.
