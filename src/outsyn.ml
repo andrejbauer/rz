@@ -1840,6 +1840,8 @@ and quantifyObPat pat (ob : binding list * proposition) =
   | ConstrPat(_,None) -> ob
   | ConstrPat(_,Some(nm,ty)) -> quantifyOb nm ty ob
   
+and premiseOb hyp (bnd, prp) = (bnd, Imply(hyp, prp))
+  
 and quantifyObPats pats ob = 
   List.fold_right quantifyObPat pats ob
 
@@ -1867,7 +1869,8 @@ and hoistProp orig_prp =
       | Imply(prp1, prp2) ->
 	  let (obs1, prp1') = hoistProp prp1
 	  in let (obs2, prp2') = hoistProp prp2
-	  in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
+      in let obs2' = List.map (premiseOb prp1') obs2
+	  in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2' prp1' prp2'
 	  in (obs', Imply(prp1'', prp2''))
 	    
       | Iff(prp1, prp2) ->
