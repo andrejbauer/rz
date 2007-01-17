@@ -39,12 +39,12 @@ Further, in some cases $\iTH(\im_1)$ might be implementable while $\iTH(\im_2)$ 
 
 \begin{figure}
 	\[
-	\begin{array}{rl@{\qquad}l}
+	\begin{array}{rl@{\quad}l}
 		\noalign{\textbf{Propositions/Predicates}}
 		\ip,\ipp ::= 
 		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
-		  | & \itrue \ | \ \ifalse \ibar \inot{\ip_1} \ibar \iand{\ip_1}{\ip_2} \ibar 
-		       \ior{\ip_1}{\ip_2}\ | \ \iimply{\ip_1}{\ip_2} & \mbox{Predicate logic}\\
+		  | & \itrue \ | \ \ifalse \ibar \inot{\ip_1} \ibar {\ip_1}{\land}{\ip_2} \ibar 
+		       {\ip_1}{\lor}{\ip_2}\ | \ {\ip_1}{\Rightarrow}{\ip_2} & \mbox{Predicate logic}\\
 		  | & \ilambda{\ix}{\is}{\ip}  \ibar \iapp{\ip}{\ie} & \mbox{Predicates and application}\\
 		  | & \iequal{\ie_1}{\ie_2} & \mbox{Term equality}\\
 		  | & \iforall{\ix}{\is}{\ip}  \ibar 
@@ -77,7 +77,7 @@ Further, in some cases $\iTH(\im_1)$ might be implementable while $\iTH(\im_2)$ 
 		      \ibar \ileteclass{\ix}{\ipp}{\ie_1}{\ie_2}&\mbox{Equivalence class and picking a representative}\\
 		  | & \irz{\ie}
 		      \ibar \iletrz{\ix}{\ie_1}{\ie_2}&\mbox{Realized value and picking a realizer}\\
-		  | & \isubin{\ie}{\is} \ibar \isubout{\ie}{\is} &\mbox{Type coercion in and out of a subset}\\
+		  | & \icoerce{\ie}{\is} &\mbox{Type coercion (e.g., in and out of a subset)}\\
 		  | & \ithe{\ix}{\is}{\ip}&\mbox{Definite description}\\
 		  | & \ilet{\ix}{\ie_1}{\ie_2}&\mbox{Local definition}\\[5pt]
 		
@@ -88,8 +88,7 @@ Further, in some cases $\iTH(\im_1)$ might be implementable while $\iTH(\im_2)$ 
 		
 		\noalign{\textbf{Proposition Kinds}}
 		\ipt ::=
-		    & \iProp & \mbox{Classifier for propositions}\\
-		  | & \iStable & \mbox{Classifier for stable propositions}\\
+		    & \iProp \ibar \iStable & \mbox{Classifiers for all propositions/stable propositions}\\
 		  | & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
 		  | & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
 		
@@ -101,24 +100,24 @@ Further, in some cases $\iTH(\im_1)$ might be implementable while $\iTH(\im_2)$ 
 
 		\noalign{\textbf{Theory Elements}}
 		\ite ::=
-		     & \iDefinition{\ix}{\ie}.&\mbox{Name for a term}\\
-		   | & \iDefinition{\iS}{\is}.&\mbox{Name for a set}\\
-		   | & \iDefinition{\iP}{\ip}.&\mbox{Name for a proposition/predicate}\\
-		   | & \iDefinition{\iTH}{\ith}.&\mbox{Name for a theory}\\
+		     & \iDefinition{\ix}{\ie}.&\mbox{Give a name to a term}\\
+		   | & \iDefinition{\iS}{\is}.&\mbox{Give a name to a set}\\
+		   | & \iDefinition{\iP}{\ip}.&\mbox{Give a name to a proposition/predicate}\\
+		   | & \iDefinition{\iTH}{\ith}.&\mbox{Give a name to a theory}\\
 		   | & \iParameter{\ix}{\is}.&\mbox{Require an element in the given set}\\
 		   | & \iParameter{\iS}{\ik}.&\mbox{Require a set of the given kind}\\
 		   | & \iParameter{\iP}{\ipt}.&\mbox{Require a proposition/predicate of the given sort}\\
 		   | & \iParameter{\iM}{\ith}.&\mbox{Require a model of the given theory}\\
 		   | & \iAxiom{\iP}{\ip}.&\mbox{Axiom that must hold}\\[5pt]
 
-  		\noalign{\textbf{Theory}}
+  		\noalign{\textbf{Theories}}
 		\ith ::= 
-		     & \iTH\\
+		     & \iTH&\mbox{Theory name}\\
 %		   | & \iselect{\im}{\iTH}\\
-		   	| & \ithy{\ite_1,\ldots,\ite_n}\\
+		   	| & \ithy{\ite_1,\ldots,\ite_n} &\mbox{Theory of a model}\\
 		 	| & \idarrow{\iM}{\ith_1}{\ith_2} &\mbox{Theory of a uniform family of models}\\
 		  	| & \ilambda{\iM}{\ith_1}{\ith_2} \ibar 
-		      \iapp{\ith}{\iM}\\
+		      \iapp{\ith}{\iM}&\mbox{Parameterized theory and application}\\
 	\end{array}
 	\]
 	\label{fig:input}

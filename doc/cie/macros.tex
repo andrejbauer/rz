@@ -145,15 +145,16 @@
 \newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
 \newcommand{\isubin}[2]{#1\,{{:}{>}}\,#2}
 \newcommand{\isubout}[2]{#1\,{{:}{<}}\,#2}
+\newcommand{\icoerce}[2]{#1\,{:}\,#2}
 \newcommand{\ithe}[3]{\iota\,#1{:}#2{.}\, #3}
 \newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
 \newcommand{\ieclass}[2]{[#1]_{#2}}
 \newcommand{\ileteclass}[4]{\textsf{let}\ [#1]_{#2}\,{=}#3\ \textsf{in}\ #4}
 \newcommand{\irz}[1]{\textsf{rz}\,#1}
 \newcommand{\iletrz}[3]{\textsf{let}\ \textsf{rz}\,#1\,{=}\,#2\ \textsf{in}\ #3}
-\newcommand{\iinj}[2]{`{#1}\,#2}
-\newcommand{\imatches}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\cdots|\iinj{#5}{#6}\Rightarrow{#7}}
-\newcommand{\imatch}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}\Rightarrow{#4}\,|\,\iinj{#5}{#6}\Rightarrow{#7}}
+\newcommand{\iinj}[2]{{#1}\,#2}
+\newcommand{\imatches}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\imatch}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
 \newcommand{\iselect}[2]{#1{.}#2}
 
 \newcommand{\itag}{\mathit{tag}}
@@ -168,7 +169,7 @@
 \newcommand{\iDefinition}[2]{\mathsf{Definition}\ #1 \mathbin{{:}{=}} #2}
 \newcommand{\iParameter}[2]{\mathsf{Parameter}\ #1 : #2}
 \newcommand{\iAxiom}[2]{\mathsf{Axiom}\ #1 : #2}
-\newcommand{\ipt}{\tau}
+\newcommand{\ipt}{\Pi}
 \newcommand{\ik}{\kappa}
 \newcommand{\iarrow}[2]{#1{\to}#2}
 \newcommand{\idarrow}[3]{(#1{:}#2){\to}#3}

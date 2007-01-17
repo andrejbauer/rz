@@ -84,6 +84,18 @@ module, i.e., a function mapping modules to modules).  The latter would
 be appropriate, for example, when describing a uniform implementation of the real numbers
 that works given any implementation of natural numbers.
 
+Assertions within module specifications (which appear as code comments)
+are expressed in the \emph{negative fragment} of
+first-order logic, which contains constants for truth and falsehood,
+negation, conjunction, implication, equivalence, and universal
+quantification (but no disjunction or existential). This is the part
+of first-order logic that has no computational content in the
+realizability interpretation. Consequently, the classical and
+constructive interpretations of assertions agree. This is quite
+desirable, since RZ acts as a bridge between constructive mathematics
+and real-world programmers, which typically are not familiar with
+constructive logic.
+
 \begin{figure}
   \[
   \begin{array}{rl@{\qquad}l}
@@ -212,19 +224,10 @@ constraint, or a term in the input whose well-formedness requires the
 existence of a suitable term in the output, see
 Section~\ref{sec:exampl-with-oblig}.
 \fi
-Assertions are expressed in the \emph{negative fragment} of
-first-order logic, which contains constants for truth and falsehood,
-negation, conjunction, implication, equivalence, and universal
-quantification (but no disjunction or existential). This is the part
-of first-order logic that has no computational content in the
-realizability interpretation. Consequently, the classical and
-constructive interpretations of assertions agree. This is quite
-desirable, since RZ acts as a bridge between constructive mathematics
-and real-world programmers, which typically are not familiar with
-constructive logic. 
+
 \iffalse
 The basic predicates from which assertions are
-built are observatinal equality $\oequal{\oe_1}{\oe_2}$, pers
+built are observational equality $\oequal{\oe_1}{\oe_2}$, pers
 $\oper{s}{\oe_1}{\oe_2}$ on abstract types, and basic predicates
 declared as parameters. The formula $\ototal{\oe}{\os}$ stands for
 $\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
