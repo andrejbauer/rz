@@ -42,16 +42,88 @@ values~$x$ and~$y$ represent the same element of the modest set.
 \subsection{Examples with obligations}
 \label{sec:exampl-with-oblig}
 
-In this section we show several small examples in which RZ outputs
-obligations.
+In this section we show how RZ produces obligations, is sometimes able
+to optimize them away, and how it hoisting works.
 
-Consider how we might define division of real numbers. Given the set
-of real numbers~$\mathtt{real}$ and a constant $\mathtt{zero}$
-denoting~$0$, we might write
+Consider how we might define division of real numbers. Assuming the
+set of real numbers~$\mathtt{real}$, a constant $\mathtt{zero}$, and
+multiplication operation~$\mathtt{*}$ have already been declared and
+axiomatized, we might write:
 %
-\sourcefile{real.thy}
+\begin{source}
+Definition nonZeroReal := {x : real | not (x = zero)}.
+Parameter inv : nonZeroReal -> real.
+Axiom inverse : forall x : real, (not x = zero) -> x * (inv x) = one.
+Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
+\end{source}
+%
+We have defined the set of non-zero reals $\mathtt{nonZeroReal}$ and
+the inverse operation~$\mathtt{inv}$ on it. Division $x/y$ is defined
+as $x * \mathtt{inv}\,y$. This does \emph{not} mean that the
+programmer must necessarily implement division this way, only that the
+implementation of $x/y$ must be equivalent to $x * \mathtt{inv}\,y$.
 
-\internal{Andrej}{Unfinished section.}
+In the axiom $\mathtt{inverse}$, RZ encounters the subexpression
+$\mathtt{inv}\;x$. Because $x$ is quantified as an element of
+$\mathtt{real}$ rather than $\mathtt{nonZeroReal}$, the typechecking
+phase inserts a coercion that makes the expression well-typed.
+Translation so receives $\mathtt{inv}(x \mathbin{{:}{>}}
+\mathtt{nonZeroReal})$ and outputs
+%
+\begin{source}
+inv (assure u:unit . not (x =real= zero) in (x, u))
+\end{source}
+%
+If this were the final output, the programmer would have to verify
+that~$x$ is not zero, and provide a trivial realizer for it. However,
+the thinning phase first removes the trivial realizer,
+%
+\begin{source}
+inv (assure not (x =real= zero) in x)
+\end{source}
+%
+and then the optimizer determines that the obligation is not needed
+because the whole expressions appears under the hypothesis that~$x$ is
+not zero. So in the end the programmer sees just
+%
+\begin{source}
+(**  Assertion inverse =
+  forall (x:||real||),  not (x =real= zero) -> (x * inv x) =real= one
+*)
+\end{source}
+%
+Assuming further that a strict linear order $<$ on~$\mathtt{real}$ has
+been axiomatized, we might proceed by relating it to $\mathtt{inv}$:
+%
+\begin{source}
+Axiom inv_positive: forall x : real, zero < x -> zero < inv x.
+\end{source}
+%
+Once again $\mathtt{inv}\;x$ appears in the input, only this time the
+optimizer is unable to remove the obligation, so the output is
+%
+\begin{source}
+(**  Assertion inv_positive =
+       forall (x:||real||),  zero < x ->
+         zero < inv (assure (not (x =real= zero)) in x)
+*)
+\end{source}
+%
+This is perhaps hard to read, but if we activate the hoisting phase
+(see Section~\ref{sec:implementation}), the obligation is brought out
+to the top level. As this is done, the hypotheses under which the
+obligation appears are collected, and we get
+%
+\begin{source}
+(**  Assertion inv_positive =
+  assure (forall (x:||real||),  zero < x -> not (x =real= zero))
+    in forall (x:||real||),  zero < x -> zero < inv x
+*)
+\end{source}
+%
+Now it is easier to understand what must be checked, namely that
+positive reals are not zero---an easy conseaquence of irreflexivity
+of~$<$, but not something that RZ optimizer is aware of.
 
 
 \subsection{Finite sets}

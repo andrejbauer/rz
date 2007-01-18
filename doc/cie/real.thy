@@ -1,10 +1,15 @@
 Parameter real : Set.
 Parameter zero one: real.
-Parameter mul : real -> real -> real.
+Parameter ( * ) : real -> real -> real.
 
-Parameter inv : {x : real | not (x = zero)} -> real.
+Definition nonZeroReal := {x : real | not (x = zero)}.
 
-Axiom inverse:
-  forall x : real, (not x = zero) -> mul x (inv x) = one.
+Parameter inv : nonZeroReal -> real.
 
-Definition div (x : real) (y : {x:real|not(x=zero)}) := mul x (inv y).
+Axiom inverse: forall x : real, (not x = zero) -> x * (inv x) = one.
+
+Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
+
+Parameter (<) : real -> real -> Stable.
+
+Axiom inv_positive: forall x : real, zero < x -> zero < inv x.

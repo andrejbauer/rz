@@ -43,7 +43,7 @@ which case the trivial contribution can be immediately discarded.
 \subsection{Other Models of Computability}
 \label{sec:models-of-computability}
 
-Most formulations of computable mathematics are based on realizability
+Many formulations of computable mathematics are based on realizability
 models~\cite{Bauer:00}, even though they were not initially developed,
 nor are they usually presented within the framework of realizability:
 Recursive Mathematics~\cite{ershov98:_handb_recur_mathem} is based on
@@ -56,9 +56,27 @@ realizability over the graph model
 $\mathcal{P}\omega$~\cite{ScottD:dattl}. A common feature of these is
 that they use models of computation which are suitable for the
 theoretical studies of computability, rather than for practical
-programming. Since we want to emphasize the practical aspects of
-realizability, we have chosen instead an actual real-world programming
-language.
+programming. 
+
+Other approaches are based on programming languages augmented with
+datatypes for real
+numbers~\cite{Escardo,that-mexican-student-of-escardo} and topological
+algebras~\cite{TZ98}, or machine models augmented with (suitably chosen
+subsets of) real numbers such as Real
+RAM~\cite{aho74:_desig_analy_comput_algor}, BSS
+model~\cite{blum98:_compl_real_comput}, and the EGC
+model~\cite{yap06:_theor_real_comput_egc}. The motivation behind these
+ranges from purely theoretical concerns about computability and
+complexity to practical issues in the design of programming languages
+and algorithms in computational geometry. RZ attempts to improve on
+practicality by interfacing with an actual real-world programming
+language, and by provinding an input language which is rich enough to
+allow descriptions of involved mathematical structures that go well
+beyond the real numbers.
+
+\internal{Andrej}{
+Lastly, say someting about Constructive Mathematics in style of
+Bishop~\cite{Bishop:Bridges:85}, do not suck up too much.}
 
 
 %%% Local Variables: 
