@@ -544,8 +544,8 @@ Negation would now be specified as a constant of type
 $\forall n{:}N.\ \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
 would then have type $\typeOf{N}\to\typeOf{\ZZ_n}\to{\typeOf{\ZZ_n}}$,
 i.e., $\cint\to\cint\to\cint$, so that $\mathtt{neg}(n)$ would
-be a realizer for negation on $\ZZ_n$,   The realizer for addition must
-similarly take an extra $n$ parameter.  
+be a realizer for negation on $\ZZ_n$.   The realizer for addition would
+similarly take an extra argument $n$.  
 
 Any of the implementations suggested for $\ZZ_7$ would work here, with
 $7$ replaced by the parameter $n$; in one case we would have
