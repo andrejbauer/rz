@@ -43,7 +43,7 @@ values~$x$ and~$y$ represent the same element of the modest set.
 \label{sec:exampl-with-oblig}
 
 In this section we show how RZ produces obligations, is sometimes able
-to optimize them away, and how it hoisting works.
+to optimize them away, and how hoisting works.
 
 Consider how we might define division of real numbers. Assuming the
 set of real numbers~$\mathtt{real}$, a constant $\mathtt{zero}$, and
@@ -124,6 +124,24 @@ obligation appears are collected, and we get
 Now it is easier to understand what must be checked, namely that
 positive reals are not zero---an easy conseaquence of irreflexivity
 of~$<$, but not something that RZ optimizer is aware of.
+
+Lastly, we could define the golden ratio as the positive solution of
+$x^2 = x + 1$,
+%
+\begin{source}
+the x : real, (zero < x /\ x*x = x + one)
+\end{source}
+%
+Not surprisingly, RZ cannot determine that there is a unique such~$x$,
+so it outputs an obligation:
+%
+\begin{source}
+assure x:real.
+  (x : ||real|| /\ zero < x /\ x * x =real= x + one /\
+     (forall (x':||real||),  zero < x' /\ x' * x' =real= x' + one ->
+        x =real= x'))
+  in x
+\end{source}
 
 
 \subsection{Finite sets}
@@ -254,14 +272,14 @@ over a set~$A$ equipped with a decidable linear order.
 \label{sec:inductive-types}
 
 To demonstrate the use of dependent types we show how RZ handles
-general inductive types, also known as
-\emph{W-types}~\cite{w-type-reference}. Recall that a W-type is a set
-of well-founded trees, where the branching types of trees are
-described by a family of sets $B = \set{T(x)}_{x \in S}$. Each node in
-a tree has a \emph{branching type}~$x \in S$, which determines that
-the successors of the node are labeled by the elements of~$T(x)$. For
-example, to get non-empty binary trees whose leaves are labeled by
-natural numbers, define
+general inductive types, also known as W-types or general
+trees~\cite{nordstroem90:_progr_martin_type_theor}. Recall that a
+W-type is a set of well-founded trees, where the branching types of
+trees are described by a family of sets $B = \set{T(x)}_{x \in S}$.
+Each node in a tree has a \emph{branching type}~$x \in S$, which
+determines that the successors of the node are labeled by the elements
+of~$T(x)$. For example, to get non-empty binary trees whose leaves are
+labeled by natural numbers, define
 %
 \begin{align*}
   S &= \set{\mathtt{cons}} \cup \set{\mathtt{leaf}(n) \such n \in \NN}
@@ -317,8 +335,8 @@ $\mathtt{induction}$ into a specification of a polymorphic function
 which is a form of recursion on well-founded trees. Instead of trying
 to explain what $\mathtt{induction}$ is supposed to do, we show in
 Figure~\ref{fig:wtype-implementation} a surprisingly simple, complete
-hand-written implementation of W-types. The reader may entertain
-himself by figuring out how $\mathtt{induction}$ works.
+hand-written implementation of W-types. The reader may be entertained
+by figuring out how $\mathtt{induction}$ works.
 %
 \begin{figure}
   \centering
@@ -400,7 +418,7 @@ the use of computational effects. To keep the example short, we
 presume that we are already given the set of natural
 numbers~$\mathtt{nat}$ with the usual structure.
 
-A \emph{type 2 function} is a map $f : (\mathtt{nat} \to \mathtt{nat})
+A \emph{type 2 functional} is a map $f : (\mathtt{nat} \to \mathtt{nat})
 \to \mathtt{nat}$. It is said to be continuous if the output of $f(a)$
 depends only on an initial segment of the sequence~$a$. We can express
 this axiom in RZ as follows:
@@ -431,14 +449,17 @@ which says that $\mathtt{continuity}\,f\,a$ is a number~$p$ such that
 $f(a) = f(b)$ whenever $a$ and $b$ agree on the first~$p$ terms. In
 other words, $\mathtt{continuity}$ is a \emph{modulus of continuity}
 functional. It cannot be implemented in a purely functional
-language~\cite{modulus-violates-ac2}, but with the use of store we can
-implement it as
+language,\footnote{There are models of $\lambda$-calculus which validate
+  the choice principle~$AC_{2,0}$, but this principle contradicts the
+  existence of a modulus of continuity functional,
+  see~\cite[9.6.10]{Troelstra:van-Dalen:88:2}.} but with the use of
+store we can implement it as
 %
 \begin{source}
 let continuity f a =
-  let k = ref 0 in
-  let a' n = (k := max !k n; a n) in
-    f a' ; !k
+  let p = ref 0 in
+  let a' n = (p := max !p n; a n) in
+    f a' ; !p
 \end{source}
 %
 To compute a modulus for~$f$ at~$a$, the program creates a

@@ -13,3 +13,7 @@ Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
 Parameter (<) : real -> real -> Stable.
 
 Axiom inv_positive: forall x : real, zero < x -> zero < inv x.
+
+Parameter ( + ) ( - ) : real -> real -> real.
+
+Definition t := the x : real, zero < x /\ x*x = x + one.

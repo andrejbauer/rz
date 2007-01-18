@@ -80,16 +80,29 @@ sets as uniform families, cf.\ Section~\ref{sec:uniform-families}:
 The underlying output type~$t$ is still non-dependent, but the per is
 parameterized by~$s$.
 
-An element declaration $\iParameter{x}{s}$ is translated to
+A value declaration $\iParameter{x}{s}$ is translated to
 %
 \begin{align*}
   & \ovalspec{x}{s} \\
-  & \oassertion{\mathrm{support}_x}{\ototal{x}{s}}
+  & \oassertion{\mathrm{support}\_x}{\ototal{x}{s}}
 \end{align*}
 %
 which requires the definition of a value~$x$ of type~$s$ which is in
 the support of~$s$. When $s$ is not a basic set, RZ computes the
 interpretation of the underlying type and support.
+
+A value definition $\iDefinition{x}{e}$ where~$e$ is an expression
+denoting an element of~$s$ is translated to
+%
+\begin{align*}
+  & \ovalspec{x}{s} \\
+  & \oassertion{x\_\mathrm{def}}{\oper{s}{x}{e}}
+\end{align*}
+%
+The assertion does \emph{not} force~$x$ to be defined as~$e$, only to
+be equivalent to it with respect to~$\per_s$. This is welcome, as
+often the easiest way to define a value is not the most efficient
+way to compute it.
 
 Constructions of sets in the input language are translated to
 corresponding constructions of modest sets. In
@@ -155,7 +168,7 @@ The coercion $\isubout{e}{s}$ converts an element of the subset $s =
 \set{x : t \such \phi(x)}$ to an element of~$t$. At the level of
 realizers this is achieved by the first projection, which keeps a
 realizer for the element but forgets the one for~$\phi(e)$. The
-opposite coercion $\isubout{e}{s}$ takes an $e \in t$ and converts it
+opposite coercion $\isubin{e}{s}$ takes an $e \in t$ and converts it
 to an element of the subset. This is only well-formed when $\phi(e)$
 is valid. Then, if $u \rz_t e$ and $v \rz \phi(e)$, a realizer for
 $\isubin{e}{s}$ is $(u, v)$. However, since RZ cannot in general find
@@ -182,7 +195,7 @@ on~$A$, the quotient $A/\rho$ is the modest set determined by
   u \rz_{A/\rho} \xi &\iff \some{y}{\xi}{u \rz_A y}.
 \end{align*}
 %
-Translation of and equivalence class $\ieclass{e}{\rho}$ is quite
+Translation of an equivalence class $\ieclass{e}{\rho}$ is quite
 simple: since a realizer for~$e$ also realizes $\ieclass{e}{\rho}$, RZ
 simply uses the same realizer. The elimination term
 $\ileteclass{x}{\rho}{\xi}{e}$, which means ``let $x$ be any element
@@ -264,8 +277,8 @@ realizers.
 Russell's definite description operator $\ithe{x}{s}{\phi(x)}$ denotes
 the unique element of $\isubset{x}{s}{\phi(x)}$. In case such an~$x$
 does not exist, or if there are several, the term is not well formed.
-The RZ translation essentially just asks the programmer to provide a
-suitable realizer $b$ for uniqueness,
+The RZ translation essentially just asks the programmer to provide
+suitable realizers for $x$ and for $\phi(x)$, and to check uniqueness,
 %
 \begin{equation*}
   \ooblig{x{:}s,b}{\typeOf{\phi}}{
@@ -325,10 +338,6 @@ type $ty\_p$ (which the programmer is supposed to define in an
 implementation), and we write $\oapp{\oapp{p}{x}}{a}$ instead of $a
 \rz \oapp{p}{x}$. The two assertions require that $p$ be strict and
 extensional with respect to $\per_s$.
-
-\internal{Andrej}{Maybe we should mention the kinds $\iStable$ and
-  $\iEquiv{s}$ in Section~\ref{sec:input-language} so we do not have
-  to introduce them here.}
 
 Frequently we know that a predicate is stable, which can be taken into
 account when computing its realizability interpretation. For this

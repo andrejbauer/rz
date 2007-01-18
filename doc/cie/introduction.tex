@@ -13,7 +13,7 @@ neutral element, and a unary operator that computes inverses.
 But for more interesting structures, especially those arising in
 mathematical analysis, the answer is much less obvious. How do we
 implement the real numbers (a Cauchy-complete Archimedean ordered
-field)? Or, decide the operations supported by a compact metric
+field)? Or, design the operations supported by a compact metric
 space or a space of smooth functions? Significant research goes into
 finding representations that provide a satisfactory theory of
 computability on such structures~\cite{Wei00,TZ98,Bla97,EL00}, and
@@ -43,18 +43,18 @@ and postconditions).
 
 %\bigskip
 
-We have therefore implemented a system, called RZ, to serve as a bridge between
+We have therefore implemented a system, called RZ,\footnote{RZ is publicly available for download at \url{http://math.andrej.com/rz/}.} to serve as a bridge between
 the logical world and the programming world. RZ automatically translates
 specifications in constructive logic into standard interface code in a
 programming language. (Currently we produce interfaces in 
 Objective Caml~\cite{ocaml}, but other languages are possible
 as well.)
 
-The constructive part of the original specification turns standard code for
-an interface,
+The constructive part of the original specification turns into
+code interface,
 listing types and values to be implemented. The remainder of
 the specification is maintained as assertions about these types and values.
-Because these assertions have no computational content their constructive
+Because assertions have no computational content their constructive
 and classical meanings agree, and they can thus
 be understood by programmers (and mathematicians) more used to
 classical logic.

@@ -10,7 +10,7 @@ INCLUDES =
 
 OCAMLFLAGS = $(INCLUDES) -g # -p a
 OCAMLCPFLAGS = 
-OCAMLOPTFLAGS =  $(INCLUDES) -unsafe -inline 5
+OCAMLOPTFLAGS =  $(INCLUDES)
 
 BYTE_OBJS = name.cmo \
 	syntax.cmo \

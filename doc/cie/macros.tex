@@ -140,6 +140,8 @@
 \newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
 \newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
 \newcommand{\iapp}[2]{#1\ #2}
+\newcommand{\ipcases}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\ipcase}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
 
 \newcommand{\ituple}[2]{(#1,\ldots,#2)}
 \newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
@@ -209,7 +211,7 @@
 \newcommand{\oproj}[2]{\mathsf{p}_{#2}\,#1} % projection
 \newcommand{\oinj}[2]{`#1\,#2} % sum injection
 \newcommand{\omatch}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}\to{#4}\obar\oinj{#5}{#6}\to{#7}}
-\newcommand{\omatches}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}\to{#4}\,|\cdots|\oinj{#5}{#6}\to{#7}}
+\newcommand{\omatches}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}\to{#4}\,|\cdots\,|\oinj{#5}{#6}\to{#7}}
 \newcommand{\ooblig}[4]{\mathsf{assure}\,#1{:}#2.\,#3\,\mathsf{in}\,#4}
 \newcommand{\oobligx}[2]{\mathsf{assure}\,#1\,\mathsf{in}\,#2}
 \newcommand{\olet}[3]{\mathsf{let}\,#1{=}#2\,\mathsf{in}\,#3}
@@ -222,12 +224,14 @@
 \newcommand{\oand}[2]{#1 \land #2} % and
 \newcommand{\oimply}[2]{#1 \Rightarrow #2} % imply
 \newcommand{\oiff}[2]{#1 \Leftrightarrow #2} % iff
+\newcommand{\opcase}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}{\Rightarrow}{#4}\,|\,\oinj{#5}{#6}\Rightarrow{#7}}
+\newcommand{\opcases}[7]{\mathsf{match}\,#1\,\mathsf{with}\,\oinj{#2}{#3}\Rightarrow{#4}\,|\cdots\,|\oinj{#5}{#6}\Rightarrow{#7}}
 \newcommand{\ototal}[2]{#1{:}\support{#2}} % support membership
 \newcommand{\oper}[3]{#2\,{\approx_{#1}}\,#3} % per
 \newcommand{\oequal}[2]{#1{=}#2} % observational equality
 \newcommand{\oforall}[3]{\forall #1{:}#2.\,#3}
 \newcommand{\oforallt}[3]{\forall #1{:}\support{#2}.\,#3}
-%%% Modest sets?
+%%% Modest sets
 \newcommand{\oS}{S}
 \newcommand{\os}{s}
 %%% Modules

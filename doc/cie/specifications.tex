@@ -24,8 +24,8 @@ For example, if we look at the definition of module type $\mathtt{Ab}$
 in Figure~\ref{fig:module-example}, we might guess 
 that $\mathtt{Ab}$ is a signature for an Abelian group. 
 %
-But $\mathtt{Ab}$ by itself requires an implementation satisfy
-the signature of an Abelian
+However, $\mathtt{Ab}$ by itself requires an implementation satisfy
+only the signature of an Abelian
 group, but does not guarantee it behaves as an Abelian group.
 A complete description would contain the
 following further \emph{assertions}:
@@ -88,13 +88,33 @@ Assertions within module specifications (which appear as code comments)
 are expressed in the \emph{negative fragment} of
 first-order logic, which contains constants for truth and falsehood,
 negation, conjunction, implication, equivalence, and universal
-quantification (but no disjunction or existential). This is the part
-of first-order logic that has no computational content in the
-realizability interpretation. Consequently, the classical and
-constructive interpretations of assertions agree. This is quite
-desirable, since RZ acts as a bridge between constructive mathematics
-and real-world programmers, which typically are not familiar with
-constructive logic.
+quantification (but no disjunction or existential). For convenience we
+also introduce the propositional case
+%
+\begin{equation*}
+  \opcases{\oe}{\ol_1}{\ox_1}{\op_1}{\ol_n}{\ox_n}{\op_n}
+\end{equation*}
+%
+which is read ``if $\oe$ is of the form $\oinj{\ol_i}{\ox_i}$ then
+$\op_i$ holds $(i = 1, \ldots, n)$'', with the understanding that the
+expression is false if $\oe$ fails to match all the cases. This can be
+expressed with the negative formula
+%
+\begin{multline*}
+  (\forall \ox_1.\, \oimply{\oe = \oinj{\ol_1}{\ox_1}}{\op_1})
+  \land \cdots \land
+  (\forall \ox_n.\,\oimply{\oe = \oinj{\ol_n}{\ox_n}}{\op_n})
+  \land {} \\
+  \lnot ((\forall x_1.\, \oe \neq \oinj{\ol_1}{\ox_1}) \land \cdots \land
+  (\forall x_n.\, \oe \neq \oinj{\ol_n}{\ox_n})).
+\end{multline*}
+%
+The negative fragment is the part of first-order logic that has no
+computational content in the realizability interpretation.
+Consequently, the classical and constructive interpretations of
+assertions agree. This is quite desirable, since RZ acts as a bridge
+between constructive mathematics and real-world programmers, which
+typically are not familiar with constructive logic.
 
 \begin{figure}
   \[
@@ -116,7 +136,7 @@ constructive logic.
     \obar \otuple{\oe_1}{\oe_n} 
     \obar \oproj{\oe}{n}&\mbox{Tuples and projection}\\
     | & \oinj{\ol}{\oe} 
-    \obar (\omatches{\oe_0}{\ol_1}{\ox_1}{\oe_1}{\ol_n}{\ox_n}{\oe_n})&\mbox{Injection and projection from a sum}\\
+    \obar (\omatches{\oe}{\ol_1}{\ox_1}{\oe_1}{\ol_n}{\ox_n}{\oe_n})&\mbox{Injection and projection from a sum}\\
     | & \ooblig{\ox}{\oty}{\op}{\oe} \obar \oobligx{\op}{\oe} &\mbox{Obligations}\\
     | & \olet{\ox}{\oe_1}{\oe_2}&\mbox{Local definitions}\\[5pt]
     
@@ -126,7 +146,8 @@ constructive logic.
     & \oP \obar \oselect{\oM}{\oP}&\mbox{Atomic
       proposition}\\
     | & \otrue  \obar \ofalse \obar \onot{\op_1} \obar \oand{\op_1}{\op_2} \obar 
-    \oimply{\op_1}{\op_2} \obar \oiff{\op_1}{\op_2} & \mbox{Predicate logic}\\
+    \oimply{\op_1}{\op_2} \obar \oiff{\op_1}{\op_2} & \mbox{Predicate logic}\\ 
+    | & \opcases{\oe}{\ol_1}{\ox_1}{\op_1}{\ol_n}{\op_n}{\oe_n}&\mbox{Propositional case}\\
     | & \olambda{\ox}{\oty}{\op}  \obar \oapp{\op}{\oe} &
     \mbox{Propositional functions and application}\\
     | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
@@ -180,8 +201,8 @@ types and terms that exist in OCaml.
 A special kind of term is an
 \emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
 $e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
-An obligation is equivalent to a combination of the indefinite
-description operator~\cite{epsilon-reference} and a local definition,
+An obligation is equivalent to a combination of Hilbert's indefinite
+description operator and a local definition,
 $\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
 $\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
 such that $\op$''. The alternative form $\oobligx{\op}{\oe}$ stands

@@ -69,11 +69,11 @@ of Longley~\cite{longley99when}. Such values are represented by terminating
 expressions that do not throw exceptions or return different results
 on different invocations.  They may \emph{use} exceptions,
 store, and other computational effects, provided they appear
-functional from the outside; a useful example using side-effects is
+functional from the outside; a useful example using computational effects is
 presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
 Note also that a functional value with a function type may diverge as
 soon as it is applied.   The collection $\Type$ with the assignment of functional
-values $|t|$ to each $t \in \Type$ forms a \emph{typed partial
+values $\values{t}$ to each $t \in \Type$ forms a \emph{typed partial
   combinatory algebra (TPCA)}, which provides a theoretical basis for
 the definition of a realizability model that suits our needs.
 
@@ -282,7 +282,7 @@ $\cfun{(k,m)}{(k \cmod 7 - m \cmod 7) \cmod 7 = 0}$.
 Not all modest sets have decidable
 equality.  Examples include implementations of semigroups with an undecidable word
 problem~\cite{post47:_recur_unsol_probl_thue}, implementations of computable sets of integers (which might be realized by
-membership functions of type $\cint\to\cbool$), and implications of computable real numbers (which might be realized
+membership functions of type $\cint\to\cbool$), and implementations of computable real numbers (which might be realized
 by infinite Cauchy sequences).  Every modest set induces a partial equivalence relation, but there is no
 presupposition that this equivalence actually is computable (implementable).
 
@@ -451,13 +451,13 @@ assignment of a set $A_i$ to each $i \in I$ from an \emph{index
 In the category of modest sets the appropriate notion is that of a
 \emph{uniform} family~$\family{A_i}{i \in I}$, which is an assignment
 of a modest set $A_i = (\setOf{A_i}, \typeOf{A}, {\rz_{A_i}})$ to each
-$i \in \setOf{I}$, where $I$ is an index modest set,
-cf.~\cite{Jacobs,Birkedal}. The uniformity comes from the requirement
-that all the~$A_i$'s share the same underlying type~$\typeOf{A_i} =
-\typeOf{A}$. It is a desirable restriction from the implementation
-point of view, because it removes dependencies at the level of types.
-Note also that there is no dependency on the realizers, only on the
-elements of the underlying set.
+$i \in \setOf{I}$, where $I$ is an index modest
+set~\cite[6.3]{JacobsB:cltt}. The uniformity comes from the
+requirement that all the~$A_i$'s share the same underlying
+type~$\typeOf{A_i} = \typeOf{A}$. It is a desirable restriction from
+the implementation point of view, because it removes dependencies at
+the level of types. Note also that there is no dependency on the
+realizers, only on the elements of the underlying set.
 
 We may express uniform families in terms of pers, just as for
 predicates. A uniform family $\family{A_i}{i \in I}$ of pers indexed
@@ -502,14 +502,14 @@ and the \emph{product} $\depprod{i \in I}{A_i}$ as
 \begin{align*}
   \setOf{\depprod{i \in I}{A_i}} &=
   \set{f : \setOf{I} \to {\textstyle \bigcup_{i \in \setOf{I}} \setOf{A_i}} \such
-    \xall{i}{\setOf{i}}{f(i) \in \setOf{A_i}}}
+    \xall{i}{\setOf{I}}{f(i) \in \setOf{A_i}}}
   \\
   \typeOf{\depprod{i \in I}{A_i}} &=
   \typeOf{I} \to \typeOf{A}
   \\
   u \rz_{\depprod{i \in I}{A_i}} f
   &\iff
-  \xall{i}{I}{\all{v}{\typeOf{I}}{
+  \xall{i}{I}{\all{v}{\values{\typeOf{I}}}{
       v \rz_I i \implies
       u \; v \rz_{A_i} f(i)
     }}.
@@ -534,8 +534,8 @@ The uniform family $\family{Z_n}{n \in N}$ is then like the cyclic group of orde
 %  & v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k
 \end{align*}
 %
-Negation would now be specified as a constant of type
-$\forall n{:}N.\ \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
+Negation would now be specified as a constant of dependent type
+$\Pi_{n{:}N}., \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
 would then have type $\typeOf{N}\to\typeOf{\ZZ_n}\to{\typeOf{\ZZ_n}}$,
 i.e., $\cint\to\cint\to\cint$, so that $\mathtt{neg}(n)$ would
 be a realizer for negation on $\ZZ_n$.   The realizer for addition would
