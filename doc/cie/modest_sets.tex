@@ -521,16 +521,10 @@ theory in the category of modest sets.
 As an example of a uniform family we consider the cyclic group
 $(\ZZ_n, 0, {-}, {+})$ of order~$n$. To keep things simple, we assume
 that~$n$ ranges over natural numbers that can be represented by
-type~$\cint$. More precisely, let $N$ be the modest set
+type~$\cint$ (i.e., $\typoeOf{N}=\cint$), and that 
+$v \rz_N n \iff v = n$.
 %
-\begin{align*}
-  & \setOf{N} = \set{1, \ldots, 2^{30}} \\
-  & \typeOf{N} = \cint \\
-  & v \rz_N n \iff v = n.
-\end{align*}
-%
-The uniform family $\family{Z_n}{n \in N}$ is like the above example
-of the cyclic group of order~$7$, with $7$ replaced by~$n$:
+The uniform family $\family{Z_n}{n \in N}$ is then like the cyclic group of order~$7$, with $7$ replaced by~$n$:
 %
 \begin{align*}
   & \setOf{Z_n} = \ZZ_n = \set{0, 1, \ldots, n - 1}

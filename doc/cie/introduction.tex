@@ -1,7 +1,7 @@
 \section{Introduction}
 \label{sec:introduction}
 
-Given the specification of a mathematical structure (constants,
+Given a description of a mathematical structure (constants,
 functions, relations, and axioms), what should a computer
 implementation look like?
 
@@ -13,16 +13,17 @@ neutral element, and a unary operator that computes inverses.
 But for more interesting structures, especially those arising in
 mathematical analysis, the answer is much less obvious. How do we
 implement the real numbers (a Cauchy-complete Archimedean ordered
-field)? Or, decide what operations must be supported by a compact metric
-space, or a space of smooth functions? Significant research goes into
+field)? Or, decide the operations supported by a compact metric
+space or a space of smooth functions? Significant research goes into
 finding representations that provide a satisfactory theory of
 computability on such structures~\cite{Wei00,TZ98,Bla97,EL00}, and
 implementations of exact real arithmetic~\cite{Mue00,Lam05a} show that
 the theory can be put into practice quite successfully.
 
 The theory of realizability provides guidance in development of
-computable mathematics. We show that, in addition to being a
-fundamental tool in logic and theory of computability, realizability
+computable mathematics.  Our work shows that realizability is
+not only  a
+fundamental tool in logic and computability, but also
 has direct application to the design and implementation of programs:
 it can produce a description of the data structure (a code interface)
 directly corresponding to a mathematical specification.
@@ -44,7 +45,7 @@ and postconditions).
 
 We have therefore implemented a system, called RZ, to serve as a bridge between
 the logical world and the programming world. RZ automatically translates
-specifications in constructive logic into standard actual interface code in a
+specifications in constructive logic into standard interface code in a
 programming language. (Currently we produce interfaces in 
 Objective Caml~\cite{ocaml}, but other languages are possible
 as well.)
@@ -53,14 +54,15 @@ The constructive part of the original specification turns standard code for
 an interface,
 listing types and values to be implemented. The remainder of
 the specification is maintained as assertions about these types and values.
-Because these assertions have no computational content, they can be interpreted
-either constructively or classically equally well, and in particular can
-be understood by programmers (and mathematicians) who are more used to
+Because these assertions have no computational content their constructive
+and classical meanings agree, and they can thus
+be understood by programmers (and mathematicians) more used to
 classical logic.
 
 %\bigskip
 
-RZ was specifically designed as a lightweight system. Although the
+RZ was specifically designed as a lightweight system, despite
+supporting a very rich input language. Although the
 realizability translation can be extended to transforming complete
 proofs into complete code~\cite{komagata+:tr95}, we have not
 implemented this. Other systems, including Coq~\cite{coqart} and
