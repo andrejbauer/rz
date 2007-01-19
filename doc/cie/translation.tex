@@ -200,38 +200,27 @@ $\icoerce{e'}{s}$ is $(u, v)$. However, since RZ cannot in general find
 a~$v$ which validates~$\phi(e')$, it emits an obligation $(u,
 (\ooblig{v}{\typeOf{\phi}}{\oapp{\oapp{\phi}{u}}{v}}{v}))$.
 
-Note that the user never has to coerce into and out from a subset
-becaue RZ typechecking inserts coercions wherever they are necessary.
-
 \paragraph{Quotients.}
 %
 The category of modest sets has coequalizers, hence a quotient modest
 set $A/\rho$ may be constructed for an any equivalence relation~$\rho$
-on~$A$. However, because equality does not carry any computational
-content, equality of equivalence classes $\ieclass{x}{\rho} =
-\ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, not the
-usual~$\rho(x,y)$. Because this may cause a great deal of confusion
-and mistakes, it is better to consider only quotients by \emph{stable}
-equivalence relations, which behave as expected.
+on~$A$. 
 %
 Given a modest set~$A$ and a stable equivalence relation~$\rho$
 on~$A$, the quotient $A/\rho$ is the modest set determined by
-%
 \begin{align*}
   \setOf{A/\rho} &= \set{\ieclass{x}{\rho} \such x \in A} \\
   \typeOf{A/\rho} &= \typeOf{A} \\
   u \rz_{A/\rho} \xi &\iff \some{y}{\xi}{u \rz_A y}.
 \end{align*}
 %
-Translation of an equivalence class $\ieclass{e}{\rho}$ is quite
-simple: since a realizer for~$e$ also realizes $\ieclass{e}{\rho}$, RZ
-simply uses the same realizer. The elimination term
-$\ileteclass{x}{\rho}{\xi}{e}$, which means ``let $x$ be any element
-of $\rho$-equivalence class $\xi$ in~$e$'', is trickier to translate.
-It is only well-formed when $e$ does not depend on the choice of~$x$,
-but this is something RZ cannot check. Therefore, if $u$ realizes
-$\xi$, RZ uses $u$ as a realizer for~$x$ and emits an obligation
-saying that the choice of a realizer for~$x$ does not affect~$e$.
+However, because equality does not carry any computational
+content, equality of equivalence classes $\ieclass{x}{\rho} =
+\ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, not the
+usual~$\rho(x,y)$. Because this may cause a great deal of confusion
+and mistakes, it is better to permit only quotients by \emph{stable}
+equivalence relations, which behave as expected.
+%
 
 Luckily, it seems that many equivalence relations occurring in
 computable mathematics are stable, or can be made stable with a little
@@ -279,6 +268,15 @@ real numbers follow this line of reasoning and present real numbers in
 such a way that they avoid the overhead of carrying with each sequence
 explicit information about the rate of convergence.
 
+Translation of an equivalence class $\ieclass{e}{\rho}$ is quite
+simple: since a realizer for~$e$ also realizes $\ieclass{e}{\rho}$, RZ
+uses the same realizer. The elimination term
+$\ileteclass{x}{\rho}{\xi}{e}$, which means ``let $x$ be any element
+of $\rho$-equivalence class $\xi$ in~$e$'', is trickier to translate.
+It is only well-formed when $e$ does not depend on the choice of~$x$,
+but this is something RZ cannot check. Therefore, if $u$ realizes
+$\xi$, RZ uses $u$ as a realizer for~$x$ and emits an obligation
+saying that the choice of a realizer for~$x$ does not affect~$e$.
 
 \paragraph{The underlying set of realizers.}
 %

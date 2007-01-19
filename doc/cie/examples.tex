@@ -167,8 +167,8 @@ assure x:real.
 \label{sec:finite-sets}
 
 \begin{figure}[t]
-  \centering
 \[
+\footnotesize
 \begin{array}{l}
 \iDefinition{\mathtt{Semilattice}}{\mathsf{thy}}\\
 \qquad \iParameter{\mathtt{s}}{\iSet}.\\
@@ -272,14 +272,13 @@ Because the axiom quantifies over all models~$S$ of the theory
 $\mathtt{Semilattice}$ its translation is a functor~$\mathtt{Free}$
 which accepts an implementation of a semilattice~$S$ and yields a
 realizer $\mathtt{free}$ validating the axiom. The computational
-meaning of $\mathtt{free}$ is a folding operation on finite sets: take
+meaning of $\mathtt{free}$ is a combination map and fold operation, taking
 a map $f : A.a \to S.s$ and a finite set~$u = \set{x_1, \ldots, x_n}$,
 and return $f(x_1) \vee \cdots \vee f(x_n)$, where $\vee$ is the join
 operation on the semilattice~$S$.
 
 Applying phase-splitting to this axiom yields the even simpler
 specification
-appearing in the output of the Kuratowski example can be replaced by the single polymorphic function
 \[
 \mathsf{val}\ \mathtt{free} : \alpha \to (\alpha \to \alpha \to \alpha) \to (\mathtt{A.a}\to\alpha) \to \mathtt{fin} \to \alpha	
 \]
@@ -290,17 +289,17 @@ more recognizable as a folding operation over the set.
 
 
 It is important to note that, in contrast to \texttt{fold} operators found in typical functional
-languages, \texttt{free} is only guaranteed to work for suitable \texttt{join} arguments (e.g., idempotent and order independent).  These
-sets are thus not the typical finite-set data structure: there is no membership predicate, nor
-is there a way to compute the size of a set.  This occurs because there was no
-assumption that equality is decidable for set elements; we could have a finite set
-of exact real numbers, for example.  Deciding equality
+languages, \texttt{free} is only expected to work for suitable \texttt{join} arguments (e.g., idempotent and order independent).  These
+sets are not the typical finite-set data structure: there is no membership predicate, nor
+is there a way to compute the size of a set.  There is no
+assumption that equality is decidable for set elements; for example, this permits
+finite sets of  exact real numbers, for example.  Decidable equality
 is required both for membership and for detecting
 whether the same element has been added twice to the same set\footnote{The natural implementation would thus
 be an unordered collection of elements, possibly with duplicates.}.
 
-However, there are nevertheless computable operations on such sets.  Using \texttt{free} one
-can determine whether a finite set is empty or not.  In the case of a set of exact
+Some operations are nevertheless computable.  Using \texttt{free} one
+can determine whether a finite set is empty.  In the case of a set of exact
 real numbers, we cannot compute their sum, but we could compute maximum or minimum.
 
 More common set implementations (e.g., the \texttt{Set} module in the OCaml standard library)
