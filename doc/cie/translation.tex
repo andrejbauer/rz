@@ -1,13 +1,20 @@
 \section{Translation}
 \label{sec:translation}
 
-Having seen the input and output languages for RZ, we now explain how
-the translation from one to the other works. The mathematical basis
-for the translation procedure is the \emph{realizability
-  interpretation} of constructive type theory and logic in the
-category of modest sets, which was described in
+Having seen the input and output languages for RZ,
+%
+\iflong
+we now explain how the translation from one to the other works.
+\else
+we briefly review the translation from ont to the other.
+\fi
+%
+The mathematical basis for the translation procedure is the
+\emph{realizability interpretation} of constructive type theory and
+logic in the category of modest sets, which was described in
 Section~\ref{sec:modest-sets-pers}. A theory is translated to a
 specification, where the theory elements are translated as follows.
+
 
 
 \subsection{Translation of sets and terms}
@@ -37,6 +44,8 @@ of type $s \to s \to \mathtt{bool}$, but an abstract relation on the
 set $\values{s} \times \values{s}$. Only in special cases can we
 expect to be able to implement~$\per_s$ as a decidable test.  
 
+
+\iflong
 The translation of the declaration of a dependent set
 $\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
 sets as uniform families (Section~\ref{sec:uniform-families}):
@@ -78,11 +87,13 @@ sets as uniform families (Section~\ref{sec:uniform-families}):
 \end{align*}
 %
 The underlying output type~$t$ is still non-dependent, but the per is
-parameterized%
-\iflong 
-by~$s$.
+parameterized by~$s$.
 \else % \iflong
-.
+The translation of the declaration of a dependent set
+$\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
+sets as uniform families (Section~\ref{sec:uniform-families}). The
+underlying type~$t$ is non-dependent, but the per $\per_t$ receives an
+additional parameter $x : \values{s}$.
 \fi % \iflong
 
 A value declaration $\iParameter{x}{s}$ is translated to
@@ -110,11 +121,19 @@ often the easiest way to define a value is not the most efficient
 way to compute it.
 
 Constructions of sets in the input language are translated to
-corresponding constructions of modest sets. In
-Section~\ref{sec:modest-sets-pers} we saw how products, exponentials
-and their dependent versions are formed. We briefly review the
-remaining constructions of modest sets. We only consider those
-constructions of terms that are not entirely straightforward.
+corresponding constructions of modest sets.
+%
+\iflong
+In Section~\ref{sec:modest-sets-pers} we saw how products,
+exponentials and their dependent versions are formed. We briefly
+review the remaining constructions of modest sets. We only consider
+those constructions of terms that are not entirely straightforward.
+%
+\else
+%
+We comment on those that are not completely standard.
+%
+\fi
 
 \iflong
 \paragraph{Disjoint union.}
@@ -181,6 +200,9 @@ $\icoerce{e'}{s}$ is $(u, v)$. However, since RZ cannot in general find
 a~$v$ which validates~$\phi(e')$, it emits an obligation $(u,
 (\ooblig{v}{\typeOf{\phi}}{\oapp{\oapp{\phi}{u}}{v}}{v}))$.
 
+Note that the user never has to coerce into and out from a subset
+becaue RZ typechecking inserts coercions wherever they are necessary.
+
 \paragraph{Quotients.}
 %
 The category of modest sets has coequalizers, hence a quotient modest
@@ -213,7 +235,10 @@ saying that the choice of a realizer for~$x$ does not affect~$e$.
 
 Luckily, it seems that many equivalence relations occurring in
 computable mathematics are stable, or can be made stable with a little
-bit of manipulation. For example, Cauchy sequences $(a_n)_{n\in\NN}$
+bit of manipulation.
+%
+\iflong
+For example, Cauchy sequences $(a_n)_{n\in\NN}$
 and $(b_n)_{n\in\NN}$ represent the same real number when
 %
 \begin{equation}
@@ -239,7 +264,17 @@ sequences, i.e., those satisfying $\xall{i}{\NN}{|a_{i+1} - a_i| \leq
 \end{equation*}
 %
 which is a negative formula; the above realizer is rendered
-unnecessary. It is interesting that most practical implementations of
+unnecessary.
+%
+\else % iflong
+%
+For example, the coincidence relation on Cauchy sequences is expressed
+by a $\forall\exists\forall$~formula, but if we restrict to the
+\emph{rapid} Cauchy sequences, it becomes a (negative)
+$\forall$~formula.
+%
+\fi % iflong
+It is interesting that most practical implementations of
 real numbers follow this line of reasoning and present real numbers in
 such a way that they avoid the overhead of carrying with each sequence
 explicit information about the rate of convergence.
@@ -315,8 +350,12 @@ $\typeOf{\phi}$ and the relation $u \rz \phi$, expressed as a negative
 formula.
 
 In RZ we avoid the explicit realizer notation $u \rz \phi$ in order to
-make the output easier to read. A basic predicate declaration
-$\iParameter{p}{\iarrow{s}{\iProp}}$ is translated to
+make the output easier to read.
+%
+\iflong
+%
+A basic predicate declaration $\iParameter{p}{\iarrow{s}{\iProp}}$ is
+translated to
 %
 \begin{align*}
   & \otyspec{ty\_p} \\
@@ -344,6 +383,15 @@ type $ty\_p$ (which the programmer is supposed to define in an
 implementation), and we write $\oapp{\oapp{p}{x}}{a}$ instead of $a
 \rz \oapp{p}{x}$. The two assertions require that $p$ be strict and
 extensional with respect to $\per_s$.
+%
+\else % iflong
+%
+A basic predicate declaration $\iParameter{p}{\iarrow{s}{\iProp}}$ is
+translated to a type declaration $\otyspec{ty\_p}$ and a predicate
+declaration $\opropspec{p}{s \to ty\_p \to \oProp}$ together with
+assertions stating that~$p$ be strict and extensional.
+%
+\fi % iflong
 
 Frequently we know that a predicate is stable, which can be taken into
 account when computing its realizability interpretation. For this
