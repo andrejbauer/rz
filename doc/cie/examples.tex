@@ -13,25 +13,28 @@ reasonable axioms yield computationally reasonable operations.
 \label{sec:decidable-sets}
 
 A set $S$ is said to be decidable when, for all $x, y \in S$, $x = y$
-or $\lnot (x = y)$. In classical mathematics all sets are decidable
+or $\lnot (x = y)$. In classical mathematics all sets are decidable, 
+\iflong
 because decidability of equality is just an instance of the law of
-excluded middle. However, RZ computes from
+excluded middle.  But
+\else
+but
+\fi % \iflong
+RZ requires an axiom
 %
 \begin{source}
 Parameter s : Set.
 Axiom eq: \iForall x y : s, x = y \iOr \iNot (x = y).
 \end{source}
 %
-that the realizer for the axiom $\mathtt{eq}$ is specified by
+to produce a realizer for equality
 %
 \begin{source}
 val eq : s \iTo s \iTo [`or0 | `or1]
-(**  Assertion eq =
-       \iForall (x:\iT{s}, y:\iT{s}),
-         (match eq x y with
-            `or0 \iImply x \iPer{s} y
-          | `or1 \iImply \iNot (x \iPer{s} y) )
-*)
+Assertion eq = \iForall (x:\iT{s}, y:\iT{s}),
+                   (match eq x y with
+                      `or0 \iImply x \iPer{s} y
+                    | `or1 \iImply \iNot (x \iPer{s} y) )
 \end{source}
 %
 We read this as follows: $\f{eq}$ is a function which takes
@@ -39,10 +42,16 @@ arguments~$\f{x}$ and~$\f{y}$ of type~$\f{s}$ and returns
 $\mathtt{`or0}$ or $\mathtt{`or1}$. If it returns $\mathtt{`or0}$,
 then $\oper{\f{s}}{\f{x}}{\f{y}}$, and if it returns
 $\mathtt{`or1}$, then $\onot{(\oper{\f{s}}{\f{x}}{\f{y}})}$. In
-other words $\f{eq}$ is a decision procedure which tells when
+other words $\f{eq}$ is a decision procedure%
+\iflong
+which tells when
 values~$\f{x}$ and~$\f{y}$ represent the same element of the modest
 set.
+\else % \iflong
+.
+\fi % \iflong
 
+\iflong
 \subsection{Examples with obligations}
 \label{sec:exampl-with-oblig}
 
@@ -172,7 +181,9 @@ assure x:real.
         x =real= x'))
   in x
 \end{source}
+\fi % \iflong
 
+\iflong
 \subsection{Finite sets}
 \label{sec:finite-sets}
 
@@ -341,6 +352,7 @@ real numbers, we cannot compute their sum, but we could compute maximum or minim
 More common set implementations (e.g., the \texttt{Set} module in the OCaml standard library)
 implement sets over values with either decidable total order; these could also be
 formalized in RZ.
+\fi % \iflong
 
 \subsection{Inductive types}
 \label{sec:inductive-types}
@@ -435,19 +447,11 @@ $\f{induction}$ into a specification of a polymorphic function
 \end{equation*}
 %
 which is a form of recursion on well-founded trees. Instead of trying
-to explain what $\f{induction}$ is supposed to do, we show in
-Figure~\ref{fig:wtype-implementation} a surprisingly simple,
+to explain what $\f{induction}$ is supposed to do, we show a surprisingly simple,
 hand-written implementation of W-types. The reader may be entertained
-by figuring out how $\f{induction}$ works.
+by figuring out how it works:
 %
-\begin{figure}
-  \centering
-  \sourcefile{wtype.ml}
-  \caption{An implementation of general inductive types.}
-  \label{fig:wtype-implementation}
-\end{figure}
-
-
+\sourcefile{wtype.ml}
 
 \subsection{Axiom of choice}
 \label{sec:axiom-choice}
@@ -467,12 +471,10 @@ The relevant part of the output is
 %
 \begin{source}
 val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
-(**  Assertion ac =
-  forall f:a -> b * ty_r,
-    (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
-    let (g,h) = ac f in g : ||a -> b|| /\
-    (forall (x:||a||),  r x (g x) (h x))
-*)
+Assertion ac = forall f:a -> b * ty_r,
+                (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
+                  let (g,h) = ac f in g : ||a -> b|| /\
+                  (forall (x:||a||),  r x (g x) (h x))
 \end{source}
 %
 This requires a function $\f{ac}$ which accepts a function $f$

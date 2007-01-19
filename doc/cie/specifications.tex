@@ -79,10 +79,14 @@
 
 In programming we distinguish between \emph{implementation} and
 \emph{specification} of a structure. In OCaml these two notions are
-expressed with modules and module types, respectively.\footnote{In
+expressed with modules and module types, respectively.%
+\iflong
+\footnote{In
   object-oriented languages implementations and specifications are
   expressed with classes and interfaces, while in Haskell they
-  correspond to modules and declarations.} A module defines types and
+  correspond to modules and declarations.}
+\fi % \iflong
+A module defines types and
 values, while a module type simply lists the types, type definitions,
 and values provided by a module. For a complete specification, a
 module type must also be annotated with \emph{assertions} which

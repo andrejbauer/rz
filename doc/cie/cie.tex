@@ -84,24 +84,33 @@
 \iflong 
   is not only a fundamental tool in logic
   and computability, but also 
-\fi % \iflong
   has direct application to the design and
-  implementation of programs: it can produce code describing the data
+  implementation of programs: it
+\fi % \iflong
+  can produce interfaces for the data
   structure corresponding to a
   mathematical theory.
 %
   Our tool, called RZ,
-  serves as a bridge between the worlds of constructive
-  mathematics and programming. By using the realizability
+  serves as a bridge between
+\iflong the worlds of \fi
+  constructive
+  mathematics and programming% 
+\iflong 
+.
+By using the realizability
   interpretation of constructive mathematics, RZ 
-  translates specifications in constructive logic into annotated
+  translates
+\else
+by translating
+\fi % \iflong 
+  specifications in constructive logic into annotated
   interface code in Objective Caml.
 %
-  This lightweight system supports
+  The system supports
   a rich input language allowing descriptions of
   complex mathematical structures. RZ does not extract code from
-  proofs, but allows the programmer to implement the specifications in
-  any fashion, ranging from handwritten code to code extracted from
+  proofs, but allows any implementation, from handwritten code to code extracted from
   proofs by other tools.
 \end{abstract}
 

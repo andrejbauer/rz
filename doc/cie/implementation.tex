@@ -61,6 +61,7 @@ and appropriately modifies references to $\mathtt{free}$ in the assertions to ac
 %
 Next, an \emph{optimization} pass applies an ad-hoc collection of
 basic logical and term simplifications in order to make the output more readable. 
+\iflong
 Logical simplifications include applications of truth table rules
 ($\iand{\itrue}{\ip}$ becomes $\ip$), detection of syntactically
 identical premises and conclusions
@@ -68,12 +69,14 @@ identical premises and conclusions
 $\iimply{\ip_1}{\ip_2}$), and optimization of other common patterns we have
 seen arise
 ($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes
-$\ipp(\ie)$). We do not attempt real theorem proving 
+$\ipp(\ie)$).
+\fi % \iflong
+We do not attempt real theorem proving 
 so some redundancy may remain, but in practice the optimization pass
 can help significantly.
 
-Finally, the user can specify whether two optional steps occur.
-RZ can optionally performs a \emph{phase-splitting} pass~\cite{harper+:popl90}. 
+Finally, the user can specify two optional steps occur.
+RZ can perform a \emph{phase-splitting} pass~\cite{harper+:popl90}. 
 This is an experimental implementation of an transformation that can replace a functor (a relatively heavyweight language construct) by
 parameterized types and/or polymorphic values. 
 \iflong
@@ -83,29 +86,21 @@ and terms, constraints on the programming language ensure that output types
 depend only on input types (and not input terms).  Thus, we can split each
 functor into a mapping from input types to output types, and then a separate
 (polymorphic) term mapping input types and terms to an output term.
-\fi
 See Section~\ref{sec:finite-sets} for an example.
-
-\iffalse
-For example (ignoring
-assertions for simplicity) the entire module
-\begin{source}
-module Free : functor (S : Semilattice) ->
-                    sig
-                      val free : (A.a -> S.s) -> fin -> S.s
-                    end	
-\end{source}   
 \fi
 
 
 The other optional transformation is a \emph{hoisting} pass which
-lifts obligations in the output out to top-level positions.  Obligations
+moves obligations in the output out to top-level positions.  Obligations
 appear in the output inside assertions, at the point where an uncheckable property was needed.
 Moving these obligations to the top-level 
 make it easier to see exactly what one is obliged to verify, and can
 sometimes make them easier to read, at the cost of losing information about
-why the obligation was required at all. See
+why the obligation was required at all. 
+\iflong
+See
 Section~\ref{sec:exampl-with-oblig} for an example of hoisting.
+\fi % \iflong
 
 %%% Local Variables: 
 %%% mode: latex

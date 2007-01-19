@@ -22,7 +22,8 @@ specification, where the theory elements are translated as follows.
 
 A set declaration $\iParameter{s}{\iSet}$ is translated to
 %
-\begin{align*}
+\[
+\begin{array}{ll}
   & \otyspec{s} \\
   & \opropspec{({\approx_{s}})}{\oarrow{s}{\oarrow{s}{\oProp}}}\\
   & \oassertion{\mathrm{symmetric}\_{s}}{
@@ -36,7 +37,8 @@ A set declaration $\iParameter{s}{\iSet}$ is translated to
       }{\oper{s}{x}{z}}
       )}
   }
-\end{align*}
+\end{array}
+\]
 %
 This says that the programmer should define a type~$s$ and a per
 $\per_s$ on~$\values{s}$. Here~$\per_s$ is \emph{not} an OCaml value
@@ -50,7 +52,8 @@ The translation of the declaration of a dependent set
 $\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
 sets as uniform families (Section~\ref{sec:uniform-families}):
 %
-\begin{align*}  
+\[
+\begin{array}{ll}  
   & \otyspec{t} \\
   & \opropspec{({\approx_{t}})}{\oarrow{s}{\oarrow{t}{\oarrow{t}{\oProp}}}}\\
   & \oassertion{\mathrm{strict}\_{t}}{
@@ -84,7 +87,8 @@ sets as uniform families (Section~\ref{sec:uniform-families}):
         )}
     }
   }
-\end{align*}
+\end{array}
+\]
 %
 The underlying output type~$t$ is still non-dependent, but the per is
 parameterized by~$s$.
@@ -98,10 +102,12 @@ additional parameter $x : \values{s}$.
 
 A value declaration $\iParameter{x}{s}$ is translated to
 %
-\begin{align*}
+\[
+\begin{array}{ll}
   & \ovalspec{x}{s} \\
   & \oassertion{\mathrm{support}\_x}{\ototal{x}{s}}
-\end{align*}
+\end{array}
+\]
 %
 which requires the definition of a value~$x$ of type~$s$ which is in
 the support of~$s$. When $s$ is not a basic set, RZ computes the
@@ -110,10 +116,12 @@ interpretation of the underlying type and support.
 A value definition $\iDefinition{x}{e}$ where~$e$ is an expression
 denoting an element of~$s$ is translated to
 %
-\begin{align*}
+\[
+\begin{array}{ll}
   & \ovalspec{x}{s} \\
   & \oassertion{x\_\mathrm{def}}{\oper{s}{x}{e}}
-\end{align*}
+\end{array}
+\]
 %
 The assertion does \emph{not} force~$x$ to be defined as~$e$, only to
 be equivalent to it with respect to~$\per_s$. This is welcome, as
@@ -160,8 +168,11 @@ that we have
 
 \paragraph{Subsets.}
 %
+\iflong
 The construction of modest subsets may look surprising at first, but
-it makes sense computationally. Given a modest sets~$A$ and a
+it makes sense computationally.
+\fi % \iflong
+Given a modest sets~$A$ and a
 predicate~$\phi$ on~$A$, the modest subset $\set{x : A \such \phi(x)}$
 has the underlying set
 %
@@ -283,18 +294,29 @@ saying that the choice of a realizer for~$x$ does not affect~$e$.
 A specific kind of construction on a modest set~$A$ is the underlying
 modest set of realizers $\irz{A}$, defined by
 %
-\begin{align*}
+\iflong
+\[
+\begin{array}{ll}
   \setOf{\irz{A}} &= \values{\typeOf{A}} \\
   \typeOf{\irz{A}} &= \typeOf{A} \\
   u \rz_{\irz{A}} v &\iff u = v,
-\end{align*}
+\end{array}
+\]
+\else  % \iflong
+$\setOf{\irz{A}} = \values{\typeOf{A}}$,  
+$\typeOf{\irz{A}} = \typeOf{A}$, and 
+$u \rz_{\irz{A}} v \iff u = v$, 
+\fi % \iflong
 %
 where by $u = v$ we mean observational equality of values~$u$ and~$v$.
 The corresponding per is
 %
+\iflong
 \begin{equation*}
   u_1 \per_{\irz{A}} u_2 \iff u_1 \in \support{A} \land u_1 = u_2.
 \end{equation*}
+\else
+$u_1 \per_{\irz{A}} u_2 \iff u_1 \in \support{A} \land u_1 = u_2$.
 %
 An element $r \in \irz{A}$ realizes a unique element $\irz{r} \in A$.
 The elimination term $\iletrz{x}{e_1}{e_2}$, which means ``let $x$ be
@@ -405,10 +427,12 @@ reflexive, symmetric and transitive.
 
 An axiom $\iAxiom{A}{\phi}$ in the input is translated to
 %
-\begin{align*}
+\[
+\begin{array}{ll}
   & \ovalspec{u}{\typeOf{\phi}} \\
   & \oassertion{A}{u \rz \phi},
-\end{align*}
+\end{array}
+\]
 %
 which requires the programmer to validate~$\phi$ by providing a
 realizer for it. When $\phi$ is a compound statement RZ computes the

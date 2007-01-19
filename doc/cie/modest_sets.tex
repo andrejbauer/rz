@@ -83,8 +83,6 @@ applies to OCaml. Other general-purpose programming languages could be
 used instead.
 \fi % \iflong
 
-\goodbreak
-
 Let $\Type$ be the collection of all (non-parametric) OCaml types. To
 each type $t \in \Type$ we assign the set $\values{t}$ of values of
 type~$t$ that behave \emph{functionally} in the sense
@@ -319,9 +317,9 @@ equality.  Examples include implementations of semigroups with an undecidable wo
 problem~\cite{post47:_recur_unsol_probl_thue}%
 \iflong
 , implementations of computable sets of integers (which might be realized by
-membership functions of type $\cint\to\cbool$),
+membership functions of type $\cint\to\cbool$), 
 \fi
-and implementations of computable real numbers (which might be realized
+ and implementations of computable real numbers (which might be realized
 by infinite Cauchy sequences).  Every modest set induces a partial equivalence relation, but there is no
 presupposition that this equivalence is computable (implementable).
 
@@ -353,9 +351,10 @@ relation~$\rz$ are defined inductively on the structure of~$\phi$; an
 outline is shown in Figure~\ref{fig:rz-logic}. We say that a
 formula~$\phi$ is \emph{valid} if it has at least one realizer.
 %
-\begin{figure*}
+\begin{figure*}[t]
   \textbf{Underlying types of realizers:}
-  \begin{xalignat*}{2}
+\[
+  \begin{array}{ll@{\qquad}ll}
     \typeOf{\itrue} &= \mathtt{unit} &
     \typeOf{\ifalse} &= \mathtt{unit} \\
     \typeOf{\iequal{x}{y}} &= \mathtt{unit} &
@@ -365,9 +364,11 @@ formula~$\phi$ is \emph{valid} if it has at least one realizer.
     \osumtyx{\mathtt{or}_1}{\typeOf{\phi_1}}{\mathtt{or}_2}{\typeOf{\phi_2}} \\
     \typeOf{\iforall{x}{A}{\phi}} &= \oarrow{\typeOf{A}}{\typeOf{\phi}} &
     \typeOf{\iexists{x}{A}{\phi}} &= \oprod{\typeOf{A}}{\typeOf{\phi}}
-  \end{xalignat*}
+  \end{array}
+\]
   \textbf{Realizers:}
-  \begin{align*}
+\[
+  \begin{array}{ll}
     () \rz \itrue & \\
     () \rz \iequal{x}{y}
     &\quad\text{iff}\quad 
@@ -397,7 +398,8 @@ formula~$\phi$ is \emph{valid} if it has at least one realizer.
     (t_1, t_2) \rz \iexists{x}{A}{\phi(x)}
     &\quad\text{iff}\quad
     \text{$t_1 \rz_A x$ and $t_2 \rz \phi(x)$}
-  \end{align*}
+  \end{array}
+\]
   \caption{Realizability interpretation of logic (outline)}
   \label{fig:rz-logic}
 \end{figure*}
@@ -424,12 +426,17 @@ We illustrate how the realizability interpretation extracts the
 computational content of a proposition. To make an interesting
 example, suppose we already implemented the structure of real
 numbers~$\RR$ as a modest set~$R = (\RR, \mathtt{real}, {\rz_R})$, and
-consider the statement that every cubic $x^3 + a x + b$ has a root,
+consider the statement 
+\iflong
+that every cubic $x^3 + a x + b$ has a root,
 %
 \begin{equation}
   \label{eq:square-root}%
   \iforall{a}{R}{\iforall{b}{R}{\iexists{x}{R}{\iequal{x^3 + a x + b}{0}}}}.
 \end{equation}
+\else % \iflong
+$\iforall{a}{R}{\iforall{b}{R}{\iexists{x}{R}{\iequal{x^3 + a x + b}{0}}}}$.
+\fi % \iflong
 %
 By computing according to Figure~\ref{fig:rz-logic}, we find out that
 a realizer is a value~$r$ of type
@@ -439,8 +446,8 @@ such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
 number~$x$ such that $x^3 + a x + b = 0$, and $w$ is trivial. This
 can be ``optimized'' to a realizer of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ that
-does not bother to compute~$w$. In essence then, a realizer~$r$
-for~\eqref{eq:square-root} computes a root of the cubic equation. Note
+does not bother to compute~$w$. In essence then, the realizer~$r$
+computes a root of the cubic equation. Note
 that $r$ is \emph{not} extensional, i.e., different realizers~$t$
 and~$u$ for the same~$a$ and~$b$ may result in different roots of the
 cubic. To put this in another way, $r$ realizes a \emph{multi-valued}
@@ -477,7 +484,9 @@ realizers also go through a \emph{thinning} phase, see Section~\ref{sec:translat
 optimizes away references to irrelevant realizers.
 \fi
 
+\iflong
 \subsection{Uniform families of modest sets}
+\fi % \iflong
 \label{sec:uniform-families}
 
 Many structures are naturally viewed as families of sets, or sets
@@ -501,6 +510,7 @@ the implementation point of view, because it removes dependencies at
 the level of types. Note also that there is no dependency on the
 realizers, only on the elements of the underlying set.
 
+\iflong
 We may express uniform families in terms of pers, just as for
 predicates. A uniform family $\family{A_i}{i \in I}$ of pers indexed
 by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
@@ -523,6 +533,7 @@ uniformly realized maps, which means that there exists $u \in
 %
 for all $i \in I$, $v \in \values{\typeOf{I}}$, $x \in \setOf{A_i}$,
 and $w \in \values{\typeOf{A}}$.
+\fi % \iflong
 
 \iflong
 We may form the \emph{sum} $\depsum{i \in I}{A_i}$ of a uniform family
@@ -560,12 +571,12 @@ and the \emph{product} $\depprod{i \in I}{A_i}$ as
 %
 These constructions allow us to interpret (extensional) dependent type
 theory in the category of modest sets.
-\else
+\else % \iflong
 We can also form the \emph{sum} $\depsum{i \in I}{A_i}$ or
 \emph{product} $\depprod{i \in I}{A_i}$ of
 a uniform family, allowing an interpretation of (extensional) dependent type
 theory in the category of modest sets.
-\fi
+\fi % \iflong
 
 \iflong
 As an example of a uniform family we consider the cyclic group
