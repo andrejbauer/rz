@@ -35,11 +35,10 @@ $\ell_V = [1; 2;
 3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$.
 \fi % \iflong
 %
- Thus we
-define the datatype of graphs as\footnote{We use OCaml notation in
-  which $\clist{t}$ classifies finite lists of elements of type~$t$, and
-  $t_1 * t_2$ classifies pairs containing a value of type $t_1$ and and 
-  value of type $t_2$.}
+Thus we define the datatype of graphs as\footnote{We use OCaml
+  notation in which $\clist{t}$ classifies finite lists of elements of
+  type~$t$, and $t_1 * t_2$ classifies pairs containing a value of
+  type $t_1$ and and value of type $t_2$.}
 %
 \begin{equation*}
   \ctype \mathtt{graph} = \clist{\cint} \ \ * \ \ \clist{(\cint * \cint)}
@@ -63,23 +62,25 @@ there would be representation invariants and conditions not expressed by the typ
 Thus, to implement the mathematical set~$\mathcal{G}$, we must not
 only decide on the underlying datatype $\mathtt{graph}$, but also
 determine what values of that type represent which elements
-of~$\mathcal{G}$.  As we shall see next, this can be expressed
-either using a \emph{realizability relation} or a \emph{partial
-  equivalence relation (per)}.
+of~$\mathcal{G}$. As we shall see next, this can be expressed either
+using a \emph{realizability relation} or a \emph{partial equivalence
+  relation (per)}.
+
 
 \subsection{Modest sets and pers}
 \label{sec:modest-sets-pers}
 
+\iflong
 We now define typed realizability as it
 applies to OCaml. Other general-purpose programming languages could be
-used instead%
-\iflong
-, as long as they provide the usual ground types, product
+used instead, as long as they provide the usual ground types, product
 and function types.\footnote{It is also convenient to work with a
 language that supports sum types, as this allows a more natural
 representation of disjoint unions.}
 \else
-.
+We now define typed realizability as it
+applies to OCaml. Other general-purpose programming languages could be
+used instead.
 \fi % \iflong
 
 \goodbreak
@@ -99,44 +100,60 @@ values $\values{t}$ to each $t \in \Type$ forms a \emph{typed partial
   combinatory algebra (TPCA)}, which provides a theoretical basis for
 the definition of a realizability model that suits our needs.
 
-Going back to our example, we see that an implementation of 
-directed graphs $\mathcal{G}$ specifies a datatype
-$\typeOf{\mathcal{G}} = \mathtt{graph}$ together with a
-\emph{realizability relation} $\rz_{\mathcal{G}}$ between
-$\mathcal{G}$ and $\values{\mathtt{graph}}$. The meaning of $(\ell_V,
-\ell_A) \rz_\mathcal{G} G$ is ``OCaml value $(\ell_V, \ell_A)$ 
-represents/realizes/implements graph $G$''. There are two natural conditions
-that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G \in
-\mathcal{G}$ there should be at least one realizer $(\ell_V, \ell_A)$
-representing it, and (2) if $(\ell_V, \ell_A)$ represents both $G$ and
-$G'$ then $G = G'$.%
+Going back to our example, we see that an implementation of directed
+graphs $\mathcal{G}$ specifies a datatype $\typeOf{\mathcal{G}} =
+\mathtt{graph}$ together with a \emph{realizability relation}
+$\rz_{\mathcal{G}}$ between $\mathcal{G}$ and
+$\values{\mathtt{graph}}$. The meaning of $(\ell_V, \ell_A)
+\rz_\mathcal{G} G$ is ``OCaml value $(\ell_V, \ell_A)$
+represents/realizes/implements graph $G$''.
+%
 \iflong
-\footnote{The latter condition is called \emph{modesty} and
-is not strictly necessary for the development of the theory, though 
-programmers would naturally expect it to hold.}
-\fi % \iflong
-If
-$(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$ represent the same graph 
-(e.g., because $\ell_V$ is a permutation of $\ell'_V$, and similarly for $\ell_A$ and $\ell'_A$)
-we say that they are \emph{equivalent} and write $(\ell_V, \ell_A)
-\per_\mathcal{G} (\ell'_V, \ell'_A)$. The relation $\per_\mathcal{G}$
-is a \emph{partial} equivalence relation (symmetric and transitive,
-but not reflexive) because not every $(\ell_V, \ell_A) \in
+%
+There are two natural
+conditions that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G
+\in \mathcal{G}$ there should be at least one realizer $(\ell_V,
+\ell_A)$ representing it, and (2) if $(\ell_V, \ell_A)$ represents
+both $G$ and $G'$ then $G = G'$. \footnote{The latter condition is
+  called \emph{modesty} and is not strictly necessary for the
+  development of the theory, though programmers would naturally expect
+  it to hold.} If $(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$
+represent the same graph (e.g., because $\ell_V$ is a permutation of
+$\ell'_V$, and similarly for $\ell_A$ and $\ell'_A$) we say that they
+are \emph{equivalent} and write $(\ell_V, \ell_A) \per_\mathcal{G}
+(\ell'_V, \ell'_A)$. The relation $\per_\mathcal{G}$ is a
+\emph{partial} equivalence relation (symmetric and transitive, but not
+reflexive) because not every $(\ell_V, \ell_A) \in
 \values{\mathtt{graph}}$ represents a graph.
 
 \smallskip
 
-A general definition is in order. A \emph{modest set} is a triple $A =
-(\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is the
-\emph{underlying set}, $\typeOf{A} \in \Type$ is the \emph{underlying
-  type}, and $\rz_A$ is a \emph{realizability relation} between
-$\values{\typeOf{A}}$ and $\setOf{A}$, satisfying
+A general definition is in order. A \emph{modest set} is 
+%
+\else % iflong
+%
+Generalizing from this, we define a \emph{modest set} to be
+%
+a triple $A = (\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is
+the \emph{underlying set}, $\typeOf{A} \in \Type$ is the
+\emph{underlying type}, and $\rz_A$ is a \emph{realizability relation}
+between $\values{\typeOf{A}}$ and $\setOf{A}$, satisfying
+%
+\iflong
 % 
 \begin{enumerate}
 \item \emph{totality:} for every $x \in \setOf{A}$ there is $v \in
   \values{\typeOf{A}}$ such that $v \rz_A x$, and
 \item \emph{modesty:} if $u \rz_A x$ and $u \rz_A y$ then $x = y$.
 \end{enumerate}
+%
+\else % iflong
+%
+(1) \emph{totality:} for every $x \in \setOf{A}$ there is $v \in
+\values{\typeOf{A}}$ such that $v \rz_A x$, and (2) \emph{modesty:} if
+$u \rz_A x$ and $u \rz_A y$ then $x = y$.
+%
+\fi % iflong
 %
 The \emph{support} of $A$ is the set $\support{A} = \set{v \in
   \values{\typeOf{A}} \such \xsome{x}{\setOf{A}}{v \rz_A x}}$ of those
@@ -195,8 +212,7 @@ The equivalent category of pers has as objects pairs $A = (\typeOf{A},
 $\values{\typeOf{A}}$. A morphism $A \to B$ is represented by 
 a function $v\in \values{\typeOf{A} \to \typeOf{B}}$
 \iflong
-such that, for all $u, u'
-\in \support{A}$,
+such that, for all $u, u' \in \support{A}$,
 %
 \begin{equation}
   \label{eq:per-exponential}
@@ -207,15 +223,15 @@ Values $v$ and $v'$ that both satisfy~\eqref{eq:per-exponential}
 represent the same morphism if, for all $u, u' \in \support{A}$,
 %
 \begin{equation*}
-  u \per_A u' \implies v\;u \per_B v'\;u' \;.
+  u \per_A u' \implies v\;u \per_B v'\;u'
 \end{equation*}
 \else % \iflong
 that maps equivalent arguments to equivalent results.
 \fi % \iflong
 
 \iflong
-The category of modest sets has a very rich structure.
-For example, we
+%
+The category of modest sets has a very rich structure. For example, we
 may form a cartesian product $A \times B$ of modest sets $A$ and $B$
 by
 %
@@ -256,8 +272,13 @@ constructions on modest sets.
 
 \bigskip
 \else % \iflong
+%
+The category of modest sets has a very rich structure, namely that of
+a regular locally cartesian closed category~\cite{Bauer:00}. This
+suffices for the interpretation of first-order logic and (extensional)
+dependent types~\cite{JacobsB:cltt}.
+%
 \fi % \iflong
-
 
 \iflong
 As an example we consider the cyclic group on seven elements $(\ZZ_7,

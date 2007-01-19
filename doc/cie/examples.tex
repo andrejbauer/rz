@@ -17,26 +17,22 @@ or $\lnot (x = y)$. In classical mathematics all sets are decidable
 because decidability of equality is just an instance of the law of
 excluded middle. However, RZ computes from
 %
-\begin{showInputSmall}
-\iParameter{\f{s}}{\iSet}.\\
-\iAxiom{\f{eq}}{\forall \f{x},\f{y}:\f{s}.\ \f{x} = \f{y} \lor \lnot(\f{x} = \f{y})}.\\
-\end{showInputSmall}%
+\begin{source}
+Parameter s : Set.
+Axiom eq: \iForall x y : s, x = y \iOr \iNot (x = y).
+\end{source}
 %
 that the realizer for the axiom $\mathtt{eq}$ is specified by
 %
-\begin{showOutputSmall}
-\ovalspec{\f{eq}}{\oarrow{\oarrow{\f{s}}{\f{s}}}{`\texttt{or0}+`\texttt{or1}}}\\
-\oassertion{\f{eq}}{\forall \f{x}, \f{y} : \support{\f{s}}.\ 
-(\opcasex{\oapp{\oapp{\f{eq}}{\f{x}}}{\f{y}}}{\texttt{or0}}{\oper{\f{s}}{\f{x}}{\f{y}}}{\texttt{or1}}{\onot{(\oper{\f{s}}{\f{x}}{\f{y}})}})
-}
-%val eq : s -> s -> [`or0 | `or1]
-%(**  Assertion eq =
-%       forall (x:||s||, y:||s||),
-%         (match eq x y with
-%            `or0 => x =s= y
-%          | `or1 => not (x =s= y) )
-%*)
-\end{showOutputSmall}%
+\begin{source}
+val eq : s \iTo s \iTo [`or0 | `or1]
+(**  Assertion eq =
+       \iForall (x:\iT{s}, y:\iT{s}),
+         (match eq x y with
+            `or0 \iImply x \iPer{s} y
+          | `or1 \iImply \iNot (x \iPer{s} y) )
+*)
+\end{source}
 %
 We read this as follows: $\f{eq}$ is a function which takes
 arguments~$\f{x}$ and~$\f{y}$ of type~$\f{s}$ and returns
@@ -58,16 +54,12 @@ set of real numbers~$\f{real}$, a constant $\f{zero}$, and
 multiplication operation~$\f{*}$ have already been declared and
 axiomatized, we might write:
 %
-\begin{showInputSmall}
-\iDefinition{\f{nonZeroReal}}{\isubset{x}{\f{real}}{\lnot(\f{x}=\f{zero})}}.\\
-\iParameter{\f{inv}}{\f{nonZeroReal}\to\f{real}}.\\
-\iAxiom{\f{inverse}}{\forall\f{x}:\f{real}.\ \lnot(\f{x}=\f{zero}) \Rightarrow \f{x}\,\f{*}\,(\f{inv\ x}) = \f{one}}.\\
-\iDefinition{\f{(/)}\ (\f{x}:\f{real})\ (\f{y}:\f{nonZeroReal})} {\f{x}\,\f{*}\,(\f{inv\ y})}.\\
-%Definition nonZeroReal := {x : real | not (x = zero)}.
-%Parameter inv : nonZeroReal -> real.
-%Axiom inverse : forall x : real, (not x = zero) -> x * (inv x) = one.
-%Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
-\end{showInputSmall}
+\begin{source}
+Definition nonZeroReal := \{x : real | \iNot (x = zero)\}.
+Parameter inv : nonZeroReal \iTo real.
+Axiom inverse : \iForall x : real, \iNot (x = zero) -> x * (inv x) = one.
+Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
+\end{source}
 %
 We have defined the set of non-zero reals $\f{nonZeroReal}$ and
 the inverse operation~$\f{inv}$ on it. Division $\f{x/y}$ is defined
@@ -82,38 +74,29 @@ phase inserts a coercion that makes the expression well-typed.
 Translation sees $\f{inv}(\f{x} \mathbin{{:}}
 \f{nonZeroReal})$ instead of $\f{inv\ x}$ and translates this to
 %
-\begin{showOutput}
-\f{inv} (\ooblig{\f{u}}{\ounit}{\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}}{(\f{x},\f{u})})
-%inv (assure u:unit . not (x =real= zero) in (x, u))
-\end{showOutput}%
+\begin{source}
+inv (assure u:unit . \iNot (x \iPer{real} zero) in (x, u))
+\end{source}
 %
 If this were the final output, the programmer would have to verify
 that~$x$ is not zero, and provide a trivial realizer for it. However,
 in this case the thinning phase first removes the trivial realizer,
 %
 \iflong
-\begin{showOutput}
-\f{inv} (\oobligx{\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}}{\f{x}})
-%inv (assure not (x =real= zero) in x)
-\end{showOutput}%
+\begin{source}
+inv (assure \iNot (x \iPer{real} zero) in x)
+\end{source}%
 \fi % \iflong
 %
 and then the optimizer determines that the obligation is not needed
 because the whole expressions appears under the hypothesis that~$x$ is
 not zero. So in the end the programmer sees
 %
-\begin{showOutput}
-\oassertion{\f{inverse}}{
-\oforallt{\f{x}}{\f{real}}{\oimply{
-\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}
-}{
-\oper{\f{real}}{\f{x * inv\ x}}{\f{one}}
-}}
-}
-%(**  Assertion inverse =
-%  forall (x:||real||),  not (x =real= zero) -> (x * inv x) =real= one
-%*)
-\end{showOutput}%
+\begin{source}
+(**  Assertion inverse =
+  \iForall (x:\iT{real}),  \iNot (x \iPer{real} zero) \iTo (x * inv x) \iPer{real} one
+*)
+\end{source}
 %
 Assuming further that a strict linear order $<$ on~$\f{real}$ has
 been axiomatized, we might proceed by relating it to $\f{inv}$:
@@ -172,7 +155,6 @@ Now it is easier to understand what must be checked, namely that
 positive reals are not zero---an easy consequence of irreflexivity
 of~$<$, but not something that RZ optimizer is aware of.
 
-\iflong
 Lastly, we could define the golden ratio as the positive solution of
 $x^2 = x + 1$,
 %
@@ -190,7 +172,6 @@ assure x:real.
         x =real= x'))
   in x
 \end{source}
-\fi % \iflong
 
 \subsection{Finite sets}
 \label{sec:finite-sets}
@@ -212,6 +193,7 @@ assure x:real.
   \label{fig:semilattice}
 \end{figure}
 
+\iflong
 There are many characterizations of finite sets, but the one that
 works best constructively is due to Kuratowski, who identified the
 finite subsets of~$A$ as the least family~$K(A)$ of subsets of~$A$
@@ -220,6 +202,13 @@ singletons. This characterization relies on powersets, which are not
 available in RZ. But the gist of it, namely that $K(A)$ is an
 \emph{inital} structure a suitable sort, can be expressed as follows.
 
+\else
+%
+The family $K(A)$ of finite subsets of a set~$A$ may be characterized
+as the free $\vee$-semilattice generated by~$A$.
+%
+\fi
+%
 Recall that a \emph{$\vee$-semilattice} is a set~$S$ with a
 constant~$0 \in S$ and an associative, commutative, and idempotent
 operation ``join'' $\vee$ on~$S$ such that $0$ is the neutral element
@@ -387,34 +376,19 @@ $\f{leaf}(n)$ does not have any successors.
 %
 Figure~\ref{fig:wtype} shows an RZ axiomatization of W-types.
 %
-
 \begin{figure}
-\begin{showInput}
-\iDefinition{\f{Branching}}{\f{thy}}\\
-\qquad\iParameter{\f{s}}{\iSet} \qquad\mbox{\texttt{(* branching types *)}}\\
-\qquad\iParameter{\f{t}}{\f{s}\to\iSet}\qquad \mbox{\texttt{(* branch labels *)}}\\
-\f{end}.\\
-\\
-\iParameter{\f{W}}{(\f{B} : \f{Branching}) \to \f{thy}}\\
-\qquad\iParameter{\f{w}}{\iSet}.\\
-\qquad\iParameter{\f{tree}}{(\f{x} : \f{B.s})\to (\f{B.t\ x}\to \f{w})\to \f{w}.}\\
-\qquad\iAxiom{\f{induction}}{}\\
-\qquad\qquad{\forall\f{M} : \f{thy}\ \iParameter{\f{p}}{\f{w}\to\iProp}\ \f{end}.\ }\\
-\qquad\qquad(\forall \f{x}{:}\f{B.s}.\ \forall\f{f}{:}{(\f{B.t\ x}\to\f{w})}. \ 
-   ((\forall \f{y}{:}\f{B.t\ x}.\ \f{M.p}\ (\f{f\ y})) \Rightarrow \f{M.p}\ (\f{tree\ x\ f}))) \Rightarrow \\
-\qquad\qquad\quad\forall \f{t}{:}\f{w}.\ \f{M.p\ t}.\\
-\f{end}.
-%	Parameter W : [B : Branching] ->
-%	thy
-%	  Parameter w : Set.
-%	  Parameter tree : [x : B.s] -> (B.t x -> w) -> w.
-%	  Axiom induction:
-%	    forall M : thy Parameter p : w -> Prop. end,
-%	    (forall x : B.s, forall f : B.t x -> w,
-%	       ((forall y : B.t x, M.p (f y)) -> M.p (tree x f))) ->
-%	    forall t : w, M.p t.
-%	end.	
-\end{showInput}
+\begin{source}
+Parameter W : [B : Branching] \iTo
+thy
+  Parameter w : Set.
+  Parameter tree : [x : B.s] \iTo (B.t x \iTo w) \iTo w.
+  Axiom induction:
+    \iForall M : thy Parameter p : w \iTo Prop. end,
+    (\iForall x : B.s, \iForall f : B.t x \iTo w,
+       ((\iForall y : B.t x, M.p (f y)) \iTo M.p (tree x f))) \iTo
+    \iForall t : w, M.p t.
+end.
+\end{source}
   \caption{General inductive types}
   \label{fig:wtype}
 \end{figure}
@@ -423,15 +397,22 @@ The theory $\f{Branching}$ describes that a branching type
 consists of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
 parameterized by a branching type~$B$. It specifies a set~$w$ of
 well-founded trees and a tree-forming operation $\f{tree}$ with a
-dependent type $\pi_{x \in B.s} (B.t(x) \to w) \to w$. Given a
+dependent type $\Pi_{x \in B.s} (B.t(x) \to w) \to w$.
+%
+\iflong
+%
+Given a
 branching type~$x$ and a map $f : B.t(x) \to w$, $\f{tree}\,x\,f$
 is the tree whose root has branching type~$x$ and whose successor
-labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$. The inductive
-nature of~$w$ is expressed with the axiom $\f{induction}$, which
-states that for every property $M.p$, if $M.p$ is an inductive
-property then every tree satisfies it. A property is said to be
-\emph{inductive} if a tree $\f{tree}\,x\,f$ satisfies it whenever
-all its successors satisfy it.
+labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$.
+%
+\fi
+%
+The inductive nature of~$w$ is expressed with the axiom
+$\f{induction}$, which states that for every property $M.p$, if $M.p$
+is an inductive property then every tree satisfies it. A property is
+said to be \emph{inductive} if a tree $\f{tree}\,x\,f$ satisfies it
+whenever all its successors satisfy it.
 
 \iflong
 In the translation, see Appendix~\ref{sec:outp-induct-types} for a
@@ -447,7 +428,6 @@ and returning a type~$w$, and an operation $\f{tree}$ of type
 $B.s \to (B.t \to w) \to w$. In this example we use phase-splitting
 (see Section~\ref{sec:implementation}) to translate axiom
 $\f{induction}$ into a specification of a polymorphic function
-(compare with output for axiom \texttt{free} in the previous example)
 %
 \begin{equation*}
   \f{induction}:

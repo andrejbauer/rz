@@ -310,7 +310,7 @@ computable mathematics, such as those in Type Two
 Effectivity~\cite{Wei00}, are explicitly expressed in terms of
 realizers.
 
-
+\iflong
 \paragraph{Definite description.}
 %
 Russell's definite description operator $\ithe{x}{s}{\phi(x)}$ denotes
@@ -332,20 +332,19 @@ suitable realizers for $x$ and for $\phi(x)$, and to check uniqueness,
 %
 This is the best RZ can do, since in general it can check neither
 that~$x$ exists, nor that it is unique.
-
+\fi
 
 \subsection{Translation of propositions}
 \label{sec:transl-prop}
 
-The driving force behind the translation of logic is a theorem 
-(see\ \cite[Thm.~4.4.10]{Troelstra:van-Dalen:88:1}) that says that
-under the realizability interpretation every formula~$\phi$ is
-equivalent to one that says, informally speaking, ``there exists~$u
-\in \typeOf{\phi}$, such that $u$ realizes $\phi$''. Furthermore, the
-formula ``$u$ realizes $\phi$'' is computationally trivial. The
-translation of a predicate $\phi$ then consists of its underlying type
-$\typeOf{\phi}$ and the relation $u \rz \phi$, expressed as a negative
-formula.
+The driving force behind the translation of logic is a theorem
+\cite[4.4.10]{Troelstra:van-Dalen:88:1} that says that under the
+realizability interpretation every formula~$\phi$ is equivalent to one
+that says, informally speaking, ``there exists~$u \in \typeOf{\phi}$,
+such that $u$ realizes $\phi$''. Furthermore, the formula ``$u$
+realizes $\phi$'' is computationally trivial. The translation of a
+predicate $\phi$ then consists of its underlying type $\typeOf{\phi}$
+and the relation $u \rz \phi$, expressed as a negative formula.
 
 In RZ we avoid the explicit realizer notation $u \rz \phi$ in order to
 make the output easier to read.
