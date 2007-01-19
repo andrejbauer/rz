@@ -437,8 +437,8 @@ A branching type is determined by a pair of non-dependent types~$s$
 and~$t$ but the per $\per_t$ depends on~$\values{s}$. The theory~$W$
 turns into a signature for a functor receiving a branching type~$B$
 and returning a type~$w$, and an operation $\f{tree}$ of type
-$B.s \to (B.t \to w) \to w$. In this example we use phase-splitting
-(see Section~\ref{sec:implementation}) to translate axiom
+$B.s \to (B.t \to w) \to w$.  One can use phase-splitting
+to translate axiom
 $\f{induction}$ into a specification of a polymorphic function
 %
 \begin{equation*}
@@ -448,8 +448,7 @@ $\f{induction}$ into a specification of a polymorphic function
 %
 which is a form of recursion on well-founded trees. Instead of trying
 to explain what $\f{induction}$ is supposed to do, we show a surprisingly simple,
-hand-written implementation of W-types. The reader may be entertained
-by figuring out how it works:
+hand-written implementation of W-types. The reader may enjoy figuring out how it works:
 %
 \sourcefile{wtype.ml}
 
@@ -539,7 +538,7 @@ A \emph{type 2 functional} is a map $f : (\f{nat} \to \f{nat})
 depends only on an initial segment of the sequence~$a$. We can express
 this axiom in RZ as follows:
 %
-\begin{showInput}
+\begin{showInputSmall}
 \iAxiom{\f{continuity}}{}\\
 \qquad  {\forall \f{f}{:}(\f{nat}{\to}\f{nat}){\to}\f{nat}.\   \forall \f{a}{:}\f{nat}{\to}{\f{nat}}}\\
 \qquad\qquad
@@ -547,7 +546,7 @@ this axiom in RZ as follows:
     \forall \f{b}{:}\f{nat}{\to}\f{nat}.\
     (\forall \f{m}{:}\f{nat}.\ \f{m} \leq \f{k} \Rightarrow \f{a\ m} = \f{b\ m})
      \Rightarrow \f{f\ a} = \f{f\ b}.
-\end{showInput}
+\end{showInputSmall}
 %
 The axiom says that for any $f$ and $a$ there exists $k \in
 \f{nat}$ such that $f(b) = f(a)$ as soon as the sequences~$a$

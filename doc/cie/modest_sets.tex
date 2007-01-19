@@ -424,12 +424,18 @@ non-computable) function $\phi : \values{\typeOf{A}} \times
   $\phi(u_2,v)$.
 \end{itemize}
 
+\iflong
 We illustrate how the realizability interpretation extracts the
 computational content of a proposition. To make an interesting
-example, suppose we already implemented the structure of real
+example, suppose
+\else % \iflong
+Suppose
+\fi % \iflong
+we have implemented the real
 numbers~$\RR$ as a modest set~$R = (\RR, \mathtt{real}, {\rz_R})$, and
-consider the statement 
+consider  
 \iflong
+the statement
 that every cubic $x^3 + a x + b$ has a root,
 %
 \begin{equation}

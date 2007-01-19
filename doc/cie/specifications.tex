@@ -252,10 +252,13 @@ for $\ooblig{\_}{\ounit}{\op}{\oe}$.
 
 Obligations arise from the fact that well-formedness 
 of the input language is undecidable; see Section~\ref{sec:input-language}.  
-In such cases the system computes a realizability translation, but also produces obligations 
-to be checked.  The programmer must
+In such cases the system computes a realizability translation, but also produces obligations.  The programmer must
 replace each obligation with a value satisfying the
-obligation (i.e., demonstrate that the obligation can be satisfied). 
+obligation%
+\iflong
+(i.e., demonstrate that the obligation can be satisfied)
+\fi % \iflong
+. 
 If such values do not exist, the specification is
 unimplementable.
 
