@@ -318,7 +318,14 @@ RZ can help explain why a generally
 accepted axiom is not constructively valid. Consider the Axiom of
 Choice:
 %
-\sourcefile{choice.thy}
+\[
+\begin{array}{l}
+\iParameter{\mathtt{a\ b}}{\iSet}.\\
+\iParameter{\mathtt{r}}{\mathtt{a}\to\mathtt{b}\to\iProp}.\\
+\iAxiom{\mathtt{ac}}{(\forall \mathtt{x}{:}\mathtt{a}.\ \exists \mathtt{y}{:}\mathtt{b}.\ \mathtt{r\ x\ y}) \Rightarrow 
+                     (\exists \mathtt{c}{:}{\mathtt{a}\to\mathtt{b}}.\ \forall \mathtt{x}{:}{\mathtt{a}}.\ \mathtt{r}\ \mathtt{x}\ (\mathtt{c\ x}))}.
+\end{array}
+\]
 %
 The relevant part of the output is
 %
@@ -346,7 +353,15 @@ second component of~$f$ is not assumed to be extensional.
 The \emph{Intensional} Axiom of Choice allows the choice function to
 depend on the realizers:
 %
-\sourcefile{ichoice.thy} Now the output is
+\[
+\begin{array}{l}
+\iParameter{\mathtt{a\ b}}{\iSet}.\\
+\iParameter{\mathtt{r}}{\mathtt{a}\to\mathtt{b}\to\iProp}.\\
+\iAxiom{\mathtt{ac}}{(\forall \mathtt{x}{:}\mathtt{a}.\ \exists \mathtt{y}{:}\mathtt{b}.\ \mathtt{r\ x\ y}) \Rightarrow 
+                     (\exists \mathtt{c}{:}{\irz{\mathtt{a}}\to\mathtt{b}}.\ \forall \mathtt{x}{:}{\irz{\mathtt{a}}}.\ \mathtt{r}\ (\irz{\mathtt{x}})\ (\mathtt{c\ x}))}.
+\end{array}
+\]
+Now the output is
 %
 \begin{source}
 val iac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
@@ -388,12 +403,17 @@ A \emph{type 2 functional} is a map $f : (\mathtt{nat} \to \mathtt{nat})
 depends only on an initial segment of the sequence~$a$. We can express
 this axiom in RZ as follows:
 %
-\begin{source}
-Axiom continuity:
-forall f : (nat -> nat) -> nat, forall a : nat -> nat,
-  exists k, forall b : nat -> nat,
-    (forall m, m <= k -> a m = b m) -> f a = f b.
-\end{source}
+\[
+\begin{array}{l}
+\iAxiom{\mathtt{continuity}}{}\\
+\qquad  {\forall \mathtt{f}{:}(\mathtt{nat}{\to}\mathtt{nat}){\to}\mathtt{nat}.\   \forall \mathtt{a}{:}\mathtt{nat}{\to}{\mathtt{nat}}}\\
+\qquad\qquad
+    \exists \mathtt{k}{:}\mathtt{nat}.\ 
+    \forall \mathtt{b}{:}\mathtt{nat}{\to}\mathtt{nat}.\
+    (\forall \mathtt{m}{:}\mathtt{nat}.\ \mathtt{m} \leq \mathtt{k} \Rightarrow \mathtt{a\ m} = \mathtt{b\ m})
+     \Rightarrow \mathtt{f\ a} = \mathtt{f\ b}.
+\end{array}
+\]
 %
 The axiom says that for any $f$ and $a$ there exists $k \in
 \mathtt{nat}$ such that $f(b) = f(a)$ as soon as the sequences~$a$
