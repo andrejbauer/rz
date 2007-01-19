@@ -307,7 +307,94 @@ More common set implementations (e.g., the \texttt{Set} module in the OCaml stan
 implement sets over values with either decidable total order; these could also be
 formalized in RZ.
 
-% Chris: INDUCTIVE TYPES EXAMPLE USED TO BE HERE BEFORE I MOVED IT TO THE APPENDIX
+\subsection{Inductive types}
+\label{sec:inductive-types}
+
+To demonstrate the use of dependent types we show how RZ handles
+general inductive types, also known as W-types or general
+trees~\cite{nordstroem90:_progr_martin_type_theor}. Recall that a
+W-type is a set of well-founded trees, where the branching types of
+trees are described by a family of sets $B = \set{T(x)}_{x \in S}$.
+Each node in a tree has a \emph{branching type}~$x \in S$, which
+determines that the successors of the node are labeled by the elements
+of~$T(x)$.
+%
+\iflong
+%
+For example, to get non-empty binary trees whose leaves are
+labeled by natural numbers, define
+%
+\begin{align*}
+  S &= \set{\mathtt{cons}} \cup \set{\mathtt{leaf}(n) \such n \in \NN}
+  \\
+  T(\mathtt{cons}) &= \set{\mathtt{left}, \mathtt{right}}
+  \\
+  T(\mathtt{leaf}(n)) &= \emptyset.
+\end{align*}
+%
+Then a node of type $\mathtt{cons}$ has two successors, indexed by
+constants $\mathtt{left}$ and $\mathtt{right}$, while a node of type
+$\mathtt{leaf}(n)$ does not have any successors.
+\par
+%
+\fi % iflong
+%
+Figure~\ref{fig:wtype} shows an RZ axiomatization of W-types.
+%
+\begin{figure}
+  \centering
+  \sourcefile{wtype.thy}
+  \caption{General inductive types}
+  \label{fig:wtype}
+\end{figure}
+%
+The theory $\mathtt{Branching}$ describes that a branching type
+consits of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
+parametrized by a branching type~$B$. It specifies a set~$w$ of
+well-founded trees and a tree-forming operation $\mathtt{tree}$ with a
+dependent type $\pi_{x \in B.s} (B.t(x) \to w) \to w$. Given a
+branching type~$x$ and a map $f : B.t(x) \to w$, $\mathtt{tree}\,x\,f$
+is the tree whose root has branching type~$x$ and whose successor
+labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$. The inductive
+nature of~$w$ is expressed with the axiom $\mathtt{induction}$, which
+states that for every property $M.p$, if $M.p$ is an inductive
+property then every tree satsifies it. A property is said to be
+\emph{inductive} if a tree $\mathtt{tree}\,x\,f$ satisfies it whenever
+all its successors satisfy it.
+
+\iflong
+In the translation, see Appendix~\ref{sec:outp-induct-types} for a
+complete output, dependencies at the level of types and terms disappear.
+\else
+In the translation dependencies at the level of types and terms disappear.
+\fi
+%
+A branching type is determined by a pair of non-dependent types~$s$
+and~$t$ but the per $\per_t$ depends on~$\values{s}$. The theory~$W$
+turns into a signature for a functor receiving a branching type~$B$
+and returning a type~$w$, and an operation $\mathtt{tree}$ of type
+$B.s \to (B.t \to w) \to w$. In this example we use phase-splitting
+(see Section~\ref{sec:implementation}) to translate axiom
+$\mathtt{induction}$ into a specification of a polymorphic function
+(compare with output for axiom \texttt{free} in the previous example)
+%
+\begin{equation*}
+  \mathtt{induction}:
+  (B.s \to (B.t \to w) \to (B.t \to \poly{ty\_p}) \to \poly{ty\_p}) \to w \to \poly{ty\_p},
+\end{equation*}
+%
+which is a form of recursion on well-founded trees. Instead of trying
+to explain what $\mathtt{induction}$ is supposed to do, we show in
+Figure~\ref{fig:wtype-implementation} a surprisingly simple,
+hand-written implementation of W-types. The reader may be entertained
+by figuring out how $\mathtt{induction}$ works.
+%
+\begin{figure}
+  \centering
+  \sourcefile{wtype.ml}
+  \caption{An implementation of general inductive types.}
+  \label{fig:wtype-implementation}
+\end{figure}
 
 
 
