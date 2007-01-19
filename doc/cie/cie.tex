@@ -40,6 +40,13 @@
 % To show source
 \DefineVerbatimEnvironment{source}{Verbatim}{xleftmargin=1.5em,fontsize=\footnotesize}
 
+% Use these environents to display input and otput in LaTeXified mode
+\newenvironment{showInput}{\[\begin{array}{l}}{\end{array}\]}
+\newenvironment{showInputSmall}{\footnotesize\[\begin{array}{l}}{\end{array}\]}
+
+\newenvironment{showOutput}{\[\begin{array}{l}}{\end{array}\]}
+\newenvironment{showOutputSmall}{\footnotesize\[\begin{array}{l}}{\end{array}\]}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \begin{document}

@@ -17,32 +17,35 @@ or $\lnot (x = y)$. In classical mathematics all sets are decidable
 because decidability of equality is just an instance of the law of
 excluded middle. However, RZ computes from
 %
-\[
-\footnotesize
-\begin{array}{l}
-\iParameter{\mathtt{s}}{\iSet}.\\
-\iAxiom{\mathtt{eq}}{\forall\mathtt{x},\mathtt{y}:\mathtt{s}.\ \ \mathtt{x} = \mathtt{y} \lor \lnot(\mathtt{x} = \mathtt{y})}.\\
-\end{array}
-\]
+\begin{showInputSmall}
+\iParameter{\f{s}}{\iSet}.\\
+\iAxiom{\f{eq}}{\forall \f{x},\f{y}:\f{s}.\ \f{x} = \f{y} \lor \lnot(\f{x} = \f{y})}.\\
+\end{showInputSmall}%
 %
 that the realizer for the axiom $\mathtt{eq}$ is specified by
 %
-\begin{source}
-val eq : s -> s -> [`or0 | `or1]
-(**  Assertion eq =
-       forall (x:||s||, y:||s||),
-         (match eq x y with
-            `or0 => x =s= y
-          | `or1 => not (x =s= y) )
-*)
-\end{source}
+\begin{showOutputSmall}
+\ovalspec{\f{eq}}{\oarrow{\oarrow{\f{s}}{\f{s}}}{`\texttt{or0}+`\texttt{or1}}}\\
+\oassertion{\f{eq}}{\forall \f{x}, \f{y} : \support{\f{s}}.\ 
+(\opcasex{\oapp{\oapp{\f{eq}}{\f{x}}}{\f{y}}}{\texttt{or0}}{\oper{\f{s}}{\f{x}}{\f{y}}}{\texttt{or1}}{\onot{(\oper{\f{s}}{\f{x}}{\f{y}})}})
+}
+%val eq : s -> s -> [`or0 | `or1]
+%(**  Assertion eq =
+%       forall (x:||s||, y:||s||),
+%         (match eq x y with
+%            `or0 => x =s= y
+%          | `or1 => not (x =s= y) )
+%*)
+\end{showOutputSmall}%
 %
-We read this as follows: $\mathtt{eq}$ is a function which takes
-arguments~$x$ and~$y$ of type~$s$ and returns $\mathtt{`or0}$ or
-$\mathtt{`or1}$. If it returns $\mathtt{`or0}$, then $x \per_s y$, and
-if it returns $\mathtt{`or1}$, then $\lnot (x \per_s y)$. In other
-words $\mathtt{eq}$ is a decision procedure which tells when
-values~$x$ and~$y$ represent the same element of the modest set.
+We read this as follows: $\f{eq}$ is a function which takes
+arguments~$\f{x}$ and~$\f{y}$ of type~$\f{s}$ and returns
+$\mathtt{`or0}$ or $\mathtt{`or1}$. If it returns $\mathtt{`or0}$,
+then $\oper{\f{s}}{\f{x}}{\f{y}}$, and if it returns
+$\mathtt{`or1}$, then $\onot{(\oper{\f{s}}{\f{x}}{\f{y}})}$. In
+other words $\f{eq}$ is a decision procedure which tells when
+values~$\f{x}$ and~$\f{y}$ represent the same element of the modest
+set.
 
 \subsection{Examples with obligations}
 \label{sec:exampl-with-oblig}
@@ -51,93 +54,119 @@ In this section we show how RZ produces obligations, is sometimes able
 to optimize them away, and show the effect of hoisting.
 
 Consider how we might define division of real numbers. Assuming the
-set of real numbers~$\mathtt{real}$, a constant $\mathtt{zero}$, and
-multiplication operation~$\mathtt{*}$ have already been declared and
+set of real numbers~$\f{real}$, a constant $\f{zero}$, and
+multiplication operation~$\f{*}$ have already been declared and
 axiomatized, we might write:
 %
-\[
-\footnotesize
-\begin{array}{l}
-\iDefinition{\mathtt{nonZeroReal}}{\isubset{\mathtt{x}}{\mathtt{real}}{\lnot(\mathtt{x}=\mathtt{zero})}}.\\
-\iParameter{\mathtt{inv}}{\mathtt{nonZeroReal}\to\mathtt{real}}.\\
-\iAxiom{\mathtt{inverse}}{\forall\mathtt{x}:\mathtt{real}.\ \lnot(\mathtt{x}=\mathtt{zero}) \Rightarrow \mathtt{x}\,\mathtt{*}\,(\mathtt{inv\ x}) = \mathtt{one}}.\\
-\iDefinition{\mathtt{(/)}\ (\mathtt{x}:\mathtt{real})\ (\mathtt{y}:\mathtt{nonZeroReal})} {\mathtt{x}\,\mathtt{*}\,(\mathtt{inv\ y})}.\\
-\end{array}
-\]
-\iffalse
-\begin{source}
-Definition nonZeroReal := {x : real | not (x = zero)}.
-Parameter inv : nonZeroReal -> real.
-Axiom inverse : forall x : real, (not x = zero) -> x * (inv x) = one.
-Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
-\end{source}
-\fi
+\begin{showInputSmall}
+\iDefinition{\f{nonZeroReal}}{\isubset{x}{\f{real}}{\lnot(\f{x}=\f{zero})}}.\\
+\iParameter{\f{inv}}{\f{nonZeroReal}\to\f{real}}.\\
+\iAxiom{\f{inverse}}{\forall\f{x}:\f{real}.\ \lnot(\f{x}=\f{zero}) \Rightarrow \f{x}\,\f{*}\,(\f{inv\ x}) = \f{one}}.\\
+\iDefinition{\f{(/)}\ (\f{x}:\f{real})\ (\f{y}:\f{nonZeroReal})} {\f{x}\,\f{*}\,(\f{inv\ y})}.\\
+%Definition nonZeroReal := {x : real | not (x = zero)}.
+%Parameter inv : nonZeroReal -> real.
+%Axiom inverse : forall x : real, (not x = zero) -> x * (inv x) = one.
+%Definition (/) (x : real) (y : nonZeroReal) := x * (inv y).
+\end{showInputSmall}
 %
-We have defined the set of non-zero reals $\mathtt{nonZeroReal}$ and
-the inverse operation~$\mathtt{inv}$ on it. Division $x/y$ is defined
-as $x * \mathtt{inv}\,y$. This does \emph{not} mean that the
+We have defined the set of non-zero reals $\f{nonZeroReal}$ and
+the inverse operation~$\f{inv}$ on it. Division $\f{x/y}$ is defined
+as $\f{x * inv\; y}$. This does \emph{not} mean that the
 programmer must necessarily implement division this way, only that the
-implementation of $x/y$ must be equivalent to $x * \mathtt{inv}\,y$.
+implementation of $\f{x/y}$ must be equivalent to $\f{x * inv\;y}$.
 
-In the axiom $\mathtt{inverse}$, RZ encounters the subexpression
-$\mathtt{inv}\;x$. Because $x$ is quantified as an element of
-$\mathtt{real}$ rather than $\mathtt{nonZeroReal}$, the typechecking
+In the axiom $\f{inverse}$, RZ encounters the subexpression
+$\f{inv \;x}$. Because $\f{x}$ is quantified as an element of
+$\f{real}$ rather than $\f{nonZeroReal}$, the typechecking
 phase inserts a coercion that makes the expression well-typed.
-Translation sees $\mathtt{inv}(x \mathbin{{:}}
-\mathtt{nonZeroReal})$ instead of $\mathtt{inv\ x}$ and translates this to
+Translation sees $\f{inv}(\f{x} \mathbin{{:}}
+\f{nonZeroReal})$ instead of $\f{inv\ x}$ and translates this to
 %
-\begin{source}
-inv (assure u:unit . not (x =real= zero) in (x, u))
-\end{source}
+\begin{showOutput}
+\f{inv} (\ooblig{\f{u}}{\ounit}{\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}}{(\f{x},\f{u})})
+%inv (assure u:unit . not (x =real= zero) in (x, u))
+\end{showOutput}%
 %
 If this were the final output, the programmer would have to verify
 that~$x$ is not zero, and provide a trivial realizer for it. However,
 in this case the thinning phase first removes the trivial realizer,
 %
 \iflong
-\begin{source}
-inv (assure not (x =real= zero) in x)
-\end{source}
+\begin{showOutput}
+\f{inv} (\oobligx{\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}}{\f{x}})
+%inv (assure not (x =real= zero) in x)
+\end{showOutput}%
 \fi % \iflong
 %
 and then the optimizer determines that the obligation is not needed
 because the whole expressions appears under the hypothesis that~$x$ is
 not zero. So in the end the programmer sees
 %
-\begin{source}
-(**  Assertion inverse =
-  forall (x:||real||),  not (x =real= zero) -> (x * inv x) =real= one
-*)
-\end{source}
+\begin{showOutput}
+\oassertion{\f{inverse}}{
+\oforallt{\f{x}}{\f{real}}{\oimply{
+\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}
+}{
+\oper{\f{real}}{\f{x * inv\ x}}{\f{one}}
+}}
+}
+%(**  Assertion inverse =
+%  forall (x:||real||),  not (x =real= zero) -> (x * inv x) =real= one
+%*)
+\end{showOutput}%
 %
-Assuming further that a strict linear order $<$ on~$\mathtt{real}$ has
-been axiomatized, we might proceed by relating it to $\mathtt{inv}$:
+Assuming further that a strict linear order $<$ on~$\f{real}$ has
+been axiomatized, we might proceed by relating it to $\f{inv}$:
 %
-\begin{source}
-Axiom inv_positive: forall x : real, zero < x -> zero < inv x.
-\end{source}
+\begin{showInput}
+\iAxiom{\f{inv\_positive}}{
+\iforall{\f{x}}{\f{real}}{\oimply{\f{zero} < \f{x}}{\f{zero} < \f{inv\ x}}}
+}.
+%Axiom inv_positive: forall x : real, zero < x -> zero < inv x.
+\end{showInput}%
 %
-Once again $\mathtt{inv}\;x$ appears in the input, bt this time the
+Once again $\f{inv\;x}$ appears in the input, bt this time the
 optimizer is unable to remove the obligation, so the output is
 %
-\begin{source}
-(**  Assertion inv_positive =
-       forall (x:||real||),  zero < x ->
-         zero < inv (assure (not (x =real= zero)) in x)
-*)
-\end{source}
+\begin{showOutput}
+\oassertion{\f{inv\_positive}}{}\\
+\qquad
+\oforallt{\f{x}}{\f{real}}{
+  \oimply{
+    \f{zero} < \f{x}}
+  {\f{zero} < \f{inv}
+    (\oobligx{\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}}{\f{x}})}
+}
+%(**  Assertion inv_positive =
+%       forall (x:||real||),  zero < x ->
+%         zero < inv (assure (not (x =real= zero)) in x)
+%*)
+\end{showOutput}
 %
 Local obligations can sometimes be hard to read, but if we activate the hoisting phase
 (see Section~\ref{sec:implementation}), the obligation can be moved
 to the top level. As this is done, the hypotheses under which the
 obligation appears are collected, and we get
 %
-\begin{source}
-(**  Assertion inv_positive =
-  assure (forall (x:||real||),  zero < x -> not (x =real= zero))
-    in forall (x:||real||),  zero < x -> zero < inv x
-*)
-\end{source}
+\begin{showOutput}
+\oassertion{\f{inv\_positive}}{}\\
+\qquad
+\oobligx{
+\oforallt{\f{x}}{\f{real}}{
+\oimply{\f{zero}<\f{x}}{\onot{(\oper{\f{real}}{\f{x}}{\f{zero}})}}
+}
+}{}\\
+\qquad\qquad{
+\oforallt{\f{x}}{\f{real}}{
+  \oimply{
+    \f{zero} < \f{x}}
+  {\f{zero} < \f{inv\ x}}
+}}
+%(**  Assertion inv_positive =
+%  assure (forall (x:||real||),  zero < x -> not (x =real= zero))
+%    in forall (x:||real||),  zero < x -> zero < inv x
+%*)
+\end{showOutput}%
 %
 Now it is easier to understand what must be checked, namely that
 positive reals are not zero---an easy consequence of irreflexivity
@@ -167,21 +196,18 @@ assure x:real.
 \label{sec:finite-sets}
 
 \begin{figure}[t]
-\[
-\footnotesize
-\begin{array}{l}
-\iDefinition{\mathtt{Semilattice}}{\mathsf{thy}}\\
-\qquad \iParameter{\mathtt{s}}{\iSet}.\\
-\qquad \iParameter{\mathtt{zero}}{\mathtt{s}}.\\
-\qquad \iParameter{\mathtt{join}}{\mathtt{s}\to\mathtt{s}\to\mathtt{s}}.\\
+\begin{showInputSmall}
+\iDefinition{\f{Semilattice}}{\mathsf{thy}}\\
+\qquad \iParameter{\f{s}}{\iSet}.\\
+\qquad \iParameter{\f{zero}}{\f{s}}.\\
+\qquad \iParameter{\f{join}}{\f{s}\to\f{s}\to\f{s}}.\\
 \\
-\qquad \iAxiom{\mathtt{commutative}}{\forall \mathtt{x},\mathtt{y}:\mathtt{s}.\ \mathtt{join\ x\ y} = \mathtt{join\ y\ x}}.\\
-\qquad \iAxiom{\mathtt{associative}}{\forall \mathtt{x},\mathtt{y},\mathtt{z}:\mathtt{s}.\ \mathtt{join}\,(\mathtt{join\ x\ y})\,\mathtt{z} = \mathtt{join}\,\mathtt{x}\, (\mathtt{join\ y\ z})}.\\
-\qquad \iAxiom{\mathtt{idempotent}}{\forall \mathtt{x}:\mathtt{s}.\ \mathtt{join\ x\ x} = \mathtt{x}}.\\
-\qquad \iAxiom{\mathtt{neutral}}{\forall \mathtt{x}:\mathtt{s}.\ \mathtt{join\ x\ zero} = \mathtt{x}}.\\
+\qquad \iAxiom{\f{commutative}}{\forall \f{x},\f{y}:\f{s}.\ \f{join\ x\ y} = \f{join\ y\ x}}.\\
+\qquad \iAxiom{\f{associative}}{\forall \f{x},\f{y},\f{z}:\f{s}.\ \f{join}\,(\f{join\ x\ y})\,\f{z} = \f{join}\,\f{x}\, (\f{join\ y\ z})}.\\
+\qquad \iAxiom{\f{idempotent}}{\forall \f{x}:\f{s}.\ \f{join\ x\ x} = \f{x}}.\\
+\qquad \iAxiom{\f{neutral}}{\forall \f{x}:\f{s}.\ \f{join\ x\ zero} = \f{x}}.\\
 \mathsf{end}.
-\end{array}
-\]
+\end{showInputSmall}
   \caption{The theory of a semilattice}
   \label{fig:semilattice}
 \end{figure}
@@ -205,82 +231,103 @@ generated by a set~$A$, where $\vee$ is union and $0$ is the empty
 set. This is formalized in RZ as shown in Figure~\ref{fig:kuratowski}.
 %
 \begin{figure}
-\[
-\begin{array}{l}
-\iDefinition{\texttt{K}\ (\texttt{A} : \mathtt{thy}\ \  \iParameter{\mathtt{a}}{\iSet}.\ \  \texttt{end})}{\mathtt{thy}}\\
-\qquad \iInclude{\mathtt{Semilattice}}.\\
-\qquad \iParameter{\mathtt{singleton}}{\mathtt{A.a} \to \mathtt{s}}.\\
-\qquad \iDefinition{\mathtt{fin}}{\mathtt{s}}.\\
-\qquad \iDefinition{\mathtt{emptyset}}{\mathtt{zero}}.\\
-\qquad \iDefinition{\mathtt{union}}{\mathtt{join}}.\\
+\begin{showInput}
+\iDefinition{\texttt{K}\ (\texttt{A} : \f{thy}\ \  \iParameter{\f{a}}{\iSet}.\ \  \texttt{end})}{\f{thy}}\\
+\qquad \iInclude{\f{Semilattice}}.\\
+\qquad \iParameter{\f{singleton}}{\f{A.a} \to \f{s}}.\\
+\qquad \iDefinition{\f{fin}}{\f{s}}.\\
+\qquad \iDefinition{\f{emptyset}}{\f{zero}}.\\
+\qquad \iDefinition{\f{union}}{\f{join}}.\\
 \\
-\qquad \iAxiom{\mathtt{free}}{} \forall \mathtt{S}:\mathtt{Semilattice}.\ \forall\mathtt{f}:{\mathtt{A.a}\to\mathtt{S.s}}.\ \exists!g:\mathtt{fin}{\to}{\mathtt{S.s}}.\\
-\qquad \qquad \qquad \qquad \qquad \mathtt{g\ emptyset} = \mathtt{S.zero}\ \land\\
-\qquad \qquad \qquad \qquad \qquad \forall\mathtt{x}:\mathtt{A.a}.\ \mathtt{f\ x} = \mathtt{g}\ (\mathtt{singleton\ x})\ \land\\
-\qquad \qquad \qquad \qquad \qquad \forall\mathtt{u},\mathtt{v}:\mathtt{fin}.\ \mathtt{g}(\mathtt{union\ u\ v}) = \mathtt{S.join}\,(\mathtt{g\ u})\,(\mathtt{g\ v}).\\
-\mathtt{end}.
-\end{array}
-\]
+\qquad \iAxiom{\f{free}}{} \forall \f{S}:\f{Semilattice}.\ \forall\f{f}:{\f{A.a}\to\f{S.s}}.\ \exists!g:\f{fin}{\to}{\f{S.s}}.\\
+\qquad \qquad \qquad \qquad \qquad \f{g\ emptyset} = \f{S.zero}\ \land\\
+\qquad \qquad \qquad \qquad \qquad \forall\f{x}:\f{A.a}.\ \f{f\ x} = \f{g}\ (\f{singleton\ x})\ \land\\
+\qquad \qquad \qquad \qquad \qquad \forall\f{u},\f{v}:\f{fin}.\ \f{g}(\f{union\ u\ v}) = \f{S.join}\,(\f{g\ u})\,(\f{g\ v}).\\
+\f{end}.
+\end{showInput}
   \caption{Kuratowski finite sets}
   \label{fig:kuratowski}
 \end{figure}
 %
-The theory $K$ is parametrized by a model~$A$ which contains a
-set~$a$. In the first line we include the theory of semilattices. Then
-we postulate an operation $\mathtt{singleton}$ which injects the
+The theory $\f{K}$ is parametrized by a model~$\f{A}$ which contains a
+set~$\f{a}$. In the first line we include the theory of semilattices.
+Then we postulate an operation $\f{singleton}$ which injects the
 generators into the semilattice. The three definitions are just a
-convenience, so that we can refer to the parts of $K(A)$ by their
-natural names, e.g., $\mathtt{emptyset}$ instead of $\mathtt{zero}$.
-The axiom $\mathtt{free}$ expresses the fact that $K(A)$ is the free
-semilattice on~$A.a$: for every semilattice $S$ and a map $f : A.a \to
-S.s$ from the generators to the underlying set of~$S$, there exists a
-unique semilattice homomorphism $g : \mathtt{fin} \to S.s$ such that
-$f(x) = g(\set{x})$.
+convenience, so that we can refer to the parts of $\f{K(A)}$ by their
+natural names, e.g., $\f{emptyset}$ instead of $\f{zero}$. The axiom
+$\f{free}$ expresses the fact that $\f{K}(\f{A})$ is the free
+semilattice on~$\f{A.a}$: for every semilattice $\f{S}$ and a map
+$\f{f} : \f{A.a} \to \f{S.s}$ from the generators to the underlying
+set of~$\f{S}$, there exists a unique semilattice homomorphism $\f{g}
+: \f{fin} \to \f{S.s}$ such that $\f{f}(\f{x}) = \f{g}(\f{singleton\;
+  x})$.
 
-The output for $\mathtt{Semilattice}$ and~$\mathtt{K}$ specifies
+The output for $\f{Semilattice}$ and~$\f{K}$ specifies
 values of suitable types for each declared constant and operation. All
 axioms but the last one are equations and have straightforward
 translations in terms of underlying pers. The output for the axiom
-$\mathtt{free}$ is shown in Figure~\ref{fig:free}.
+$\f{free}$ is shown in Figure~\ref{fig:free}.
 %
 \begin{figure}
   \centering
-\begin{source}
-module Free : functor (S : Semilattice) ->
-sig
-val free : (A.a -> S.s) -> fin -> S.s
-(**  Assertion free = 
-forall (f:||A.a -> S.s||), 
-  let g = free f in g : ||fin -> S.s|| /\ 
-  g emptyset =S.s= S.zero /\ 
-  (forall (x:||A.a||),  f x =S.s= g (singleton x)) /\ 
-  (forall (u:||fin||, v:||fin||), g (union u v) =S.s= S.join (g u) (g v)) /\ 
-  (forall h:fin -> S.s,  h : ||fin -> S.s|| /\ 
-     h emptyset =S.s= S.zero /\ 
-     (forall (x:||A.a||), f x =S.s= h (singleton x)) /\ 
-     (forall (u:||fin||, v:||fin||), 
-        h (union u v) =S.s= S.join (h u) (h v)) ->
-     forall x:fin, y:fin,  x =fin= y -> g x =S.s= h y)
-*)
-end
-\end{source}
+\begin{showOutputSmall}
+\f{module}\ \f{Free} : \f{functor} (\f{S} : \f{Semilattice}) \to \f{sig}\\
+\quad \ovalspec{\f{free}}{\oarrow{(\oarrow{\f{A.a}}{\f{S.s}})}{\oarrow{\f{fin}}{\f{S.s}}}}
+\\
+\quad
+\oassertion{\f{free}}{}
+\\
+\quad\quad
+\oforallt{\f{f}}{\oarrow{\f{A.a}}{\f{S.s}}}{
+\olet{\f{g}}{\f{free\ f}}{}}\\
+\qquad\qquad \ototal{\f{g}}{\oarrow{\f{fin}}{\f{S.s}}} \land \oper{\f{S.s}}{\f{g\ emptyset}}{\f{S.zero}} \land {}\\
+\qquad\qquad (\oforallt{\f{x}}{\f{A.a}}{\oper{\f{S.s}}{\f{f\ x}}{\f{g(singleton\ x)}}}) \land {} \\
+\qquad\qquad (\oforallt{\f{u},\f{v}}{\f{fin}}{\oper{\f{S.s}}{\f{g(union\ u\ v)}}{\f{S.join\ (g\ u)\ (g\ v)}}}) \land {} \\
+\qquad\qquad
+((\oforall{\f{h}}{\oarrow{\f{fin}}{\f{S.s}}}{}\\
+\qquad\qquad\qquad
+\ototal{\f{h}}{\oarrow{\f{fin}}{\f{S.s}}} \land
+\oper{\f{S.s}}{\f{h\ emptyset}}{\f{S.zero}} \land {} \\
+\qquad\qquad\qquad (\oforallt{\f{x}}{\f{A.a}}{\oper{\f{S.s}}{\f{f\ x}}{\f{h(singleton\ x)}}}) \land {} \\
+\qquad\qquad\qquad
+(\oforallt{\f{u},\f{v}}{\f{fin}}{\oper{\f{S.s}}{\f{h(union\ u\ v)}}{\f{S.join\ (h\ u)\ (h\ v)}}})) \Rightarrow {} \\
+\qquad\qquad
+\oforall{\f{x},\f{y}}{\f{fin}}{\oimply{\oper{\f{fin}}{\f{x}}{\f{y}}}{\oper{\f{S.s}}{\f{g\ x}}{\f{h\ y}}}})
+%module Free : functor (S : Semilattice) ->
+%sig
+%val free : (A.a -> S.s) -> fin -> S.s
+%(**  Assertion free = 
+%forall (f:||A.a -> S.s||), 
+%  let g = free f in g : ||fin -> S.s|| /\ 
+%  g emptyset =S.s= S.zero /\ 
+%  (forall (x:||A.a||),  f x =S.s= g (singleton x)) /\ 
+%  (forall (u:||fin||, v:||fin||), g (union u v) =S.s= S.join (g u) (g v)) /\ 
+%  (forall h:fin -> S.s,  h : ||fin -> S.s|| /\ 
+%     h emptyset =S.s= S.zero /\ 
+%     (forall (x:||A.a||), f x =S.s= h (singleton x)) /\ 
+%     (forall (u:||fin||, v:||fin||), 
+%        h (union u v) =S.s= S.join (h u) (h v)) ->
+%     forall x:fin, y:fin,  x =fin= y -> g x =S.s= h y)
+%*)
+%end
+\end{showOutputSmall}%
   \caption{Output of axiom $\texttt{free}$.}
   \label{fig:free}
 \end{figure}
 %
-Because the axiom quantifies over all models~$S$ of the theory
-$\mathtt{Semilattice}$ its translation is a functor~$\mathtt{Free}$
-which accepts an implementation of a semilattice~$S$ and yields a
-realizer $\mathtt{free}$ validating the axiom. The computational
-meaning of $\mathtt{free}$ is a combination map and fold operation, taking
-a map $f : A.a \to S.s$ and a finite set~$u = \set{x_1, \ldots, x_n}$,
-and return $f(x_1) \vee \cdots \vee f(x_n)$, where $\vee$ is the join
-operation on the semilattice~$S$.
+Because the axiom quantifies over all models~$\f{S}$ of the theory
+$\f{Semilattice}$ its translation is a functor~$\f{Free}$ which
+accepts an implementation of a semilattice~$S$ and yields a realizer
+$\f{free}$ validating the axiom. The computational meaning of
+$\f{free}$ is a combination map and fold operation, taking a map
+$\f{f} : \f{A.a} \to \f{S.s}$ and a finite set~$\f{u} = \set{x_1,
+  \ldots, x_n}$, and return $\f{f}(x_1) \vee \cdots \vee \f{f}(x_n)$,
+where $\vee$ is the join operation on the semilattice~$S$.
 
 Applying phase-splitting to this axiom yields the even simpler
 specification
 \[
-\mathsf{val}\ \mathtt{free} : \alpha \to (\alpha \to \alpha \to \alpha) \to (\mathtt{A.a}\to\alpha) \to \mathtt{fin} \to \alpha	
+\mathtt{val}\ \f{free} : \alpha \to (\alpha \to \alpha \to \alpha) \to (\f{A.a}\to\alpha) \to \f{fin} \to \alpha	
 \]
 (with an appropriate assertion)
 which replaces the module parameter \texttt{S} by two extra term arguments term (corresponding to the module components \texttt{S.zero} and \texttt{S.join}) 
@@ -292,7 +339,7 @@ It is important to note that, in contrast to \texttt{fold} operators found in ty
 languages, \texttt{free} is only expected to work for suitable \texttt{join} arguments (e.g., idempotent and order independent).  These
 sets are not the typical finite-set data structure: there is no membership predicate, nor
 is there a way to compute the size of a set.  There is no
-assumption that equality is decidable for set elements; for example, this permits
+assumption that equality is decidable for set elements; this permits
 finite sets of  exact real numbers, for example.  Decidable equality
 is required both for membership and for detecting
 whether the same element has been added twice to the same set\footnote{The natural implementation would thus
@@ -324,16 +371,16 @@ For example, to get non-empty binary trees whose leaves are
 labeled by natural numbers, define
 %
 \begin{align*}
-  S &= \set{\mathtt{cons}} \cup \set{\mathtt{leaf}(n) \such n \in \NN}
+  S &= \set{\f{cons}} \cup \set{\f{leaf}(n) \such n \in \NN}
   \\
-  T(\mathtt{cons}) &= \set{\mathtt{left}, \mathtt{right}}
+  T(\f{cons}) &= \set{\f{left}, \f{right}}
   \\
-  T(\mathtt{leaf}(n)) &= \emptyset.
+  T(\f{leaf}(n)) &= \emptyset.
 \end{align*}
 %
-Then a node of type $\mathtt{cons}$ has two successors, indexed by
-constants $\mathtt{left}$ and $\mathtt{right}$, while a node of type
-$\mathtt{leaf}(n)$ does not have any successors.
+Then a node of type $\f{cons}$ has two successors, indexed by
+constants $\f{left}$ and $\f{right}$, while a node of type
+$\f{leaf}(n)$ does not have any successors.
 \par
 %
 \fi % iflong
@@ -342,52 +389,48 @@ Figure~\ref{fig:wtype} shows an RZ axiomatization of W-types.
 %
 
 \begin{figure}
-\[
-\begin{array}{l}
-\iDefinition{\mathtt{Branching}}{\mathtt{thy}}\\
-\qquad\iParameter{\mathtt{s}}{\iSet} \qquad\mbox{\tt (* branching types *)}\\
-\qquad\iParameter{\mathtt{t}}{\mathtt{s}\to\iSet}\qquad \mbox{\tt (* branch labels *)}\\
-\mathtt{end}.\\
+\begin{showInput}
+\iDefinition{\f{Branching}}{\f{thy}}\\
+\qquad\iParameter{\f{s}}{\iSet} \qquad\mbox{\texttt{(* branching types *)}}\\
+\qquad\iParameter{\f{t}}{\f{s}\to\iSet}\qquad \mbox{\texttt{(* branch labels *)}}\\
+\f{end}.\\
 \\
-\iParameter{\mathtt{W}}{(\mathtt{B} : \mathtt{Branching}) \to \mathtt{thy}}\\
-\qquad\iParameter{\mathtt{w}}{\iSet}.\\
-\qquad\iParameter{\mathtt{tree}}{(\mathtt{x} : \mathtt{B.s})\to (\mathtt{B.t\ x}\to \mathtt{w})\to \mathtt{w}.}\\
-\qquad\iAxiom{\mathtt{induction}}{}\\
-\qquad\qquad{\forall\mathtt{M} : \mathtt{thy}\ \iParameter{\mathtt{p}}{\mathtt{w}\to\iProp}\ \mathtt{end}.\ }\\
-\qquad\qquad(\forall \mathtt{x}{:}\mathtt{B.s}.\ \forall\mathtt{f}{:}{(\mathtt{B.t\ x}\to\mathtt{w})}. \ 
-   ((\forall \mathtt{y}{:}\mathtt{B.t\ x}.\ \mathtt{M.p}\ (\mathtt{f\ y})) \Rightarrow \mathtt{M.p}\ (\mathtt{tree\ x\ f}))) \Rightarrow \\
-\qquad\qquad\quad\forall \mathtt{t}{:}\mathtt{w}.\ \mathtt{M.p\ t}.\\
-\mathtt{end}.
-\iffalse
-	Parameter W : [B : Branching] ->
-	thy
-	  Parameter w : Set.
-	  Parameter tree : [x : B.s] -> (B.t x -> w) -> w.
-	  Axiom induction:
-	    forall M : thy Parameter p : w -> Prop. end,
-	    (forall x : B.s, forall f : B.t x -> w,
-	       ((forall y : B.t x, M.p (f y)) -> M.p (tree x f))) ->
-	    forall t : w, M.p t.
-	end.	
-\fi
-\end{array}
-\]
+\iParameter{\f{W}}{(\f{B} : \f{Branching}) \to \f{thy}}\\
+\qquad\iParameter{\f{w}}{\iSet}.\\
+\qquad\iParameter{\f{tree}}{(\f{x} : \f{B.s})\to (\f{B.t\ x}\to \f{w})\to \f{w}.}\\
+\qquad\iAxiom{\f{induction}}{}\\
+\qquad\qquad{\forall\f{M} : \f{thy}\ \iParameter{\f{p}}{\f{w}\to\iProp}\ \f{end}.\ }\\
+\qquad\qquad(\forall \f{x}{:}\f{B.s}.\ \forall\f{f}{:}{(\f{B.t\ x}\to\f{w})}. \ 
+   ((\forall \f{y}{:}\f{B.t\ x}.\ \f{M.p}\ (\f{f\ y})) \Rightarrow \f{M.p}\ (\f{tree\ x\ f}))) \Rightarrow \\
+\qquad\qquad\quad\forall \f{t}{:}\f{w}.\ \f{M.p\ t}.\\
+\f{end}.
+%	Parameter W : [B : Branching] ->
+%	thy
+%	  Parameter w : Set.
+%	  Parameter tree : [x : B.s] -> (B.t x -> w) -> w.
+%	  Axiom induction:
+%	    forall M : thy Parameter p : w -> Prop. end,
+%	    (forall x : B.s, forall f : B.t x -> w,
+%	       ((forall y : B.t x, M.p (f y)) -> M.p (tree x f))) ->
+%	    forall t : w, M.p t.
+%	end.	
+\end{showInput}
   \caption{General inductive types}
   \label{fig:wtype}
 \end{figure}
 %
-The theory $\mathtt{Branching}$ describes that a branching type
+The theory $\f{Branching}$ describes that a branching type
 consists of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
 parameterized by a branching type~$B$. It specifies a set~$w$ of
-well-founded trees and a tree-forming operation $\mathtt{tree}$ with a
+well-founded trees and a tree-forming operation $\f{tree}$ with a
 dependent type $\pi_{x \in B.s} (B.t(x) \to w) \to w$. Given a
-branching type~$x$ and a map $f : B.t(x) \to w$, $\mathtt{tree}\,x\,f$
+branching type~$x$ and a map $f : B.t(x) \to w$, $\f{tree}\,x\,f$
 is the tree whose root has branching type~$x$ and whose successor
 labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$. The inductive
-nature of~$w$ is expressed with the axiom $\mathtt{induction}$, which
+nature of~$w$ is expressed with the axiom $\f{induction}$, which
 states that for every property $M.p$, if $M.p$ is an inductive
 property then every tree satisfies it. A property is said to be
-\emph{inductive} if a tree $\mathtt{tree}\,x\,f$ satisfies it whenever
+\emph{inductive} if a tree $\f{tree}\,x\,f$ satisfies it whenever
 all its successors satisfy it.
 
 \iflong
@@ -400,22 +443,22 @@ In the translation dependencies at the level of types and terms disappear.
 A branching type is determined by a pair of non-dependent types~$s$
 and~$t$ but the per $\per_t$ depends on~$\values{s}$. The theory~$W$
 turns into a signature for a functor receiving a branching type~$B$
-and returning a type~$w$, and an operation $\mathtt{tree}$ of type
+and returning a type~$w$, and an operation $\f{tree}$ of type
 $B.s \to (B.t \to w) \to w$. In this example we use phase-splitting
 (see Section~\ref{sec:implementation}) to translate axiom
-$\mathtt{induction}$ into a specification of a polymorphic function
+$\f{induction}$ into a specification of a polymorphic function
 (compare with output for axiom \texttt{free} in the previous example)
 %
 \begin{equation*}
-  \mathtt{induction}:
+  \f{induction}:
   (B.s \to (B.t \to w) \to (B.t \to \poly{ty\_p}) \to \poly{ty\_p}) \to w \to \poly{ty\_p},
 \end{equation*}
 %
 which is a form of recursion on well-founded trees. Instead of trying
-to explain what $\mathtt{induction}$ is supposed to do, we show in
+to explain what $\f{induction}$ is supposed to do, we show in
 Figure~\ref{fig:wtype-implementation} a surprisingly simple,
 hand-written implementation of W-types. The reader may be entertained
-by figuring out how $\mathtt{induction}$ works.
+by figuring out how $\f{induction}$ works.
 %
 \begin{figure}
   \centering
@@ -433,14 +476,12 @@ RZ can help explain why a generally
 accepted axiom is not constructively valid. Consider the Axiom of
 Choice:
 %
-\[
-\begin{array}{l}
-\iParameter{\mathtt{a\ b}}{\iSet}.\\
-\iParameter{\mathtt{r}}{\mathtt{a}\to\mathtt{b}\to\iProp}.\\
-\iAxiom{\mathtt{ac}}{(\forall \mathtt{x}{:}\mathtt{a}.\ \exists \mathtt{y}{:}\mathtt{b}.\ \mathtt{r\ x\ y}) \Rightarrow 
-                     (\exists \mathtt{c}{:}{\mathtt{a}\to\mathtt{b}}.\ \forall \mathtt{x}{:}{\mathtt{a}}.\ \mathtt{r}\ \mathtt{x}\ (\mathtt{c\ x}))}.
-\end{array}
-\]
+\begin{showInput}
+\iParameter{\f{a\ b}}{\iSet}.\\
+\iParameter{\f{r}}{\f{a}\to\f{b}\to\iProp}.\\
+\iAxiom{\f{ac}}{(\forall \f{x}{:}\f{a}.\ \exists \f{y}{:}\f{b}.\ \f{r\ x\ y}) \Rightarrow 
+                     (\exists \f{c}{:}{\f{a}\to\f{b}}.\ \forall \f{x}{:}{\f{a}}.\ \f{r}\ \f{x}\ (\f{c\ x}))}.
+\end{showInput}
 %
 The relevant part of the output is
 %
@@ -454,7 +495,7 @@ val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
 *)
 \end{source}
 %
-This requires a function $\mathtt{ac}$ which accepts a function $f$
+This requires a function $\f{ac}$ which accepts a function $f$
 and computes a pair of functions $(g,h)$. The input function~$f$ takes
 an $\ototal{x}{a}$ and returns a pair $(p,q)$ such that $q$ realizes
 the fact that $r\,x\,p$ holds. The output functions $g$ and $h$ taking
@@ -468,14 +509,12 @@ second component of~$f$ is not assumed to be extensional.
 The \emph{Intensional} Axiom of Choice allows the choice function to
 depend on the realizers:
 %
-\[
-\begin{array}{l}
-\iParameter{\mathtt{a\ b}}{\iSet}.\\
-\iParameter{\mathtt{r}}{\mathtt{a}\to\mathtt{b}\to\iProp}.\\
-\iAxiom{\mathtt{ac}}{(\forall \mathtt{x}{:}\mathtt{a}.\ \exists \mathtt{y}{:}\mathtt{b}.\ \mathtt{r\ x\ y}) \Rightarrow 
-                     (\exists \mathtt{c}{:}{\irz{\mathtt{a}}\to\mathtt{b}}.\ \forall \mathtt{x}{:}{\irz{\mathtt{a}}}.\ \mathtt{r}\ (\irz{\mathtt{x}})\ (\mathtt{c\ x}))}.
-\end{array}
-\]
+\begin{showInput}
+\iParameter{\f{a\ b}}{\iSet}.\\
+\iParameter{\f{r}}{\f{a}\to\f{b}\to\iProp}.\\
+\iAxiom{\f{ac}}{(\forall \f{x}{:}\f{a}.\ \exists \f{y}{:}\f{b}.\ \f{r\ x\ y}) \Rightarrow 
+                     (\exists \f{c}{:}{\irz{\f{a}}\to\f{b}}.\ \forall \f{x}{:}{\irz{\f{a}}}.\ \f{r}\ (\irz{\f{x}})\ (\f{c\ x}))}.
+\end{showInput}
 Now the output is
 %
 \begin{source}
@@ -491,7 +530,7 @@ val iac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
 which is exactly the same as before, \emph{except} that the
 troublesome requirement $\ototal{g}{\oarrow{a}{b}}$ turned into
 $\oforall{x}{a}{(\oimply{\ototal{x}{a}}{\ototal{g\,x}{b}})}$, which
-is weaker. We can impement $\mathtt{iac}$ as
+is weaker. We can impement $\f{iac}$ as
 %
 \begin{source}
 let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
@@ -511,27 +550,25 @@ choice.
 As a last example we show how certain constructive principles require
 the use of computational effects. To keep the example short, we
 presume that we are already given the set of natural
-numbers~$\mathtt{nat}$ with the usual structure.
+numbers~$\f{nat}$ with the usual structure.
 
-A \emph{type 2 functional} is a map $f : (\mathtt{nat} \to \mathtt{nat})
-\to \mathtt{nat}$. It is said to be continuous if the output of $f(a)$
+A \emph{type 2 functional} is a map $f : (\f{nat} \to \f{nat})
+\to \f{nat}$. It is said to be continuous if the output of $f(a)$
 depends only on an initial segment of the sequence~$a$. We can express
 this axiom in RZ as follows:
 %
-\[
-\begin{array}{l}
-\iAxiom{\mathtt{continuity}}{}\\
-\qquad  {\forall \mathtt{f}{:}(\mathtt{nat}{\to}\mathtt{nat}){\to}\mathtt{nat}.\   \forall \mathtt{a}{:}\mathtt{nat}{\to}{\mathtt{nat}}}\\
+\begin{showInput}
+\iAxiom{\f{continuity}}{}\\
+\qquad  {\forall \f{f}{:}(\f{nat}{\to}\f{nat}){\to}\f{nat}.\   \forall \f{a}{:}\f{nat}{\to}{\f{nat}}}\\
 \qquad\qquad
-    \exists \mathtt{k}{:}\mathtt{nat}.\ 
-    \forall \mathtt{b}{:}\mathtt{nat}{\to}\mathtt{nat}.\
-    (\forall \mathtt{m}{:}\mathtt{nat}.\ \mathtt{m} \leq \mathtt{k} \Rightarrow \mathtt{a\ m} = \mathtt{b\ m})
-     \Rightarrow \mathtt{f\ a} = \mathtt{f\ b}.
-\end{array}
-\]
+    \exists \f{k}{:}\f{nat}.\ 
+    \forall \f{b}{:}\f{nat}{\to}\f{nat}.\
+    (\forall \f{m}{:}\f{nat}.\ \f{m} \leq \f{k} \Rightarrow \f{a\ m} = \f{b\ m})
+     \Rightarrow \f{f\ a} = \f{f\ b}.
+\end{showInput}
 %
 The axiom says that for any $f$ and $a$ there exists $k \in
-\mathtt{nat}$ such that $f(b) = f(a)$ as soon as the sequences~$a$
+\f{nat}$ such that $f(b) = f(a)$ as soon as the sequences~$a$
 and~$b$ agree on the first $k$ terms. The axiom is translated to the
 specification
 %
@@ -545,9 +582,9 @@ forall (f:||(nat -> nat) -> nat||, a:||nat -> nat||),
 *)
 \end{source}
 %
-which says that $\mathtt{continuity}\,f\,a$ is a number~$p$ such that
+which says that $\f{continuity}\,f\,a$ is a number~$p$ such that
 $f(a) = f(b)$ whenever $a$ and $b$ agree on the first~$p$ terms. In
-other words, $\mathtt{continuity}$ is a \emph{modulus of continuity}
+other words, $\f{continuity}$ is a \emph{modulus of continuity}
 functional. It cannot be implemented in a purely functional
 language,\footnote{There are models of $\lambda$-calculus which validate
   the choice principle~$AC_{2,0}$, but this principle contradicts the
