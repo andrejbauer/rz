@@ -460,12 +460,12 @@ RZ can help explain why a generally
 accepted axiom is not constructively valid. Consider the Axiom of
 Choice:
 %
-\begin{showInput}
+\begin{showInputSmall}
 \iParameter{\f{a\ b}}{\iSet}.\\
 \iParameter{\f{r}}{\f{a}\to\f{b}\to\iProp}.\\
 \iAxiom{\f{ac}}{(\forall \f{x}{:}\f{a}.\ \exists \f{y}{:}\f{b}.\ \f{r\ x\ y}) \Rightarrow 
                      (\exists \f{c}{:}{\f{a}\to\f{b}}.\ \forall \f{x}{:}{\f{a}}.\ \f{r}\ \f{x}\ (\f{c\ x}))}.
-\end{showInput}
+\end{showInputSmall}
 %
 The relevant part of the output is
 %
@@ -491,12 +491,12 @@ second component of~$f$ is not assumed to be extensional.
 The \emph{Intensional} Axiom of Choice allows the choice function to
 depend on the realizers:
 %
-\begin{showInput}
+\begin{showInputSmall}
 \iParameter{\f{a\ b}}{\iSet}.\\
 \iParameter{\f{r}}{\f{a}\to\f{b}\to\iProp}.\\
 \iAxiom{\f{ac}}{(\forall \f{x}{:}\f{a}.\ \exists \f{y}{:}\f{b}.\ \f{r\ x\ y}) \Rightarrow 
                      (\exists \f{c}{:}{\irz{\f{a}}\to\f{b}}.\ \forall \f{x}{:}{\irz{\f{a}}}.\ \f{r}\ (\irz{\f{x}})\ (\f{c\ x}))}.
-\end{showInput}
+\end{showInputSmall}
 Now the output is
 %
 \begin{source}

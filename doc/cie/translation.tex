@@ -94,8 +94,7 @@ The underlying output type~$t$ is still non-dependent, but the per is
 parameterized by~$s$.
 \else % \iflong
 The translation of the declaration of a dependent set
-$\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
-sets as uniform families (Section~\ref{sec:uniform-families}). The
+$\iParameter{t}{s \to \iSet}$ uses uniform families (Section~\ref{sec:uniform-families}). The
 underlying type~$t$ is non-dependent, but the per $\per_t$ receives an
 additional parameter $x : \values{s}$.
 \fi % \iflong
@@ -110,8 +109,11 @@ A value declaration $\iParameter{x}{s}$ is translated to
 \]
 %
 which requires the definition of a value~$x$ of type~$s$ which is in
-the support of~$s$. When $s$ is not a basic set, RZ computes the
+the support of~$s$.
+\iflong
+When $s$ is not a basic set, RZ computes the
 interpretation of the underlying type and support.
+\fi
 
 A value definition $\iDefinition{x}{e}$ where~$e$ is an expression
 denoting an element of~$s$ is translated to
