@@ -1,6 +1,81 @@
 \section{Specifications as signatures with assertions}
 \label{sec:spec-sign-assert}
 
+\begin{figure}
+  \[
+  \begin{array}{rl@{\qquad}l}
+    \noalign{\textbf{Types}}
+    \oty ::= 
+    & \oTY  \obar \oselect{\oM}{\oTY} &\mbox{Type names}\\
+    | & \ounit \obar \oprod{\oty_1}{\oty_2} &\mbox{Unit and cartesian product}\\
+    | & \oarrow{\oty_1}{\oty_2} & \mbox{Function type}\\
+    | & \osumty{\ol_1}{\oty_1}{\ol_n}{\oty_n} &\mbox{Disjoint sum}\\
+    | & \opty & \mbox{Polymorphic types}\\[5pt]
+    
+    \noalign{\textbf{Terms}}	
+    \oe ::=
+    & \ox \obar \oselect{\oM}{\ox} &\mbox{Term names}\\
+    | & \olambda{\ox}{\oty_1}{\oe} \obar 
+    \oapp{\oe_1}{\oe_2} &\mbox{Functions and application}\\
+    | & ()
+    \obar \otuple{\oe_1}{\oe_n} 
+    \obar \oproj{\oe}{n}&\mbox{Tuples and projection}\\
+    | & \oinj{\ol}{\oe} 
+    \obar (\omatches{\oe}{\ol_1}{\ox_1}{\oe_1}{\ol_n}{\ox_n}{\oe_n})&\mbox{Injection and projection from a sum}\\
+    | & \ooblig{\ox}{\oty}{\op}{\oe} \obar \oobligx{\op}{\oe} &\mbox{Obligations}\\
+    | & \olet{\ox}{\oe_1}{\oe_2}&\mbox{Local definitions}\\[5pt]
+    
+
+    \noalign{\textbf{Propositions (negative fragment)}}
+    \op ::= 
+    & \oP \obar \oselect{\oM}{\oP}&\mbox{Atomic
+      proposition}\\
+    | & \otrue  \obar \ofalse \obar \onot{\op_1} \obar \oand{\op_1}{\op_2} \obar 
+    \oimply{\op_1}{\op_2} \obar \oiff{\op_1}{\op_2} & \mbox{Predicate logic}\\ 
+    | & \opcases{\oe}{\ol_1}{\ox_1}{\op_1}{\ol_n}{\op_n}{\oe_n}&\mbox{Propositional case}\\
+    | & \olambda{\ox}{\oty}{\op}  \obar \oapp{\op}{\oe} &
+    \mbox{Propositional functions and application}\\
+    | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
+    | & \oequal{\oe_1}{\oe_2} & \mbox{(Observational) term equality}\\
+    | & \oforall{\ox}{\oty}{\op}  \obar 
+    \oforallt{\ox}{\os}{\op} & \mbox{Term quantifiers}\\[5pt]
+    
+    \noalign{\textbf{Basic modest sets}}
+    \os ::=
+    & \oS \obar \oapp{\os}{\oe} & \\[5pt]
+
+    \noalign{\textbf{Modules}}		
+    \om ::= 
+    & \oM  \obar \oselect{\om}{\oM}&\mbox{Model names}\\
+    | & \oapp{\om_1}{\om_2}&\mbox{Application of parameterized model}\\[5pt]
+    
+    \noalign{\textbf{Proposition Kinds}}
+    \opt ::=
+    & \oProp & \mbox{Classifier for propositions}\\
+    |& \oarrow{\oty}{\opt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
+    
+    \noalign{\textbf{Specification elements}}
+    \ote ::=
+    & \ovalspec{\ox}{\oty}&\mbox{Value declaration}\\
+    | & \otyspec{\oTY}&\mbox{Type declaration}\\
+    | & \otydef{\oTY}{\oty}&\mbox{Type definition}\\
+    | & \omodulespec{\om}{\omt}&\mbox{Module declaration}\\
+    | & \osignatdef{\oMT}{\omt}&\mbox{Specification definition}\\
+    | & \opropspec{\oP}{\opt}&\mbox{Proposition declaration}\\
+    | & \oassertion{\oA}{\op}&\mbox{Assertion}\\[5pt]
+
+    \noalign{\textbf{Specifications (module types with assertions)}}
+    \omt ::= 
+    & \oMT \obar \oselect{\om}{\oMT} & \mbox{Specification names}\\
+    | & \osig{\ote_1 \ldots \ote_n} & \mbox{Specification elements}\\
+    | & \ofunctor{\om}{\omt_1}{\omt_2} & \mbox{Parametrized specification}\\
+    | & \oapp{\omt}{\om} & \mbox{Specification application}
+  \end{array}
+  \]
+  \label{fig:output}
+  \caption{The syntax of specifications (Simplified)}
+\end{figure}
+
 
 In programming we distinguish between \emph{implementation} and
 \emph{specification} of a structure. In OCaml these two notions are
@@ -12,6 +87,7 @@ values, while a module type simply lists the types, type definitions,
 and values provided by a module. For a complete specification, a
 module type must also be annotated with \emph{assertions} which
 specify the required properties of declared types and values.
+\iflong
 %
 \iflong
 %
@@ -124,80 +200,6 @@ assertions agree. This is quite desirable, since RZ acts as a bridge
 between constructive mathematics and real-world programmers, which
 typically are not familiar with constructive logic.
 
-\begin{figure}
-  \[
-  \begin{array}{rl@{\qquad}l}
-    \noalign{\textbf{Types}}
-    \oty ::= 
-    & \oTY  \obar \oselect{\oM}{\oTY} &\mbox{Type names}\\
-    | & \ounit \obar \oprod{\oty_1}{\oty_2} &\mbox{Unit and cartesian product}\\
-    | & \oarrow{\oty_1}{\oty_2} & \mbox{Function type}\\
-    | & \osumty{\ol_1}{\oty_1}{\ol_n}{\oty_n} &\mbox{Disjoint sum}\\
-    | & \opty & \mbox{Polymorphic types}\\[5pt]
-    
-    \noalign{\textbf{Terms}}	
-    \oe ::=
-    & \ox \obar \oselect{\oM}{\ox} &\mbox{Term names}\\
-    | & \olambda{\ox}{\oty_1}{\oe} \obar 
-    \oapp{\oe_1}{\oe_2} &\mbox{Functions and application}\\
-    | & ()
-    \obar \otuple{\oe_1}{\oe_n} 
-    \obar \oproj{\oe}{n}&\mbox{Tuples and projection}\\
-    | & \oinj{\ol}{\oe} 
-    \obar (\omatches{\oe}{\ol_1}{\ox_1}{\oe_1}{\ol_n}{\ox_n}{\oe_n})&\mbox{Injection and projection from a sum}\\
-    | & \ooblig{\ox}{\oty}{\op}{\oe} \obar \oobligx{\op}{\oe} &\mbox{Obligations}\\
-    | & \olet{\ox}{\oe_1}{\oe_2}&\mbox{Local definitions}\\[5pt]
-    
-
-    \noalign{\textbf{Propositions (negative fragment)}}
-    \op ::= 
-    & \oP \obar \oselect{\oM}{\oP}&\mbox{Atomic
-      proposition}\\
-    | & \otrue  \obar \ofalse \obar \onot{\op_1} \obar \oand{\op_1}{\op_2} \obar 
-    \oimply{\op_1}{\op_2} \obar \oiff{\op_1}{\op_2} & \mbox{Predicate logic}\\ 
-    | & \opcases{\oe}{\ol_1}{\ox_1}{\op_1}{\ol_n}{\op_n}{\oe_n}&\mbox{Propositional case}\\
-    | & \olambda{\ox}{\oty}{\op}  \obar \oapp{\op}{\oe} &
-    \mbox{Propositional functions and application}\\
-    | & \oper{\os}{\oe_1}{\oe_2} \obar \ototal{\oe}{\os} & \mbox{Pers and support} \\
-    | & \oequal{\oe_1}{\oe_2} & \mbox{(Observational) term equality}\\
-    | & \oforall{\ox}{\oty}{\op}  \obar 
-    \oforallt{\ox}{\os}{\op} & \mbox{Term quantifiers}\\[5pt]
-    
-    \noalign{\textbf{Basic modest sets}}
-    \os ::=
-    & \oS \obar \oapp{\os}{\oe} & \\[5pt]
-
-    \noalign{\textbf{Modules}}		
-    \om ::= 
-    & \oM  \obar \oselect{\om}{\oM}&\mbox{Model names}\\
-    | & \oapp{\om_1}{\om_2}&\mbox{Application of parameterized model}\\[5pt]
-    
-    \noalign{\textbf{Proposition Kinds}}
-    \opt ::=
-    & \oProp & \mbox{Classifier for propositions}\\
-    |& \oarrow{\oty}{\opt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
-    
-    \noalign{\textbf{Specification elements}}
-    \ote ::=
-    & \ovalspec{\ox}{\oty}&\mbox{Value declaration}\\
-    | & \otyspec{\oTY}&\mbox{Type declaration}\\
-    | & \otydef{\oTY}{\oty}&\mbox{Type definition}\\
-    | & \omodulespec{\om}{\omt}&\mbox{Module declaration}\\
-    | & \osignatdef{\oMT}{\omt}&\mbox{Specification definition}\\
-    | & \opropspec{\oP}{\opt}&\mbox{Proposition declaration}\\
-    | & \oassertion{\oA}{\op}&\mbox{Assertion}\\[5pt]
-
-    \noalign{\textbf{Specifications (module types with assertions)}}
-    \omt ::= 
-    & \oMT \obar \oselect{\om}{\oMT} & \mbox{Specification names}\\
-    | & \osig{\ote_1 \ldots \ote_n} & \mbox{Specification elements}\\
-    | & \ofunctor{\om}{\omt_1}{\omt_2} & \mbox{Parametrized specification}\\
-    | & \oapp{\omt}{\om} & \mbox{Specification application}
-  \end{array}
-  \]
-  \label{fig:output}
-  \caption{The syntax of specifications (Simplified)}
-\end{figure}
 
 RZ ever produces only a small subset of OCaml types (the unit type,
 products, function types, polymorphic variant types, and parameter
@@ -225,44 +227,35 @@ obligation (i.e., demonstrate that the obligation can be satisfied).
 If such values do not exist, the specification is
 unimplementable.
 
-\iffalse
-Obligations serve a double role.
-On one hand they are \emph{local assertions} that refer to local
-values inside a term, e.g.,
-%
-\begin{equation*}
-  \olambda{x}{\mathtt{real}}{(\oobligx{x^2-x+1 \neq 0}{x/(x^2-x+1)})}.
-\end{equation*}
-%
-On the other hand they are \emph{local declarations} that require the
-implementation of a local value inside a term, e.g.,
-%
-\begin{equation*}
-  \olambda{x}{\mathtt{real}}{(
-    \ooblig{y}{\mathtt{real}}{\phi(x,y)}{x+y}
-    )},
-\end{equation*}
-%
-requires that the programer define a local value~$y$ such
-that$\phi(x,y)$ holds. In principle, local specifications could always
-be expressed as global ones, but at a significant cost to clarity and
-conciseness.
+\else % \iflong
 
-RZ outputs obligations when it encounters an uncheckable typing
-constraint, or a term in the input whose well-formedness requires the
-existence of a suitable term in the output, see
-Section~\ref{sec:exampl-with-oblig}.
-\fi
+The output of RZ consists of \emph{module specifications}, each of which consists of a module type
+plus assertions about its components.  More specifically, a typical specification
+may contain value declarations, type declarations and definitions, module
+declarations, specification definitions, proposition declarations, and
+assertions.  The language of specifications is summarized in
+Figure~\ref{fig:output}.
 
-\iffalse
-The basic predicates from which assertions are
-built are observational equality $\oequal{\oe_1}{\oe_2}$, pers
-$\oper{s}{\oe_1}{\oe_2}$ on abstract types, and basic predicates
-declared as parameters. The formula $\ototal{\oe}{\os}$ stands for
-$\oper{\os}{\oe}{\oe}$, while $\oforallt{\ox}{\os}{\op}$ is a
-shorthand for
-$\oforall{\ox}{\os}{(\oimply{\oper{\os}{\ox}{\ox}}{p})}$.
-\fi
+The least familiar construct is the 
+\emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
+$e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
+An obligation is equivalent to a combination of Hilbert's indefinite
+description operator and a local definition,
+$\olet{\ox}{(\varepsilon \ox {:} \oty.\,\op)}{\oe}$, where
+$\varepsilon \ox {:} \oty.\, \op$ means ``any $x \in \values{\oty}$
+such that $\op$''. The alternative form $\oobligx{\op}{\oe}$ stands
+for $\ooblig{\_}{\ounit}{\op}{\oe}$. 
+
+Obligations arise from the fact that well-formedness 
+of the input language is undecidable; see Section~\ref{sec:input-language}.  
+In such cases the system computes a realizability translation, but also produces obligations 
+to be checked.  The programmer must
+replace each obligation with a value satisfying the
+obligation (i.e., demonstrate that the obligation can be satisfied). 
+If such values do not exist, the specification is
+unimplementable.
+
+\fi % \iflong
 
 %%% Local Variables: 
 %%% mode: latex

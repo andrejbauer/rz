@@ -5,7 +5,7 @@ RZ is based on \emph{typed realizability} by John
 Longley~\cite{Longley99}.   This variant of realizability corresponds most
 directly to programmers' intuition about implementations.
 
-We motivate and explain typed realizability and its relationship to
+We first explain typed realizability and its relationship to
 real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
 simple%
@@ -28,17 +28,15 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 %
 A common representation is a pair of lists $(\ell_V, \ell_A)$, where
 $\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
-representing the arrows by pairing the labels of each source and target%
+representing the arrows by pairing the labels of each source and target.
 \iflong
-.
 In our example,
-\else % \iflong
-, e.g.,
+$\ell_V = [1; 2;
+3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$.
 \fi % \iflong
 %
-$\ell_V = [1; 2;
-3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$. Thus we
-define the datatype of graphs to be\footnote{We use OCaml notation in
+ Thus we
+define the datatype of graphs as\footnote{We use OCaml notation in
   which $\clist{t}$ classifies finite lists of elements of type~$t$, and
   $t_1 * t_2$ classifies pairs containing a value of type $t_1$ and and 
   value of type $t_2$.}
@@ -74,10 +72,17 @@ either using a \emph{realizability relation} or a \emph{partial
 
 We now define typed realizability as it
 applies to OCaml. Other general-purpose programming languages could be
-used instead, as long as they provide the usual ground types, product
+used instead%
+\iflong
+, as long as they provide the usual ground types, product
 and function types.\footnote{It is also convenient to work with a
 language that supports sum types, as this allows a more natural
 representation of disjoint unions.}
+\else
+.
+\fi % \iflong
+
+\goodbreak
 
 Let $\Type$ be the collection of all (non-parametric) OCaml types. To
 each type $t \in \Type$ we assign the set $\values{t}$ of values of
