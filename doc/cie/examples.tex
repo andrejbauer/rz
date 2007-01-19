@@ -326,9 +326,11 @@ where $\vee$ is the join operation on the semilattice~$S$.
 
 Applying phase-splitting to this axiom yields the even simpler
 specification
-\[
+%
+\begin{equation*}
 \mathtt{val}\ \f{free} : \alpha \to (\alpha \to \alpha \to \alpha) \to (\f{A.a}\to\alpha) \to \f{fin} \to \alpha	
-\]
+\end{equation*}
+%
 (with an appropriate assertion)
 which replaces the module parameter \texttt{S} by two extra term arguments term (corresponding to the module components \texttt{S.zero} and \texttt{S.join}) 
 and a type argument $\alpha$ for the type of lattice elements (corresponding to the module input \texttt{S.s}).  This is even
@@ -406,24 +408,24 @@ end.
 \end{figure}
 %
 The theory $\f{Branching}$ describes that a branching type
-consists of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
-parameterized by a branching type~$B$. It specifies a set~$w$ of
+consists of a set~$\f{s}$ and a set~$\f{t}$ depending on~$\f{s}$. The theory~$\f{W}$ is
+parameterized by a branching type~$\f{B}$. It specifies a set~$\f{w}$ of
 well-founded trees and a tree-forming operation $\f{tree}$ with a
-dependent type $\Pi_{x \in B.s} (B.t(x) \to w) \to w$.
+dependent type $\Pi_{\f{x} \in \f{B.s}} (\f{B.t(x)} \to \f{w}) \to \f{w}$.
 %
 \iflong
 %
 Given a
-branching type~$x$ and a map $f : B.t(x) \to w$, $\f{tree}\,x\,f$
-is the tree whose root has branching type~$x$ and whose successor
-labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$.
+branching type~$\f{x}$ and a map $\f{f} : \f{B.t(x)} \to \f{w}$, $\f{tree}\;\f{x}\;\f{f}$
+is the tree whose root has branching type~$\f{x}$ and whose successor
+labeled by $\ell \in \f{B.t}(\f{x})$ is the tree~$\f{f}(\ell)$.
 %
 \fi
 %
-The inductive nature of~$w$ is expressed with the axiom
-$\f{induction}$, which states that for every property $M.p$, if $M.p$
+The inductive nature of~$\f{w}$ is expressed with the axiom
+$\f{induction}$, which states that for every property $\f{M.p}$, if $\f{M.p}$
 is an inductive property then every tree satisfies it. A property is
-said to be \emph{inductive} if a tree $\f{tree}\,x\,f$ satisfies it
+said to be \emph{inductive} if a tree $\f{tree}\;\f{x}\;\f{f}$ satisfies it
 whenever all its successors satisfy it.
 
 \iflong
@@ -433,17 +435,17 @@ complete output, dependencies at the level of types and terms disappear.
 In the translation dependencies at the level of types and terms disappear.
 \fi
 %
-A branching type is determined by a pair of non-dependent types~$s$
-and~$t$ but the per $\per_t$ depends on~$\values{s}$. The theory~$W$
-turns into a signature for a functor receiving a branching type~$B$
-and returning a type~$w$, and an operation $\f{tree}$ of type
-$B.s \to (B.t \to w) \to w$.  One can use phase-splitting
+A branching type is determined by a pair of non-dependent types~$\f{s}$
+and~$\f{t}$ but the per $\per_{\f{t}}$ depends on~$\values{\f{s}}$. The theory~$\f{W}$
+turns into a signature for a functor receiving a branching type~$\f{B}$
+and returning a type~$\f{w}$, and an operation $\f{tree}$ of type
+$\f{B.s} \to (\f{B.t} \to \f{w}) \to \f{w}$.  One can use phase-splitting
 to translate axiom
 $\f{induction}$ into a specification of a polymorphic function
 %
 \begin{equation*}
-  \f{induction}:
-  (B.s \to (B.t \to w) \to (B.t \to \poly{ty\_p}) \to \poly{ty\_p}) \to w \to \poly{ty\_p},
+  \f{induction:
+  (B.s \to (B.t \to w) \to (B.t \to \poly{\alpha}) \to \poly{\alpha}) \to w \to \poly{\alpha}},
 \end{equation*}
 %
 which is a form of recursion on well-founded trees. Instead of trying
@@ -452,6 +454,7 @@ hand-written implementation of W-types. The reader may enjoy figuring out how it
 %
 \sourcefile{wtype.ml}
 
+
 \subsection{Axiom of choice}
 \label{sec:axiom-choice}
 
@@ -459,65 +462,65 @@ RZ can help explain why a generally
 accepted axiom is not constructively valid. Consider the Axiom of
 Choice:
 %
-\begin{showInputSmall}
-\iParameter{\f{a\ b}}{\iSet}.\\
-\iParameter{\f{r}}{\f{a}\to\f{b}\to\iProp}.\\
-\iAxiom{\f{ac}}{(\forall \f{x}{:}\f{a}.\ \exists \f{y}{:}\f{b}.\ \f{r\ x\ y}) \Rightarrow 
-                     (\exists \f{c}{:}{\f{a}\to\f{b}}.\ \forall \f{x}{:}{\f{a}}.\ \f{r}\ \f{x}\ (\f{c\ x}))}.
-\end{showInputSmall}
+\begin{source}
+Parameter a b : Set.
+Parameter r : a \iTo b \iTo Prop.
+Axiom ac: (\iForall x : a, \iExists y : b, r x y) \iTo
+          (\iExists c : a \iTo b, \iForall x : a, r x (c x)).
+\end{source}
 %
 The relevant part of the output is
 %
 \begin{source}
-val ac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
-Assertion ac = forall f:a -> b * ty_r,
-                (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
-                  let (g,h) = ac f in g : ||a -> b|| /\
-                  (forall (x:||a||),  r x (g x) (h x))
+val ac : (a \iTo b * ty_r) \iTo (a \iTo b) * (a \iTo ty_r)
+Assertion ac =
+  \iForall f:a \iTo b * ty_r,
+    (\iForall (x:\iT{a}),  let (p,q) = f x in p : \iT{b} \iAnd r x p q) \iTo
+    let (g,h) = ac f in
+      g : \iT{a \iTo b} \iAnd (\iForall (x:\iT{a}),  r x (g x) (h x))
 \end{source}
 %
-This requires a function $\f{ac}$ which accepts a function $f$
-and computes a pair of functions $(g,h)$. The input function~$f$ takes
-an $\ototal{x}{a}$ and returns a pair $(p,q)$ such that $q$ realizes
-the fact that $r\,x\,p$ holds. The output functions $g$ and $h$ taking
-$\ototal{x}{a}$ as input must be such that $h\,x$ realizes
-$r\,x\,(g\,x)$. Crucially, the requirement $\ototal{g}{\oarrow{a}{b}}$
-says tht $g$ must be extensional, i.e., map equivalent realizers to
-equivalent realizers. We could define~$h$ as the first component
-of~$f$, but we cannot hope to implement~$g$ in general because the
+This requires a function $\f{ac}$ which accepts a function $\f{f}$
+and computes a pair of functions $\f{(g,h)}$. The input function~$\f{f}$ takes
+an $\ototal{\f{x}}{\f{a}}$ and returns a pair $\f{(p,q)}$ such that $\f{q}$ realizes
+the fact that $\f{r\;x\;p}$ holds. The output functions $\f{g}$ and $\f{h}$ taking
+$\ototal{\f{x}}{\f{a}}$ as input must be such that $\f{h\;x}$ realizes
+$\f{r\;x\;(g\;x)}$. Crucially, the requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$
+says tht $\f{g}$ must be extensional, i.e., map equivalent realizers to
+equivalent realizers. We could define~$\f{h}$ as the first component
+of~$\f{f}$, but we cannot hope to implement~$\f{g}$ in general because the
 second component of~$f$ is not assumed to be extensional.
 
 The \emph{Intensional} Axiom of Choice allows the choice function to
 depend on the realizers:
 %
-\begin{showInputSmall}
-\iParameter{\f{a\ b}}{\iSet}.\\
-\iParameter{\f{r}}{\f{a}\to\f{b}\to\iProp}.\\
-\iAxiom{\f{ac}}{(\forall \f{x}{:}\f{a}.\ \exists \f{y}{:}\f{b}.\ \f{r\ x\ y}) \Rightarrow 
-                     (\exists \f{c}{:}{\irz{\f{a}}\to\f{b}}.\ \forall \f{x}{:}{\irz{\f{a}}}.\ \f{r}\ (\irz{\f{x}})\ (\f{c\ x}))}.
-\end{showInputSmall}
+\begin{source}
+Parameter a b : Set.
+Parameter r : a \iTo b \iTo Prop.
+Axiom iac: (\iForall x : a, \iExists y : b, r x y) \iTo
+           (\iExists c : rz a \iTo b, \iForall x : rz a, r (rz x) (c x)).
+\end{source}
+%
 Now the output is
 %
 \begin{source}
-val iac : (a -> b * ty_r) -> (a -> b) * (a -> ty_r)
-(**  Assertion iac =
-  forall f:a -> b * ty_r,
-    (forall (x:||a||),  let (p,q) = f x in p : ||b|| /\ r x p q) ->
-    let (g,h) = iac f in (forall x:a,  x : ||a|| -> g x : ||b||) /\
-    (forall (x:||a||),  r x (g x) (h x))
-*)
+val iac : (a \iTo b * ty_r) \iTo (a \iTo b) * (a \iTo ty_r)
+Assertion iac =
+  \iForall f:a \iTo b * ty_r,
+    (\iForall (x:\iT{a}),  let (p,q) = f x in p : \iT{b} \iAnd r x p q) \iTo
+    let (g,h) = iac f in
+      (\iForall x:a, x : \iT{a} \iTo g x : \iT{b}) \iAnd (\iForall (x:\iT{a}),  r x (g x) (h x))
 \end{source}
 %
 which is exactly the same as before, \emph{except} that the
-troublesome requirement $\ototal{g}{\oarrow{a}{b}}$ turned into
-$\oforall{x}{a}{(\oimply{\ototal{x}{a}}{\ototal{g\,x}{b}})}$, which
+troublesome requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$ turned into
+$\oforall{\f{x}}{\f{a}}{(\oimply{\ototal{\f{x}}{\f{a}}}{\ototal{\f{g\;x}}{\f{b}}})}$, which
 is weaker. We can impement $\f{iac}$ as
 %
 \begin{source}
 let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
 \end{source}
 %
-
 The Intensional Axiom of Choice is in fact just an instance of the
 usual Axiom of Choice applied to~$\irz{A}$ and~$B$. Combined with the
 fact that~$\irz{A}$ covers~$A$, this establishes the validity of
@@ -538,33 +541,27 @@ A \emph{type 2 functional} is a map $f : (\f{nat} \to \f{nat})
 depends only on an initial segment of the sequence~$a$. We can express
 this axiom in RZ as follows:
 %
-\begin{showInputSmall}
-\iAxiom{\f{continuity}}{}\\
-\qquad  {\forall \f{f}{:}(\f{nat}{\to}\f{nat}){\to}\f{nat}.\   \forall \f{a}{:}\f{nat}{\to}{\f{nat}}}\\
-\qquad\qquad
-    \exists \f{k}{:}\f{nat}.\ 
-    \forall \f{b}{:}\f{nat}{\to}\f{nat}.\
-    (\forall \f{m}{:}\f{nat}.\ \f{m} \leq \f{k} \Rightarrow \f{a\ m} = \f{b\ m})
-     \Rightarrow \f{f\ a} = \f{f\ b}.
-\end{showInputSmall}
+\begin{source}
+Axiom continuity: \iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
+  \iExists k, \iForall b : nat \iTo nat, (\iForall m, m \iLeq k \iTo a m = b m) \iTo f a = f b.
+\end{source}
 %
-The axiom says that for any $f$ and $a$ there exists $k \in
-\f{nat}$ such that $f(b) = f(a)$ as soon as the sequences~$a$
-and~$b$ agree on the first $k$ terms. The axiom is translated to the
+The axiom says that for any $\f{f}$ and $\f{a}$ there exists $\f{k} \in
+\f{nat}$ such that $\f{f(b) = f(a)}$ as soon as the sequences~$\f{a}$
+and~$\f{b}$ agree on the first $\f{k}$ terms. The axiom is translated to the
 specification
 %
 \begin{source}
-val continuity : ((nat -> nat) -> nat) -> (nat -> nat) -> nat
-(**  Assertion continuity =
-forall (f:||(nat -> nat) -> nat||, a:||nat -> nat||),
-  let p = continuity f a in p : ||nat|| /\
-  (forall (b:||nat -> nat||),
-     (forall (m:||nat||),  m <= p -> a m =nat= b m) -> f a =nat= f b)
-*)
+val continuity : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
+Assertion continuity =
+  \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iTo{nat \iTo nat}),
+    let p = continuity f a in p : \iTo{nat} \iAnd
+    (\iForall (b:\iTo{nat \iTo nat}),
+       (\iForall (m:\iTo{nat}),  m \iLeq p \iTo a m \iPer{nat} b m) \iTo f a \iPer{nat} f b)
 \end{source}
 %
-which says that $\f{continuity}\,f\,a$ is a number~$p$ such that
-$f(a) = f(b)$ whenever $a$ and $b$ agree on the first~$p$ terms. In
+which says that $\f{continuity\;f\;a}$ is a number~$\f{p}$ such that
+$\f{f(a) = f(b)}$ whenever $\f{a}$ and $\f{b}$ agree on the first~$\f{p}$ terms. In
 other words, $\f{continuity}$ is a \emph{modulus of continuity}
 functional. It cannot be implemented in a purely functional
 language,\footnote{There are models of $\lambda$-calculus which validate
@@ -580,13 +577,13 @@ let continuity f a =
     f a' ; !p
 \end{source}
 %
-To compute a modulus for~$f$ at~$a$, the program creates a
-function~$a'$ which is just like~$a$ except that it stores in~$p$ the
-largest argument at which it has been called. Then $f\,a'$ is
-computed, its value it discarded, and the value of~$p$ is returned.
-The program works because~$f$ is assumed to be extensional and must
-therefore not distinguish between extensionally equal sequences~$a$
-and~$a'$.
+To compute a modulus for~$\f{f}$ at~$\f{a}$, the program creates a
+function~$\f{a'}$ which is just like~$\f{a}$ except that it stores in~$\f{p}$ the
+largest argument at which it has been called. Then $\f{f\;a'}$ is
+computed, its value it discarded, and the value of~$\f{p}$ is returned.
+The program works because~$\f{f}$ is assumed to be extensional and must
+therefore not distinguish between extensionally equal sequences~$\f{a}$
+and~$\f{a'}$.
 
 
 
