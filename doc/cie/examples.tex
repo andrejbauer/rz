@@ -341,16 +341,45 @@ $\mathtt{leaf}(n)$ does not have any successors.
 %
 Figure~\ref{fig:wtype} shows an RZ axiomatization of W-types.
 %
+
 \begin{figure}
-  \centering
-  \sourcefile{wtype.thy}
+\[
+\begin{array}{l}
+\iDefinition{\mathtt{Branching}}{\mathtt{thy}}\\
+\qquad\iParameter{\mathtt{s}}{\iSet} \qquad\mbox{\tt (* branching types *)}\\
+\qquad\iParameter{\mathtt{t}}{\mathtt{s}\to\iSet}\qquad \mbox{\tt (* branch labels *)}\\
+\mathtt{end}.\\
+\\
+\iParameter{\mathtt{W}}{(\mathtt{B} : \mathtt{Branching}) \to \mathtt{thy}}\\
+\qquad\iParameter{\mathtt{w}}{\iSet}.\\
+\qquad\iParameter{\mathtt{tree}}{(\mathtt{x} : \mathtt{B.s})\to (\mathtt{B.t\ x}\to \mathtt{w})\to \mathtt{w}.}\\
+\qquad\iAxiom{\mathtt{induction}}{}\\
+\qquad\qquad{\forall\mathtt{M} : \mathtt{thy}\ \iParameter{\mathtt{p}}{\mathtt{w}\to\iProp}\ \mathtt{end}.\ }\\
+\qquad\qquad(\forall \mathtt{x}{:}\mathtt{B.s}.\ \forall\mathtt{f}{:}{(\mathtt{B.t\ x}\to\mathtt{w})}. \ 
+   ((\forall \mathtt{y}{:}\mathtt{B.t\ x}.\ \mathtt{M.p}\ (\mathtt{f\ y})) \Rightarrow \mathtt{M.p}\ (\mathtt{tree\ x\ f}))) \Rightarrow \\
+\qquad\qquad\quad\forall \mathtt{t}{:}\mathtt{w}.\ \mathtt{M.p\ t}.\\
+\mathtt{end}.
+\iffalse
+	Parameter W : [B : Branching] ->
+	thy
+	  Parameter w : Set.
+	  Parameter tree : [x : B.s] -> (B.t x -> w) -> w.
+	  Axiom induction:
+	    forall M : thy Parameter p : w -> Prop. end,
+	    (forall x : B.s, forall f : B.t x -> w,
+	       ((forall y : B.t x, M.p (f y)) -> M.p (tree x f))) ->
+	    forall t : w, M.p t.
+	end.	
+\fi
+\end{array}
+\]
   \caption{General inductive types}
   \label{fig:wtype}
 \end{figure}
 %
 The theory $\mathtt{Branching}$ describes that a branching type
-consits of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
-parametrized by a branching type~$B$. It specifies a set~$w$ of
+consists of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
+parameterized by a branching type~$B$. It specifies a set~$w$ of
 well-founded trees and a tree-forming operation $\mathtt{tree}$ with a
 dependent type $\pi_{x \in B.s} (B.t(x) \to w) \to w$. Given a
 branching type~$x$ and a map $f : B.t(x) \to w$, $\mathtt{tree}\,x\,f$
@@ -358,7 +387,7 @@ is the tree whose root has branching type~$x$ and whose successor
 labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$. The inductive
 nature of~$w$ is expressed with the axiom $\mathtt{induction}$, which
 states that for every property $M.p$, if $M.p$ is an inductive
-property then every tree satsifies it. A property is said to be
+property then every tree satisfies it. A property is said to be
 \emph{inductive} if a tree $\mathtt{tree}\,x\,f$ satisfies it whenever
 all its successors satisfy it.
 
