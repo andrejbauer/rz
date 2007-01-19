@@ -13,7 +13,11 @@
 \usepackage{pdfsync}
 \fi
 
+
 \input{macros.tex}
+
+\newif\iflong
+\longfalse
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -23,14 +27,14 @@
 
 % To include a source file
 \newcommand{\sourcefile}[1]{%
-\VerbatimInput[xleftmargin=1.5em,fontsize=\small]{#1}}
+\VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
 
 % To include lots of source
 \newcommand{\sourcefilex}[1]{%
 \VerbatimInput[xleftmargin=1.5em,fontsize=\scriptsize]{#1}}
 
 % To show source
-\DefineVerbatimEnvironment{source}{Verbatim}{xleftmargin=1.5em,fontsize=\small}
+\DefineVerbatimEnvironment{source}{Verbatim}{xleftmargin=1.5em,fontsize=\footnotesize}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -53,24 +57,24 @@
 \maketitle
 
 \begin{abstract}
-  We show that realizability is not only a fundamental tool in logic
+  Realizability is not only a fundamental tool in logic
   and computability, but also has direct application to the design and
-  implementation of programs: it can produce a description of the data
-  structure (a code interface) directly corresponding to a
+  implementation of programs: it can produce a code description of the data
+  structure (its interface) directly corresponding to a
   mathematical theory.
-
-  Our claims are supported by an implementation of a tool, called RZ,
-  which is to serve as a bridge between the world of constructive
-  mathematics and the programming world. By using the realizability
-  interpretation of constructive mathematics, RZ automatically
-  translates specifications in constructive logic into standard
+%
+  Our tool, called RZ,
+  serves as a bridge between the worlds of constructive
+  mathematics and programming. By using the realizability
+  interpretation of constructive mathematics, RZ 
+  translates specifications in constructive logic into annotated
   interface code in a programming language, currently Objective Caml.
-
-  RZ was specifically designed as a lightweight system, despite
-  supporting a very rich input language that allows descriptions of
+%
+  This lightweight system supports
+  a rich input language allowing descriptions of
   complex mathematical structures. RZ does not extract code from
   proofs, but allows the programmer to implement the specifications in
-  any fashion, ranging from hand-writen code to code extracted from
+  any fashion, ranging from handwritten code to code extracted from
   proofs by other tools.
 \end{abstract}
 

@@ -39,7 +39,7 @@ expect to be able to implement~$\per_s$ as a decidable test.
 
 The translation of the declaration of a dependent set
 $\iParameter{t}{s \to \iSet}$ follows the interpretation of dependent
-sets as uniform families, cf.\ Section~\ref{sec:uniform-families}:
+sets as uniform families (Section~\ref{sec:uniform-families}):
 %
 \begin{align*}  
   & \otyspec{t} \\
@@ -78,7 +78,12 @@ sets as uniform families, cf.\ Section~\ref{sec:uniform-families}:
 \end{align*}
 %
 The underlying output type~$t$ is still non-dependent, but the per is
-parameterized by~$s$.
+parameterized%
+\iflong 
+by~$s$.
+\else % \iflong
+.
+\fi % \iflong
 
 A value declaration $\iParameter{x}{s}$ is translated to
 %
@@ -111,6 +116,7 @@ and their dependent versions are formed. We briefly review the
 remaining constructions of modest sets. We only consider those
 constructions of terms that are not entirely straightforward.
 
+\iflong
 \paragraph{Disjoint union.}
 %
 A disjoint union of modest sets $\isum{\il_1}{A}{\il_2}{B}$ is the
@@ -131,7 +137,7 @@ that we have
   \oper{\isum{\il_1}{A}{\il_2}{B}}{\oinj{\il_2}{u}}{\oinj{\il_2}{v}}
   &\iff \oper{s_2}{u}{v}.
 \end{align*}
-%
+\fi % \iflong
 
 \paragraph{Subsets.}
 %
@@ -164,15 +170,15 @@ witnessing~$\phi(x)$. The per which we get from this is
   u_1 \per_A u_2.
 \end{equation*}
 %
-The coercion $\isubout{e}{s}$ converts an element of the subset $s =
+A type coercion $\icoerce{e}{t}$ can convert an element of the subset $s =
 \set{x : t \such \phi(x)}$ to an element of~$t$. At the level of
 realizers this is achieved by the first projection, which keeps a
 realizer for the element but forgets the one for~$\phi(e)$. The
-opposite coercion $\isubin{e}{s}$ takes an $e \in t$ and converts it
-to an element of the subset. This is only well-formed when $\phi(e)$
-is valid. Then, if $u \rz_t e$ and $v \rz \phi(e)$, a realizer for
-$\isubin{e}{s}$ is $(u, v)$. However, since RZ cannot in general find
-a~$v$ which validates~$\phi(e)$, it emits an obligation $(u,
+opposite type coercion $\icoerce{e'}{s}$ takes an $e' \in t$ and converts it
+to an element of the subset. This is only well-formed when $\phi(e')$
+is valid. Then, if $u \rz_t e'$ and $v \rz \phi(e')$, a realizer for
+$\icoerce{e'}{s}$ is $(u, v)$. However, since RZ cannot in general find
+a~$v$ which validates~$\phi(e')$, it emits an obligation $(u,
 (\ooblig{v}{\typeOf{\phi}}{\oapp{\oapp{\phi}{u}}{v}}{v}))$.
 
 \paragraph{Quotients.}

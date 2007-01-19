@@ -13,6 +13,8 @@ and values provided by a module. For a complete specification, a
 module type must also be annotated with \emph{assertions} which
 specify the required properties of declared types and values.
 %
+\iflong
+%
 \begin{figure}[t]
   \centering
   \sourcefile{group.ml}
@@ -70,8 +72,9 @@ $\mathtt{zero}$, $\mathtt{neg}$, and $\mathtt{add}$ realize a
 constant, a unary, and a binary operation, respectively, while
 assertions \ref{enum:ab-group-axiom-1}--\ref{enum:ab-group-axiom-4}
 correspond to axioms for Abelian groups. 
+\fi % \iflong
 
-The output of RZ thus consists of \emph{module specifications}, each of which consists of a module type
+The output of RZ consists of \emph{module specifications}, each of which consists of a module type
 plus assertions about its components.  More specifically, a specification
 may contain value declarations, type declarations and definitions, module
 declarations, specification definitions, proposition declarations, and
@@ -88,7 +91,10 @@ Assertions within module specifications (which appear as code comments)
 are expressed in the \emph{negative fragment} of
 first-order logic, which contains constants for truth and falsehood,
 negation, conjunction, implication, equivalence, and universal
-quantification (but no disjunction or existential). For convenience we
+quantification (but no disjunction or existential). 
+%
+\iflong
+For convenience we
 also introduce the propositional case
 %
 \begin{equation*}
@@ -108,6 +114,8 @@ expressed with the negative formula
   \lnot ((\forall x_1.\, \oe \neq \oinj{\ol_1}{\ox_1}) \land \cdots \land
   (\forall x_n.\, \oe \neq \oinj{\ol_n}{\ox_n})).
 \end{multline*}
+%
+\fi %\iflong
 %
 The negative fragment is the part of first-order logic that has no
 computational content in the realizability interpretation.

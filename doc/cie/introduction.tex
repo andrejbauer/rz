@@ -5,17 +5,17 @@ Given a description of a mathematical structure (constants,
 functions, relations, and axioms), what should a computer
 implementation look like?
 
-For many simple cases, the answer is obvious. Code implementing a
-group must have a type whose values represent group elements, as well
-as a binary operation that is associative, a constant that is a
-neutral element, and a unary operator that computes inverses.
+For many simple cases, the answer is obvious. A
+group would have a type whose values represent group elements, as well
+as a binary operation that is associative, a constant 
+neutral element, and a unary inverse operator.
 
 But for more interesting structures, especially those arising in
 mathematical analysis, the answer is much less obvious. How do we
 implement the real numbers (a Cauchy-complete Archimedean ordered
 field)? Or, design the operations supported by a compact metric
 space or a space of smooth functions? Significant research goes into
-finding representations that provide a satisfactory theory of
+finding representations that provide a satisfiedisfactory theory of
 computability on such structures~\cite{Wei00,TZ98,Bla97,EL00}, and
 implementations of exact real arithmetic~\cite{Mue00,Lam05a} show that
 the theory can be put into practice quite successfully.
@@ -36,33 +36,32 @@ than others in practice.
 
 And few programmers --- even those with strong backgrounds in
 mathematics and classical logic --- are familiar with constructive logic or
-realizability.  Programmers are more familiar with language constructs
+realizability.  Programmers are used to language constructs
 describing interfaces (e.g., C++ header files, ML signatures, or Java
 interfaces) and logical assertions (e.g., preconditions
 and postconditions).
 
 %\bigskip
 
-We have therefore implemented a system, called RZ,\footnote{RZ is publicly available for download at \url{http://math.andrej.com/rz/}.} to serve as a bridge between
-the logical world and the programming world. RZ automatically translates
+We have therefore implemented a system, called RZ, to serve as a bridge between
+the logical world and the programming world\footnote{RZ is publicly available for download at \url{http://math.andrej.com/rz/}.}. RZ translates
 specifications in constructive logic into standard interface code in a
-programming language. (Currently we produce interfaces in 
-Objective Caml~\cite{ocaml}, but other languages are possible
-as well.)
+programming language (currently  
+Objective Caml~\cite{ocaml}, but other languages could be used).
 
 The constructive part of the original specification turns into
-code interface,
+interface code,
 listing types and values to be implemented. The remainder of
-the specification is maintained as assertions about these types and values.
-Because assertions have no computational content their constructive
-and classical meanings agree, and they can thus
-be understood by programmers (and mathematicians) more used to
+the specification becomes assertions about these types and values.
+Assertions have no computational content so their constructive
+and classical meanings agree, and they can
+be understood by programmers and mathematicians accustomed to
 classical logic.
 
 %\bigskip
 
-RZ was specifically designed as a lightweight system, despite
-supporting a very rich input language. Although the
+RZ was designed as a lightweight system
+supporting a rich input language. Although the
 realizability translation can be extended to transforming complete
 proofs into complete code~\cite{komagata+:tr95}, we have not
 implemented this. Other systems, including Coq~\cite{coqart} and
@@ -78,7 +77,7 @@ a program extraction tool, where the the distinction between
 computational and non-computational parts (in Coq these are
 $\mathtt{Set}$ and $\mathtt{Prop}$, respectively) has been
 automatically determined; a corresponding implementation would then be
-provided through logical techniques.
+provided through theorem-proving and program extraction.
 
 %\bigskip
 

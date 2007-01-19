@@ -8,21 +8,35 @@ directly to programmers' intuition about implementations.
 We motivate and explain typed realizability and its relationship to
 real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
-simple\footnote{At most one arrow between any two vertices.}
-directed graphs with vertices labeled by distinct integers. An exemplar
+simple%
+\iflong
+\footnote{At most one arrow between any two vertices.}
+\fi % \iflong
+directed graphs with vertices labeled by distinct integers. 
+%
+\iflong
+An exemplar
 directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 %
 \begin{figure}
   \centering
-  \includegraphics[width=0.4\textwidth]{digraph}
+  \includegraphics[width=0.3\textwidth]{digraph}
   \caption{A finite directed graph $G$}
   \label{fig:digraph}
 \end{figure}
+\fi % \iffull
 %
 A common representation is a pair of lists $(\ell_V, \ell_A)$, where
 $\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
-representing the arrows by pairing the labels of each source and target.
-In our example, $\ell_V = [1; 2;
+representing the arrows by pairing the labels of each source and target%
+\iflong
+.
+In our example,
+\else % \iflong
+, e.g.,
+\fi % \iflong
+%
+$\ell_V = [1; 2;
 3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$. Thus we
 define the datatype of graphs to be\footnote{We use OCaml notation in
   which $\clist{t}$ classifies finite lists of elements of type~$t$, and
@@ -34,21 +48,24 @@ define the datatype of graphs to be\footnote{We use OCaml notation in
 \end{equation*}
 %
 However, this is not a complete description of the representation, as
-there are invariants and conditions that are not expressed by the type, such as:
+there would be representation invariants and conditions not expressed by the type, e.g.,
 %
 \begin{enumerate}
 \item The order in which vertices and arrows are listed is not
-  important; for example, $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.\footnote{
+  important%
+\iflong
+; for example, $[1;2;3;4]$ and $[4;1;2;3]$ represent the same vertices.\footnote{
   A different implementation with the same representation type could require
   that only sorted vertex lists are legal.}
+\fi %\iflong
 \item Each vertex and arrow must be listed exactly once.
 \item The source and target of each arrow must appear in the list of vertices.
 \end{enumerate}
 %
-To implement the mathematical set~$\mathcal{G}$, we must not
+Thus, to implement the mathematical set~$\mathcal{G}$, we must not
 only decide on the underlying datatype $\mathtt{graph}$, but also
 determine what values of that type represent which elements
-of~$\mathcal{G}$.  As we shall see next, all of this can be expressed
+of~$\mathcal{G}$.  As we shall see next, this can be expressed
 either using a \emph{realizability relation} or a \emph{partial
   equivalence relation (per)}.
 
@@ -87,9 +104,13 @@ represents/realizes/implements graph $G$''. There are two natural conditions
 that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G \in
 \mathcal{G}$ there should be at least one realizer $(\ell_V, \ell_A)$
 representing it, and (2) if $(\ell_V, \ell_A)$ represents both $G$ and
-$G'$ then $G = G'$.\footnote{The latter condition is called \emph{modesty} and
+$G'$ then $G = G'$.%
+\iflong
+\footnote{The latter condition is called \emph{modesty} and
 is not strictly necessary for the development of the theory, though 
-programmers would naturally expect it to hold.} If
+programmers would naturally expect it to hold.}
+\fi % \iflong
+If
 $(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$ represent the same graph 
 (e.g., because $\ell_V$ is a permutation of $\ell'_V$, and similarly for $\ell_A$ and $\ell'_A$)
 we say that they are \emph{equivalent} and write $(\ell_V, \ell_A)
@@ -98,7 +119,7 @@ is a \emph{partial} equivalence relation (symmetric and transitive,
 but not reflexive) because not every $(\ell_V, \ell_A) \in
 \values{\mathtt{graph}}$ represents a graph.
 
-\bigskip
+\smallskip
 
 A general definition is in order. A \emph{modest set} is a triple $A =
 (\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is the
@@ -139,27 +160,37 @@ equivalent.\footnote{And there is a third one, as a partial surjection
   presented in Type Two Effectivity~\cite{Wei00}.} In RZ we use pers
 because they refer only to types and values, as opposed to arbitrary
 sets. Nevertheless, it is useful to understand how modest sets and
-pers arise from natural considerations about programming practice.
+pers arise from natural programming practice.
 
 Modest sets form a category whose objects are modest sets and
 morphisms are the realized functions. A \emph{realized function} $f :
-A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ for which that there
+A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ for which there
 exists $v \in \values{\typeOf{A} \to \typeOf{B}}$ such that, for all
 $x \in \setOf{A}$ and $u \in \typeOf{A}$,
 %
+\iflong
 \begin{equation}
+\else %\iflong
+$
+\fi %\iflong
   \label{eq:rz-function-space}
   u \rz_A x \implies v\;u \rz_B f(x) \;.
+\iflong
 \end{equation}
+\else % \iflong
+$
+\fi
 %
 This condition is just a mathematical expression of the usual idea
-that~$v$ is an implementation of~$f$, since~$v$ does to realizers
+that~$v$ is an implementation of~$f$ if it does to realizers
 what~$f$ does to the elements they represent.
 
 The equivalent category of pers has as objects pairs $A = (\typeOf{A},
 {\per_A})$ where $\typeOf{A} \in \Type$ and $\per_A$ is a per on
-$\values{\typeOf{A}}$. A morphism $A \to B$ is represented by $v
-\in \values{\typeOf{A} \to \typeOf{B}}$ such that, for all $u, u'
+$\values{\typeOf{A}}$. A morphism $A \to B$ is represented by 
+a function $v\in \values{\typeOf{A} \to \typeOf{B}}$
+\iflong
+such that, for all $u, u'
 \in \support{A}$,
 %
 \begin{equation}
@@ -173,8 +204,13 @@ represent the same morphism if, for all $u, u' \in \support{A}$,
 \begin{equation*}
   u \per_A u' \implies v\;u \per_B v'\;u' \;.
 \end{equation*}
+\else % \iflong
+that maps equivalent arguments to equivalent results.
+\fi % \iflong
 
-The category of modest sets has a very rich structure. For example, we
+\iflong
+The category of modest sets has a very rich structure.
+For example, we
 may form a cartesian product $A \times B$ of modest sets $A$ and $B$
 by
 %
@@ -214,7 +250,11 @@ Section~\ref{sec:transl-sets-terms} we review other canonical
 constructions on modest sets.
 
 \bigskip
+\else % \iflong
+\fi % \iflong
 
+
+\iflong
 As an example we consider the cyclic group on seven elements $(\ZZ_7,
 0, {-}, {+})$. To implement the group, we must give a representation
 of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, and
@@ -236,60 +276,30 @@ negation\footnote{Taking care to prevent integer
 integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
 equivalence-modulo-7.
 
-\iffalse
-We represent the elements of~$\ZZ_7 = \set{0, 1, \ldots,
-  6}$ with values of type $\typeOf{Z} = \cint$. We allow any integer
-$v \in \values{\cint}$ to represent the element $v
-\mathbin{\mathrm{mod}} 7$,
-%
-\begin{equation*}
-  v \rz_Z k \iff v \mathbin{\mathrm{mod}} 7 = k \;.
-\end{equation*}
-%
-The neutral elements $0$ is represented by~$0$, while negation and
-addition are respectively implemented by
-%
-\begin{align*}
-  &\clet{\mathtt{neg}\; k}{-(k \cmod 7)} \\
-  &\clet{\mathtt{add}\; (k, m)}{(k \cmod 7) + (m \cmod 7)}
-\end{align*}
-%
-The expected $\clet{\mathtt{neg}\; k}{-k}$ and $\clet{\mathtt{add}\;
-  k\; m}{k+m}$ do not work because of overflow at values that exceed
-$2^{30}$ (in OCaml on a 32-bit machine). 
-
-We could avoid the overflow worries by choosing a different, although
-isomorphic, implementation in which the only valid realizers are $0$,
-$1$, \ldots, $6$, and negation and addition are realized by
-$\clet{\mathtt{neg}\; k}{7 - k}$ and $\clet{\mathtt{add}\; k\; m}{(k +
-  m) \cmod 7}$, respectively.
-\fi
-
 Both of these modest sets happen to have \emph{decidable equality},
 i.e., the characteristic map $\mathrm{eq} : \ZZ_7 \times
 \ZZ_7 \to \set{\mathtt{false}, \mathtt{true}}$ of equality can be 
 realized, by code for integer equality and code for integer equivalence-modulo-7
 respectively.
-\iffalse
-\footnote{Incidentally, $\cfun{(k,m)}{(k - m) \cmod
-    7 = 0}$ does not decide equality because of possible overflow in
-  subtraction, whereas $\cfun{(k,m)}{k \cmod 7 = m \cmod 7}$ does not
-  work because in OCaml $a \cmod b$ is negative when~$a$ is negative,
-  e.g., $(-10) \cmod 7 = -3$ instead of the expected $4$.}
-$\cfun{(k,m)}{(k \cmod 7 - m \cmod 7) \cmod 7 = 0}$.
-\fi
-
+\else
+A modest set $A$ has \emph{decidable equality},
+i.e., the characteristic map $\mathrm{eq} : A \times
+A \to \set{\mathtt{false}, \mathtt{true}}$ of equality can be 
+realized.
+\fi % \iflong
+%
 Not all modest sets have decidable
 equality.  Examples include implementations of semigroups with an undecidable word
 problem~\cite{post47:_recur_unsol_probl_thue}, implementations of computable sets of integers (which might be realized by
 membership functions of type $\cint\to\cbool$), and implementations of computable real numbers (which might be realized
 by infinite Cauchy sequences).  Every modest set induces a partial equivalence relation, but there is no
-presupposition that this equivalence actually is computable (implementable).
+presupposition that this equivalence is computable (implementable).
 
 We can require decidable equivalence
 by adding an axiom that any two elements are either equivalent
 or not equivalent; see Section~\ref{sec:decidable-sets}.
 
+\iflong\else\goodbreak\fi
 
 \subsection{Interpretation of logic}
 \label{sec:interpretation-logic}
@@ -429,11 +439,13 @@ $\ifalse$, $=$, $\land$, $\Rightarrow$ and $\forall$ is stable, but
 there may be other propositions that are stable and are not written
 in the negative form.
 
+\iflong
 It would be unproductive to bother the programmer with requirements
 for useless code.  On input, RZ allows users to specify that  
 predicates will have no computational content.  On output, extracted
 realizers also go through a \emph{thinning} phase, see Section~\ref{sec:translation}, which
 optimizes away references to irrelevant realizers.
+\fi
 
 \subsection{Uniform families of modest sets}
 \label{sec:uniform-families}
@@ -482,6 +494,7 @@ uniformly realized maps, which means that there exists $u \in
 for all $i \in I$, $v \in \values{\typeOf{I}}$, $x \in \setOf{A_i}$,
 and $w \in \values{\typeOf{A}}$.
 
+\iflong
 We may form the \emph{sum} $\depsum{i \in I}{A_i}$ of a uniform family
 $\family{A_i}{i \in I}$ as
 %
@@ -517,7 +530,14 @@ and the \emph{product} $\depprod{i \in I}{A_i}$ as
 %
 These constructions allow us to interpret (extensional) dependent type
 theory in the category of modest sets.
+\else
+We can also form the \emph{sum} $\depsum{i \in I}{A_i}$ or
+\emph{product} $\depprod{i \in I}{A_i}$ of
+a uniform family, allowing an interpretation of (extensional) dependent type
+theory in the category of modest sets.
+\fi
 
+\iflong
 As an example of a uniform family we consider the cyclic group
 $(\ZZ_n, 0, {-}, {+})$ of order~$n$. To keep things simple, we assume
 that~$n$ ranges over natural numbers that can be represented by
@@ -535,7 +555,7 @@ The uniform family $\family{Z_n}{n \in N}$ is then like the cyclic group of orde
 \end{align*}
 %
 Negation would now be specified as a constant of dependent type
-$\Pi_{n{:}N}., \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
+$\Pi_{n{:}N}. \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
 would then have type $\typeOf{N}\to\typeOf{\ZZ_n}\to{\typeOf{\ZZ_n}}$,
 i.e., $\cint\to\cint\to\cint$, so that $\mathtt{neg}(n)$ would
 be a realizer for negation on $\ZZ_n$.   The realizer for addition would
@@ -545,6 +565,8 @@ Any of the implementations suggested for $\ZZ_7$ would work here, with
 $7$ replaced by the parameter $n$; in one case we would have
 $v \rz_{Z_n} k \iff v = k$ and in the other
 $v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k$.
+\fi % \iflong
+
 
 %%% Local Variables: 
 %%% mode: latex

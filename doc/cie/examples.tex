@@ -27,8 +27,7 @@ val eq : s -> s -> [`or0 | `or1]
        forall (x:||s||, y:||s||),
          (match eq x y with
             `or0 => x =s= y
-          | `or1 => not (x =s= y)
-          )
+          | `or1 => not (x =s= y) )
 *)
 \end{source}
 %
@@ -43,7 +42,7 @@ values~$x$ and~$y$ represent the same element of the modest set.
 \label{sec:exampl-with-oblig}
 
 In this section we show how RZ produces obligations, is sometimes able
-to optimize them away, and how hoisting works.
+to optimize them away, and show the effect of hoisting.
 
 Consider how we might define division of real numbers. Assuming the
 set of real numbers~$\mathtt{real}$, a constant $\mathtt{zero}$, and
@@ -67,8 +66,8 @@ In the axiom $\mathtt{inverse}$, RZ encounters the subexpression
 $\mathtt{inv}\;x$. Because $x$ is quantified as an element of
 $\mathtt{real}$ rather than $\mathtt{nonZeroReal}$, the typechecking
 phase inserts a coercion that makes the expression well-typed.
-Translation so receives $\mathtt{inv}(x \mathbin{{:}{>}}
-\mathtt{nonZeroReal})$ and outputs
+Translation sees $\mathtt{inv}(x \mathbin{{:}}
+\mathtt{nonZeroReal})$ instead of $\mathtt{inv\ x}$ and translates this to
 %
 \begin{source}
 inv (assure u:unit . not (x =real= zero) in (x, u))
@@ -76,15 +75,17 @@ inv (assure u:unit . not (x =real= zero) in (x, u))
 %
 If this were the final output, the programmer would have to verify
 that~$x$ is not zero, and provide a trivial realizer for it. However,
-the thinning phase first removes the trivial realizer,
+in this case the thinning phase first removes the trivial realizer,
 %
+\iflong
 \begin{source}
 inv (assure not (x =real= zero) in x)
 \end{source}
+\fi % \iflong
 %
 and then the optimizer determines that the obligation is not needed
 because the whole expressions appears under the hypothesis that~$x$ is
-not zero. So in the end the programmer sees just
+not zero. So in the end the programmer sees
 %
 \begin{source}
 (**  Assertion inverse =
@@ -99,7 +100,7 @@ been axiomatized, we might proceed by relating it to $\mathtt{inv}$:
 Axiom inv_positive: forall x : real, zero < x -> zero < inv x.
 \end{source}
 %
-Once again $\mathtt{inv}\;x$ appears in the input, only this time the
+Once again $\mathtt{inv}\;x$ appears in the input, bt this time the
 optimizer is unable to remove the obligation, so the output is
 %
 \begin{source}
@@ -109,8 +110,8 @@ optimizer is unable to remove the obligation, so the output is
 *)
 \end{source}
 %
-This is perhaps hard to read, but if we activate the hoisting phase
-(see Section~\ref{sec:implementation}), the obligation is brought out
+Local obligations can sometimes be hard to read, but if we activate the hoisting phase
+(see Section~\ref{sec:implementation}), the obligation can be moved
 to the top level. As this is done, the hypotheses under which the
 obligation appears are collected, and we get
 %
@@ -122,9 +123,10 @@ obligation appears are collected, and we get
 \end{source}
 %
 Now it is easier to understand what must be checked, namely that
-positive reals are not zero---an easy conseaquence of irreflexivity
+positive reals are not zero---an easy consequence of irreflexivity
 of~$<$, but not something that RZ optimizer is aware of.
 
+\iflong
 Lastly, we could define the golden ratio as the positive solution of
 $x^2 = x + 1$,
 %
@@ -142,26 +144,12 @@ assure x:real.
         x =real= x'))
   in x
 \end{source}
-
+\fi % \iflong
 
 \subsection{Finite sets}
 \label{sec:finite-sets}
 
-There are many characterizations of finite sets, but the one that
-works best constructively is due to Kuratowski, who identified the
-finite subsets of~$A$ as the least family~$K(A)$ of subsets of~$A$
-that contains the empty set and is closed under unions with
-singletons. This characterization relies on powersets, which are not
-available in RZ. But the gist of it, namely that $K(A)$ is an
-\emph{inital} structure a suitable sort, can be expressed as follows.
-
-Recall that a \emph{$\vee$-semilattice} is a set~$S$ with a
-constant~$0 \in S$ and an associative, commutative, and idempotent
-operation ``join'' $\vee$ on~$S$ such that $0$ is the neutral element
-for~$\vee$, see Figure~\ref{fig:semilattice} for RZ axiomatization of
-semilattices.
-%
-\begin{figure}
+\begin{figure}[t]
   \centering
 \begin{source}
 Definition Semilattice :=
@@ -179,6 +167,22 @@ end.
   \caption{The theory of a semilattice}
   \label{fig:semilattice}
 \end{figure}
+
+There are many characterizations of finite sets, but the one that
+works best constructively is due to Kuratowski, who identified the
+finite subsets of~$A$ as the least family~$K(A)$ of subsets of~$A$
+that contains the empty set and is closed under unions with
+singletons. This characterization relies on powersets, which are not
+available in RZ. But the gist of it, namely that $K(A)$ is an
+\emph{inital} structure a suitable sort, can be expressed as follows.
+
+
+
+Recall that a \emph{$\vee$-semilattice} is a set~$S$ with a
+constant~$0 \in S$ and an associative, commutative, and idempotent
+operation ``join'' $\vee$ on~$S$ such that $0$ is the neutral element
+for~$\vee$, see Figure~\ref{fig:semilattice} for RZ axiomatization of
+semilattices.
 %
 The Kuratowski finite sets~$K(A)$ are the \emph{free} semilattice
 generated by a set~$A$, where $\vee$ is union and $0$ is the empty
@@ -187,9 +191,7 @@ set. This is formalized in RZ as shown in Figure~\ref{fig:kuratowski}.
 \begin{figure}
 \centering
 \begin{source}
-Definition K (A : thy 
-                Parameter a : Set.
-              end) :=
+Definition K (A : thy  Parameter a : Set.  end) :=
 thy
   include Semilattice.
   Parameter singleton : A.a -> s.
@@ -261,95 +263,44 @@ a map $f : A.a \to S.s$ and a finite set~$u = \set{x_1, \ldots, x_n}$,
 and return $f(x_1) \vee \cdots \vee f(x_n)$, where $\vee$ is the join
 operation on the semilattice~$S$.
 
-The OCaml standard library contains a module $\mathtt{Set}$
-implementing finite sets, which however is \emph{not} an
-implementation of Kuratowski finite sets presented here. Rather,
-$\mathtt{Set}$ implements something close to Kuratowski finite sets
-over a set~$A$ equipped with a decidable linear order.
+Applying phase-splitting to this axiom yields the even simpler
+specification
+appearing in the output of the Kuratowski example can be replaced by the single polymorphic function
+\begin{source}
+val free : 's -> ('s -> 's -> 's) -> (A.a -> 's) -> fin -> 's	
+\end{source}
+(with an appropriate assertion)
+which replaces the module parameter \texttt{S} by two extra term arguments term (corresponding to the module components \texttt{S.zero} and \texttt{S.join}) 
+and a type argument \texttt{'s} for the type of lattice elements (corresponding to the module input \texttt{S.s}).  This is even
+more recognizable as a folding operation over the set.
 
 
-\subsection{Inductive types}
-\label{sec:inductive-types}
+It is important to note that, in contrast to \texttt{fold} operators found in typical functional
+languages, \texttt{free} is only guaranteed to work for suitable \texttt{join} arguments (e.g., idempotent and order independent).  These
+sets are thus not the typical finite-set data structure: there is no membership predicate, nor
+is there a way to compute the size of a set.  This occurs because there was no
+assumption that equality is decidable for set elements; we could have a finite set
+of exact real numbers, for example.  Deciding equality
+is required both for membership and for detecting
+whether the same element has been added twice to the same set\footnote{The natural implementation would thus
+be an unordered collection of elements, possibly with duplicates.}.
 
-To demonstrate the use of dependent types we show how RZ handles
-general inductive types, also known as W-types or general
-trees~\cite{nordstroem90:_progr_martin_type_theor}. Recall that a
-W-type is a set of well-founded trees, where the branching types of
-trees are described by a family of sets $B = \set{T(x)}_{x \in S}$.
-Each node in a tree has a \emph{branching type}~$x \in S$, which
-determines that the successors of the node are labeled by the elements
-of~$T(x)$. For example, to get non-empty binary trees whose leaves are
-labeled by natural numbers, define
-%
-\begin{align*}
-  S &= \set{\mathtt{cons}} \cup \set{\mathtt{leaf}(n) \such n \in \NN}
-  \\
-  T(\mathtt{cons}) &= \set{\mathtt{left}, \mathtt{right}}
-  \\
-  T(\mathtt{leaf}(n)) &= \emptyset.
-\end{align*}
-%
-Then a node of type $\mathtt{cons}$ has two successors, indexed by
-constants $\mathtt{left}$ and $\mathtt{right}$, while a node of type
-$\mathtt{leaf}(n)$ does not have any successors.
+However, there are nevertheless computable operations on such sets.  Using \texttt{free} one
+can determine whether a finite set is empty or not.  In the case of a set of exact
+real numbers, we cannot compute their sum, but we could compute maximum or minimum.
 
-Figure~\ref{fig:wtype} shows an RZ axiomatization of W-types.
-%
-\begin{figure}
-  \centering
-  \sourcefile{wtype.thy}
-  \caption{General inductive types}
-  \label{fig:wtype}
-\end{figure}
-%
-The theory $\mathtt{Branching}$ describes that a branching type
-consits of a set~$s$ and a set~$t$ depending on~$s$. The theory~$W$ is
-parametrized by a branching type~$B$. It specifies a set~$w$ of
-well-founded trees and a tree-forming operation $\mathtt{tree}$ with a
-dependent type $\prod_{x \in B.s} (B.t(x) \to w) \to w$. Given a
-branching type~$x$ and a map $f : B.t(x) \to w$, $\mathtt{tree}\,x\,f$
-is the tree whose root has branching type~$x$ and whose successor
-labeled by $\ell \in B.t(x)$ is the tree~$f(\ell)$. The inductive
-nature of~$w$ is expressed with the axiom $\mathtt{induction}$, which
-states that for every property $M.p$, if $M.p$ is an inductive
-property then every tree satsifies it. A property is said to be
-\emph{inductive} if a tree $\mathtt{tree}\,x\,f$ satisfies it whenever
-all its successors satisfy it.
+More common set implementations (e.g., the \texttt{Set} module in the OCaml standard library)
+implement sets over values with either decidable total order; these could also be
+formalized in RZ.
 
-In the translation, see Appendix~\ref{sec:outp-induct-types},
-dependencies at the level of types and terms disappear. A branching
-type is determined by a pair of non-dependent types~$s$ and~$t$ but
-the per $\per_t$ depends on~$\values{s}$. The theory~$W$ turns into a
-signature for a functor receiving a branching type~$B$ and returning a
-type~$w$, and an operation $\mathtt{tree}$ of type $B.s \to (B.t \to
-w) \to w$. In this example we use phase-splitting (see
-Section~\ref{sec:implementation}) to translate axiom
-$\mathtt{induction}$ into a specification of a polymorphic function
-(compare with output for axiom \texttt{free} in the previous example)
-%
-\begin{equation*}
-  \mathtt{induction}:
-  (B.s \to (B.t \to w) \to (B.t \to \poly{ty\_p}) \to \poly{ty\_p}) \to w \to \poly{ty\_p},
-\end{equation*}
-%
-which is a form of recursion on well-founded trees. Instead of trying
-to explain what $\mathtt{induction}$ is supposed to do, we show in
-Figure~\ref{fig:wtype-implementation} a surprisingly simple, complete
-hand-written implementation of W-types. The reader may be entertained
-by figuring out how $\mathtt{induction}$ works.
-%
-\begin{figure}
-  \centering
-  \sourcefile{wtype.ml}
-  \caption{An implementation of general inductive types.}
-  \label{fig:wtype-implementation}
-\end{figure}
+% Chris: INDUCTIVE TYPES EXAMPLE USED TO BE HERE BEFORE I MOVED IT TO THE APPENDIX
+
 
 
 \subsection{Axiom of choice}
 \label{sec:axiom-choice}
 
-In this example we show how RZ can help explain why a generally
+RZ can help explain why a generally
 accepted axiom is not constructively valid. Consider the Axiom of
 Choice:
 %

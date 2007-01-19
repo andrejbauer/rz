@@ -27,7 +27,7 @@ or the theory of the real numbers parameterized by a model of the
 natural numbers.
 Following Sannella, Sokolowski, and 
 Tarlecki\footnote{``parameterized (program specification) $\neq$ (parameterized program) specification''}~\cite{sannella92:_towar} RZ supports two forms of parameterization.  A theory of a parameterized implementation
-$\idarrow{\im}{\ith_1}{\ith_2}$ describes a uniform family of models (i.e.,
+$\idarrow{\iM}{\ith_1}{\ith_2}$ describes a uniform family of models (i.e.,
 a single implementation; a functor in OCaml) that maps every
 model~$\im$ satisfying~$\ith_1$ to a model of~$\ith_2$.  In contrast,
 a theory $\ilambda{\iM}{\ith_1}{\ith_2}$
@@ -100,14 +100,10 @@ Further, in some cases $\iTH(\im_1)$ might be implementable while $\iTH(\im_2)$ 
 
 		\noalign{\textbf{Theory Elements}}
 		\ite ::=
-		     & \iDefinition{\ix}{\ie}.&\mbox{Give a name to a term}\\
-		   | & \iDefinition{\iS}{\is}.&\mbox{Give a name to a set}\\
-		   | & \iDefinition{\iP}{\ip}.&\mbox{Give a name to a proposition/predicate}\\
-		   | & \iDefinition{\iTH}{\ith}.&\mbox{Give a name to a theory}\\
-		   | & \iParameter{\ix}{\is}.&\mbox{Require an element in the given set}\\
-		   | & \iParameter{\iS}{\ik}.&\mbox{Require a set of the given kind}\\
-		   | & \iParameter{\iP}{\ipt}.&\mbox{Require a proposition/predicate of the given sort}\\
-		   | & \iParameter{\iM}{\ith}.&\mbox{Require a model of the given theory}\\
+		     & \iDefinition{\ix}{\ie}.\ibar\iDefinition{\iS}{\is}.&\mbox{Give a name to a term or set}\\
+		   | & \iDefinition{\iP}{\ip}.\ibar\iDefinition{\iTH}{\ith}&\mbox{Give a name to a predicate or theory}\\
+		   | & \iParameter{\ix}{\is}.\ibar\iParameter{\iS}{\ik}&\mbox{Require an element in the given set or kind}\\
+		   | & \iParameter{\iP}{\ipt}.\iParameter{\iM}{\ith}&\mbox{Require a predicate or model of the given sort}\\
 		   | & \iAxiom{\iP}{\ip}.&\mbox{Axiom that must hold}\\[5pt]
 
   		\noalign{\textbf{Theories}}
