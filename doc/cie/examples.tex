@@ -216,7 +216,7 @@ set. This is formalized in RZ as shown in Figure~\ref{fig:kuratowski}.
 \\
 \qquad \iAxiom{\mathtt{free}}{} \forall \mathtt{S}:\mathtt{Semilattice}.\ \forall\mathtt{f}:{\mathtt{A.a}\to\mathtt{S.s}}.\ \exists!g:\mathtt{fin}{\to}{\mathtt{S.s}}.\\
 \qquad \qquad \qquad \qquad \qquad \mathtt{g\ emptyset} = \mathtt{S.zero}\ \land\\
-\qquad \qquad \qquad \qquad \qquad \forall\mathtt{x}:\mathtt{A.a}.\ \mathtt{f\ x} = \mathtt{g}(\mathtt{singleton\ x})\ \land\\
+\qquad \qquad \qquad \qquad \qquad \forall\mathtt{x}:\mathtt{A.a}.\ \mathtt{f\ x} = \mathtt{g}\ (\mathtt{singleton\ x})\ \land\\
 \qquad \qquad \qquad \qquad \qquad \forall\mathtt{u},\mathtt{v}:\mathtt{fin}.\ \mathtt{g}(\mathtt{union\ u\ v}) = \mathtt{S.join}\,(\mathtt{g\ u})\,(\mathtt{g\ v}).\\
 \mathtt{end}.
 \end{array}
