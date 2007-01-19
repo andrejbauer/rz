@@ -140,8 +140,8 @@
 \newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
 \newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
 \newcommand{\iapp}[2]{#1\ #2}
-\newcommand{\ipcases}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
-\newcommand{\ipcase}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\ipcases}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\ipcase}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
 
 \newcommand{\ituple}[2]{(#1,\ldots,#2)}
 \newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
@@ -149,14 +149,14 @@
 \newcommand{\isubout}[2]{#1\,{{:}{<}}\,#2}
 \newcommand{\icoerce}[2]{#1\,{:}\,#2}
 \newcommand{\ithe}[3]{\iota\,#1{:}#2{.}\, #3}
-\newcommand{\ilet}[3]{\textsf{let}\,#1{=}#2\,\textsf{in}\, #3}
+\newcommand{\ilet}[3]{\texttt{let}\,#1{=}#2\,\texttt{in}\, #3}
 \newcommand{\ieclass}[2]{[#1]_{#2}}
-\newcommand{\ileteclass}[4]{\textsf{let}\ [#1]_{#2}\,{=}#3\ \textsf{in}\ #4}
-\newcommand{\irz}[1]{\textsf{rz}\,#1}
-\newcommand{\iletrz}[3]{\textsf{let}\ \textsf{rz}\,#1\,{=}\,#2\ \textsf{in}\ #3}
+\newcommand{\ileteclass}[4]{\texttt{let}\ [#1]_{#2}\,{=}#3\ \texttt{in}\ #4}
+\newcommand{\irz}[1]{\texttt{rz}\,#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,{=}\,#2\ \texttt{in}\ #3}
 \newcommand{\iinj}[2]{{#1}\,#2}
-\newcommand{\imatches}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
-\newcommand{\imatch}[7]{\textsf{match}\,#1\,\textsf{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\imatches}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\imatch}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
 \newcommand{\iselect}[2]{#1{.}#2}
 
 \newcommand{\itag}{\mathit{tag}}
@@ -168,9 +168,10 @@
 \newcommand{\isvoid}{0}
 
 % I removed periods because I use these in the middle of text.
-\newcommand{\iDefinition}[2]{\mathsf{Definition}\ #1 \mathbin{{:}{=}} #2}
-\newcommand{\iParameter}[2]{\mathsf{Parameter}\ #1 : #2}
-\newcommand{\iAxiom}[2]{\mathsf{Axiom}\ #1 : #2}
+\newcommand{\iDefinition}[2]{\ensuremath{\mathtt{Definition}\ #1 \mathbin{{:}{=}} #2}}
+\newcommand{\iParameter}[2]{\ensuremath{\mathtt{Parameter}\ #1 : #2}}
+\newcommand{\iAxiom}[2]{\ensuremath{\mathtt{Axiom}\ #1 : #2}}
+\newcommand{\iInclude}[1]{\ensuremath{\mathtt{Include}\ #1}}
 \newcommand{\ipt}{\Pi}
 \newcommand{\ik}{\kappa}
 \newcommand{\iarrow}[2]{#1{\to}#2}
@@ -178,14 +179,14 @@
 \newcommand{\ite}{\theta}
 \newcommand{\ith}{\Theta}
 \newcommand{\iTH}{T}
-\newcommand{\ithy}[1]{\mathsf{thy}\ #1\ \mathsf{end}}
+\newcommand{\ithy}[1]{\mathtt{thy}\ #1\ \mathtt{end}}
 \newcommand{\im}{M}
 \newcommand{\iM}{m}
 \newcommand{\il}{l}
-\newcommand{\iSet}{\mathsf{Set}}
-\newcommand{\iStable}{\mathsf{Stable}}
-\newcommand{\iProp}{\mathsf{Prop}}
-\newcommand{\iEquiv}[1]{\mathsf{Equiv}(#1)}
+\newcommand{\iSet}{\mathtt{Set}}
+\newcommand{\iStable}{\mathtt{Stable}}
+\newcommand{\iProp}{\mathtt{Prop}}
+\newcommand{\iEquiv}[1]{\mathtt{Equiv}(#1)}
 \newcommand{\ibar}{\ |\ }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
