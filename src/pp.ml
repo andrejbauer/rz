@@ -461,7 +461,7 @@ and output_annots ppf = function
 
 
 and output_assertion ppf asn =
-  fprintf ppf "@[<hov 2>Assertion %a%s%a%s%s %a= @ %a@]"  
+  fprintf ppf "@[<hov 2>assertion %a%s%a%s%s %a: @ %a@]"  
     output_tyvars asn.atyvars 
     (if asn.atyvars = [] then "" else " ")
     output_pbnds asn.apbnds
