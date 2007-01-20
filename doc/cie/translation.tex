@@ -1,18 +1,15 @@
 \section{Translation}
 \label{sec:translation}
 
-Having seen the input and output languages for RZ,
+Having shown the input and output languages for RZ,
 %
 \iflong
 we now explain how the translation from one to the other works.
 \else
-we briefly review the translation from one to the other.
+we briefly sketch the translation from one to the other.
 \fi
 %
-The mathematical basis for the translation procedure is the
-\emph{realizability interpretation} of constructive type theory and
-logic in the category of modest sets, which was described in
-Section~\ref{sec:modest-sets-pers}. A theory is translated to a
+A theory is translated to a
 specification, where the theory elements are translated as follows.
 
 
@@ -180,8 +177,8 @@ realizer for the element but forgets the one for~$\phi(e)$. The
 opposite type coercion $\icoerce{e'}{s}$ takes an $e' \in t$ and converts it
 to an element of the subset. This is only well-formed when $\phi(e')$
 is valid. Then, if $u \rz_t e'$ and $v \rz \phi(e')$, a realizer for
-$\icoerce{e'}{s}$ is $(u, v)$. However, since RZ cannot in general find
-a~$v$ which validates~$\phi(e')$, it emits an obligation $(u,
+$\icoerce{e'}{s}$ is $(u, v)$. However, since RZ cannot in general know
+a~$v$ which validates~$\phi(e')$, it emits the pair $(u,
 (\ooblig{v}{\typeOf{\phi}}{\oapp{\oapp{\phi}{u}}{v}}{v}))$.
 
 \paragraph{Quotients.}
@@ -263,12 +260,12 @@ $\forall$~formula.
 %
 \fi % iflong
 It is interesting that most practical implementations of
-real numbers follow this line of reasoning and represent real numbers to
-avoid annotating every sequence with its rate of convergence.
+real numbers follow this line of reasoning and represent real numbers in
+way that avoids annotating every sequence with its rate of convergence.
 
 Translation of an equivalence class $\ieclass{e}{\rho}$ is quite
-simple: since a realizer for~$e$ also realizes its equivalence class
-$\ieclass{e}{\rho}$, RZ uses the same realizer. The elimination term
+simple, since a realizer for~$e$ also realizes its equivalence class
+$\ieclass{e}{\rho}$. The elimination term
 $\ileteclass{x}{\rho}{\xi}{e}$, means ``let $x$ be any element of
 $\rho$-equivalence class $\xi$ in~$e$''. It is only well-formed when
 $e$ does not depend on the choice of~$x$, but this is something RZ
@@ -278,7 +275,7 @@ realizer for~$x$ does not affect~$e$.
 
 \paragraph{The underlying set of realizers.}
 %
-A specific kind of construction on a modest set~$A$ is the underlying
+Another construction on a modest set~$A$ is the underlying
 modest set of realizers $\irz{A}$, defined by
 %
 \iflong
@@ -308,9 +305,9 @@ $u_1 \per_{\irz{A}} u_2 \iff u_1 \in \support{A} \land u_1 = u_2$.
 An element $r \in \irz{A}$ realizes a unique element $\irz{r} \in A$.
 The elimination term $\iletrz{x}{e_1}{e_2}$, which means ``let $x$ be
 any realizer for~$e_1$ in $e_2$'', is only well-formed if $e_2$ does
-not depend on the choice of~$x$. This is an uncheckable conditions,
+not depend on the choice of~$x$. This is an uncheckable condition,
 hence RZ emits a suitable obligation in the output, and uses for $x$
-the same realizer as for~$e_2$.
+the same realizer as for~$e_1$.
 
 The construction $\irz{A}$ validates the Presentation Axiom (see
 Section~\ref{sec:axiom-choice}). In the input language it gives us
@@ -423,7 +420,7 @@ $ty\_p$ and it does not give $p$ an extra argument.
 Another special kind in RZ input language is the kind $\iEquiv{s}$ of
 stable equivalence relations on a set~$s$. When an equivalence
 relation is declared with $\iParameter{p}{\iEquiv{s}}$, RZ will output
-assertions stating that $p$ is strict, extensional, as well as
+assertions stating that $p$ is strict, extensional, 
 reflexive, symmetric and transitive.
 
 

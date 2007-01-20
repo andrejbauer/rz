@@ -32,7 +32,7 @@ dependent product types) makes the translation code fairly involved,
 and so it is performed in a ``naive'' fashion whenever possible. The
 immediate result of the translation is not easily readable.
  
-Thus, three more passes simplify the output before it is displayed to
+Thus, up to four more passes simplify the output before it is displayed to
 the user. A \emph{thinning} pass removes all references to trivial
 realizers produced by stable formulas.
 \iflong
@@ -59,7 +59,7 @@ and appropriately modifies references to $\mathtt{free}$ in the assertions to ac
 
 \fi % \iflong
 %
-Next, an \emph{optimization} pass applies an ad-hoc collection of
+An \emph{optimization} pass applies an ad-hoc collection of
 basic logical and term simplifications in order to make the output more readable. 
 \iflong
 Logical simplifications include applications of truth table rules
@@ -71,9 +71,8 @@ seen arise
 ($\iforall{\ix}{\is}{\iimply{(\iequal{\ix}{\ie})}{\ipp(\ix)}}$ becomes
 $\ipp(\ie)$).
 \fi % \iflong
-We do not attempt real theorem proving 
-so some redundancy may remain, but in practice the optimization pass
-can help significantly.
+Some redundancy may remain, but in practice the optimization pass
+helps significantly.
 
 Finally, the user can specify two optional steps occur.
 RZ can perform a \emph{phase-splitting} pass~\cite{harper+:popl90}. 
@@ -91,7 +90,7 @@ See Section~\ref{sec:finite-sets} for an example.
 
 
 The other optional transformation is a \emph{hoisting} pass which
-moves obligations in the output out to top-level positions.  Obligations
+moves obligations in the output to top-level positions.  Obligations
 appear in the output inside assertions, at the point where an uncheckable property was needed.
 Moving these obligations to the top-level 
 make it easier to see exactly what one is obliged to verify, and can

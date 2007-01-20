@@ -69,7 +69,7 @@
     & \oMT \obar \oselect{\om}{\oMT} & \mbox{Specification names}\\
     | & \osig{\ote_1 \ldots \ote_n} & \mbox{Specification elements}\\
     | & \ofunctor{\om}{\omt_1}{\omt_2} & \mbox{Parametrized specification}\\
-    | & \oapp{\omt}{\om} & \mbox{Specification application}
+%    | & \oapp{\omt}{\om} & \mbox{Specification application}
   \end{array}
   \]
   \label{fig:output}
@@ -85,6 +85,8 @@ expressed with modules and module types, respectively.%
   object-oriented languages implementations and specifications are
   expressed with classes and interfaces, while in Haskell they
   correspond to modules and declarations.}
+\else % \iflong
+\ 
 \fi % \iflong
 A module defines types and
 values, while a module type simply lists the types, type definitions,

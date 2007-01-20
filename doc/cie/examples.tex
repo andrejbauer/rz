@@ -31,7 +31,7 @@ to produce a realizer for equality
 %
 \begin{source}
 val eq : s \iTo s \iTo [`or0 | `or1]
-Assertion eq = \iForall (x:\iT{s}, y:\iT{s}),
+assertion eq = \iForall (x:\iT{s}, y:\iT{s}),
                    (match eq x y with
                       `or0 \iImply x \iPer{s} y
                     | `or1 \iImply \iNot (x \iPer{s} y) )
@@ -445,12 +445,12 @@ $\f{induction}$ into a specification of a polymorphic function
 %
 \begin{equation*}
   \f{induction:
-  (B.s \to (B.t \to w) \to (B.t \to \poly{\alpha}) \to \poly{\alpha}) \to w \to \poly{\alpha}},
+  (B.s \to (B.t \to w) \to (B.t \to {\alpha}) \to {\alpha}) \to w \to {\alpha}},
 \end{equation*}
 %
 which is a form of recursion on well-founded trees. Instead of trying
 to explain what $\f{induction}$ is supposed to do, we show a surprisingly simple,
-hand-written implementation of W-types. The reader may enjoy figuring out how it works:
+hand-written implementation of W-types in OCaml. The reader may enjoy figuring out how it works:
 %
 \sourcefile{wtype.ml}
 
@@ -515,7 +515,7 @@ Assertion iac =
 which is exactly the same as before, \emph{except} that the
 troublesome requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$ turned into
 $\oforall{\f{x}}{\f{a}}{(\oimply{\ototal{\f{x}}{\f{a}}}{\ototal{\f{g\;x}}{\f{b}}})}$, which
-is weaker. We can impement $\f{iac}$ as
+is weaker. We can impement $\f{iac}$ in OCaml as
 %
 \begin{source}
 let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
@@ -540,6 +540,7 @@ A \emph{type 2 functional} is a map $f : (\f{nat} \to \f{nat})
 \to \f{nat}$. It is said to be continuous if the output of $f(a)$
 depends only on an initial segment of the sequence~$a$. We can express
 this axiom in RZ as follows:
+\internal{Chris}{Which axiom?  That all type 2 functionals are continuous?}
 %
 \begin{source}
 Axiom continuity: \iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
@@ -565,10 +566,10 @@ $\f{f(a) = f(b)}$ whenever $\f{a}$ and $\f{b}$ agree on the first~$\f{p}$ terms.
 other words, $\f{continuity}$ is a \emph{modulus of continuity}
 functional. It cannot be implemented in a purely functional
 language,\footnote{There are models of $\lambda$-calculus which validate
-  the choice principle~$AC_{2,0}$, but this principle contradicts the
+  the choice principle~$AC_{2,0}$, but this contradicts the
   existence of a modulus of continuity functional,
   see~\cite[9.6.10]{Troelstra:van-Dalen:88:2}.} but with the use of
-store we can implement it as
+store we can implement it in OCaml as
 %
 \begin{source}
 let continuity f a =

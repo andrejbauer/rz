@@ -17,9 +17,9 @@ like groups, the answer is obvious.
 \fi % \iflong
 %
 But for more interesting structures, especially those arising in
-mathematical analysis, the answer is not obvious. How do we
+mathematical analysis, the answer is less clear. How do we
 implement the real numbers (a Cauchy-complete Archimedean ordered
-field)? Or, choose the operations for a compact metric
+field)? Or choose the operations for a compact metric
 space or a space of smooth functions? Significant research goes into
 finding satisfactory representations~\cite{Wei00,TZ98,Bla97,EL00}, and
 implementations of exact real arithmetic~\cite{Mue00,Lam05a} show that
@@ -69,7 +69,7 @@ and postconditions).
 We have therefore implemented a system, called RZ, to serve as a
 bridge between the logical world and the programming world.\footnote{RZ
   is publicly available for download at
-  \url{http://math.andrej.com/rz/}, together with a longer version of
+  \url{http://math.andrej.com/rz/}, together with an extended version of
   this paper.} RZ translates specifications in
 constructive logic into standard interface code in a programming
 language (currently Objective Caml~\cite{ocaml}, but other languages
@@ -77,9 +77,8 @@ could be used).
 
 The constructive part of the original specification turns into
 interface code,
-listing types and values to be implemented. The remainder of
-the specification becomes assertions about these types and values.
-Assertions have no computational content so their constructive
+listing types and values to be implemented. The rest becomes assertions about these types and values.
+The assertions have no computational content, so their constructive
 and classical meanings agree, and they can
 be understood by programmers and mathematicians accustomed to
 classical logic.
@@ -104,9 +103,13 @@ computational and non-computational parts (in Coq these are
 $\mathtt{Set}$ and $\mathtt{Prop}$, respectively) has been
 automatically determined; a corresponding implementation would then be
 provided through theorem-proving and program extraction.
-
+\else %\iflong
+Or, the output can serve as a basis for theorem-proving and code
+extraction using another system.
+\fi
 %\bigskip
 
+\iflong
 The paper is organized as follows. In
 Section~\ref{sec:typed-realizability} we present a version of
 realizability which is most suitable for our purposes.

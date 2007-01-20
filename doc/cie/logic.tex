@@ -8,7 +8,7 @@
 	\begin{array}{rl@{\quad}l}
 		\noalign{\textbf{Propositions/Predicates}}
 		\ip,\ipp ::= 
-		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Predicate/proposition names}\\
+		    & \iP \ibar \iselect{\im}{\iP}&\mbox{Predicate names}\\
 		  | & \itrue \ | \ \ifalse \ibar \inot{\ip_1} \ibar {\ip_1}{\land}{\ip_2} \ibar 
 		       {\ip_1}{\lor}{\ip_2}\ | \ {\ip_1}{\Rightarrow}{\ip_2} & \mbox{Predicate logic}\\
                   | & \ipcases{\ie}{\il_1}{\ix_1}{\ip_1}{\il_n}{\ix_n}{\ip_n} & \mbox{Propositional case}\\
@@ -56,7 +56,7 @@
 		\noalign{\textbf{Proposition Kinds}}
 		\ipt ::=
 		    & \iProp \ibar \iStable & \mbox{Classifiers for all propositions/stable propositions}\\
-		  | & \iEquiv{\is} &\mbox{Classifier for equivalence relations}\\
+		  | & \iEquiv{\is} &\mbox{Classifier for stable equivalences on $\is$}\\
 		  | & \idarrow{\ix}{\is}{\ipt} & \mbox{Classifier for a predicate/relation}\\[5pt] 
 		
 		\noalign{\textbf{Set Kinds}}
@@ -68,9 +68,9 @@
 		\noalign{\textbf{Theory Elements}}
 		\ite ::=
 		     & \iDefinition{\ix}{\ie}.\ibar\iDefinition{\iS}{\is}.&\mbox{Give a name to a term or set}\\
-		   | & \iDefinition{\iP}{\ip}.\ibar\iDefinition{\iTH}{\ith}&\mbox{Give a name to a predicate or theory}\\
-		   | & \iParameter{\ix}{\is}.\ibar\iParameter{\iS}{\ik}&\mbox{Require an element in the given set or kind}\\
-		   | & \iParameter{\iP}{\ipt}.\iParameter{\iM}{\ith}&\mbox{Require a predicate or model of the given sort}\\
+		   | & \iDefinition{\iP}{\ip}.\ibar\iDefinition{\iTH}{\ith}.&\mbox{Give a name to a predicate or theory}\\
+		   | & \iParameter{\ix}{\is}.\ibar\iParameter{\iS}{\ik}.&\mbox{Require an element in the given set or kind}\\
+		   | & \iParameter{\iP}{\ipt}.\ibar\iParameter{\iM}{\ith}.&\mbox{Require a predicate or model of the given sort}\\
 		   | & \iAxiom{\iP}{\ip}.&\mbox{Axiom that must hold}\\[5pt]
 
   		\noalign{\textbf{Theories}}
@@ -135,28 +135,28 @@ relation), subsets (elements of a set satisfying a predicate). RZ even
 permits explicit references to sets of realizers.
 \fi
 
-Note that term language follows the structure of the set level by providing
-introduction and elimination constructs. For product sets we have
+The term language includes introduction and elimination constructs
+for the set level. For product sets we have
 tuples and projections ($\iproj{\ie}{1}$, $\iproj{\ie}{2}$, \ldots),
 and for function spaces we have lambda abstractions and application.
-One can inject a term into a tagged disjoin union, or do case analyses
-on the members of a union. We can produce the equivalence class or pick a representative of a given equivalence class (as
-long as what we do with it does not depend on the particular
-representative). Very similarly, we can produce a set of realizers
+One can inject a term into a tagged union, or do case analyses
+on the members of a union. We can produce an equivalence class or pick a representative from a equivalence class (as
+long as what we do with it does not depend on the choice of
+representative). We can produce a set of realizers
 or choose a representative from a given set of realizers
-(as long as what we do with it does not depend on the particular
+(as long as what we do with it does not depend on the choice of
 representative). We can inject a term into a subset (if it satisfies
-the appropriate predicate), or project an element of a subset into the
-enclosing set. Finally, the term language also allows local
+the appropriate predicate), or project an element out of a subset. 
+Finally, the term language also allows local
 definitions of term variables, and definite descriptions (as long as
 there is a unique element satisfying the predicate in question).
 
-From the parenthesized qualifiers in the previous paragraph, it is
+From the previous paragraph, it is
 clear that checking the well-formedness of terms is not decidable. RZ
-checks what it can, but does not attempt any serious theorem proving.
+checks what it can, but does not attempt serious theorem proving.
 Uncheckable constraints remain as obligations
-in the final output, and must be verified by other means; the output
-can then be trusted to the extent that the obligations are satisfied.
+in the final output, and should be verified by other means before
+the output can be used.
 
 %%% Local Variables: 
 %%% mode: latex

@@ -5,14 +5,14 @@ RZ is based on \emph{typed realizability} by John
 Longley~\cite{Longley99}.   This variant of realizability corresponds most
 directly to programmers' intuition about implementations.
 
-We first explain typed realizability and its relationship to
+We approach typed realizability and its relationship to
 real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
 simple%
 \iflong
 \footnote{At most one arrow between any two vertices.}
 \fi % \iflong
-directed graphs with vertices labeled by distinct integers. 
+\ directed graphs with vertices labeled by distinct integers. 
 %
 \iflong
 An exemplar
@@ -24,7 +24,7 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
   \caption{A finite directed graph $G$}
   \label{fig:digraph}
 \end{figure}
-\fi % \iffull
+\fi % \iflong
 %
 A common representation is a pair of lists $(\ell_V, \ell_A)$, where
 $\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
@@ -101,8 +101,12 @@ Section~\ref{sec:we-show-modulus-of-continuity-example}. A functional
 value of function type may diverge as soon as it is applied. The
 collection $\Type$ with the assignment of functional values
 $\values{t}$ to each $t \in \Type$ forms a \emph{typed partial
-  combinatory algebra (TPCA)}, which provides a theoretical basis for
-the definition of a realizability model that suits our needs.
+  combinatory algebra (TPCA)}%
+\iflong
+, which provides a theoretical basis for
+the definition of a realizability model that suits our needs
+\fi %\iflong
+.
 
 Going back to our example, we see that an implementation of directed
 graphs $\mathcal{G}$ specifies a datatype $\typeOf{\mathcal{G}} =
@@ -180,7 +184,7 @@ $\per_A$, and $v \rz_A x$ to mean $v \in x$.
 
 The two views of implementations, as modest sets $(\setOf{A},
 \typeOf{A}, {\rz_A})$, and as pers $(\typeOf{A}, {\per_A})$, are
-equivalent.\footnote{And there is a third one, as a partial surjection
+equivalent.\footnote{And there is a third view, as a partial surjection
   $\delta_A : {\subseteq}\values{\typeOf{A}} \epito \setOf{A}$, with
   $\delta_A(v) = x$ when $v \rz_A x$. This is how realizability is
   presented in Type Two Effectivity~\cite{Wei00}.} 
@@ -228,12 +232,16 @@ $\per_A$ is a per on $\values{\typeOf{A}}$. A morphism $A \to B$ is
 represented by a function $v\in \values{\typeOf{A} \to \typeOf{B}}$
 such that, for all $u, u' \in \support{A}$,
 %
+\iflong
 \begin{equation}
   \label{eq:per-exponential}
   u \per_A u' \implies v\;u \per_B v\;u' \;.
 \end{equation}
 %
 Values $v$ and $v'$ that both satisfy~\eqref{eq:per-exponential}
+\else % \iflong
+$u \per_A u' \implies v\;u \per_B v\;u'$.  Two such functions $v$ and $v'$
+\fi
 represent the same morphism if, for all $u, u' \in \support{A}$,
 $u \per_A u'$ implies $v\;u \per_B v'\;u'$.
 
@@ -320,7 +328,7 @@ respectively.
 \iflong
 Not all modest sets pers have decidable equality.
 \else
-Not all pers are \emph{decidable}, i.e., not all have an algorithm for deciding
+Not all pers are \emph{decidable}, i.e., there may be no algorithm for deciding
 when two values are equivalent.
 \fi
 %
@@ -336,19 +344,13 @@ realized by infinite Cauchy sequences).
 Every modest set induces a partial
 equivalence relation, but there is no presupposition that this
 equivalence is computable (implementable).
-%
-\else
-%
-In the definition of pers, there is no presupposition that the partial
-equivalence relation is computable (implementable).
-%
-\fi
+\fi % \iflong
 
+\iflong
 We can require decidable equivalence by adding an axiom that any two
 elements are either equivalent or not equivalent; see
 Section~\ref{sec:decidable-sets}.
-
-\iflong\else\goodbreak\fi
+\fi
 
 \subsection{Interpretation of logic}
 \label{sec:interpretation-logic}
@@ -357,10 +359,10 @@ In the realizability interpretation of logic, each formula~$\phi$ is
 assigned a set of \emph{realizers}, which can be thought of as
 computations that witness the validity of~$\phi$. The situation is
 somewhat similar, but not equivalent, to the propositions-as-types
-translation of logic into type theory, where the proofs of a
+translation of logic into type theory, where proofs of a
 proposition correspond to terms of the corresponding type. More
 precisely, to each formula~$\phi$ we assign an underlying type
-$\typeOf{\phi}$ of realizers, but unlike in the propositions-as-types
+$\typeOf{\phi}$ of realizers, but unlike the propositions-as-types
 translation, not all terms of type $\typeOf{\phi}$ are necessarily
 valid realizers for~$\phi$, and some terms that are realizers may not
 correspond to any proofs, for example, if they denote partial
@@ -442,11 +444,17 @@ a predicate~$\phi$ on a per~$A = (\typeOf{A}, {\per_A})$ is a
 (possibly non-computable) function $\phi : \values{\typeOf{A}} \times
 \values{\typeOf{\phi}} \to \oProp$ that is
 %
+\iflong
 \begin{itemize}
 \item \emph{strict:} if $\phi(u,v)$ then $u \in \support{A}$, and
 \item \emph{extensional:} if $\phi(u_1,v)$ and $u_1 \per_A u_2$ then
   $\phi(u_2,v)$.
 \end{itemize}
+\else % \iflong
+\emph{strict} (if $\phi(u,v)$ then $u \in \support{A}$) 
+and \emph{extensional} (if $\phi(u_1,v)$ and $u_1 \per_A u_2$ then
+  $\phi(u_2,v)$).
+\fi
 
 \iflong
 We illustrate how the realizability interpretation extracts the
@@ -470,19 +478,19 @@ that every cubic $x^3 + a x + b$ has a root,
 $\iforall{a}{R}{\iforall{b}{R}{\iexists{x}{R}{\iequal{x^3 + a x + b}{0}}}}$.
 \fi % \iflong
 %
-By computing according to Figure~\ref{fig:rz-logic}, we find out that
-a realizer is a value~$r$ of type
+By computing according to Figure~\ref{fig:rz-logic}, we see that
+a realizer for this proposition is a value~$r$ of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\oprod{\mathtt{real}}{\mathtt{unit}}}}$
-such that, whenever $t$ realizes $a \in \RR$ and $u$ realizes $b \in
+such that, if $t$ realizes $a \in \RR$ and $u$ realizes $b \in
 \RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $v$ realizing a real
-number~$x$ such that $x^3 + a x + b = 0$, and $w$ is trivial. This
-can be ``optimized'' to a realizer of type
+number~$x$ such that $x^3 + a x + b = 0$, and $w$ is trivial. (This
+can be ``thinned'' to a realizer of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ that
-does not bother to compute~$w$. In essence then, the realizer~$r$
+does not bother to compute~$w$.) In essence, the realizer~$r$
 computes a root of the cubic equation. Note
 that $r$ is \emph{not} extensional, i.e., different realizers~$t$
-and~$u$ for the same~$a$ and~$b$ may result in different roots of the
-cubic. To put this in another way, $r$ realizes a \emph{multi-valued}
+and~$u$ for the same~$a$ and~$b$ may result in different roots. 
+To put this in another way, $r$ realizes a \emph{multi-valued}
 function\footnote{The multi-valued nature of the realizer comes from
   the fact that it computes \emph{any one} of many values, not that it
   computes \emph{all} of the many values.} rather than a modest set
@@ -514,10 +522,10 @@ for useless code.
 %
 \else
 %
-There are propostions whose realizers are ``irrelevant'' or free of
-computational content, such as equality and negation. Sometimes only a
-part of a realizer is computationally irrelevant, as we saw in the
-last example. Propositions that are free of computational content are
+Some propostions, such as equality and negation, have ``irrelevant'' realizers
+free of computational content. Sometimes only a
+part of a realizer is computationally irrelevant. 
+Propositions that are free of computational content are
 characterized as the \emph{$\lnot\lnot$-stable propositions}. A
 proposition~$\phi$ is said to be $\lnot\lnot$-stable, or just
 \emph{stable} for short, when $\iimply{\inot{\inot{\phi}}}{\phi}$ is
@@ -525,10 +533,9 @@ valid.
 %
 \fi
 %
-On input, RZ allows users to specify that predicates
-will have no computational content. On output, extracted realizers
-also go through a \emph{thinning} phase, see
-Section~\ref{sec:translation}, which optimizes away references to
+On input, one can specify whether abstract predicates
+have computational content. On output, extracted realizers
+go through a \emph{thinning} phase, which removes
 irrelevant realizers.
 
 
@@ -566,15 +573,22 @@ In the category of pers the appropriate notion is that of a
 \emph{uniform} family.
 %
 \fi
+\internal{Chris}{really ``indexed by a \emph{per} $I$''?}
 A uniform family of pers $\family{A_i}{i \in I}$ indexed
 by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
 of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
 % 
+\iflong
 \begin{itemize}
 \item \emph{strict:} if $u \per_{A_i} v$ then $i \in \support{I}$, and
 \item \emph{extensional:} if $u \per_{A_i} v$ and $i \per_I j$ then $u
   \per_{A_j} v$.
 \end{itemize}
+\else % \iflong
+strict (if $u \per_{A_i} v$ then $i \in \support{I}$) and
+extensional(if $u \per_{A_i} v$ and $i \per_I j$ then $u
+  \per_{A_j} v$).
+\fi % \iflong
 %
 \iflong
 A morphism $f : \family{A_i}{i \in I} \to \family{B_i}{i \in I}$ is a
