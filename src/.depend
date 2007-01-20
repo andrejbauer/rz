@@ -1,15 +1,13 @@
+coq_pp.cmo: outsyn.cmo name.cmo 
+coq_pp.cmx: outsyn.cmx name.cmx 
 error.cmo: syntax.cmo name.cmo logic.cmo 
 error.cmx: syntax.cmx name.cmx logic.cmx 
 infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
 infer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
-lexer.cmo: message.cmo 
-lexer.cmx: message.cmx 
 logic.cmo: syntax.cmo name.cmo 
 logic.cmx: syntax.cmx name.cmx 
 logicrules.cmo: name.cmo logic.cmo error.cmo 
 logicrules.cmx: name.cmx logic.cmx error.cmx 
-newinfer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
-newinfer.cmx: syntax.cmx name.cmx logicrules.cmx logic.cmx error.cmx 
 opt.cmo: outsynrules.cmo outsyn.cmo name.cmo flags.cmo 
 opt.cmx: outsynrules.cmx outsyn.cmx name.cmx flags.cmx 
 outsyn.cmo: name.cmo logic.cmo 
@@ -20,16 +18,12 @@ pp.cmo: outsyn.cmo name.cmo
 pp.cmx: outsyn.cmx name.cmx 
 rename.cmo: outsyn.cmo name.cmo 
 rename.cmx: outsyn.cmx name.cmx 
-rzinfer.cmo: newinfer.cmo message.cmo logicrules.cmo logic.cmo flags.cmo \
-    error.cmo 
-rzinfer.cmx: newinfer.cmx message.cmx logicrules.cmx logic.cmx flags.cmx \
-    error.cmx 
 rz.cmo: translate.cmo thin.cmo syntax.cmo rename.cmo pp.cmo outsynrules.cmo \
-    outsyn.cmo opt.cmo newinfer.cmo name.cmo message.cmo logicrules.cmo \
-    logic.cmo flags.cmo error.cmo 
+    outsyn.cmo opt.cmo name.cmo message.cmo logicrules.cmo logic.cmo \
+    infer.cmo flags.cmo error.cmo 
 rz.cmx: translate.cmx thin.cmx syntax.cmx rename.cmx pp.cmx outsynrules.cmx \
-    outsyn.cmx opt.cmx newinfer.cmx name.cmx message.cmx logicrules.cmx \
-    logic.cmx flags.cmx error.cmx 
+    outsyn.cmx opt.cmx name.cmx message.cmx logicrules.cmx logic.cmx \
+    infer.cmx flags.cmx error.cmx 
 syntax.cmo: name.cmo 
 syntax.cmx: name.cmx 
 tex.cmo: logic.cmo 
