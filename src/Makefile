@@ -21,7 +21,7 @@ BYTE_OBJS = name.cmo \
 	logic.cmo \
 	error.cmo \
 	logicrules.cmo \
-        newinfer.cmo \
+        infer.cmo \
         outsyn.cmo \
 	outsynrules.cmo \
 	rename.cmo \

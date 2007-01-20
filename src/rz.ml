@@ -163,7 +163,7 @@ let rec processOne (state : state) writeOutput filename =
 
     in let (infer_state', lthys) = 
       try
-	Newinfer.annotateTheoryElems state.infer_state [thy] 
+	Infer.annotateTheoryElems state.infer_state [thy] 
       with 
 	  Error.TypeError msgs -> 
 	    (Error.printErrors msgs;
