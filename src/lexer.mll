@@ -1,7 +1,7 @@
 (** The lexical structure of theories *)
 
 {
-  open Coq_parser
+  open Parser
 
   let reserved =
     [

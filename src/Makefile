@@ -15,8 +15,8 @@ OCAMLOPTFLAGS =  $(INCLUDES)
 BYTE_OBJS = name.cmo \
 	syntax.cmo \
 	message.cmo \
-	coq_parser.cmo \
-	coq_lexer.cmo \
+	parser.cmo \
+	lexer.cmo \
 	flags.cmo \
 	logic.cmo \
 	error.cmo \
@@ -59,18 +59,18 @@ vtest: $(TARGETS)
 #lexer.cmi: lexer.mli parser.mli syntax.mli
 #	$(OCAMLC) $(OCAMLFLAGS) -c lexer.mli
 
-coq_parser.cmo: coq_parser.ml coq_parser.cmi
+parser.cmo: parser.ml parser.cmi
 
-coq_parser.cmx: coq_parser.ml coq_parser.cmi
+parser.cmx: parser.ml parser.cmi
 
-coq_parser.cmi: coq_parser.mli 
-	$(OCAMLC) $(OCAMLFLAGS) -c coq_parser.mli
+parser.cmi: parser.mli 
+	$(OCAMLC) $(OCAMLFLAGS) -c parser.mli
 
-coq_lexer.ml: coq_lexer.mll 
-	$(OCAMLLEX) coq_lexer.mll
+lexer.ml: lexer.mll 
+	$(OCAMLLEX) lexer.mll
 
-coq_parser.ml coq_parser.mli: coq_parser.mly
-	$(OCAMLYACC) $(OCAMLYFLAGS) coq_parser.mly
+parser.ml parser.mli: parser.mly
+	$(OCAMLYACC) $(OCAMLYFLAGS) parser.mly
 
 $(TARGETS): %: $(BYTE_OBJS) %.cmo
 	$(OCAMLC) -o rz $(OCAMLFLAGS) $(LIB_OBJS) $+ 
@@ -99,9 +99,9 @@ $(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx
 # Clean.
 clean:
 	rm -f $(TARGETS) $(OPT_TARGETS) *.cm[iox] *.o *~ *.dvi *.ps *.log *.aux
-	rm -f coq_parser.ml
-	rm -f coq_lexer.ml
-	rm -f coq_parser.mli
+	rm -f parser.ml
+	rm -f lexer.ml
+	rm -f parser.mli
 
 # Depend.
 depend: clean

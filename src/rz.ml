@@ -89,7 +89,7 @@ let read fn =
   let fin = open_in fn in
   let lexbuf = Lexing.from_channel fin in
   try
-    let e = Coq_parser.toplevels Coq_lexer.token lexbuf in
+    let e = Parser.toplevels Lexer.token lexbuf in
       (close_in fin ;
        e)
   with
@@ -107,7 +107,7 @@ let read fn =
       end
 
 (* Helper function:  parses a string [currently unused]. *)
-let parse str = Coq_parser.toplevels Coq_lexer.token (Lexing.from_string str);;
+let parse str = Parser.toplevels Lexer.token (Lexing.from_string str);;
 
 (* Helper function:  write the final output to a pretty-printing
    formatter. *)
