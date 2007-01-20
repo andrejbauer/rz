@@ -554,10 +554,10 @@ specification
 \begin{source}
 val continuity : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
 Assertion continuity =
-  \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iTo{nat \iTo nat}),
-    let p = continuity f a in p : \iTo{nat} \iAnd
-    (\iForall (b:\iTo{nat \iTo nat}),
-       (\iForall (m:\iTo{nat}),  m \iLeq p \iTo a m \iPer{nat} b m) \iTo f a \iPer{nat} f b)
+  \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iT{nat \iTo nat}),
+    let p = continuity f a in p : \iT{nat} \iAnd
+    (\iForall (b:\iT{nat \iTo nat}),
+       (\iForall (m:\iT{nat}),  m \iLeq p \iTo a m \iPer{nat} b m) \iTo f a \iPer{nat} f b)
 \end{source}
 %
 which says that $\f{continuity\;f\;a}$ is a number~$\f{p}$ such that

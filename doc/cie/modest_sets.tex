@@ -90,17 +90,17 @@ used instead.
 
 Let $\Type$ be the collection of all (non-parametric) OCaml types. To
 each type $t \in \Type$ we assign the set $\values{t}$ of values of
-type~$t$ that behave \emph{functionally} in the sense
-of Longley~\cite{longley99when}. Such values are represented by terminating
-expressions that do not throw exceptions or return different results
-on different invocations.  They may \emph{use} exceptions,
-store, and other computational effects, provided they appear
-functional from the outside; a useful example using computational effects is
-presented in Section~\ref{sec:we-show-modulus-of-continuity-example}.
-A functional value of function type may diverge as
-soon as it is applied.
-   The collection $\Type$ with the assignment of functional
-values $\values{t}$ to each $t \in \Type$ forms a \emph{typed partial
+type~$t$ that behave \emph{functionally} in the sense of
+Longley~\cite{longley99when}. Such values are represented by
+terminating expressions that do not throw exceptions or return
+different results on different invocations. They may \emph{use}
+exceptions, store, and other computational effects, provided they
+appear functional from the outside; a useful example using
+computational effects is presented in
+Section~\ref{sec:we-show-modulus-of-continuity-example}. A functional
+value of function type may diverge as soon as it is applied. The
+collection $\Type$ with the assignment of functional values
+$\values{t}$ to each $t \in \Type$ forms a \emph{typed partial
   combinatory algebra (TPCA)}, which provides a theoretical basis for
 the definition of a realizability model that suits our needs.
 
@@ -183,35 +183,49 @@ The two views of implementations, as modest sets $(\setOf{A},
 equivalent.\footnote{And there is a third one, as a partial surjection
   $\delta_A : {\subseteq}\values{\typeOf{A}} \epito \setOf{A}$, with
   $\delta_A(v) = x$ when $v \rz_A x$. This is how realizability is
-  presented in Type Two Effectivity~\cite{Wei00}.} In RZ we use pers
-because they refer only to types and values, as opposed to arbitrary
-sets. Nevertheless, it is useful to understand how modest sets and
-pers arise from natural programming practice.
+  presented in Type Two Effectivity~\cite{Wei00}.} 
+%
+\iflong 
+%
+In RZ we use pers because they refer only to types and values,
+as opposed to arbitrary sets.
+%
+\else
+We concentrate on the view of modest sets as pers. They are more
+convenient to use in RZ because they refer only to types and values,
+as opposed to arbitrary sets.
+\fi
+%
+Nevertheless, it is useful to understand
+how modest sets and pers arise from natural programming practice.
 
+\iflong
+%
 Modest sets form a category whose objects are modest sets and
 morphisms are the realized functions. A \emph{realized function} $f :
 A \to B$ is a function $f : \setOf{A} \to \setOf{B}$ for which there
 exists $v \in \values{\typeOf{A} \to \typeOf{B}}$ such that, for all
 $x \in \setOf{A}$ and $u \in \typeOf{A}$,
 %
-\iflong
 \begin{equation}
-	  \label{eq:rz-function-space}
-	  u \rz_A x \implies v\;u \rz_B f(x) \;.
+  \label{eq:rz-function-space}
+  u \rz_A x \implies v\;u \rz_B f(x) \;.
 \end{equation}
-\else
-$u \rz_A x \implies v\;u \rz_B f(x) \;.$
-\fi % \iflong
 %
 This condition is just a mathematical expression of the usual idea
 that~$v$ is an implementation of~$f$ if it does to realizers
 what~$f$ does to the elements they represent.
+\fi
 
-The equivalent category of pers has as objects pairs $A = (\typeOf{A},
-{\per_A})$ where $\typeOf{A} \in \Type$ and $\per_A$ is a per on
-$\values{\typeOf{A}}$. A morphism $A \to B$ is represented by 
-a function $v\in \values{\typeOf{A} \to \typeOf{B}}$
 \iflong
+The equivalent category of pers has as objects
+\else
+Pers form a category whose objects are
+\fi
+%
+pairs $A = (\typeOf{A}, {\per_A})$ where $\typeOf{A} \in \Type$ and
+$\per_A$ is a per on $\values{\typeOf{A}}$. A morphism $A \to B$ is
+represented by a function $v\in \values{\typeOf{A} \to \typeOf{B}}$
 such that, for all $u, u' \in \support{A}$,
 %
 \begin{equation}
@@ -221,13 +235,7 @@ such that, for all $u, u' \in \support{A}$,
 %
 Values $v$ and $v'$ that both satisfy~\eqref{eq:per-exponential}
 represent the same morphism if, for all $u, u' \in \support{A}$,
-%
-\begin{equation*}
-  u \per_A u' \implies v\;u \per_B v'\;u'
-\end{equation*}
-\else % \iflong
-that maps equivalent arguments to equivalent results.
-\fi % \iflong
+$u \per_A u'$ implies $v\;u \per_B v'\;u'$.
 
 \iflong
 %
@@ -273,8 +281,8 @@ constructions on modest sets.
 \bigskip
 \else % \iflong
 %
-The category of modest sets has a very rich structure, namely that of
-a regular locally cartesian closed category~\cite{Bauer:00}. This
+The category of pers has a very rich structure, namely that of a
+regular locally cartesian closed category~\cite{Bauer:00}. This
 suffices for the interpretation of first-order logic and (extensional)
 dependent types~\cite{JacobsB:cltt}.
 %
@@ -307,27 +315,38 @@ i.e., the characteristic map $\mathrm{eq} : \ZZ_7 \times
 \ZZ_7 \to \set{\mathtt{false}, \mathtt{true}}$ of equality can be 
 realized, by code for integer equality and code for integer equivalence-modulo-7
 respectively.
-\else
-A modest set $A$ has \emph{decidable equality},
-i.e., the characteristic map $\mathrm{eq} : A \times
-A \to \set{\mathtt{false}, \mathtt{true}}$ of equality can be 
-realized.
 \fi % \iflong
-%
-Not all modest sets have decidable
-equality.  Examples include implementations of semigroups with an undecidable word
-problem~\cite{post47:_recur_unsol_probl_thue}%
-\iflong
-, implementations of computable sets of integers (which might be realized by
-membership functions of type $\cint\to\cbool$), 
-\fi
- and implementations of computable real numbers (which might be realized
-by infinite Cauchy sequences).  Every modest set induces a partial equivalence relation, but there is no
-presupposition that this equivalence is computable (implementable).
 
-We can require decidable equivalence
-by adding an axiom that any two elements are either equivalent
-or not equivalent; see Section~\ref{sec:decidable-sets}.
+\iflong
+Not all modest sets pers have decidable equality.
+\else
+Not all pers are \emph{decidable}, i.e., not all have an algorithm for deciding
+when two values are equivalent.
+\fi
+%
+Examples include implementations of semigroups with an undecidable
+word problem~\cite{post47:_recur_unsol_probl_thue}%
+\iflong, implementations of computable sets of integers (which might
+be realized by membership functions of type $\cint\to\cbool$),\fi
+\ and implementations of computable real numbers (which might be
+realized by infinite Cauchy sequences).
+%
+\iflong
+%
+Every modest set induces a partial
+equivalence relation, but there is no presupposition that this
+equivalence is computable (implementable).
+%
+\else
+%
+In the definition of pers, there is no presupposition that the partial
+equivalence relation is computable (implementable).
+%
+\fi
+
+We can require decidable equivalence by adding an axiom that any two
+elements are either equivalent or not equivalent; see
+Section~\ref{sec:decidable-sets}.
 
 \iflong\else\goodbreak\fi
 
@@ -410,12 +429,17 @@ In classical mathematics, a predicate on a set~$X$ may be viewed as a
 subset of~$X$ or a (possibly non-computable) function $X \to \oProp$,
 where $\oProp = \set{\ofalse, \otrue}$ is the set of truth values.
 Accordingly, since in realizability propositions are witnessed by
-realizers, a predicate~$\phi$ on a modest set~$A$ may be viewed as a
+realizers,
+%
+\iflong
+a predicate~$\phi$ on a modest set~$A$ may be viewed as a
 subset of $\setOf{A} \times \values{\typeOf{\phi}}$, or a (possibly
 non-computable) function $\setOf{A} \times \values{\typeOf{\phi}} \to
-\set{\ofalse, \otrue}$. In terms of pers, which is what RZ uses, a
-predicate~$\phi$ on a per~$A = (\typeOf{A}, {\per_A})$ is a (possibly
-non-computable) function $\phi : \values{\typeOf{A}} \times
+\set{\ofalse, \otrue}$. In terms of pers, which is what RZ uses,
+\fi
+%
+a predicate~$\phi$ on a per~$A = (\typeOf{A}, {\per_A})$ is a
+(possibly non-computable) function $\phi : \values{\typeOf{A}} \times
 \values{\typeOf{\phi}} \to \oProp$ that is
 %
 \begin{itemize}
@@ -486,11 +510,27 @@ there may be other propositions that are stable and are not written
 in the negative form.
 
 It would be unproductive to bother the programmer with requirements
-for useless code.  On input, RZ allows users to specify that  
-predicates will have no computational content.  On output, extracted
-realizers also go through a \emph{thinning} phase, see Section~\ref{sec:translation}, which
-optimizes away references to irrelevant realizers.
+for useless code.
+%
+\else
+%
+There are propostions whose realizers are ``irrelevant'' or free of
+computational content, such as equality and negation. Sometimes only a
+part of a realizer is computationally irrelevant, as we saw in the
+last example. Propositions that are free of computational content are
+characterized as the \emph{$\lnot\lnot$-stable propositions}. A
+proposition~$\phi$ is said to be $\lnot\lnot$-stable, or just
+\emph{stable} for short, when $\iimply{\inot{\inot{\phi}}}{\phi}$ is
+valid.
+%
 \fi
+%
+On input, RZ allows users to specify that predicates
+will have no computational content. On output, extracted realizers
+also go through a \emph{thinning} phase, see
+Section~\ref{sec:translation}, which optimizes away references to
+irrelevant realizers.
+
 
 \iflong
 \subsection{Uniform families of modest sets}
@@ -507,6 +547,7 @@ etc. In general, a family of sets $\family{A_i}{i \in I}$ is an
 assignment of a set $A_i$ to each $i \in I$ from an \emph{index
   set}~$I$.
 
+\iflong
 In the category of modest sets the appropriate notion is that of a
 \emph{uniform} family~$\family{A_i}{i \in I}$, which is an assignment
 of a modest set $A_i = (\setOf{A_i}, \typeOf{A}, {\rz_{A_i}})$ to each
@@ -518,9 +559,14 @@ the implementation point of view, because it removes dependencies at
 the level of types. Note also that there is no dependency on the
 realizers, only on the elements of the underlying set.
 
-\iflong
 We may express uniform families in terms of pers, just as for
-predicates. A uniform family $\family{A_i}{i \in I}$ of pers indexed
+predicates.
+\else
+In the category of pers the appropriate notion is that of a
+\emph{uniform} family.
+%
+\fi
+A uniform family of pers $\family{A_i}{i \in I}$ indexed
 by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
 of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
 % 
@@ -530,6 +576,7 @@ of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
   \per_{A_j} v$.
 \end{itemize}
 %
+\iflong
 A morphism $f : \family{A_i}{i \in I} \to \family{B_i}{i \in I}$ is a
 family $\family{f_i : \setOf{A_i} \to \setOf{B_i}}{i \in I}$ of
 uniformly realized maps, which means that there exists $u \in
@@ -541,7 +588,9 @@ uniformly realized maps, which means that there exists $u \in
 %
 for all $i \in I$, $v \in \values{\typeOf{I}}$, $x \in \setOf{A_i}$,
 and $w \in \values{\typeOf{A}}$.
-\fi % \iflong
+%
+\fi
+
 
 \iflong
 We may form the \emph{sum} $\depsum{i \in I}{A_i}$ of a uniform family
@@ -583,7 +632,7 @@ theory in the category of modest sets.
 We can also form the \emph{sum} $\depsum{i \in I}{A_i}$ or
 \emph{product} $\depprod{i \in I}{A_i}$ of
 a uniform family, allowing an interpretation of (extensional) dependent type
-theory in the category of modest sets.
+theory.
 \fi % \iflong
 
 \iflong
