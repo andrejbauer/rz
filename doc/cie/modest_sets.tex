@@ -384,7 +384,7 @@ formula~$\phi$ is \emph{valid} if it has at least one realizer.
     \typeOf{\iand{\phi}{\psi}} &= \oprod{\typeOf{\phi}}{\typeOf{\psi}} \\
     \typeOf{\iimply{\phi}{\psi}} &= \oarrow{\typeOf{\phi}}{\typeOf{\psi}} &
     \typeOf{\ior{\phi}{\psi}} &=
-    \osumtyx{\mathtt{or}_1}{\typeOf{\phi_1}}{\mathtt{or}_2}{\typeOf{\phi_2}} \\
+    \osumtyx{\mathtt{or}_0}{\typeOf{\phi_0}}{\mathtt{or}_1}{\typeOf{\phi_1}} \\
     \typeOf{\iforall{x}{A}{\phi}} &= \oarrow{\typeOf{A}}{\typeOf{\phi}} &
     \typeOf{\iexists{x}{A}{\phi}} &= \oprod{\typeOf{A}}{\typeOf{\phi}}
   \end{array}
@@ -406,11 +406,11 @@ formula~$\phi$ is \emph{valid} if it has at least one realizer.
     \text{for all $u \in \typeOf{\phi}$, if $u \rz \phi$ then $t\,u
       \rz \psi$}
     \\
-    \oinj{\mathtt{or}_1}{t} \rz \ior{\phi}{\psi}
+    \oinj{\mathtt{or}_0}{t} \rz \ior{\phi}{\psi}
     &\quad\text{iff}\quad
     \text{$t \rz \phi$}
     \\
-    \oinj{\mathtt{or}_2}{t} \rz \ior{\phi}{\psi}
+    \oinj{\mathtt{or}_1}{t} \rz \ior{\phi}{\psi}
     &\quad\text{iff}\quad
     \text{$t \rz \psi$}
     \\
@@ -573,7 +573,6 @@ In the category of pers the appropriate notion is that of a
 \emph{uniform} family.
 %
 \fi
-\internal{Chris}{really ``indexed by a \emph{per} $I$''?}
 A uniform family of pers $\family{A_i}{i \in I}$ indexed
 by a per~$I$ is given by an underlying type $\typeOf{A}$ and a family
 of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
@@ -586,7 +585,7 @@ of pers $(\per_{A_i})_{i \in \values{\typeOf{I}}}$ that is
 \end{itemize}
 \else % \iflong
 strict (if $u \per_{A_i} v$ then $i \in \support{I}$) and
-extensional(if $u \per_{A_i} v$ and $i \per_I j$ then $u
+extensional (if $u \per_{A_i} v$ and $i \per_I j$ then $u
   \per_{A_j} v$).
 \fi % \iflong
 %

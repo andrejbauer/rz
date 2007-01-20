@@ -31,7 +31,7 @@ to produce a realizer for equality
 %
 \begin{source}
 val eq : s \iTo s \iTo [`or0 | `or1]
-assertion eq = \iForall (x:\iT{s}, y:\iT{s}),
+assertion eq : \iForall (x:\iT{s}, y:\iT{s}),
                    (match eq x y with
                       `or0 \iImply x \iPer{s} y
                     | `or1 \iImply \iNot (x \iPer{s} y) )
@@ -102,9 +102,8 @@ because the whole expressions appears under the hypothesis that~$x$ is
 not zero. So in the end the programmer sees
 %
 \begin{source}
-(**  Assertion inverse =
+assertion inverse :
   \iForall (x:\iT{real}),  \iNot (x \iPer{real} zero) \iTo (x * inv x) \iPer{real} one
-*)
 \end{source}
 %
 Assuming further that a strict linear order $<$ on~$\f{real}$ has
@@ -117,7 +116,7 @@ been axiomatized, we might proceed by relating it to $\f{inv}$:
 %Axiom inv_positive: forall x : real, zero < x -> zero < inv x.
 \end{showInput}%
 %
-Once again $\f{inv\;x}$ appears in the input, bt this time the
+Once again $\f{inv\;x}$ appears in the input, but this time the
 optimizer is unable to remove the obligation, so the output is
 %
 \begin{showOutput}
@@ -211,7 +210,7 @@ finite subsets of~$A$ as the least family~$K(A)$ of subsets of~$A$
 that contains the empty set and is closed under unions with
 singletons. This characterization relies on powersets, which are not
 available in RZ. But the gist of it, namely that $K(A)$ is an
-\emph{inital} structure a suitable sort, can be expressed as follows.
+\emph{initial} structure a suitable sort, can be expressed as follows.
 
 \else
 %
@@ -473,7 +472,7 @@ The relevant part of the output is
 %
 \begin{source}
 val ac : (a \iTo b * ty_r) \iTo (a \iTo b) * (a \iTo ty_r)
-Assertion ac =
+assertion ac :
   \iForall f:a \iTo b * ty_r,
     (\iForall (x:\iT{a}),  let (p,q) = f x in p : \iT{b} \iAnd r x p q) \iTo
     let (g,h) = ac f in
@@ -486,7 +485,7 @@ an $\ototal{\f{x}}{\f{a}}$ and returns a pair $\f{(p,q)}$ such that $\f{q}$ real
 the fact that $\f{r\;x\;p}$ holds. The output functions $\f{g}$ and $\f{h}$ taking
 $\ototal{\f{x}}{\f{a}}$ as input must be such that $\f{h\;x}$ realizes
 $\f{r\;x\;(g\;x)}$. Crucially, the requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$
-says tht $\f{g}$ must be extensional, i.e., map equivalent realizers to
+says that $\f{g}$ must be extensional, i.e., map equivalent realizers to
 equivalent realizers. We could define~$\f{h}$ as the first component
 of~$\f{f}$, but we cannot hope to implement~$\f{g}$ in general because the
 second component of~$f$ is not assumed to be extensional.
@@ -505,7 +504,7 @@ Now the output is
 %
 \begin{source}
 val iac : (a \iTo b * ty_r) \iTo (a \iTo b) * (a \iTo ty_r)
-Assertion iac =
+assertion iac :
   \iForall f:a \iTo b * ty_r,
     (\iForall (x:\iT{a}),  let (p,q) = f x in p : \iT{b} \iAnd r x p q) \iTo
     let (g,h) = iac f in
@@ -515,7 +514,7 @@ Assertion iac =
 which is exactly the same as before, \emph{except} that the
 troublesome requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$ turned into
 $\oforall{\f{x}}{\f{a}}{(\oimply{\ototal{\f{x}}{\f{a}}}{\ototal{\f{g\;x}}{\f{b}}})}$, which
-is weaker. We can impement $\f{iac}$ in OCaml as
+is weaker. We can implement $\f{iac}$ in OCaml as
 %
 \begin{source}
 let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
@@ -536,11 +535,11 @@ the use of computational effects. To keep the example short, we
 presume that we are already given the set of natural
 numbers~$\f{nat}$ with the usual structure.
 
-A \emph{type 2 functional} is a map $f : (\f{nat} \to \f{nat})
-\to \f{nat}$. It is said to be continuous if the output of $f(a)$
-depends only on an initial segment of the sequence~$a$. We can express
-this axiom in RZ as follows:
-\internal{Chris}{Which axiom?  That all type 2 functionals are continuous?}
+A \emph{type 2 functional} is a map $f : (\f{nat} \to \f{nat}) \to
+\f{nat}$. It is said to be continuous if the output of $f(a)$ depends
+only on an initial segment of the sequence~$a$. We can express the
+(non-classical) axiom that all type~2 functionals are continuous in RZ
+as follows:
 %
 \begin{source}
 Axiom continuity: \iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
@@ -554,7 +553,7 @@ specification
 %
 \begin{source}
 val continuity : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
-Assertion continuity =
+assertion continuity :
   \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iT{nat \iTo nat}),
     let p = continuity f a in p : \iT{nat} \iAnd
     (\iForall (b:\iT{nat \iTo nat}),
@@ -581,7 +580,7 @@ let continuity f a =
 To compute a modulus for~$\f{f}$ at~$\f{a}$, the program creates a
 function~$\f{a'}$ which is just like~$\f{a}$ except that it stores in~$\f{p}$ the
 largest argument at which it has been called. Then $\f{f\;a'}$ is
-computed, its value it discarded, and the value of~$\f{p}$ is returned.
+computed, its value is discarded, and the value of~$\f{p}$ is returned.
 The program works because~$\f{f}$ is assumed to be extensional and must
 therefore not distinguish between extensionally equal sequences~$\f{a}$
 and~$\f{a'}$.
