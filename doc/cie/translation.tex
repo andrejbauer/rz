@@ -40,14 +40,14 @@ sets as uniform families (Section~\ref{sec:uniform-families}):
 %
 \begin{source}
 type t
-predicate \iPer{t} : s \iTo t \iTo t \iTo bool *)
+predicate \iPer{t} : s \iTo t \iTo t \iTo bool
 assertion strict_t :  \iForall x:s, y:t, z:t, y \iPer{t x} z \iTo x : ||s||
 assertion extensional_t :
   \iForall x:s, y:s, z:t, w:t, x \iPer{s} y \iTo z \iPer{t x} w \iTo z \iPer{t y} w
 assertion symmetric_t : \iForall x:s, y:t, z:t, y \iPer{t x} z \iTo z \iPer{t x} y
 assertion transitive_t :
   \iForall x:s, y:t, z:t, w:t, y \iPer{t x} z \iAnd z \iPer{t x} w \iTo y \iPer{t x} w
-predicate ||t|| : s \iTo t \iTo bool *)
+predicate ||t|| : s \iTo t \iTo bool
 assertion total_def_t :  \iForall x:s, y:t, y : ||t x|| <\iTo y \iPer{t x} y
 \end{source}
 %
@@ -131,36 +131,9 @@ that we have
 %
 \iflong
 %
-The construction of modest subsets may look surprising at first, but
-it makes sense computationally. Given a modest sets~$A$ and a
-predicate~$\phi$ on~$A$, the modest subset $\set{x : A \such \phi(x)}$
-has the underlying set
-%
-\begin{equation*}
-  \setOf{\set{x : A \such \phi(x)}} =
-  \set{x \in \setOf{A} \such \xsome{v}{\typeOf{\phi}}{v \rz \phi(x)}},
-\end{equation*}
-%
-and the underlying type with the realizability relation
-%
-\begin{align*}
-  \typeOf{\set{x : A \such \phi(x)}} &= \typeOf{A} \times
-  \typeOf{\phi},\\
-  (u,v) \rz_{\set{x : A \such \phi(x)}} x &\iff
-  u \rz_A x \land v \rz \phi(x).
-\end{align*}
-%
-This means that to represent an element~$x$ of a subset we must
-provide a realizer~$u$ for the element itself, as well as~$v$
-witnessing~$\phi(x)$. The per which we get from this is
-%
-\begin{equation*}
-  (u_1, v_1) \per_{\set{x : A \such \phi(x)}} (u_2, v_2) \iff
-  v_1 \rz \phi(u_1) \land v_2 \rz \phi(u_2) \land
-  u_1 \per_A u_2.
-\end{equation*}
-%
-\else
+The construction of subsets may look surprising at first, but
+it makes sense computationally.
+\fi
 Given a predicate~$\phi$ on a per~$A$, the sub-per $\set{x : A
   \such \phi}$ has underlying type $\typeOf{A} \times \typeOf{\phi}$
 where $(u_1,v_1) \per_{\set{x : A \such \phi}} (u_2,v_2)$ when $u_1
@@ -168,7 +141,6 @@ where $(u_1,v_1) \per_{\set{x : A \such \phi}} (u_2,v_2)$ when $u_1
 that a realizer for an element of $\set{x : A
   \such \phi}$ carries information about \emph{why} the element
 belongs to the subset.
-\fi
 
 A type coercion $\icoerce{e}{t}$ can convert an element of the subset $s =
 \set{x : t \such \phi(x)}$ to an element of~$t$. At the level of
@@ -194,13 +166,6 @@ usual~$\rho(x,y)$. Because this may cause a great deal of confusion
 and mistakes, it is better to permit only quotients by \emph{stable}
 equivalence relations, which behave as expected.
 
-Given a modest set~$A$ and a stable equivalence relation~$\rho$
-on~$A$, the quotient $A/\rho$ is the modest set determined by
-\begin{align*}
-  \setOf{A/\rho} &= \set{\ieclass{x}{\rho} \such x \in A} \\
-  \typeOf{A/\rho} &= \typeOf{A} \\
-  u \rz_{A/\rho} \xi &\iff \some{y}{\xi}{u \rz_A y}.
-\end{align*}
 %
 \else
 %
@@ -210,13 +175,12 @@ expected.\footnote{The trouble is that from equality of equivalence
   classes $[x]_{\rho} = [y]_{\rho}$ we may conclude only
   $\lnot\lnot\rho(x,y)$ rather than the expected $\rho(x,y)$.}
 %
+\fi
 A stable equivalence relation on a per~$A$ is the same thing as a
 partial equivalence relation~$\rho$ on~$\typeOf{A}$ which satisfies
 $\rho(x,y) \implies x \per_A y$. Then the quotient $A/\rho$ is the per
 with $\typeOf{A/\rho} = \typeOf{A}$ and $x \per_{A/\rho} y \iff
 \rho(x,y)$.
-%
-\fi
 
 Luckily, it seems that many equivalence relations occurring in
 computable mathematics are stable, or can be made stable with a little
@@ -275,32 +239,21 @@ realizer for~$x$ does not affect~$e$.
 
 \paragraph{The underlying set of realizers.}
 %
-Another construction on a modest set~$A$ is the underlying
-modest set of realizers $\irz{A}$, defined by
+Another construction on a per~$A$ is the underlying
+per of realizers $\irz{A}$, defined by
 %
 \iflong
-\[
-\begin{array}{ll}
-  \setOf{\irz{A}} &= \values{\typeOf{A}} \\
+\begin{align*}
   \typeOf{\irz{A}} &= \typeOf{A} \\
-  u \rz_{\irz{A}} v &\iff u = v,
-\end{array}
-\]
+  u \per_{\irz{A}} v &\iff u \in \support{A} \land u = v,
+\end{align*}
+%
 \else  % \iflong
-$\setOf{\irz{A}} = \values{\typeOf{A}}$,  
-$\typeOf{\irz{A}} = \typeOf{A}$, and 
-$u \rz_{\irz{A}} v \iff u = v$, 
+$\typeOf{\irz{A}} = \typeOf{A}$ and 
+$u \per_{\irz{A}} v u \in \support{A} \land \iff u = v$, 
 \fi % \iflong
 %
 where by $u = v$ we mean observational equality of values~$u$ and~$v$.
-The corresponding per is
-%
-\iflong
-\begin{equation*}
-  u_1 \per_{\irz{A}} u_2 \iff u_1 \in \support{A} \land u_1 = u_2.
-\end{equation*}
-\else
-$u_1 \per_{\irz{A}} u_2 \iff u_1 \in \support{A} \land u_1 = u_2$.
 %
 An element $r \in \irz{A}$ realizes a unique element $\irz{r} \in A$.
 The elimination term $\iletrz{x}{e_1}{e_2}$, which means ``let $x$ be
@@ -363,7 +316,7 @@ assertion A : u \iRz \iPhi
 %
 which requires the programmer to validate~$\phi$ by providing a
 realizer for it. When $\phi$ is a compound statement RZ computes the
-meaning \iflong of $u \rz \phi$\fi as described in
+meaning \iflong of $u \rz \phi$ \fi as described in
 Figure~\ref{fig:rz-logic}.
 
 In RZ we avoid the explicit realizer notation $u \rz \phi$ in order to
@@ -374,29 +327,16 @@ make the output easier to read.
 A basic predicate declaration $\iParameter{p}{\iarrow{s}{\iProp}}$ is
 translated to
 %
-\begin{align*}
-  & \otyspec{ty\_p} \\
-  & \opropspec{p}{s \to ty\_p \to \oProp} \\
-  & \oassertion{\mathsf{strict}\_p}{
-    \oforall{x}{s}{
-      \oforall{a}{ty\_p}{
-        (\oimply
-        {\oapp{\oapp{p}{x}}{a}}
-        {\ototal{x}{s}
-        })
-      }
-    }
-  } \\
-  & \oassertion{\mathsf{extensional}\_p}{
-    \oforallt{x,y}{s}{
-      \oforall{a}{ty\_p}{
-          (\oimply{\oper{s}{x}{y}}
-          {\oimply{\oapp{\oapp{p}{x}}{a}}{\oapp{\oapp{p}{y}}{a}}})
-          }}}
-\end{align*}
+\begin{source}
+type ty_p
+predicate p : s \iTo ty_p \iTo bool
+assertion strict_p :  \iForall x:s, a:ty_p, p x a \iTo x : \iT{s}
+assertion extensional_p :
+   \iForall x:s, y:s, a:ty_p, x \iPer{s} y \iTo p x a \iTo p y a
+\end{source}
 %
 We see that the predicate~$p$ has gained an additional argument of
-type $ty\_p$ (which the programmer is supposed to define in an
+type $\f{ty\_p}$ (which the programmer is supposed to define in an
 implementation), and we write $\oapp{\oapp{p}{x}}{a}$ instead of $a
 \rz \oapp{p}{x}$. The two assertions require that $p$ be strict and
 extensional with respect to $\per_s$.
@@ -404,8 +344,8 @@ extensional with respect to $\per_s$.
 \else % iflong
 %
 A basic predicate declaration $\iParameter{p}{\iarrow{s}{\iProp}}$ is
-translated to a type declaration $\otyspec{ty\_p}$ and a predicate
-declaration $\opropspec{p}{s \to ty\_p \to \oProp}$ together with
+translated to a type declaration $\otyspec{\f{ty\_p}}$ and a predicate
+declaration $\opropspec{p}{s \to \f{ty\_p} \to \oProp}$ together with
 assertions that~$p$ is strict and extensional.
 %
 \fi % iflong
@@ -415,12 +355,12 @@ account when computing its realizability interpretation. For this
 purpose the input language has the subkind $\iStable$ of $\iProp$.
 When RZ encounters a predicate which is declared to be stable, such as
 $p : \iarrow{s}{\iStable}$, it does not generate a declaration of
-$ty\_p$ and it does not give $p$ an extra argument.
+$\f{ty\_p}$ and it does not give $p$ an extra argument.
 
 Another special kind in RZ input language is the kind $\iEquiv{s}$ of
 stable equivalence relations on a set~$s$. When an equivalence
 relation is declared with $\iParameter{p}{\iEquiv{s}}$, RZ will output
-assertions stating that $p$ is strict, extensional, 
+1assertions stating that $p$ is strict, extensional, 
 reflexive, symmetric and transitive.
 
 

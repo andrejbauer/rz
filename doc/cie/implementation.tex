@@ -21,8 +21,8 @@ explicit coercion is required to go from one type to the other,
 because subset values will be pairs containing realizers for
 $\iand{\ipp_1(\ix)}{\ipp_2(\ix)}$ and
 $\iand{\ipp_2(\ix)}{\ipp_1(\ix)}$, and these realizers have
-potentially different types $|\ipp_1(\ix)|\mathtt{*}|\ipp_2(\ix)|$ and
-$|\ipp_2(\ix)|\mathtt{*}|\ipp_1(\ix)|$ respectively.
+potentially different types $|\ipp_1(\ix)| * |\ipp_2(\ix)|$ and
+$|\ipp_2(\ix)| * |\ipp_1(\ix)|$ respectively.
 \fi % \iflong
 
 Next the realizability translation is performed as described in
@@ -42,20 +42,20 @@ see Figure~\ref{fig:kuratowski} and Section~\ref{sec:finite-sets},
 yields a value specification for $\mathtt{free}$ of type
 %
 \begin{equation*}
-  (\mathtt{A.a} \to \mathtt{S.s}) \to 
-  (\mathtt{fin} \to \mathtt{S.s}) * (\ounit * (\mathtt{A.a} \to
+  (\f{A.a} \to \f{S.s}) \to 
+  (\f{fin} \to \f{S.s}) * (\ounit * (\f{A.a} \to
   \ounit) *
-  (\mathtt{fin} \to \mathtt{fin} \to \ounit))
+  (\f{fin} \to \f{fin} \to \ounit))
 \end{equation*}
 %
 where $\ounit$ is the unit (terminal) type classifying the trivial
 realizer. Thinning replaces this by the isomorphic type
 %
 \begin{equation*}
-  (\mathtt{A.a} \to \mathtt{S.s}) \to \mathtt{fin} \to \mathtt{S.s}
+  (\f{A.a} \to \f{S.s}) \to \f{fin} \to \f{S.s}
 \end{equation*}
 %
-and appropriately modifies references to $\mathtt{free}$ in the assertions to account for this change in type.
+and appropriately modifies references to $\f{free}$ in the assertions to account for this change in type.
 
 \fi % \iflong
 %

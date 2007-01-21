@@ -67,21 +67,20 @@ and postconditions).
 %\bigskip
 
 We have therefore implemented a system, called RZ, to serve as a
-bridge between the logical world and the programming world.\footnote{RZ
-  is publicly available for download at
-  \url{http://math.andrej.com/rz/}, together with an extended version of
-  this paper.} RZ translates specifications in
-constructive logic into standard interface code in a programming
-language (currently Objective Caml~\cite{ocaml}, but other languages
-could be used).
+bridge between the logical world and the programming
+world.\footnote{RZ is publicly available for download at
+  \url{http://math.andrej.com/rz/}, together with an \iflong
+  abridged\else extended\fi\ version of this paper.} RZ translates
+specifications in constructive logic into standard interface code in a
+programming language (currently Objective Caml~\cite{ocaml}, but other
+languages could be used).
 
 The constructive part of the original specification turns into
-interface code,
-listing types and values to be implemented. The rest becomes assertions about these types and values.
-The assertions have no computational content, so their constructive
-and classical meanings agree, and they can
-be understood by programmers and mathematicians accustomed to
-classical logic.
+interface code, listing types and values to be implemented. The rest
+becomes assertions about these types and values. The assertions have
+no computational content, so their constructive and classical meanings
+agree, and they can be understood by programmers and mathematicians
+accustomed to classical logic.
 
 %\bigskip
 

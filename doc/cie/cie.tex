@@ -1,5 +1,7 @@
 \documentclass{llncs}
 
+\pagestyle{plain}
+
 \usepackage{amsmath}
 \usepackage{amssymb}
 %\usepackage{theorem}
@@ -19,9 +21,9 @@
 % To distinguish between the long and short version
 \newif\iflong
 % Uncommment this for short version:
-\longfalse
+%\longfalse
 % Uncomment this for long version:
-%\longtrue
+\longtrue
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %
@@ -41,6 +43,7 @@
 \DefineVerbatimEnvironment{source}{Verbatim}%
 {xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
 
+% macros within source
 \newcommand{\iTo}{$\to$}
 \newcommand{\iForall}{$\forall$}
 \newcommand{\iOr}{$\lor$}
@@ -54,13 +57,6 @@
 \newcommand{\iIff}{$\Leftrightarrow$}
 \newcommand{\iLeq}{$\leq$}
 \newcommand{\iRz}{$\rz$}
-
-% Use these environents to display input and otput in LaTeXified mode
-\newenvironment{showInput}{\[\begin{array}{l}}{\end{array}\]}
-\newenvironment{showInputSmall}{\footnotesize\[\begin{array}{l}}{\end{array}\]}
-
-\newenvironment{showOutput}{\[\begin{array}{l}}{\end{array}\]}
-\newenvironment{showOutputSmall}{\footnotesize\[\begin{array}{l}}{\end{array}\]}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 

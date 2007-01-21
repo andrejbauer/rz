@@ -104,8 +104,8 @@ $\values{t}$ to each $t \in \Type$ forms a \emph{typed partial
   combinatory algebra (TPCA)}%
 \iflong
 , which provides a theoretical basis for
-the definition of a realizability model that suits our needs
-\fi %\iflong
+the definition of a realizability model that suits our needs%
+\fi%\iflong
 .
 
 Going back to our example, we see that an implementation of directed
@@ -122,7 +122,7 @@ There are two natural
 conditions that $\rz_\mathcal{G}$ ought to satisfy: (1) for every $G
 \in \mathcal{G}$ there should be at least one realizer $(\ell_V,
 \ell_A)$ representing it, and (2) if $(\ell_V, \ell_A)$ represents
-both $G$ and $G'$ then $G = G'$. \footnote{The latter condition is
+both $G$ and $G'$ then $G = G'$.\footnote{The latter condition is
   called \emph{modesty} and is not strictly necessary for the
   development of the theory, though programmers would naturally expect
   it to hold.} If $(\ell_V, \ell_A)$ and $(\ell'_V, \ell'_A)$
@@ -141,6 +141,8 @@ A general definition is in order. A \emph{modest set} is
 \else % iflong
 %
 Generalizing from this, we define a \emph{modest set} to be
+%
+\fi
 %
 a triple $A = (\setOf{A}, \typeOf{A}, {\rz_A})$ where $\setOf{A}$ is
 the \emph{underlying set}, $\typeOf{A} \in \Type$ is the
@@ -189,16 +191,9 @@ equivalent.\footnote{And there is a third view, as a partial surjection
   $\delta_A(v) = x$ when $v \rz_A x$. This is how realizability is
   presented in Type Two Effectivity~\cite{Wei00}.} 
 %
-\iflong 
-%
-In RZ we use pers because they refer only to types and values,
-as opposed to arbitrary sets.
-%
-\else
 We concentrate on the view of modest sets as pers. They are more
 convenient to use in RZ because they refer only to types and values,
 as opposed to arbitrary sets.
-\fi
 %
 Nevertheless, it is useful to understand
 how modest sets and pers arise from natural programming practice.
@@ -247,42 +242,32 @@ $u \per_A u'$ implies $v\;u \per_B v'\;u'$.
 
 \iflong
 %
-The category of modest sets has a very rich structure. For example, we
-may form a cartesian product $A \times B$ of modest sets $A$ and $B$
-by
+The category of pers has a very rich structure. For example, we may
+form a cartesian product $A \times B$ of pers $A$ and $B$ by
 %
 \begin{align*}
-  \setOf{A \times B} &= \setOf{A} \times \setOf{B},\\
   \typeOf{A \times B} &= \typeOf{A} * \typeOf{B},\\
-  p \rz_{A \times B} (x,y) &\iff
-  \cfst{p} \rz_A x \land \csnd{p} \rz_B y.
+  (u_1, v_1) \per_{A \times B} (u_2, v_2) &\iff
+  u_1 \per_A u_2 \land v_1 \per_B v_2.
 \end{align*}
 %
 The projections $\pi_1 : A \times B \to A$ and $\pi_2 : A \times B \to
 B$ are realized by $\mathtt{fst}$ and $\mathtt{snd}$, respectively.
 
-The morphisms between modest sets~$A$ and~$B$ again form a modest set
+The morphisms between pers~$A$ and~$B$ again form a per
 $B^A$, also written as $A \to B$, called the \emph{exponential} of~$A$
-and~$B$, with the underlying set
+and~$B$, with
 %
-\begin{equation*}
-  \setOf{B^A} =
-  \set{f : \setOf{A} \to \setOf{B} \such \text{$f$ is a realized function}},
-\end{equation*}
+\begin{align*}
+  \typeOf{B^A} &= \typeOf{A} \to \typeOf{B},\\
+  u \per_{B^A} v &\iff \xall{w}{\support{A}}{u\;w \per_B v\;w}.
+\end{align*}
 %
-the underlying type
-%
-\begin{equation*}
-  \typeOf{B^A} = \typeOf{A} \to \typeOf{B},
-\end{equation*}
-%
-and the realizability relation $\rz_{B^A}$ defined
-by~\eqref{eq:rz-function-space}. The evaluation map $e : B^A \times A
-\to B$, $e(f,x) = f(x)$ is realized by OCaml application,
-$\cfun{(u,v)}{u\;v}$. If a function $f : C \times A \to B$ is realized
-by $v$, then its transpose $\tilde{f} : C \to B^A$, $\tilde{f}(z)(x) =
-f(z,x)$, is realized by $\cfun{z\;x}{v \; (z,x)}$. This shows that the
-category of modest sets is cartesian closed. In
+The evaluation map $e : B^A \times A \to B$ is realized by OCaml
+application, $\cfun{(u,v)}{u\;v}$. If a function $f : C \times A \to
+B$ is realized by $v$, then its transpose $\tilde{f} : C \to B^A$,
+$\tilde{f}(z)(x) = f(z,x)$, is realized by $\cfun{z\;x}{v \; (z,x)}$.
+This shows that the category of pers is cartesian closed. In
 Section~\ref{sec:transl-sets-terms} we review other canonical
 constructions on modest sets.
 
@@ -297,18 +282,20 @@ dependent types~\cite{JacobsB:cltt}.
 \fi % \iflong
 
 \iflong
+%
 As an example we consider the cyclic group on seven elements $(\ZZ_7,
 0, {-}, {+})$. To implement the group, we must give a representation
-of $\ZZ_7$ as a modest set~$Z = (\ZZ_7, \typeOf{Z}, {\rz_Z})$, and
+of $\ZZ_7$ as a per~$Z = (\typeOf{Z}, {\per_Z})$, and
 provide realizers for the neutral element~$0$, negation~$-$, and
 addition~$+$. 
 
-One possibility is to choose $\cint$ as the underlying type $\typeOf{Z}$,
-and to let $\support{Z}$ be only the integers \texttt{0} through \texttt{6}.
-Then negation and addition must work modulo \texttt{7} (i.e., must return an integer in the
-range \texttt{0}--\texttt{6} when given integers in this range).
-The neutral element would be the integer constant \texttt{0}, and the
-equivalence $\per_Z$ would be integer equality.
+One possibility is to choose $\cint$ as the underlying type
+$\typeOf{Z}$, and to let $\support{Z}$ be only the integers \texttt{0}
+through \texttt{6}. Then negation and addition must work modulo
+\texttt{7} (i.e., must return an integer in the range
+\texttt{0}--\texttt{6} when given integers in this range). The neutral
+element would be the integer constant \texttt{0}, and the equivalence
+$\per_Z$ would be integer equality.
 
 Alternatively, we could take $\cint$ as the underlying type
 $\typeOf{Z}$, but let $\support{Z}$ include all integers. In this
@@ -318,18 +305,20 @@ negation\footnote{Taking care to prevent integer
 integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
 equivalence-modulo-7.
 
-Both of these modest sets happen to have \emph{decidable equality},
-i.e., the characteristic map $\mathrm{eq} : \ZZ_7 \times
-\ZZ_7 \to \set{\mathtt{false}, \mathtt{true}}$ of equality can be 
-realized, by code for integer equality and code for integer equivalence-modulo-7
-respectively.
-\fi % \iflong
+Both of these pers happen to be \emph{decidable}, i.e., it can be
+algorithmically decided whether two values represent the same element
+of~$\ZZ_7$, by code for integer equality and code for integer
+equivalence-modulo-7 respectively. \fi % \iflong
 
 \iflong
-Not all modest sets pers have decidable equality.
+%
+Not all pers are decidable.
+%
 \else
+%
 Not all pers are \emph{decidable}, i.e., there may be no algorithm for deciding
 when two values are equivalent.
+%
 \fi
 %
 Examples include implementations of semigroups with an undecidable
@@ -341,16 +330,9 @@ realized by infinite Cauchy sequences).
 %
 \iflong
 %
-Every modest set induces a partial
-equivalence relation, but there is no presupposition that this
-equivalence is computable (implementable).
-\fi % \iflong
-
-\iflong
-We can require decidable equivalence by adding an axiom that any two
-elements are either equivalent or not equivalent; see
-Section~\ref{sec:decidable-sets}.
-\fi
+There is no presupposition that this equivalence is computable
+(implementable). We can require decidable equivalence by adding a
+suitable axiom; see Section~\ref{sec:decidable-sets}. \fi
 
 \subsection{Interpretation of logic}
 \label{sec:interpretation-logic}
@@ -368,11 +350,12 @@ valid realizers for~$\phi$, and some terms that are realizers may not
 correspond to any proofs, for example, if they denote partial
 functions or use computational effects.
 
-We write $t \rz \phi$ when $t \in \values{\typeOf{\phi}}$ is a
-realizer for~$\phi$. The underlying types and the realizability
-relation~$\rz$ are defined inductively on the structure of~$\phi$; an
-outline is shown in Figure~\ref{fig:rz-logic}. We say that a
-formula~$\phi$ is \emph{valid} if it has at least one realizer.
+It is customary to write $t \rz \phi$ when $t \in
+\values{\typeOf{\phi}}$ is a realizer for~$\phi$. The underlying types
+and the realizability relation~$\rz$ are defined inductively on the
+structure of~$\phi$; an outline is shown in Figure~\ref{fig:rz-logic}.
+We say that a formula~$\phi$ is \emph{valid} if it has at least one
+realizer.
 %
 \begin{figure*}[t]
   \textbf{Underlying types of realizers:}
@@ -464,7 +447,7 @@ example, suppose
 Suppose
 \fi % \iflong
 we have implemented the real
-numbers~$\RR$ as a modest set~$R = (\RR, \mathtt{real}, {\rz_R})$, and
+numbers~$\RR$ as a per~$R = (\mathtt{real}, {\per_R})$, and
 consider  
 \iflong
 the statement
@@ -493,7 +476,7 @@ and~$u$ for the same~$a$ and~$b$ may result in different roots.
 To put this in another way, $r$ realizes a \emph{multi-valued}
 function\footnote{The multi-valued nature of the realizer comes from
   the fact that it computes \emph{any one} of many values, not that it
-  computes \emph{all} of the many values.} rather than a modest set
+  computes \emph{all} of the many values.} rather than a per
 morphism. It is well known in computable mathematics that certain
 operations, such as equation solving, are only computable if we allow
 them to be multi-valued. They arise naturally in RZ as translations of
@@ -522,7 +505,7 @@ for useless code.
 %
 \else
 %
-Some propostions, such as equality and negation, have ``irrelevant'' realizers
+Some propositions, such as equality and negation, have ``irrelevant'' realizers
 free of computational content. Sometimes only a
 part of a realizer is computationally irrelevant. 
 Propositions that are free of computational content are
@@ -566,8 +549,7 @@ the implementation point of view, because it removes dependencies at
 the level of types. Note also that there is no dependency on the
 realizers, only on the elements of the underlying set.
 
-We may express uniform families in terms of pers, just as for
-predicates.
+We may express uniform families in terms of pers, too.
 \else
 In the category of pers the appropriate notion is that of a
 \emph{uniform} family.
@@ -588,55 +570,31 @@ strict (if $u \per_{A_i} v$ then $i \in \support{I}$) and
 extensional (if $u \per_{A_i} v$ and $i \per_I j$ then $u
   \per_{A_j} v$).
 \fi % \iflong
-%
-\iflong
-A morphism $f : \family{A_i}{i \in I} \to \family{B_i}{i \in I}$ is a
-family $\family{f_i : \setOf{A_i} \to \setOf{B_i}}{i \in I}$ of
-uniformly realized maps, which means that there exists $u \in
-\values{\typeOf{I} \to \typeOf{A} \to \typeOf{B}}$ such that,
-%
-\begin{equation*}
-  v \rz_I i \land w \rz_{A_i} x \implies u\; v \; w \rz_{B_i} f_i(x)
-\end{equation*}
-%
-for all $i \in I$, $v \in \values{\typeOf{I}}$, $x \in \setOf{A_i}$,
-and $w \in \values{\typeOf{A}}$.
-%
-\fi
-
 
 \iflong
 We may form the \emph{sum} $\depsum{i \in I}{A_i}$ of a uniform family
 $\family{A_i}{i \in I}$ as
 %
 \begin{align*}
-  \setOf{\depsum{i \in I}{A_i}} &=
-  \set{\pair{i,x} \such i \in \setOf{I} \land x \in \setOf{A_i}}
-  \\
   \typeOf{\depsum{i \in I}{A_i}} &=
   \typeOf{I} \times \typeOf{A}
   \\
-  (u,v) \rz_{\depsum{i \in I}{A_i}} (i,x)
+  (i_1, u_1) \per_{\depsum{i \in I}{A_i}} (i_2, u_2)
   &\iff
-  u \rz_I i \land v \rz_{A_i} x
+  i_1 \per_I i_2 \land u_1 \per_{A_{i_1}} u_2
 \end{align*}
 %
 and the \emph{product} $\depprod{i \in I}{A_i}$ as
 %
 \begin{align*}
-  \setOf{\depprod{i \in I}{A_i}} &=
-  \set{f : \setOf{I} \to {\textstyle \bigcup_{i \in \setOf{I}} \setOf{A_i}} \such
-    \xall{i}{\setOf{I}}{f(i) \in \setOf{A_i}}}
-  \\
   \typeOf{\depprod{i \in I}{A_i}} &=
   \typeOf{I} \to \typeOf{A}
   \\
-  u \rz_{\depprod{i \in I}{A_i}} f
+  u \per_{\depprod{i \in I}{A_i}} v
   &\iff
-  \xall{i}{I}{\all{v}{\values{\typeOf{I}}}{
-      v \rz_I i \implies
-      u \; v \rz_{A_i} f(i)
-    }}.
+  \all{i,j}{\values{\typeOf{I}}}{
+    i \per_I j \implies u\;i \per_{A_i} v\;j
+  }.
 \end{align*}
 %
 These constructions allow us to interpret (extensional) dependent type
@@ -652,30 +610,23 @@ theory.
 As an example of a uniform family we consider the cyclic group
 $(\ZZ_n, 0, {-}, {+})$ of order~$n$. To keep things simple, we assume
 that~$n$ ranges over natural numbers that can be represented by
-type~$\cint$ (i.e., $\typeOf{N}=\cint$), and that 
-$v \rz_N n \iff v = n$.
+type~$\cint$ (i.e., $\typeOf{N}=\cint$), and that $\per_N$ is equality.
 %
-The uniform family $\family{Z_n}{n \in N}$ is then like the cyclic group of order~$7$, with $7$ replaced by~$n$:
+The uniform family $\family{Z_n}{n \in N}$ is then like the cyclic
+group of order~$7$, with $7$ replaced by~$n$. Ignoring overflow, the
+underlying type would be $\typeOf{Z_n} = \cint$. Any of the
+implementations suggested for $\ZZ_7$ would work here, with~$7$
+replaced by the parameter~$n$; in one case we would have $u \per_{Z_n}
+v \iff u = v$ and in the other $u \per_{Z_n} v \iff u
+\mathbin{\mathrm{mod}} n = v \mathbin{\mathrm{mod}} n$.
 %
-\begin{align*}
-  & \setOf{Z_n} = \ZZ_n = \set{0, 1, \ldots, n - 1}
-  \\
-  & \typeOf{Z_n} = \cint
-%  \\
-%  & v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k
-\end{align*}
-%
-Negation would now be specified as a constant of dependent type
-$\Pi_{n{:}N}. \ZZ_n\to\ZZ_n$.  Its realizer \texttt{neg}
-would then have type $\typeOf{N}\to\typeOf{\ZZ_n}\to{\typeOf{\ZZ_n}}$,
-i.e., $\cint\to\cint\to\cint$, so that $\mathtt{neg}(n)$ would
-be a realizer for negation on $\ZZ_n$.   The realizer for addition would
-similarly take an extra argument $n$.  
+Negation would be specified as a constant of dependent type
+$\Pi_{n \in N} Z_n \to Z_n$. Its realizer \texttt{neg} would then have
+type $\typeOf{N}\to\typeOf{Z_n}\to{\typeOf{Z_n}}$, i.e.,
+$\cint\to\cint\to\cint$, so that $\mathtt{neg}(n)$ would be a realizer
+for negation on $\ZZ_n$. The realizer for addition would similarly
+take an extra argument $n$.
 
-Any of the implementations suggested for $\ZZ_7$ would work here, with
-$7$ replaced by the parameter $n$; in one case we would have
-$v \rz_{Z_n} k \iff v = k$ and in the other
-$v \rz_{Z_n} k \iff v \mathbin{\mathrm{mod}} n = k$.
 \fi % \iflong
 
 
