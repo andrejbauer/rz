@@ -1,0 +1,18 @@
+[Processing ./shadow_set.thy]
+
+-------------------------------
+TYPE ERROR:
+Illegal shadowing; the name s appears twice in the same context,
+and automatic renaming is not possible.
+
+...in:  Parameter s : Set.
+
+...in:  thy
+Parameter s : Set.
+Parameter s : Set.
+
+end
+
+-------------------------------
+
+Fatal error: exception Failure("Typechecking failed.")

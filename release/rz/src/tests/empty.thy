@@ -1,0 +1,3 @@
+Definition Empty := thy
+end.
+

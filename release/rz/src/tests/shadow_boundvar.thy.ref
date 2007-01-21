@@ -1,0 +1,21 @@
+[Processing ./shadow_boundvar.thy]
+module type T =
+ sig
+   type s
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
+         
+        assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+   *)
+    
+   (** predicate ||s|| : s -> bool *)
+   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   *)
+    
+   val shadow : s -> s
+   (**  assertion shadow :  forall (x:||s||),  shadow x : ||s||
+   *)
+ end
+

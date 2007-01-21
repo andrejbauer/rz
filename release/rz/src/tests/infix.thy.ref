@@ -1,0 +1,28 @@
+[Processing ./infix.thy]
+module type T =
+ sig
+   type s
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
+         
+        assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+   *)
+    
+   (** predicate ||s|| : s -> bool *)
+   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   *)
+    
+   type ty_greater
+    
+   (** predicate (>) : s -> s -> ty_greater -> bool *)
+   (**  assertion strict_(>) : 
+          forall x:s, y:s, a:ty_greater,  (>) x y a -> x : ||s|| /\ y : ||s||
+         
+        assertion extensional_(>) : 
+          forall x:s, y:s, z:s, w:s, a:ty_greater,  x =s= z /\ y =s= w ->
+            (>) x y a -> (>) z w a
+   *)
+ end
+
