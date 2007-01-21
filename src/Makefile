@@ -102,6 +102,7 @@ clean:
 	rm -f parser.ml
 	rm -f lexer.ml
 	rm -f parser.mli
+	cd tests; make clean
 
 # Depend.
 depend: clean
