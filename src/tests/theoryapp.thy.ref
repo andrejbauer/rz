@@ -4,22 +4,22 @@ module type A =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
+   (**  assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a = 
+        assertion transitive_a : 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    val n : a
-   (**  Assertion n_support =  n : ||a||
+   (**  assertion n_support :  n : ||a||
    *)
     
    val m : a
-   (**  Assertion m_def =  m =a= n
+   (**  assertion m_def :  m =a= n
    *)
  end
  
@@ -28,26 +28,26 @@ module type B =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
+   (**  assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a = 
+        assertion transitive_a : 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    val n : a
-   (**  Assertion n_support =  n : ||a||
+   (**  assertion n_support :  n : ||a||
    *)
     
    val p : a
-   (**  Assertion p_support =  p : ||a||
+   (**  assertion p_support :  p : ||a||
    *)
     
    val m : a
-   (**  Assertion m_def =  m =a= n
+   (**  assertion m_def :  m =a= n
    *)
  end
  
@@ -57,21 +57,21 @@ module type C =
    type b = M.a
     
    (** predicate ||b|| : b -> bool *)
-   (**  Assertion b_def_support =  forall x:b,  x : ||b|| <-> x : ||M.a||
+   (**  assertion b_def_support :  forall x:b,  x : ||b|| <-> x : ||M.a||
    *)
     
    (** predicate (=b=) : b -> b -> bool *)
-   (**  Assertion b_def_per =  forall x:b, y:b,  x =b= y <-> x =M.a= y
+   (**  assertion b_def_per :  forall x:b, y:b,  x =b= y <-> x =M.a= y
    *)
     
    type c = M.a
     
    (** predicate ||c|| : c -> bool *)
-   (**  Assertion c_def_support =  forall x:c,  x : ||c|| <-> x : ||M.a||
+   (**  assertion c_def_support :  forall x:c,  x : ||c|| <-> x : ||M.a||
    *)
     
    (** predicate (=c=) : c -> c -> bool *)
-   (**  Assertion c_def_per =  forall x:c, y:c,  x =c= y <-> x =M.a= y
+   (**  assertion c_def_per :  forall x:c, y:c,  x =c= y <-> x =M.a= y
    *)
  end
  
@@ -82,21 +82,21 @@ module type D =
    type b = X.a
     
    (** predicate ||b|| : b -> bool *)
-   (**  Assertion b_def_support =  forall x:b,  x : ||b|| <-> x : ||X.a||
+   (**  assertion b_def_support :  forall x:b,  x : ||b|| <-> x : ||X.a||
    *)
     
    (** predicate (=b=) : b -> b -> bool *)
-   (**  Assertion b_def_per =  forall x:b, y:b,  x =b= y <-> x =X.a= y
+   (**  assertion b_def_per :  forall x:b, y:b,  x =b= y <-> x =X.a= y
    *)
     
    type c = X.a
     
    (** predicate ||c|| : c -> bool *)
-   (**  Assertion c_def_support =  forall x:c,  x : ||c|| <-> x : ||X.a||
+   (**  assertion c_def_support :  forall x:c,  x : ||c|| <-> x : ||X.a||
    *)
     
    (** predicate (=c=) : c -> c -> bool *)
-   (**  Assertion c_def_per =  forall x:c, y:c,  x =c= y <-> x =X.a= y
+   (**  assertion c_def_per :  forall x:c, y:c,  x =c= y <-> x =X.a= y
    *)
  end
 

@@ -4,47 +4,47 @@ module type T =
    type s
     
    (** predicate (=s=) : s -> s -> bool *)
-   (**  Assertion symmetric_s =  forall x:s, y:s,  x =s= y -> y =s= x
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
          
-        Assertion transitive_s = 
+        assertion transitive_s : 
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type t
     
    (** predicate (=t=) : s -> t -> t -> bool *)
-   (**  Assertion strict_t =  forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s||
+   (**  assertion strict_t :  forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s||
          
-        Assertion extensional_t = 
+        assertion extensional_t : 
           forall x:s, y:s, z:t, w:t,  x =s= y -> z =(t x)= w -> z =(t y)= w
          
-        Assertion symmetric_t = 
+        assertion symmetric_t : 
           forall x:s, y:t, z:t,  y =(t x)= z -> z =(t x)= y
          
-        Assertion transitive_t = 
+        assertion transitive_t : 
           forall x:s, y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w ->
             y =(t x)= w
    *)
     
    (** predicate ||t|| : s -> t -> bool *)
-   (**  Assertion total_def_t = 
+   (**  assertion total_def_t : 
           forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y
    *)
     
    val a : s * t
-   (**  Assertion a_support =  pi0 a : ||s|| /\ pi1 a : ||t (pi0 a)||
+   (**  assertion a_support :  pi0 a : ||s|| /\ pi1 a : ||t (pi0 a)||
    *)
     
    val b : s * t
-   (**  Assertion b_support =  pi0 b : ||s|| /\ pi1 b : ||t (pi0 b)||
+   (**  assertion b_support :  pi0 b : ||s|| /\ pi1 b : ||t (pi0 b)||
    *)
     
    
-   (**  Assertion eq =  pi0 a =s= pi0 b /\ pi1 a =(t (pi0 a))= pi1 b
+   (**  assertion eq :  pi0 a =s= pi0 b /\ pi1 a =(t (pi0 a))= pi1 b
    *)
  end
 

@@ -4,14 +4,14 @@ module type A =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
+   (**  assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a = 
+        assertion transitive_a : 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
  end
  
@@ -20,27 +20,27 @@ module type B =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
+   (**  assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a = 
+        assertion transitive_a : 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    type b
     
    (** predicate (=b=) : b -> b -> bool *)
-   (**  Assertion symmetric_b =  forall x:b, y:b,  x =b= y -> y =b= x
+   (**  assertion symmetric_b :  forall x:b, y:b,  x =b= y -> y =b= x
          
-        Assertion transitive_b = 
+        assertion transitive_b : 
           forall x:b, y:b, z:b,  x =b= y /\ y =b= z -> x =b= z
    *)
     
    (** predicate ||b|| : b -> bool *)
-   (**  Assertion total_def_b =  forall x:b,  x : ||b|| <-> x =b= x
+   (**  assertion total_def_b :  forall x:b,  x : ||b|| <-> x =b= x
    *)
  end
  
@@ -49,37 +49,37 @@ module type C =
    type a
     
    (** predicate (=a=) : a -> a -> bool *)
-   (**  Assertion symmetric_a =  forall x:a, y:a,  x =a= y -> y =a= x
+   (**  assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x
          
-        Assertion transitive_a = 
+        assertion transitive_a : 
           forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  Assertion total_def_a =  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    type b
     
    (** predicate (=b=) : b -> b -> bool *)
-   (**  Assertion symmetric_b =  forall x:b, y:b,  x =b= y -> y =b= x
+   (**  assertion symmetric_b :  forall x:b, y:b,  x =b= y -> y =b= x
          
-        Assertion transitive_b = 
+        assertion transitive_b : 
           forall x:b, y:b, z:b,  x =b= y /\ y =b= z -> x =b= z
    *)
     
    (** predicate ||b|| : b -> bool *)
-   (**  Assertion total_def_b =  forall x:b,  x : ||b|| <-> x =b= x
+   (**  assertion total_def_b :  forall x:b,  x : ||b|| <-> x =b= x
    *)
     
    type d = a * b
     
    (** predicate ||d|| : d -> bool *)
-   (**  Assertion d_def_support =  forall p:d,  p : ||d|| <-> p : ||a * b||
+   (**  assertion d_def_support :  forall p:d,  p : ||d|| <-> p : ||a * b||
    *)
     
    (** predicate (=d=) : d -> d -> bool *)
-   (**  Assertion d_def_per = 
+   (**  assertion d_def_per : 
           forall p:d, q:d,  p =d= q <-> pi0 p =a= pi0 q /\ pi1 p =b= pi1 q
    *)
  end

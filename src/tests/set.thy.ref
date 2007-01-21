@@ -4,14 +4,14 @@ module type T =
    type s
     
    (** predicate (=s=) : s -> s -> bool *)
-   (**  Assertion symmetric_s =  forall x:s, y:s,  x =s= y -> y =s= x
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
          
-        Assertion transitive_s = 
+        assertion transitive_s : 
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
  end
 
