@@ -1,0 +1,185 @@
+
+\section{Realizability}
+\label{sec:realizability}
+
+We briefly motivate the main idea of (typed) realizability. When we
+represent a set of mathematical objects~$S$ in a programming
+language~$\PL$ there are two natural steps to take: first choose an
+\emph{underlying type~$\ut{S}$} of representing values, and second
+specify how the values of type~$\ut{S}$ represent, or \emph{realize},
+elements of the set~$S$. For example, consider how we might represent
+the set~$D$ of simple finite directed graphs (whose vertices are
+labeled by integers). As the underlying datatype we might choose
+$\ut{D} = \mathtt{int} \; \mathtt{list} *\, (\mathtt{int} *
+\mathtt{int}) \mathtt{list}$, and represent a graph~$G \in D$ as a
+pair of lists $(v,e)$ where $v = [x_1; \ldots; x_n]$ is the list of
+vertices and $e = [e_1; \ldots; e_m]$ is the list of edges. Formally,
+we write
+%
+\begin{equation*}
+  (v, e) \rz_D G
+\end{equation*}
+%
+and read it as ``$(v,e)$ realizes~$G \in D$''. Observe that each graph
+is realized by at least one pair of lists, and that no pair of lists
+represents more than one graph. (As commonly occurs, most graphs are
+represented by many different pairs of lists.) This leads us to the definition given
+below. We shall abuse notation slightly and write $t \in \ut{S}$ to
+mean that $t$ is a closed expression of type $\ut{S}$.
+
+
+\begin{figure*}
+\[
+  \hspace{-0.5truecm}
+  \parbox[t]{0.28\textwidth}{
+\footnotesize
+    \begin{align*}
+      \ut{\top} &= \mathtt{unit} \\
+      \ut{\bot} &= \mathtt{unit} \\
+      \ut{x =_S y} &= \mathtt{unit} \\
+      \ut{\phi \land \psi} &= \ut{\phi} * \ut{\psi} \\
+      \ut{\phi \implies \psi} &= \ut{\phi} \to \ut{\psi} \\
+      \ut{\phi \lor \psi} &= \ut{\phi} + \ut{\psi} \\
+      &\\
+      \ut{\forall x \in A .\, \phi(x)} &= \ut{A} \to \ut{\phi} \\
+      \ut{\exists x \in A .\, \phi(x)} &= \ut{A} \times \ut{\phi}
+    \end{align*}
+  }
+\ \vrule\ 
+  \parbox[t]{0.5\textwidth}{
+\footnotesize
+    \begin{align*}
+      () \rz \top &
+      \\
+      &
+      \\
+      () \rz x =_S y
+        &\quad\text{iff}\quad 
+      x \per{S} y
+      \\
+      (t_1,t_2) \rz \phi \land \psi
+        &\quad\text{iff}\quad
+        \text{$t_1 \rz \phi$ and $t_2 \rz \psi$}
+      \\
+      t \rz \phi \implies \psi
+        &\quad\text{iff}\quad
+        \text{for all $u \in \ut{\phi}$, if $u \rz \phi$ then $t\,u
+          \rz \psi$}
+      \\
+      \inl{t} \rz \phi \lor \psi
+        &\quad\text{iff}\quad
+        \text{$t \rz \phi$}
+      \\
+      \inr{t} \rz \phi \lor \psi
+        &\quad\text{iff}\quad
+        \text{$t \rz \psi$}
+      \\
+      t \rz \forall x \in A . \phi(x)
+        &\quad\text{iff}\quad
+        \text{for all $u \in \ut{A}$, if $u \rz_A x$ then $t\,u \rz \phi(x)$}
+      \\
+      (t_1, t_2) \rz \exists x \in A . \phi(x)
+        &\quad\text{iff}\quad
+        \text{$t_1 \rz_A x$ and $t_2 \rz \phi(x)$}
+    \end{align*}
+  }
+\]
+  \caption{Realizability interpretation of logic (outline)}
+  \label{fig:rz-logic}
+\end{figure*}
+
+\begin{definition}
+  A \emph{modest set}\footnote{Modest sets were so named by Dana
+    Scott. They are ``modest'' because their size cannot exceed the
+    number of expressions of the underlying datatype.} is a triple
+  $(S, \ut{S}, {\rz_S})$ where $S$ is a set, $\ut{S}$ is a type and
+  $\rz_S$ is a relation between expressions of type~$\ut{S}$ and
+  elements of~$S$, satisfying:
+  % 
+  \begin{enumerate}
+  \item For every $x \in S$ there is $t \in \ut{S}$ such that $t \rz_S
+    x$.
+  \item If $t \rz_S x$ and $t \rz_S y$ then $x = y$.
+  \end{enumerate}
+  %
+  A \emph{realized function} $f : (S, \ut{S}, {\rz_S}) \to (T, \ut{T},
+  {\rz_T})$ between modest sets is a function $f : S \to T$ for which
+  there exists $u \in \ut{S} \to \ut{T}$ such that
+  %
+  \begin{equation*}
+    t \rz_S x \implies u\,t \rz_T f(x) \;.
+  \end{equation*}
+  %
+  We say that $u$ \emph{realizes}~$f$.
+\end{definition}
+
+The realizer~$u$ of a realized function~$f$ is more commonly known as
+an ``implementation of~$f$'' or an ``algorithm for computing~$f$''.
+
+Modest sets and realized functions form a category of \emph{modest
+  sets~$\Mod{\PL}$}. In realizability theory this is a well known
+category with good properties. It is regular and locally bi-cartesian
+closed, which allows us to interpret first-order logic and a rich type
+theory. Here we only outline the main ideas behind the realizability
+interpretation of logic. See e.g.~\cite{Bauer:00} for details.
+
+In the realizability interpretation of logic, each formula~$\phi$ is
+assigned a set of \emph{realizers} which can be thought of as
+computations that witness the validity of~$\phi$. The situation is
+somewhat similar (but not equivalent) to the propositions-as-types
+translation of logic into type theory, where the proofs of a
+proposition correspond to terms of the corresponding type. More
+precisely, to each formula~$\phi$ we assign an underlying type
+$\ut{\phi}$ of realizers. However, unlike in the propositions-as-types
+translation, not all terms of type $\ut{\phi}$ are necessarily valid
+realizers for~$\phi$. We write $t \rz \phi$ when $t \in \ut{\phi}$ is
+a realizer for~$\phi$. The underlying types and the
+realizability relation~$\rz$ are defined inductively on the structure
+of~$\phi$; an outline is shown in Figure~\ref{fig:rz-logic}. We say that a
+formula~$\phi$ is \emph{valid} in~$\Mod{\PL}$ if it has at least one
+realizer.
+
+We shall not dwell any further on the technicalities involving the
+category of modest sets, but rather proceed to a concrete description
+of our realizability translation. There is one technical point,
+though, which we first take care of. A modest set is a triple $(S,
+\ut{S}, {\rz_S})$ in which~$S$ is an arbitrary set. For an automated
+system it would be convenient if it did not have to refer to arbitrary
+sets but rather just to ingredients that are already present in the
+programming language, such as types and sets of expressions. Up to
+equivalence of categories, modest sets can be constructed as triples
+$(\ut{S}, \tot{S}, {\per{S}})$ where $\ut{S}$ is a type, $\tot{S}$ is
+a subset of expressions of type~$\ut{S}$, called the \emph{total
+  values},\footnote{We do \emph{not} require that a total value must
+  be a terminating expression.} and $\per{S}$ is an equivalence
+relation on~$\tot{S}$. The relationship between this representation of
+a modest set and the original one is as follows:
+%
+\begin{itemize}
+\item $\tot{S}$ is the set of those $t \in \ut{S}$ that
+  realize something, i.e., there is $x \in S$ such that $t \rz_S x$.
+  These correspond to implementations that satisfy
+  the representation invariant, e.g., graphs where the list of edges
+  mentions only integers in the list of nodes, a subset of
+  all values of type $\mathtt{int} \; \mathtt{list} * (\mathtt{int} *
+\mathtt{int}) \; \mathtt{list}$.
+\item $t \per{S} u$ if $t$ and $u$ realize the same element, i.e.,
+  there is $x \in S$ such that $t \rz_S x$ and $u \rz_S x$.
+  This relation equates alternate concrete representations of the same
+  abstract value, e.g., equating two concrete graph representations differing
+  only in the order of the nodes or the order of the edges.
+\end{itemize}
+%
+The alternative view of a modest set $(\ut{S}, \tot{S}, {\per{S}})$
+only refers to objects and concepts from the programming language. It
+is better suited for our purposes.
+
+Note that the equivalence relation on~$\tot{S}$ is also a
+\emph{partial} equivalence relation on~$\ut{S}$, which shows that
+modest sets are in fact equivalent to PER models.
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "case"
+%%% End: 

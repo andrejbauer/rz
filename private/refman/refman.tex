@@ -1,0 +1,651 @@
+\documentclass[11pt]{article}
+\usepackage{fancyvrb,xspace,fullpage}
+%\usepackage{ccfonts,eulervm}
+
+\newcommand{\keywd}[1]{\mbox{\texttt{#1}}\xspace}
+
+\newcommand{\ALL}{\keywd{all}}
+\newcommand{\AND}{\keywd{and}}
+\newcommand{\AXIOM}{\keywd{axiom}}
+\newcommand{\CONST}{\keywd{const}}
+\newcommand{\COROLLARY}{\keywd{corollary}}
+\newcommand{\EQUIV}{\keywd{equiv}}
+\newcommand{\EQUIVALENCE}{\keywd{equivalence}}
+\newcommand{\EQUIVPROP}{\keywd{Equiv}}
+\newcommand{\END}{\keywd{end}}
+\newcommand{\EXISTS}{\keywd{exists}}
+\newcommand{\EXISTSONE}{\keywd{exists1}}
+\newcommand{\FALSE}{\keywd{false}}
+\newcommand{\FORALL}{\keywd{forall}}
+\newcommand{\IMPLICIT}{\keywd{implicit}}
+\newcommand{\IFF}{\keywd{iff}}
+\newcommand{\IMPLY}{\keywd{implies}}
+\newcommand{\IN}{\keywd{in}}
+\newcommand{\LAMBDA}{\keywd{lam}}
+\newcommand{\LEMMA}{\keywd{lemma}}
+\newcommand{\LET}{\keywd{let}}
+\newcommand{\MATCH}{\keywd{match}}
+\newcommand{\MODEL}{\keywd{model}}
+\newcommand{\NOT}{\keywd{not}}
+\newcommand{\OR}{\keywd{or}}
+\newcommand{\PROP}{\keywd{Prop}}
+\newcommand{\PROPOSITION}{\keywd{proposition}}
+\newcommand{\PREDICATE}{\keywd{predicate}}
+\newcommand{\RELATION}{\keywd{relation}}
+\newcommand{\RZ}{\keywd{rz}}
+\newcommand{\SET}{\keywd{set}}
+\newcommand{\SOME}{\keywd{some}}
+\newcommand{\SOMEONE}{\keywd{some1}}
+\newcommand{\STABLE}{\keywd{stable}}
+\newcommand{\STABLEPROP}{\keywd{Stable}}
+\newcommand{\STRUCTURE}{\keywd{structure}}
+\newcommand{\THE}{\keywd{the}}
+\newcommand{\THEOREM}{\keywd{theorem}}
+\newcommand{\THEORY}{\keywd{theory}}
+\newcommand{\THY}{\keywd{thy}}
+\newcommand{\TRUE}{\keywd{true}}
+\newcommand{\UNIT}{\mbox{\Verb| unit |}}
+\newcommand{\WITH}{\keywd{with}}
+
+\newcommand{\metav}[1]{\mbox{\textit{#1}}\xspace}
+
+\newcommand{\Case}{\metav{case}}
+\newcommand{\Ident}{\metav{name}}
+\newcommand{\Identifier}{\Ident}
+\newcommand{\Label}{\metav{\Verb|`|label}}
+\newcommand{\MIdentifier}{\metav{Modelname}}
+\newcommand{\TIdentifier}{\metav{Theoryname}}
+\newcommand{\Setexp}{\metav{set}}
+\newcommand{\Specification}{\metav{specification}}
+\newcommand{\Proposition}{\metav{proposition}}
+\newcommand{\Param}{\metav{param}}
+\newcommand{\MParam}{\metav{modelparam}}
+\newcommand{\Term}{\metav{term}}
+\newcommand{\Theoryexp}{\metav{theory}}
+
+\newcommand{\AAND}{\mbox{\Verb| \&\& |}}
+\newcommand{\ARROW}{\mbox{\Verb| -> |}}
+\newcommand{\BAR}{\mbox{\Verb+ | +}}
+\newcommand{\COLON}{\mbox{\Verb| : |}}
+\newcommand{\COMMA}{\mbox{\Verb| , |}}
+\newcommand{\EQUALS}{\mbox{\Verb| = |}}
+\newcommand{\HASH}{\mbox{\Verb| \# |}}
+\newcommand{\IIFF}{\mbox{\Verb| <=> |}}
+\newcommand{\IIMPLY}{\mbox{\Verb| => |}}
+\newcommand{\LBRACE}{\mbox{\Verb| \{ |}}
+\newcommand{\LBRACK}{\mbox{\Verb| [ |}}
+\newcommand{\LCOMMENT}{\mbox{\Verb| (* |}}
+\newcommand{\LPAREN}{\mbox{\Verb| ( |}}
+\newcommand{\OOR}{\mbox{\Verb+ || +}}
+\newcommand{\PERCENT}{\mbox{\Verb+ \% +}}
+\newcommand{\PLUS}{\mbox{\Verb| + |}}
+\newcommand{\RBRACE}{\mbox{\Verb| \} |}}
+\newcommand{\RBRACK}{\mbox{\Verb| ] |}}
+\newcommand{\RCOMMENT}{\mbox{\Verb| *) |}}
+\newcommand{\RPAREN}{\mbox{\Verb| ) |}}
+\newcommand{\PERIOD}{\mbox{\Verb| . |}}
+\newcommand{\SUBIN}{\mbox{\Verb| :> |}}
+\newcommand{\SUBOUT}{\mbox{\Verb| :< |}}
+\newcommand{\TIMES}{\mbox{\Verb| * |}}
+\newcommand{\TO}{\mbox{\Verb| -> |}}
+
+
+\newcommand{\includeexample}[1]{
+   \subsection{#1}
+   \VerbatimInput[%frame=single,
+                  label=\fbox{#1},numbers=left,
+                  %framesep=5mm,
+                  obeytabs=true,showtabs=true]{../../examples/misc/#1}}
+
+\newcommand{\NB}{\textbf{NB: }}
+
+\title{RZ Reference Manual}
+\date{\today}
+\author{Andrej Bauer and Chris Stone}
+
+\begin{document}
+\maketitle
+
+\section{Running RZ}
+
+\begin{Verbatim}
+Usage:  ./rz <options> [filenames]
+  --opt Turn on simplification optimations (default)
+  --noopt Turn off simplification optimizations
+  --show Show output on stdout (default)
+  --noshow No output to stdout
+  --save Send output to .mli file (default)
+  --nosave No output to file
+  -help  Display this list of options
+  --help  Display this list of options
+\end{Verbatim}
+
+Input files have the extension \Verb|.thy| (by convention, not a requirement), and the 
+output file has the same name but with its extension replaced by \Verb|.mli|.
+
+\section{Input Syntax}
+
+\subsection{Comments}
+
+Two sorts of comments are allowed:
+\begin{itemize}
+\item Line comments, which go from \HASH to the end-of-line.
+\item Multi-line comments, which are marked $\LCOMMENT \cdots
+  \RCOMMENT$ and which may be nested.  \HASH is not treated as a
+  special line-comment character within a multi-line comment, e.g.,
+  the line \Verb|(* # *)| is a complete comment.
+\end{itemize}
+
+  Multi-line comments are retained in the final ML output, while line
+  comments are discarded.
+
+\subsection{Theories}
+
+Theories can be specified as follows:
+\begin{itemize}
+\item \TIdentifier
+
+   A reference to a previously-defined theory.  Theory names are always
+   capitalized.
+   
+   \NB Even though theories can be parameterized when
+     defined, at the moment we cannot ``instantiate'' a parameterized
+     theory.
+
+\item $\THY\ [\Specification]^*\ \END$
+
+   A theory, containing a sequence of specifications.
+\end{itemize}
+
+\noindent Theories can be defined as follows:
+\begin{itemize}
+\item $\THEORY\ \metav{Theoryname}\ [\MParam]^*\ \EQUALS\ \Theoryexp$
+
+   A named theory with the given definitions.  It may be parameterized
+   by one or more models; each model parameter, if present, must be written
+   with the syntax $\LPAREN \MIdentifier \COLON \Theoryexp \RPAREN$.
+\end{itemize}
+
+
+
+\subsection{Specifications}
+Possible
+specifications include:
+\begin{itemize}
+\item \SET \metav{setname}
+
+A model of the theory must supply a set of the given name.
+
+\item \SET \metav{setname}\ = \ \Setexp
+
+A local name given to a particular set.
+
+\item \CONST \metav{constname}\ :\ \Setexp
+
+A constant of the given name exists in the specified set-expression.
+The \metav{constname} can either be
+\begin{enumerate}
+\item An ordinary lowercase alphanumeric identifier (beginning with a
+  letter or underscore, containing letters, digits, underscores, and
+  single quotes).
+  \NB Integers such as \Verb|0| are therefore not valid names for constants.
+\item A unary operator (any purely symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses, in which the \Setexp should be of the form $\Setexp \TO \Setexp$;
+\item Or a binary operator (any other identifier composed only of
+  symbolic characters) enclosed in parentheses, in which case the
+  \Setexp should be curried with two arguments.  The precedence of a
+  binary operator is determined by its first character or two.  From
+  lowest precedence to highest precedence, the initial symbols are:
+\begin{Verbatim}
+  =   <   >   &   $
+  @   ^
+  +   -
+  *   /   %
+  **
+\end{Verbatim}
+\NB The parenthesized version of a binary operator \Verb|*| must be
+written \Verb|(* )| rather than as \Verb|(*)| in order to avoid
+creating the end-of-comment token \Verb|*)|.
+\end{enumerate}
+
+
+
+\item \CONST \metav{constname} = \Term\\
+      \CONST \LPAREN \metav{constname} \COLON \Setexp \RPAREN = \Term\\
+      
+      A local abbreviation of a term.  The set containing the constant
+      may be inferred from the \Term.  The possible names are the same
+      as in the previous case for \CONST.
+
+\item{} [\STABLE{}] \RELATION \metav{relationname} \COLON \Setexp\\
+     {} [\STABLE{}] \PREDICATE \metav{relationname} \COLON \Setexp
+  
+     A relation of the given name exists, with the given set as its
+     domain (but see below).  The relation is not assumed to be stable
+     unless explicitly stated with the \STABLE keyword.  The name of
+     the relation can be:
+\begin{enumerate}
+\item  An ordinary alphanumeric identifier;
+\item  A unary operator (symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses;
+\item  Or a binary operator (any other identifier composed of symbolic characters) enclosed in parentheses, in which case the \Setexp should be of the (uncurried) form $\Setexp \TIMES \Setexp$
+
+See the above discussion of \CONST for the precedences of binary
+operators.
+
+\NB Despite the syntax of the specification, the system \emph{uncurries}
+binary operators ranging over a product of sets.  Thus uses of
+\Verb|<| can be written either in the usual infix form \Verb|x < y| or
+in the curried form \Verb|( < ) x y|.
+\end{enumerate}
+
+\NB If the set specified is of the (curried) form $\ldots \TO \PROP$,
+this declares not a predicate on functions, but rather a proposition
+that takes its arguments ($\cdots$) in curried form.
+
+\item{} [\STABLE{}] \RELATION \metav{relationname}\ \EQUALS\ \Proposition\\
+     {} [\STABLE{}] \PREDICATE \metav{relationname}\ \EQUALS\ \Proposition
+  
+     A local definition of a relation (or stable relation) of the
+     given name exists.  The arguments implicitly give the domain of
+     the relation; each argument must either be of the form $\LPAREN
+     \Identifier \COLON \Setexp \RPAREN$ or must be a single
+     $\Identifier$ that has previously appeared in an \IMPLICIT
+     declaration.
+
+
+\item $\AXIOM\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\COROLLARY\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\LEMMA\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\PROPOSITION\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\THEOREM\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$
+      
+      Each model parameter, if present, must be written
+      with the syntax $\LPAREN \MIdentifier \COLON \Theoryexp \RPAREN$.
+      Each term parameter, if present, must either be
+      explicitly typed with the syntax $\LPAREN \Identifier \COLON 
+      \Setexp \RPAREN$ or must be a single $\Identifier$ that has
+      previously appeared in an \IMPLICIT declaration.
+
+      \textbf{Need to change the parser so that model parameters are
+      surrounded by parentheses as stated here, rather than 
+      square brackets.}
+
+\item \MODEL \MIdentifier \COLON \Theoryexp\\
+      \STRUCTURE \MIdentifier \COLON \Theoryexp\\
+
+      A model of the given theory must exist.  Names of models must be
+      capitalized.
+
+\item \EQUIV \Identifier \COLON \Setexp\\
+      \EQUIVALENCE \Identifier \COLON \Setexp
+  
+  An stable equivalence relation on the given set (i.e., a predicate on the
+  cartesian product of the set with itself) must exist.  The
+  name can be alphanumeric or a binary operator in parentheses.
+
+\item $\EQUIV\ \Identifier\ \Param\ \Param\ =\ \Proposition$\\
+      $\EQUIVALENCE\ \Identifier\ \Param\ \Param\ =\ \Proposition$
+ 
+  A local definition of an stable equivalence relation.  Both term parameters
+  must be present and must either be explicitly typed with the syntax
+  $\LPAREN \Identifier \COLON \Setexp \RPAREN$ or must be a single
+  $\Identifier$ that has previously appeared in an \IMPLICIT
+  declaration.  
+
+  The proposition must be almost negative, so that the system can 
+  verify that the equivalence relation is indeed stable.
+
+  \textbf{Bug:  Type inference doesn't appear to verify that both parameters 
+  range over the same set for a defined equivalence relation, at least
+  until it is used in a quotient.}
+  
+\item $\IMPLICIT\ \Identifier\ [\COMMA\ \Identifier\ ]^*\ \COLON\ \Setexp$
+  
+  The given identifiers will be assumed to range over values in the
+  given set, unless otherwise specified.  Places no actual demand
+  on a model satisfying this theory, and hence corresponds to
+  no output.  
+  
+  Like all other specifications, \IMPLICIT has the remainder of the
+  enclosing $\THY\ \cdots\ \END$ as its scope.
+\end{itemize}
+
+\subsection{Propositions}
+
+Propositions can be:
+
+\begin{itemize}
+\item \TRUE
+
+\item \FALSE
+
+\item \NOT \Proposition
+
+\item $\Proposition\ \AND\ \Proposition$\\
+      $\Proposition\ \AAND\ \Proposition$
+
+\item $\Proposition\ \OR\ \Proposition$\\
+      $\Proposition\ \OOR\ \Proposition$
+
+\item $\Proposition\ \IMPLY\ \Proposition$\\
+      $\Proposition\ \IIMPLY\ \Proposition$
+
+\item $\Proposition\ \IFF\ \Proposition$\\
+      $\Proposition\ \IIFF\ \Proposition$
+
+\item $\metav{longrelation}\ [\ \Term\ ]^*$\\
+      $\metav{longunaryrelation}\ \Term$\\
+      $\Term\ \metav{longbinaryrelation}\ \Term$\\
+     
+      
+      Application of the given relation to the specified terms.  The
+      relation is specified by 0 or more projections from models,
+      followed by the relation name.  If a symbolic binary relation
+      is applied in prefix form, the entire sequence of projections
+      must be parenthesized. 
+      Examples: \Verb|x < y| or \Verb|lt x y| or \Verb|Numeric.Nat.lt x y| or
+      \Verb|( Numeric.Nat.< ) x y| or \Verb|x Numeric.Nat.< y| .
+
+\item $\Term\ \EQUALS\ \Term$
+
+   Compares the terms for equality; the inferred sets for the two terms
+   must be equal.
+
+\item $\LPAREN \Term\ \EQUALS\ \Term\ \IN\ \Setexp\ \RPAREN$
+
+   Compares the terms for equality as values of the given set, which
+   should be a superset of the inferred sets of the two terms.
+
+\item $\ALL\ \Param\ \PERIOD\ \Proposition$\\
+      $\FORALL\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\EXISTS\ \Param\ \PERIOD\ \Proposition$\\
+      $\SOME\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\EXISTSONE\ \Param\ \PERIOD\ \Proposition$\\
+      $\SOMEONE\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\MATCH\ \Term\ \WITH\ \Case\ [\BAR\ \Case\ ]^*\ \END$
+  
+  Generalized if-then-else proposition, where
+  $\Term$ must be a member of a sum.  For non-value-carrying
+  sum labels the \Case must be of the form  $\Label\ \ARROW\
+  \Proposition$ .  Otherwise, it should be of the pattern-matching
+  form $\Label\ \Param\ \ARROW\ \Proposition$, where \Param must
+  either be a \Ident or of the form $\LPAREN\ \Identifier\ \COLON\ 
+  \Setexp\ \RPAREN$, and this parameter can be used in the
+  corresponding \Proposition.  The cases must be non-redundant
+  and exhaustive.
+  
+  \NB A single identifier in a pattern-matching case need not
+  be described in an \IMPLICIT; there is enough information from
+  looking at the \Term and the \Label.
+\end{itemize}
+
+\textbf{It would be good to explain the order of operations}
+
+\subsection{Sets}
+
+Sets can be of the form:
+
+\begin{itemize}
+\item \ \keywd{0}\\
+      \Verb|{}|
+
+  The empty set.
+
+\item \keywd{1}
+
+  The unit set, whose only member is \Verb|()|.
+
+\item \keywd{2}\\
+      \keywd{bool}
+
+  The set of booleans.  
+
+  \NB For now, the boolean type is not equal to 
+  \Verb|1+1| or to any sum type.
+
+\item $\metav{longset}$
+  
+  The set is specified by 0 or more projections from models, followed
+  by the alphanumeric set name.
+
+\item \LPAREN \Setexp \RPAREN
+
+  Just the given \Setexp (i.e., grouping parentheses).
+
+\item $\Setexp\ (\ \TIMES\ \Setexp )^{+}$
+
+  Type of $k$-tuples, for $k\ge 2$.  The parentheses are EBNF.
+
+\item $\Label\ [\ \COLON \Setexp\ ]\ (\ \PLUS\ \Label\ [\ \COLON \Setexp\ ]\ )^{*}$
+
+  A $k$-ary sum type for $k\ge 1$.  The parentheses and brackets
+  are EBNF.
+
+\item \LBRACE \Ident [\ \COLON \Setexp\ ] \WITH \Proposition \RBRACE
+      
+  A subset type.  The bound variable must either be given a set
+  explicitly, or must have previously appeared in an \IMPLICIT
+  declaration.  In contrast to most other binding sites, parentheses
+  are neither required nor allowed if the set is specified.  (These
+  braces are concrete syntax.)
+
+
+\item \LBRACE \Ident [\COLON \Setexp ]\BAR \Proposition \RBRACE
+      
+      A subset type for \emph{stable} propositions.  The bound variable must
+      either be given a set explicitly, or must have previously
+      appeared in an \IMPLICIT declaration.  Again, paraentheses
+      are not required or allowed if the set is specified.
+
+\item \Setexp \ARROW \Setexp
+
+  Set of functions (exponential).
+
+  \textbf{All functions?}
+
+\item % \EQUIVPROP\\
+      \PROP\\
+      \STABLEPROP
+
+  Sets of equivalence propositions, all propositions, and stable
+  propositions respectively.  Relations can be viewed as functions
+  to these sets.  These sets may not appear in specifying the set
+  for a bound variable or in an \IMPLICIT declaration (though
+  the error may not be caught by the typechecker until a later use).
+
+\iffalse
+\EQUIVPROP is used internally by the typechecker,
+  but there's currently no way to specify this set in the source.
+  Is this a bug?
+
+No --- it's not a set in the topos, so we don't 
+\fi
+
+\item \Setexp \PERCENT \metav{longrelationname}\\
+      \Setexp \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN
+
+  The set of equivalence class, under the given relation on the
+  given set. Currently a quotient by a symbolic binary relation requires
+  parentheses.
+
+\item \RZ \Setexp
+
+  Underlying set of realizers of the given set.
+\end{itemize}
+
+
+The subset relation is generated by width subtyping on sums, and
+(currently) an extremely limited subtyping relation on
+stable subsets and the corresponding entire sets.
+
+
+\subsection{Terms}
+
+Terms can be of the following forms:
+\begin{itemize}
+\item $\metav{longfunctionname}\ [\ \Term\ ]^*$\\
+      $\metav{longunaryfunction}\ \Term$\\
+      $\Term\ \metav{longbinaryfunction}\ \Term$\\
+  
+  Constants or applications of constants to 0 or more arguments.  The
+  function is specified by 0 or more projections from models, followed
+  by the relation name.  If a unary or binary operator is applied in
+  prefix form, the entire sequence of projections must be
+  parenthesized.  Examples: \Verb|zero| or \Verb|x + y| or 
+ \Verb|plus x y| or \Verb|Numeric.Nat.plus x y| or \Verb|( Numeric.Nat.+ ) x y|
+  or \Verb|x Numeric.Nat.+ y| .
+
+\item $\LPAREN\ \Term\ \RPAREN$
+
+  Just the given \Term.
+
+\item $\LPAREN\ \Term\ \COLON\ \Setexp\ \RPAREN$
+
+  Just the given \Term, but treated as a member of the specified
+  \Setexp (which must be a superset of the inferred set for the term).
+
+\item $\LPAREN\ \Term\ [\ \COMMA\ \Term\ ]^{+}\ \RPAREN$
+
+  A $k$-tuple for $k\ge 2$.
+
+\item \Verb|()|
+
+  The unique term of type \UNIT (i.e., the 0-tuple).
+
+\item $\Term \PERIOD \metav{n}$
+ 
+  Projection from a tuple, where \metav{n} is a natural number.  Projection
+  is 0-based, i.e., \Verb|(x,y,z).1| is \Verb|y|.
+
+\item $\Label\ [\ \Term\ ]$
+
+  An injection into a sum type; if no term is given then it is
+  assumed that the $\Label$ is non-value-carrying.
+
+\item $\MATCH\ \Term\ \WITH\ \Case\ [\BAR\ \Case\ ]^*\ \END$
+  
+  Generalized if-then-else proposition, where
+  $\Term$ must be a member of a sum.  For non-value-carrying
+  sum labels the \Case must be of the form  $\Label\ \ARROW\
+  \Term$ .  Otherwise, it should be of the pattern-matching
+  form $\Label\ \Param\ \ARROW\ \Term$, where \Param must
+  either be a \Ident or of the form $\LPAREN\ \Identifier\ \COLON\ 
+  \Setexp\ \RPAREN$, and this parameter can be used in the
+  corresponding \Term.  The cases must be non-redundant
+  and exhaustive; all their terms must either be inferred
+  as members of the same set, or all compatible members
+  of a sum.
+  
+  \NB A single identifier in a pattern-matching case need not
+  be described in an \IMPLICIT; there is enough information from
+  looking at the \Term and the \Label.
+
+\item $0$\\
+      $1$
+
+  \textbf{Bug: these are both (distinct) valid term variables, but we can't actually
+  define constants with these names.  Also, other integers are not permissible
+  as either terms or named constants.}
+
+\item \LET \Param \EQUALS \Term \IN \Term
+  
+  Local definition of a term.  As usual, either parentheses and a set
+  are required for the defined variable, or \Param must be a lowercase
+  variable that has appeared in a previous \IMPLICIT.
+
+\item \LAMBDA \Param \PERIOD \Term
+  
+  An anonymous function.  Either parentheses and a set are required
+  for the argument, or \Param must be a lowercase variable that has
+  appeared in a previous \IMPLICIT.
+
+\item \THE \Param \PERIOD \Proposition
+
+  The description operator.  Either parentheses and a set are required
+  for the argument, or \Param must be a lowercase variable that has
+  appeared in a previous \IMPLICIT.  
+
+  \THE should be used only when there exists exactly one value making
+  the proposition true; the system does not verify this, but produces
+  an obligation to be checked by the user.
+
+\item \Term \PERCENT \metav{longrelationname}\\
+      \Term \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN
+
+  The equivalence class, under the given relation, containing the
+  given term.  The result belongs in a quotient set.  As shown,
+  currently a quotient by a symbolic binary relation requires
+  parentheses.
+
+\item \LET \Param \PERCENT \metav{longrelationname} \EQUALS \Term \IN \Term\\
+      \LET \Param \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN \EQUALS \Term \IN \Term\\
+
+  Picks an arbitrary member of the equivalence class given by the first
+  term to use in computing the second term.  No type annotation or
+  \IMPLICIT for the variable containing this memory is required.
+
+  \NB This should not be used unless the choice of representative has 
+  no effect on the value of this whole term.
+  
+\item \LBRACK \Term \RBRACK
+
+  The element whose realizer is the given term.
+
+  \NB These brackets are concrete syntax rather than EBNF.
+
+\item \LET \LBRACK \Param \RBRACK \EQUALS \Term \IN \Term
+
+  Picks an arbitrary realizer for the first term, to be used
+  in the last term.
+
+  \NB This should not be used unless the choice of representative has 
+  no effect on the value of this last term.
+
+\item \Term \SUBIN \Setexp
+  
+  Coerces the given term of some set S to the given sub-set of $S$.
+  Should only be used if we know the term is in the subset.
+
+\item \Term \SUBOUT \Setexp
+
+  Coerces the given term from a sub-set of some set S to just
+  the set $S$.  Always safe if the term is known to belong to the
+  given subset.
+  
+\end{itemize}
+
+\clearpage
+\section{Sample Inputs}
+\includeexample{nat.thy}
+
+\clearpage
+\includeexample{kuratowski.thy}
+Need to change brackets to parentheses
+
+\clearpage
+\includeexample{sums.thy}
+\includeexample{subset.thy}
+
+\clearpage
+\includeexample{field.thy}
+
+\clearpage
+\includeexample{choice.thy}
+
+\section{Output}
+
+\subsection{Output Terms and Types}
+
+\subsection{The Translation}
+
+\subsection{Optimization}
+
+\end{document}

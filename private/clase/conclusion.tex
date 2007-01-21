@@ -1,0 +1,52 @@
+\section{Conclusions and Future Work}
+\label{sec:conclusion}
+
+By translating only at the level of specifications, \RZ provides a
+useful middle ground between ad-hoc implementations and
+machine-generated implementations.  It allows much more flexible
+implementation strategies, but relies on programmers to
+verify properties of their code.
+
+Further, \RZ can serve as a means of explaining constructive
+mathematics to programmers.  Programmers who are not knowledgeable
+about constructive mathematics can still understand the output of the
+translation, which involves familiar concepts such as abstract types
+and (classical) first-order logic.   Looking at such examples can
+provide the necessary intuition behind the original logic, and better
+explain why one might want to work with constructive rather than
+classical logic to begin with.
+
+Axioms parameterized by models (e.g., initiality) currently translate
+into signatures of ML functors.  We have experimented with an
+alternative translation of such axioms into polymorphic types.  In
+this case the \Verb|initial| axiom of the natural numbers yields
+the specification
+\begin{Verbatim}
+   val initial: 'a -> ('a -> 'a) -> N.s -> 'a
+\end{Verbatim}
+which is exactly the familiar iterator for natural numbers (i.e.,
+given an initial value, a function, and a natural number, apply the
+function that many times to the initial value).  Such types can be
+much more natural and much simpler for programmers to understand.  The
+theory behind the translation is well understood, being the
+phase-splitting translation of Harper, Mitchell, and Moggi
+\cite{harper+:popl90}.  Because of limitations of ML not every
+parameterized axiom can be turned into polymorphism; ML allows only
+prenex quantifiers, and the quantifiers can range over types but not
+type operators.  However we would like to do so where it is possible
+(the common case).  As an alternative, we could attempt to retarget
+the output to a language like Haskell~\cite{haskell} which supports
+the necessary polymorphic types, though Haskell's support of modules
+is much weaker.
+
+Another possible extension would be to allow dependent families in the
+input language. Fortunately, this does not require finding a target
+language that supports dependent types; we can use the underlying
+(non-dependent) types, and then express the dependencies as additional
+properties that must be verified for the implementation.
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "case"
+%%% End: 

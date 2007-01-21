@@ -1,0 +1,161 @@
+
+parser --> Syntax -->
+Logic.make_proposition --> Logic --> (* intermmediate level *)
+Translate.translateProposition --> Outsyn
+unit optimization
+Outsyn.string_of_prop -> string (* ML code with comments *)
+
+1. get it to compile
+2. get it to work a bit
+3. cleanup?
+3.5. put in "unit optimization"
+4. implement the rest (i.e. subsets)
+
+- no type inference
+- no dependent types (might be difficult to avoid with subtypes...)
+  definitely no Pi's and Sigma's yet.
+
+
+Non-dependent subtype:
+
+ R' = { x : R | x != 0 }
+
+Dependent subtype:
+
+type interval(a,b) = { x : R | a <= x & x <= b }
+interval = lambda(a,b). { x : R | a <= x & x <= b }
+
+
+{ x : A | phi }  where FV(phi) \subset {x}
+
+Example:
+
+ incl : { x : A | phi } --> A
+
+
+ t : A           phi(t)
+ ----------------------
+ o(t) : { x : A | phi }
+
+
+ t : { x : A | phi }
+ -------------------
+      incl(t) : A
+
+t = (t', p)
+
+(t', p) =_{...} (u', q)  iff t' = u'
+
+
+incl(t) = t'
+
+
+
+
+
+
+Module Syntax:
+- describes the (abstract) syntax of the input files
+
+
+Module Outsyn:
+
+- describes the (abstract) syntax of the output
+
+- note that the translation of a theory consists not just of an
+ordinary ML signature, but, but also a specification. This
+specification is given in classical logic.
+
+
+Module Logic:
+- it serves as an intermediate level between Syntax and Outsyn.
+The parsed input is hard to translate directly to output. It seems to
+me that it is easier to first clean it up a bit.
+
+
+The program is supposed to work as follows:
+
+1. parser parses the input and gives syntax expressed
+   by using module Syntax.
+
+2. the functions make_* in module Logic translate from Syntax to
+   Logic. Presumably these function will do type inference and
+   type checking at some point.
+
+3. the functions translate* translate from Logic to Outsyn
+
+
+
+-----
+Named total
+
+
+theory
+  set s
+  constant x : s
+
+  axiom foo (x, y) = (x = y)
+
+end
+
+translates to
+
+sig
+  type s (* + two predicates, to be specified by the implementation *)
+         (* of this signature: Tot_s, Per_s *)
+  val x : s (* Tot_s(x) *)
+
+  val foo : unit (* forall x, y : s. Per_s(x, y) *)
+end
+
+-----
+example of optimization
+
+R is stable
+
+axiom foo (x : int, y : int) =
+  x != y ==> R(x,y)
+
+
+
+(int * int -> unit, "f", phi)
+
+Example of phi:
+
+forall x, y : int. (x != y ==> f (x,y) realizes R)
+
+
+---
+negative < almost negative formula < not not stable
+
+phi is not-not stable if not-not-phi implies phi
+(hard to recognize)
+
+----
+example of not-not-stable
+
+               phi
+f : N --> N |  exists n : N. f(n) = 0
+    N --> N |  N * unit
+
+a realizer for phi is a value of type
+
+   (N --> N) --> (N * unit)
+
+However, phi is equivalent to
+
+               not (forall n : N. f(n) = 1)
+
+which is obviously negative.
+
+-----
+example of negative
+
+x : N, y : N | not (x = y)
+
+a realizer for this formula is a value of type
+
+   N * N -> (unit -> void)
+
+---
+BYE!
