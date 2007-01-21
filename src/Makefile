@@ -1,3 +1,13 @@
+# Configure the name of the executable
+
+# Linux, Unix, MacOS
+EXECUTABLE=rz
+
+# Windows
+#EXECUTABLE=rz.exe
+
+# Probably you do not have to change anything below this line
+
 OCAMLC = ocamlc
 OCAMLCP = ocamlcp
 OCAMLOPT = ocamlopt
@@ -5,8 +15,6 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 OCAMLYFLAGS = -v
-TAR = tar
-ZIP = zip
 
 INCLUDES =
 
@@ -32,34 +40,20 @@ BYTE_OBJS = name.cmo \
         opt.cmo \
         translate.cmo
 
-OPT_OBJS = $(subst .cmo,.cmx,$(BYTE_OBJS))
-
 LIB_OBJS = unix.cma str.cma
-
-LIB_OPT_OBJS = $(subst .cma,.cmxa,$(subst .cmo,.cmx,$(LIB_OBJS)))
 
 TARGETS = rz
 
-OPT_TARGETS = $(addsuffix .opt,$(TARGETS))
-
 default: $(TARGETS) 
 
-all: $(TARGETS) $(OPT_TARGETS)
-	echo $(OPT_TARGETS); echo $(TARGETS)
+all: $(TARGETS)
+	echo $(TARGETS)
 
 test: $(TARGETS)
 	cd tests && ./test.sh
 
 vtest: $(TARGETS)
 	cd tests && ./test.sh -v
-
-#parser.cmo: parser.ml parser.cmi
-#
-#parser.cmi: parser.mli syntax.cmi
-#	$(OCAMLC) $(OCAMLFLAGS) -c parser.mli
-#
-#lexer.cmi: lexer.mli parser.mli syntax.mli
-#	$(OCAMLC) $(OCAMLFLAGS) -c lexer.mli
 
 parser.cmo: parser.ml parser.cmi
 
@@ -74,11 +68,8 @@ lexer.ml: lexer.mll
 parser.ml parser.mli: parser.mly
 	$(OCAMLYACC) $(OCAMLYFLAGS) parser.mly
 
-$(TARGETS): %: $(BYTE_OBJS) %.cmo
-	$(OCAMLC) -o rz $(OCAMLFLAGS) $(LIB_OBJS) $+ 
-
-$(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx 
-	$(OCAMLOPT) -o rz.opt $(OCAMLOPTFLAGS) $(LIB_OPT_OBJS) $+
+$(TARGET): %: $(BYTE_OBJS) %.cmo
+	$(OCAMLC) -o $(EXECUTABLE) $(OCAMLFLAGS) $(LIB_OBJS) $+ 
 
 # Suffixes.
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
@@ -100,11 +91,11 @@ $(OPT_TARGETS): %.opt: $(OPT_OBJS) %.cmx
 
 # Clean.
 clean:
-	rm -f $(TARGETS) $(OPT_TARGETS) *.cm[iox] *.o *~ *.dvi *.ps *.log *.aux
+	rm -f $(EXECUTABLE) *.cm[iox] *.o *~ *.dvi *.ps *.log *.aux
 	rm -f parser.ml
 	rm -f lexer.ml
 	rm -f parser.mli
-	cd tests; make clean
+	cd tests && make clean
 
 # Depend.
 depend: clean
