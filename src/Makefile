@@ -5,6 +5,8 @@ OCAMLDEP = ocamldep
 OCAMLLEX = ocamllex
 OCAMLYACC = ocamlyacc
 OCAMLYFLAGS = -v
+TAR = tar
+ZIP = zip
 
 INCLUDES =
 
