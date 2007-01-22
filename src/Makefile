@@ -42,17 +42,17 @@ BYTE_OBJS = name.cmo \
 
 LIB_OBJS = unix.cma str.cma
 
-TARGETS = rz
+TARGET = rz
 
-default: $(TARGETS) 
+default: $(TARGET) 
 
-all: $(TARGETS)
-	echo $(TARGETS)
+all: $(TARGET)
+	echo $(TARGET)
 
-test: $(TARGETS)
+test: $(TARGET)
 	cd tests && ./test.sh
 
-vtest: $(TARGETS)
+vtest: $(TARGET)
 	cd tests && ./test.sh -v
 
 parser.cmo: parser.ml parser.cmi
