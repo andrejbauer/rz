@@ -5,4 +5,4 @@ vtest:
 	./test.sh -v
 
 clean:
-	/bin/rm -f *.out
+	/bin/rm -f *.mli *.out

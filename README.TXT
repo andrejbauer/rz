@@ -11,7 +11,7 @@ CONTENTS:
 
 3. Compilation instructions
 
-4. Usage
+4. Usage and Help
 
 1. Basic information
 ====================
@@ -67,8 +67,8 @@ To compile RZ, you will need:
 * Optionally, to test whether RZ has compiled properly, run "make test".
 
 
-4. Usage
-========
+4. Usage and Help
+=================
 
 Run
 
@@ -79,3 +79,8 @@ to see basic usage information.
 The subdirectory "examples" contains examples of RZ input files. If
 you run RZ on them, it will generate corresponding output file (with
 extension .mli).
+
+Unfortunately, there is no user manual for RZ at this time. If you
+need help with getting RZ to work, please contact us at:
+- Andrej Bauer <Andrej.Bauer@andrej.com>
+- Chris Stone <stone@cs.hmc.edu>
