@@ -1,6 +1,15 @@
 \section{Specifications as signatures with assertions}
 \label{sec:spec-sign-assert}
 
+\iflong
+\begin{figure}[t]
+  \centering
+  \sourcefile{group.ml}
+  \caption{The module type $\mathtt{Ab}$.}
+  \label{fig:module-example}
+\end{figure}
+\fi % \iflong
+
 \begin{figure}
   \[
   \begin{array}{rl@{\qquad}l}
@@ -96,13 +105,6 @@ specify the required properties of declared types and values.
 \iflong
 %
 \iflong
-%
-\begin{figure}[t]
-  \centering
-  \sourcefile{group.ml}
-  \caption{The module type $\mathtt{Ab}$.}
-  \label{fig:module-example}
-\end{figure}
 %
 For example, if we look at the definition of module type $\mathtt{Ab}$
 in Figure~\ref{fig:module-example}, we might guess 

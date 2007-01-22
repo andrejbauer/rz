@@ -31,7 +31,7 @@ assertion total_def_s :  \iForall x:s,  x : \iT{s} \iIff x \iPer{s} x
 This says that the programmer should define a type~$s$ and a per
 $\per_s$ on~$\values{s}$. Here~$\per_s$ is \emph{not} an OCaml value
 of type $s \to s \to \mathtt{bool}$, but an abstract relation on the
-set $\values{s} \times \values{s}$.
+set $\values{s} \times \values{s}$.  The relation may be uncomputable.
 
 \iflong
 The translation of the declaration of a dependent set
@@ -86,7 +86,7 @@ assertion x_def : x \iPer{s} \iE
 %
 The assertion does \emph{not} force~$\f{x}$ to be defined as~$e$, only
 to be equivalent to it with respect to~$\per_{\f{s}}$. This is
-welcome, as often the easiest way to define a value is not the most
+useful, as often the easiest way to define a value is not the most
 efficient way to compute it.
 
 Constructions of sets in the input language are translated to
