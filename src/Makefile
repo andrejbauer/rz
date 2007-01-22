@@ -25,7 +25,8 @@ SOURCES = \
 	pp.ml \
 	thin.ml \
         opt.ml \
-        translate.ml
+        translate.ml \
+	rz.ml
 
 OCAMLC = ocamlc
 OCAMLCP = ocamlcp
@@ -75,11 +76,11 @@ lexer.ml: lexer.mll
 parser.ml parser.mli: parser.mly
 	$(OCAMLYACC) $(OCAMLYFLAGS) parser.mly
 
-$(TARGET): %: $(CMO) %.cmo
+$(TARGET): %: $(CMO)
 	$(OCAMLC) -o $(TARGET) $(OCAMLFLAGS) $(LIBS) $+ 
 
 $(TARGETOPT): %: $(CMX)
-	$(OCAMLOPT) -o $(TARGETOPT) $(OCAMLOPTFLAGS) $(LIBSOPT) $(CMX)
+	$(OCAMLOPT) -o $(TARGETOPT) $(OCAMLOPTFLAGS) $(LIBSOPT) $+
 
 # Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
