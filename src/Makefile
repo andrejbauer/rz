@@ -8,6 +8,25 @@ EXECUTABLE=rz
 
 # Probably you do not have to change anything below this line
 
+SOURCES = \
+	name.ml \
+	syntax.ml \
+	message.ml \
+	parser.ml \
+	lexer.ml \
+	flags.ml \
+	logic.ml \
+	error.ml \
+	logicrules.ml \
+        infer.ml \
+        outsyn.ml \
+	outsynrules.ml \
+	rename.ml \
+	pp.ml \
+	thin.ml \
+        opt.ml \
+        translate.ml
+
 OCAMLC = ocamlc
 OCAMLCP = ocamlcp
 OCAMLOPT = ocamlopt
@@ -22,32 +41,20 @@ OCAMLFLAGS = $(INCLUDES) -g # -p a
 OCAMLCPFLAGS = 
 OCAMLOPTFLAGS =  $(INCLUDES)
 
-BYTE_OBJS = name.cmo \
-	syntax.cmo \
-	message.cmo \
-	parser.cmo \
-	lexer.cmo \
-	flags.cmo \
-	logic.cmo \
-	error.cmo \
-	logicrules.cmo \
-        infer.cmo \
-        outsyn.cmo \
-	outsynrules.cmo \
-	rename.cmo \
-	pp.cmo \
-	thin.cmo \
-        opt.cmo \
-        translate.cmo
+CMO = $(SOURCES:.ml=.cmo)
+CMX = $(SOURCES:.ml=.cmx)
 
-LIB_OBJS = unix.cma str.cma
+LIBS = str.cma
+LIBSOPT = str.cmxa
 
-TARGET = rz
+TARGET = $(EXECUTABLE)
+TARGETOPT = opt_$(EXECUTABLE)
 
 default: $(TARGET) 
 
-all: $(TARGET)
+all: $(TARGET) $(TARGETOPT)
 	echo $(TARGET)
+	echo $(TARGETOPT)
 
 test: $(TARGET)
 	cd tests && ./test.sh
@@ -68,10 +75,13 @@ lexer.ml: lexer.mll
 parser.ml parser.mli: parser.mly
 	$(OCAMLYACC) $(OCAMLYFLAGS) parser.mly
 
-$(TARGET): %: $(BYTE_OBJS) %.cmo
-	$(OCAMLC) -o $(EXECUTABLE) $(OCAMLFLAGS) $(LIB_OBJS) $+ 
+$(TARGET): %: $(CMO) %.cmo
+	$(OCAMLC) -o $(TARGET) $(OCAMLFLAGS) $(LIBS) $+ 
 
-# Suffixes.
+$(TARGETOPT): %: $(CMX)
+	$(OCAMLOPT) -o $(TARGETOPT) $(OCAMLOPTFLAGS) $(LIBSOPT) $(CMX)
+
+# Common rules
 .SUFFIXES: .ml .mli .cmo .cmi .cmx
 
 %.cmo: %.ml
@@ -91,7 +101,7 @@ $(TARGET): %: $(BYTE_OBJS) %.cmo
 
 # Clean.
 clean:
-	rm -f $(EXECUTABLE) *.cm[iox] *.o *~ *.dvi *.ps *.log *.aux
+	rm -f $(TARGET) $(TARGETOPT) *.cm[iox] *.o *~ *.dvi *.ps *.log *.aux
 	rm -f parser.ml
 	rm -f lexer.ml
 	rm -f parser.mli
