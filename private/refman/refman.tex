@@ -1,93 +1,51 @@
 \documentclass[11pt]{article}
-\usepackage{fancyvrb,xspace,fullpage}
+\usepackage{fancyvrb,xspace,fullpage,eqnarray,array,ifpdf}
 %\usepackage{ccfonts,eulervm}
 
-\newcommand{\keywd}[1]{\mbox{\texttt{#1}}\xspace}
+\ifpdf
+\usepackage{pdfsync}
+\fi
 
-\newcommand{\ALL}{\keywd{all}}
-\newcommand{\AND}{\keywd{and}}
-\newcommand{\AXIOM}{\keywd{axiom}}
-\newcommand{\CONST}{\keywd{const}}
-\newcommand{\COROLLARY}{\keywd{corollary}}
-\newcommand{\EQUIV}{\keywd{equiv}}
-\newcommand{\EQUIVALENCE}{\keywd{equivalence}}
-\newcommand{\EQUIVPROP}{\keywd{Equiv}}
-\newcommand{\END}{\keywd{end}}
-\newcommand{\EXISTS}{\keywd{exists}}
-\newcommand{\EXISTSONE}{\keywd{exists1}}
-\newcommand{\FALSE}{\keywd{false}}
-\newcommand{\FORALL}{\keywd{forall}}
-\newcommand{\IMPLICIT}{\keywd{implicit}}
-\newcommand{\IFF}{\keywd{iff}}
-\newcommand{\IMPLY}{\keywd{implies}}
-\newcommand{\IN}{\keywd{in}}
-\newcommand{\LAMBDA}{\keywd{lam}}
-\newcommand{\LEMMA}{\keywd{lemma}}
-\newcommand{\LET}{\keywd{let}}
-\newcommand{\MATCH}{\keywd{match}}
-\newcommand{\MODEL}{\keywd{model}}
-\newcommand{\NOT}{\keywd{not}}
-\newcommand{\OR}{\keywd{or}}
-\newcommand{\PROP}{\keywd{Prop}}
-\newcommand{\PROPOSITION}{\keywd{proposition}}
-\newcommand{\PREDICATE}{\keywd{predicate}}
-\newcommand{\RELATION}{\keywd{relation}}
-\newcommand{\RZ}{\keywd{rz}}
-\newcommand{\SET}{\keywd{set}}
-\newcommand{\SOME}{\keywd{some}}
-\newcommand{\SOMEONE}{\keywd{some1}}
-\newcommand{\STABLE}{\keywd{stable}}
-\newcommand{\STABLEPROP}{\keywd{Stable}}
-\newcommand{\STRUCTURE}{\keywd{structure}}
-\newcommand{\THE}{\keywd{the}}
-\newcommand{\THEOREM}{\keywd{theorem}}
-\newcommand{\THEORY}{\keywd{theory}}
-\newcommand{\THY}{\keywd{thy}}
-\newcommand{\TRUE}{\keywd{true}}
-\newcommand{\UNIT}{\mbox{\Verb| unit |}}
-\newcommand{\WITH}{\keywd{with}}
+\DefineShortVerb{\|}
 
-\newcommand{\metav}[1]{\mbox{\textit{#1}}\xspace}
+\newcommand{\metav}[1]{\mbox{\textit{#1}}}
 
 \newcommand{\Case}{\metav{case}}
 \newcommand{\Ident}{\metav{name}}
-\newcommand{\Identifier}{\Ident}
-\newcommand{\Label}{\metav{\Verb|`|label}}
-\newcommand{\MIdentifier}{\metav{Modelname}}
-\newcommand{\TIdentifier}{\metav{Theoryname}}
+\newcommand{\Label}{\metav{\texttt{\`}label}}
+\newcommand{\MId}{\metav{Modelid}}
+\newcommand{\TId}{\metav{Theoryid}}
+\newcommand{\SId}{\metav{setid}}
+\newcommand{\PId}{\metav{propid}}
+\newcommand{\EId}{\metav{termid}}
+\newcommand{\Id}{\metav{id}}
+\newcommand{\Phrase}{\metav{phrase}}
+\newcommand{\Class}{\metav{class}}
 \newcommand{\Setexp}{\metav{set}}
-\newcommand{\Specification}{\metav{specification}}
-\newcommand{\Proposition}{\metav{proposition}}
-\newcommand{\Param}{\metav{param}}
-\newcommand{\MParam}{\metav{modelparam}}
-\newcommand{\Term}{\metav{term}}
+\newcommand{\Specification}{\metav{spec}}
+\newcommand{\Propexp}{\metav{prop}}
+\newcommand{\Termexp}{\metav{term}}
 \newcommand{\Theoryexp}{\metav{theory}}
+\newcommand{\Modelexp}{\metav{model}}
+\newcommand{\Setkind}{\metav{kind}}
+\newcommand{\Propkind}{\metav{propkind}}
+\newcommand{\Theorykind}{\metav{thrykind}}
+\newcommand{\Params}{\metav{params}}
+\newcommand{\Pat}{\metav{pat}}
 
-\newcommand{\AAND}{\mbox{\Verb| \&\& |}}
-\newcommand{\ARROW}{\mbox{\Verb| -> |}}
-\newcommand{\BAR}{\mbox{\Verb+ | +}}
-\newcommand{\COLON}{\mbox{\Verb| : |}}
-\newcommand{\COMMA}{\mbox{\Verb| , |}}
-\newcommand{\EQUALS}{\mbox{\Verb| = |}}
-\newcommand{\HASH}{\mbox{\Verb| \# |}}
-\newcommand{\IIFF}{\mbox{\Verb| <=> |}}
-\newcommand{\IIMPLY}{\mbox{\Verb| => |}}
-\newcommand{\LBRACE}{\mbox{\Verb| \{ |}}
-\newcommand{\LBRACK}{\mbox{\Verb| [ |}}
-\newcommand{\LCOMMENT}{\mbox{\Verb| (* |}}
-\newcommand{\LPAREN}{\mbox{\Verb| ( |}}
-\newcommand{\OOR}{\mbox{\Verb+ || +}}
-\newcommand{\PERCENT}{\mbox{\Verb+ \% +}}
-\newcommand{\PLUS}{\mbox{\Verb| + |}}
-\newcommand{\RBRACE}{\mbox{\Verb| \} |}}
-\newcommand{\RBRACK}{\mbox{\Verb| ] |}}
-\newcommand{\RCOMMENT}{\mbox{\Verb| *) |}}
-\newcommand{\RPAREN}{\mbox{\Verb| ) |}}
-\newcommand{\PERIOD}{\mbox{\Verb| . |}}
-\newcommand{\SUBIN}{\mbox{\Verb| :> |}}
-\newcommand{\SUBOUT}{\mbox{\Verb| :< |}}
-\newcommand{\TIMES}{\mbox{\Verb| * |}}
-\newcommand{\TO}{\mbox{\Verb| -> |}}
+\SaveVerb{VWildcard}|_|
+\SaveVerb{VColon}|:|
+\SaveVerb{VLParen}|(|
+\SaveVerb{VRParen}|)|
+\SaveVerb{VLBrack}|[|
+\SaveVerb{VRBrack}|]|
+\SaveVerb{VTimes}|*|
+\SaveVerb{VPlus}|+|
+\SaveVerb{VDArrow}|=>|
+\SaveVerb{VArrow}|->|
+\SaveVerb{VComma}|,|
+
+\newcounter{grammaritem}
 
 
 \newcommand{\includeexample}[1]{
@@ -95,33 +53,54 @@
    \VerbatimInput[%frame=single,
                   label=\fbox{#1},numbers=left,
                   %framesep=5mm,
-                  obeytabs=true,showtabs=true]{../../examples/misc/#1}}
+                 obeytabs=true,showtabs=true]{../../examples/misc/#1}}
 
 \newcommand{\NB}{\textbf{NB: }}
 
+\newcommand{\Maybe}[1]{$[${}#1{}$]$}
+\newcommand{\Repeat}[1]{$[${}#1{}$]^*$}
+\newcommand{\RRepeat}[1]{$[${}#1{}$]^+$}
+
+
+\newcolumntype{E}{>{\quad\refstepcounter{grammaritem}}l<{\ (\arabic{grammaritem})}}
+\input badline
+ 
 \title{RZ Reference Manual}
-\date{\today}
+\date{Version of: \today}
 \author{Andrej Bauer and Chris Stone}
 
 \begin{document}
 \maketitle
 
+\VerbatimFootnotes
+
 \section{Running RZ}
 
 \begin{Verbatim}
-Usage:  ./rz <options> [filenames]
-  --opt Turn on simplification optimations (default)
-  --noopt Turn off simplification optimizations
-  --show Show output on stdout (default)
-  --noshow No output to stdout
-  --save Send output to .mli file (default)
-  --nosave No output to file
-  -help  Display this list of options
-  --help  Display this list of options
+	Usage:  ./rz <options> [filenames]
+	  --hoist Hoist all assurances
+	  --nohoist Don't hoist assurances [default]
+	  --opt Optimize translation [default]
+	  --noopt Don't optimize translation
+	  --poly Convert functors to polymorphism [default]
+	  --nopoly Don't convert functors to polymorphism
+	  --save Send output to .mli file [default]
+	  --nosave No output to .mli file
+	  --show Show output on stdout [default]
+	  --noshow No output on stdout
+	  --sigapp Retain signature applications
+	  --nosigapp Expand away signature applications [default]
+	  --thin Remove trivial realizers [default]
+	  --nothin Leave trivial realizers
+	  --dump_infer Dump result of type inference
+	  --columns <int>  Number of columns in output [78]
+	  --longerr <int>  Minimum lines in a 'long' error message [3]
+	  -help  Display this list of options
+	  --help  Display this list of options
 \end{Verbatim}
 
-Input files have the extension \Verb|.thy| (by convention, not a requirement), and the 
-output file has the same name but with its extension replaced by \Verb|.mli|.
+Input files have the extension |.thy| (by convention, not a requirement), and the 
+output file has the same name but with its extension replaced by |.mli|.
 
 \section{Input Syntax}
 
@@ -129,71 +108,43 @@ output file has the same name but with its extension replaced by \Verb|.mli|.
 
 Two sorts of comments are allowed:
 \begin{itemize}
-\item Line comments, which go from \HASH to the end-of-line.
-\item Multi-line comments, which are marked $\LCOMMENT \cdots
-  \RCOMMENT$ and which may be nested.  \HASH is not treated as a
+\item Line comments, which go from |#| to the end-of-line.
+\item Multi-line comments, which are marked |(*|$\cdots$|*)| and which may be nested.  |#| is not treated as a
   special line-comment character within a multi-line comment, e.g.,
-  the line \Verb|(* # *)| is a complete comment.
+  the line |(* # *)| is a complete comment.
 \end{itemize}
 
-  Multi-line comments are retained in the final ML output, while line
-  comments are discarded.
+\NB{Multi-line comments are retained in the final ML output, while line
+  comments are discarded.}
 
-\subsection{Theories}
+\subsection{Names}
+\label{sec:names}
 
-Theories can be specified as follows:
-\begin{itemize}
-\item \TIdentifier
+\begin{center}
+\begin{tabular}{rRlE}
+	\Id &::= & \EId & Term identifier\\
+	      &\mid & \SId & Set identifier\\
+	      &\mid & \PId & Proposition/predicate identifier\\
+	      &\mid & \MId & Model identifier\\
+	      &\mid & \TId & Theory identifier\\
+\end{tabular}
+\end{center}
 
-   A reference to a previously-defined theory.  Theory names are always
-   capitalized.
-   
-   \NB Even though theories can be parameterized when
-     defined, at the moment we cannot ``instantiate'' a parameterized
-     theory.
+\subsubsection*{Notes}
 
-\item $\THY\ [\Specification]^*\ \END$
+Model and theory names must begin with an uppercase letter.
 
-   A theory, containing a sequence of specifications.
-\end{itemize}
-
-\noindent Theories can be defined as follows:
-\begin{itemize}
-\item $\THEORY\ \metav{Theoryname}\ [\MParam]^*\ \EQUALS\ \Theoryexp$
-
-   A named theory with the given definitions.  It may be parameterized
-   by one or more models; each model parameter, if present, must be written
-   with the syntax $\LPAREN \MIdentifier \COLON \Theoryexp \RPAREN$.
-\end{itemize}
-
-
-
-\subsection{Specifications}
-Possible
-specifications include:
-\begin{itemize}
-\item \SET \metav{setname}
-
-A model of the theory must supply a set of the given name.
-
-\item \SET \metav{setname}\ = \ \Setexp
-
-A local name given to a particular set.
-
-\item \CONST \metav{constname}\ :\ \Setexp
-
-A constant of the given name exists in the specified set-expression.
-The \metav{constname} can either be
+Term, set, and predicate identifiers can be:
 \begin{enumerate}
-\item An ordinary lowercase alphanumeric identifier (beginning with a
+\item An ordinary lowercase alphanumeric identifier, beginning with a
   letter or underscore, containing letters, digits, underscores, and
-  single quotes).
-  \NB Integers such as \Verb|0| are therefore not valid names for constants.
-\item A unary operator (any purely symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses, in which the \Setexp should be of the form $\Setexp \TO \Setexp$;
-\item Or a binary operator (any other identifier composed only of
-  symbolic characters) enclosed in parentheses, in which case the
-  \Setexp should be curried with two arguments.  The precedence of a
-  binary operator is determined by its first character or two.  From
+  single quotes. (Integers such as |0| are therefore not valid names for constants.)
+\item Or, a unary operator (any purely symbolic characters beginning with |?|, |~|, or |!|) enclosed in parentheses
+\item Or a binary operator (any other identifier composed \emph{only} of
+  symbolic characters) enclosed in parentheses\footnote{The parenthesized version of a binary operator \Verb|*| must be
+written \Verb|(* )| rather than as \Verb|(*)| in order to avoid
+creating the end-of-comment token \Verb|*)|.}.  The precedence of a
+  binary operator is determined by its first character (or two).  From
   lowest precedence to highest precedence, the initial symbols are:
 \begin{Verbatim}
   =   <   >   &   $
@@ -202,214 +153,251 @@ The \metav{constname} can either be
   *   /   %
   **
 \end{Verbatim}
-\NB The parenthesized version of a binary operator \Verb|*| must be
-written \Verb|(* )| rather than as \Verb|(*)| in order to avoid
-creating the end-of-comment token \Verb|*)|.
+  When a binary operator such as |&| is actually applied, the prefix form |(&) X Y| and infix form |X & Y| are interchangeable.
 \end{enumerate}
 
+\NB{Why do we require parentheses for unary (prefix) operators?}
+
+\subsection{Syntax for Function Parameters}
+
+\begin{center}
+	\begin{tabular}{rRlE}
+		\Params & ::= & \RRepeat{\Id\ \textbar\ \UseVerb{VWildcard}}\\
+		& \mid & \RRepeat{\Id\ \textbar\ \UseVerb{VWildcard}}\ |:|\ \Class\\
+		& \mid & \RRepeat{\UseVerb{VLParen}\ \Repeat{\Id\ \textbar\ \UseVerb{VWildcard}}\ \UseVerb{VColon}\ \Class\ \UseVerb{VRParen}}\\ 
+	\end{tabular}
+\end{center}
+
+\subsection{Theories}
+
+\begin{center}
+\begin{tabular}{rRlE}
+\Theoryexp & ::= & \TId & Previously-defined theory\\
+    & \mid & \Modelexp|.|\TId & Previously-defined theory in a model\\
+    & \mid & |thy|\ \Repeat{\Specification}\ |end| & Theory of a model\\
+    & \mid & |[|\ \MId\ |:|\ \Theoryexp\ |]|\ |->|\ \Theoryexp & Theory of a family of models\\
+    & \mid & |fun|\ \Params\ |=>| \Theoryexp & Mapping from models to theories\\
+    & \mid & \Theoryexp\ \Modelexp & Application of a mapping\\
+    & \mid & |(|\ \Theoryexp\ |)| & Grouping parentheses\\
+\end{tabular}
+\end{center}
 
 
-\item \CONST \metav{constname} = \Term\\
-      \CONST \LPAREN \metav{constname} \COLON \Setexp \RPAREN = \Term\\
-      
-      A local abbreviation of a term.  The set containing the constant
-      may be inferred from the \Term.  The possible names are the same
-      as in the previous case for \CONST.
 
-\item{} [\STABLE{}] \RELATION \metav{relationname} \COLON \Setexp\\
-     {} [\STABLE{}] \PREDICATE \metav{relationname} \COLON \Setexp
-  
-     A relation of the given name exists, with the given set as its
-     domain (but see below).  The relation is not assumed to be stable
-     unless explicitly stated with the \STABLE keyword.  The name of
-     the relation can be:
-\begin{enumerate}
-\item  An ordinary alphanumeric identifier;
-\item  A unary operator (symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses;
-\item  Or a binary operator (any other identifier composed of symbolic characters) enclosed in parentheses, in which case the \Setexp should be of the (uncurried) form $\Setexp \TIMES \Setexp$
+\iffalse
+\noindent Theories can be defined as follows:
+\begin{itemize}
+\item $\THEORY\ \Theoryname\ [\MParam]^*\ \EQUALS\ \Theoryexp$
 
-See the above discussion of \CONST for the precedences of binary
-operators.
-
-\NB Despite the syntax of the specification, the system \emph{uncurries}
-binary operators ranging over a product of sets.  Thus uses of
-\Verb|<| can be written either in the usual infix form \Verb|x < y| or
-in the curried form \Verb|( < ) x y|.
-\end{enumerate}
-
-\NB If the set specified is of the (curried) form $\ldots \TO \PROP$,
-this declares not a predicate on functions, but rather a proposition
-that takes its arguments ($\cdots$) in curried form.
-
-\item{} [\STABLE{}] \RELATION \metav{relationname}\ \EQUALS\ \Proposition\\
-     {} [\STABLE{}] \PREDICATE \metav{relationname}\ \EQUALS\ \Proposition
-  
-     A local definition of a relation (or stable relation) of the
-     given name exists.  The arguments implicitly give the domain of
-     the relation; each argument must either be of the form $\LPAREN
-     \Identifier \COLON \Setexp \RPAREN$ or must be a single
-     $\Identifier$ that has previously appeared in an \IMPLICIT
-     declaration.
+   A named theory with the given definitions.  It may be parameterized
+   by one or more models; each model parameter, if present, must be written
+   with the syntax $\LPAREN \MId \COLON \Theoryexp \RPAREN$.
+\end{itemize}
+\fi
 
 
-\item $\AXIOM\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
-      $\COROLLARY\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
-      $\LEMMA\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
-      $\PROPOSITION\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
-      $\THEOREM\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$
-      
-      Each model parameter, if present, must be written
-      with the syntax $\LPAREN \MIdentifier \COLON \Theoryexp \RPAREN$.
-      Each term parameter, if present, must either be
-      explicitly typed with the syntax $\LPAREN \Identifier \COLON 
-      \Setexp \RPAREN$ or must be a single $\Identifier$ that has
-      previously appeared in an \IMPLICIT declaration.
+\subsection{Theory Elements}
+\begin{center}
+	\begin{tabular}{rRlE}
+		\Specification &::=& |Parameter|\ \Repeat{\Id}\ |:| \Class\ |.|&Abstract constant declaration\label{gr:te:parameter}\\
+	 	& \mid & |Parameter|\ \RRepeat{\Verb+(+ \Repeat{\Id}\ \Verb+:+\ \Class\ \Verb+)+}\ |.|&Alternate form\label{gr:te:parameter2}\\
+	    & \mid & |Axiom|\ \Id\ |:| \Propexp\ |.|&Logical assertion\label{gr:te:axiom}\\
+		& \mid & |Definition|\ \Id\ \Repeat{\Id\ \textbar\ \Verb+(+\ \Id\ \Verb+:+ \Class\ \Verb+)+}\ |:=| \Phrase\ |.|&Definition\label{gr:te:definition}\\
+		& \mid & |implicit| \Repeat{\EId}\ |:|\ \Setexp\ |.|&Implicit range for variable\label{gr:te:implicit}\\
+	\end{tabular}
+\end{center}
+\begin{itemize}
+\item[(\ref{gr:te:axiom})] The keyword |Axiom| can be replaced by |Hypothesis| without change in meaning.\footnote{Actually, as far as RZ is concerned, the keywords |Axiom|, |Hypothesis|, and |Parameter| are indistinguishable.  We recommend that |Axiom| or |Hypothesis| be used for logical assertions, and |Parameter| be used for all other constants.}
 
-      \textbf{Need to change the parser so that model parameters are
-      surrounded by parentheses as stated here, rather than 
-      square brackets.}
-
-\item \MODEL \MIdentifier \COLON \Theoryexp\\
-      \STRUCTURE \MIdentifier \COLON \Theoryexp\\
-
-      A model of the given theory must exist.  Names of models must be
-      capitalized.
-
-\item \EQUIV \Identifier \COLON \Setexp\\
-      \EQUIVALENCE \Identifier \COLON \Setexp
-  
-  An stable equivalence relation on the given set (i.e., a predicate on the
-  cartesian product of the set with itself) must exist.  The
-  name can be alphanumeric or a binary operator in parentheses.
-
-\item $\EQUIV\ \Identifier\ \Param\ \Param\ =\ \Proposition$\\
-      $\EQUIVALENCE\ \Identifier\ \Param\ \Param\ =\ \Proposition$
- 
-  A local definition of an stable equivalence relation.  Both term parameters
-  must be present and must either be explicitly typed with the syntax
-  $\LPAREN \Identifier \COLON \Setexp \RPAREN$ or must be a single
-  $\Identifier$ that has previously appeared in an \IMPLICIT
-  declaration.  
-
-  The proposition must be almost negative, so that the system can 
-  verify that the equivalence relation is indeed stable.
-
-  \textbf{Bug:  Type inference doesn't appear to verify that both parameters 
-  range over the same set for a defined equivalence relation, at least
-  until it is used in a quotient.}
-  
-\item $\IMPLICIT\ \Identifier\ [\COMMA\ \Identifier\ ]^*\ \COLON\ \Setexp$
-  
+\item[(\ref{gr:te:implicit})] 
   The given identifiers will be assumed to range over values in the
-  given set, unless otherwise specified.  Places no actual demand
-  on a model satisfying this theory, and hence corresponds to
+  given set, unless otherwise specified.  Unlike all other theory elements, this places no actual demand
+  on a model satisfying this theory (it only simplifies writing
+  the rest of the theory), and hence generates to
   no output.  
   
-  Like all other specifications, \IMPLICIT has the remainder of the
-  enclosing $\THY\ \cdots\ \END$ as its scope.
+  Like all other specifications, |implicit| has the remainder of the
+  enclosing |thy|$\cdots$|end| as its scope.
 \end{itemize}
+
+
+\subsection{Set Kinds}
+
+\begin{center}
+	\begin{tabular}{rRlE}
+		\Setkind &::= & |Set|\\
+	    &\mid & |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Setkind\\
+	\end{tabular}
+\end{center}
+
+
+If there is no dependency, the kind of a family of sets can be 
+\Setexp\ |->|\ \Setkind.
+
+\subsection{Proposition Kinds}
+
+\begin{center}
+\begin{tabular}{rRlE}
+   \Propkind &::= & |Prop| & All propositions\label{gr:pk:prop}\\
+         &   \mid & |Stable| & Stable propositions\label{gr:pk:stable}\\
+         &   \mid & |Equiv|\ \Setexp & Equivalence relation\label{gr:pk:equiv}\\
+         &   \mid & |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Propkind
+& Predicate with the given domain\label{gr:pk:arrow}\\
+\end{tabular}
+\end{center}
+
+\subsubsection*{Notes}
+
+\begin{itemize}
+\item[(\ref{gr:pk:prop})] |Prop| classifies any well-formed formula that is true or false.
+\item[(\ref{gr:pk:stable})] Stable propositions can be treated as arbitrary propositions.
+\[
+\mbox{\texttt{Stable}} \preceq\ \mbox{\texttt{Prop}}
+\]
+\item[(\ref{gr:pk:equiv})] Binary equivalence relations must be stable and take their arguments in a curried fashion.
+\[
+\mbox{\texttt{Equiv}}\ t\ \preceq\ t\texttt{\ ->\ }t\texttt{\ ->\ Stable}
+\]
+\item[(\ref{gr:pk:arrow})]
+	If there is no dependency, the kind of a predicate can be written
+	\Setexp\ |->|\ \Propkind.
+\end{itemize}
+
+\subsection{Theory Kinds}
+
+\begin{center}
+	\begin{tabular}{rRlE}
+	 \Theorykind & ::= & |TheoryModel|\\
+	  & \mid & |[|\ \MId\ |:|\ \Theoryexp\ |]|\ |->|\ \Theorykind
+	\end{tabular}
+\end{center}
+
+The typechecker internally makes use of theory kinds to distinguish those
+theories which classify models from those which map models to theories.
+There is \emph{no} external syntax for theory kinds (because there's no
+such thing as an ``abstract'' theory, without definition). They are
+listed here merely for completeness.
+
 
 \subsection{Propositions}
 
-Propositions can be:
+\begin{center}
+	\begin{tabular}{rRlE}
+	 \Propexp & ::= & |True|\\
+	   & \mid & |False| \\
+	   & \mid & \PId\\
+	   & \mid & \Modelexp|.|\PId\\
+	   & \mid & |(|\ \Propexp\ |)|\\
+	   & \mid & \Propexp\ \Termexp\\
+	   & \mid & \Propexp\ |:|\ \Propkind\\  
+	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Propexp \Verb+|+ $\cdots$\\
+	   & \mid & |fun| \Params\ |=>|\ \Propexp\\
+	   & \mid & \Termexp\ |=|\ \Termexp\\
+	   & \mid & |not|\ \Propexp\\
+	   & \mid & \Propexp\ |/\|\ $\cdots$\ |/\|\ \Propexp\\
+	   & \mid & \Propexp\ |\/|\ $\cdots$\ |\/|\ \Propexp\\
+	   & \mid & \Propexp\ |->|\ \Propexp\\
+	   & \mid & \Propexp\ |<->|\ \Propexp\\
+	   & \mid & |forall|\ \Params\ |,|\ \Propexp\\
+	   & \mid & |exists|\ \Params\ |,|\ \Propexp\\
+	   & \mid & |exists1|\ \Params\ |,|\ \Propexp\\
+	\end{tabular}
+\end{center}
+
+The propositions are listed roughly in decreasing order of precedence.
+(This suggests |:|, |match|, and |fun| need to be moved.)
+
+\iffalse
+& \mid & $\metav{longrelation}\ [\ \Term\ ]^*$\\
+   $\metav{longunaryrelation}\ \Term$\\
+   $\Term\ \metav{longbinaryrelation}\ \Term$\\	 
+\fi
+
+\subsection{Sets}
+
+\begin{center}
+	\begin{tabular}{rRlE} 
+	\Setexp & ::= & |empty| & Empty (void) set\label{gr:s:empty}\\
+	   &\mid& |unit| & Unit set, whose only member is |()|\label{gr:s:unit} \\
+	   &\mid& \SId & Set identifier \label{gr:s:id}\\
+	   &\mid& \Modelexp|.|\SId & Set from a model\label{gr:s:mproj}\\
+	   &\mid& |(|\ \Setexp\ |)|&Grouping parentheses\label{gr:s:parens}\\
+	   &\mid& \Setexp\ \Termexp&Application\label{gr:s:app}\\
+	   &\mid& |fun|\ \Params\ |=>|\ \Setexp&Dependent set\label{gr:s:fun}\\
+	   &\mid& \RRepeat{\UseVerb{VLBrack}\ \EId\ \UseVerb{VColon}\ \Setexp\ \UseVerb{VRBrack}\ \UseVerb{VTimes}}\ \Setexp& Dependent sum\label{gr:s:times}\\
+	   &\mid& |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Setexp&
+	Dependent product\label{gr:s:arrow}\\
+	   &\mid& \Setexp\ \verb+%+ \Propexp&Quotient set\label{gr:s:quotient}\\
+	   &\mid& \Setexp\ |:|\ \Setkind&Kind coercion\label{gr:s:coerce}\\
+	   &\mid& |rz|\ \Setexp & Set of realizers\label{gr:s:rz}\\
+	   &\mid& |{|\ \EId\ |:|\ \Setexp\ \Verb+|+\ \Propexp\ |}| &
+	Subset\label{gr:s:subset}\\
+	   &\mid& \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \RRepeat{\UseVerb{VPlus}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}}& Tagged disjoint union\\
+	\end{tabular}
+\end{center}
+
+\subsubsection*{Notes}
 
 \begin{itemize}
-\item \TRUE
-
-\item \FALSE
-
-\item \NOT \Proposition
-
-\item $\Proposition\ \AND\ \Proposition$\\
-      $\Proposition\ \AAND\ \Proposition$
-
-\item $\Proposition\ \OR\ \Proposition$\\
-      $\Proposition\ \OOR\ \Proposition$
-
-\item $\Proposition\ \IMPLY\ \Proposition$\\
-      $\Proposition\ \IIMPLY\ \Proposition$
-
-\item $\Proposition\ \IFF\ \Proposition$\\
-      $\Proposition\ \IIFF\ \Proposition$
-
-\item $\metav{longrelation}\ [\ \Term\ ]^*$\\
-      $\metav{longunaryrelation}\ \Term$\\
-      $\Term\ \metav{longbinaryrelation}\ \Term$\\
-     
-      
-      Application of the given relation to the specified terms.  The
-      relation is specified by 0 or more projections from models,
-      followed by the relation name.  If a symbolic binary relation
-      is applied in prefix form, the entire sequence of projections
-      must be parenthesized. 
-      Examples: \Verb|x < y| or \Verb|lt x y| or \Verb|Numeric.Nat.lt x y| or
-      \Verb|( Numeric.Nat.< ) x y| or \Verb|x Numeric.Nat.< y| .
-
-\item $\Term\ \EQUALS\ \Term$
-
-   Compares the terms for equality; the inferred sets for the two terms
-   must be equal.
-
-\item $\LPAREN \Term\ \EQUALS\ \Term\ \IN\ \Setexp\ \RPAREN$
-
-   Compares the terms for equality as values of the given set, which
-   should be a superset of the inferred sets of the two terms.
-
-\item $\ALL\ \Param\ \PERIOD\ \Proposition$\\
-      $\FORALL\ \Param\ \PERIOD\ \Proposition$
-
-   Parameter must be implicitly typed or parenthesized, as usual.
-
-\item $\EXISTS\ \Param\ \PERIOD\ \Proposition$\\
-      $\SOME\ \Param\ \PERIOD\ \Proposition$
-
-   Parameter must be implicitly typed or parenthesized, as usual.
-
-\item $\EXISTSONE\ \Param\ \PERIOD\ \Proposition$\\
-      $\SOMEONE\ \Param\ \PERIOD\ \Proposition$
-
-   Parameter must be implicitly typed or parenthesized, as usual.
-
-\item $\MATCH\ \Term\ \WITH\ \Case\ [\BAR\ \Case\ ]^*\ \END$
-  
-  Generalized if-then-else proposition, where
-  $\Term$ must be a member of a sum.  For non-value-carrying
-  sum labels the \Case must be of the form  $\Label\ \ARROW\
-  \Proposition$ .  Otherwise, it should be of the pattern-matching
-  form $\Label\ \Param\ \ARROW\ \Proposition$, where \Param must
-  either be a \Ident or of the form $\LPAREN\ \Identifier\ \COLON\ 
-  \Setexp\ \RPAREN$, and this parameter can be used in the
-  corresponding \Proposition.  The cases must be non-redundant
-  and exhaustive.
-  
-  \NB A single identifier in a pattern-matching case need not
-  be described in an \IMPLICIT; there is enough information from
-  looking at the \Term and the \Label.
+\item[(\ref{gr:s:empty})] The syntax |{}| can be used as a synonym for |empty|.
+\item[(\ref{gr:s:id})] Set identifiers must be symbolic or lowercase, as described in \S\ref{sec:names}.
+\item[(\ref{gr:s:fun})] Sets may only have dependencies on terms (i.e., all identifiers in $\Params$ must be term identifiers, and all classifiers in $\Params$ must be sets).  All parameters must either have a set explicitly declared, or else they must have previously appeared in an |implicit|.
+\item[(\ref{gr:s:times})] The full syntax for cartesian product supports dependencies, e.g. |[x:s] * [y:t(x)] * u x y| (where |s|:|Set|, |t|:|s->Set|, and |u|:|[x:s]->t(x)->Set|) stands
+for 
+\[
+\Sigma_{x:s}\ \Sigma_{y:t(x)}\ u(x)(y).
+\]
+If there is no dependency on a component then the brackets, the identifier, and the colon can call be omitted.  In the simplest form, we have just the cartesian product |a*b*c|.
+\item[(\ref{gr:s:arrow})] The full syntax for sets of functions supports dependencies, e.g. |[x:s] -> t(x)| (where |s|:|Set| and |t|:|s->Set|) stands
+for 
+\[
+\Pi_{x:s}\ t(x)
+\]
+If there is no dependency on the argument then the brackets, the identifier, and the colon can call be omitted, and we have just |s->t|.
+\item[(\ref{gr:s:coerce})] Sets have unique kinds up to equivalence, so all RZ does in this case is verify that the given set does have the given kind.
 \end{itemize}
 
-\textbf{It would be good to explain the order of operations}
+\subsection{Terms}
+
+\begin{center}
+	\begin{tabular}{rRlE}
+	 \Termexp & ::= & |()| & Unit value\label{gr:t:unit}\\
+	   &\mid& \EId &Term identifier \label{gr:t:id}\\
+	   &\mid& \Modelexp|.|\EId\\
+	   &\mid& \Termexp|.|$n$\\
+	   &\mid& |(|\ \Termexp\ |)|\\
+	   &\mid& |(|\ \Termexp\ \RRepeat{\UseVerb{VComma}\ \Termexp}\ |)|\\
+	   &\mid& \Label\ \Maybe{\Termexp}\\
+	   &\mid& \Termexp\ \Termexp\\
+	   &\mid& |fun|\ \Params\ |=>|\ \Termexp\\
+	   &\mid& \Termexp\ |:|\ \Setexp\\
+	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Termexp \Verb+|+ $\cdots$\\
+	   &\mid& |the|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |,|\ \Termexp\\
+	   &\mid& |let|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |=|\ \Termexp\ |in|\ \Termexp\\
+	   &\mid& |let|\ |[|\ \EId\ |]|\ |=|\ \Termexp\ |in|\ \Termexp\\
+       &\mid& \Termexp\ \verb+%+\ \Propexp\\
+	   &\mid& |let|\ |rz|\ \EId\ |=|\ \Termexp\ |in|\ \Termexp\\
+	   &\mid& |rz|\ \Termexp\\
+	\end{tabular}
+\end{center}
+
+\ref{gr:t:id}\ \ref{gr:t:unit}
+
+\end{document}
 
 \subsection{Sets}
 
 Sets can be of the form:
 
 \begin{itemize}
-\item \ \keywd{0}\\
-      \Verb|{}|
+\item |empty|\\
+      |{}|
 
   The empty set.
 
-\item \keywd{1}
+\item |unit|\\
 
   The unit set, whose only member is \Verb|()|.
-
-\item \keywd{2}\\
-      \keywd{bool}
-
-  The set of booleans.  
-
-  \NB For now, the boolean type is not equal to 
-  \Verb|1+1| or to any sum type.
 
 \item $\metav{longset}$
   
@@ -420,9 +408,6 @@ Sets can be of the form:
 
   Just the given \Setexp (i.e., grouping parentheses).
 
-\item $\Setexp\ (\ \TIMES\ \Setexp )^{+}$
-
-  Type of $k$-tuples, for $k\ge 2$.  The parentheses are EBNF.
 
 \item $\Label\ [\ \COLON \Setexp\ ]\ (\ \PLUS\ \Label\ [\ \COLON \Setexp\ ]\ )^{*}$
 
@@ -489,6 +474,156 @@ stable subsets and the corresponding entire sets.
 
 \subsection{Terms}
 
+\end{document}
+
+\item \CONST \metav{constname} = \Term\\
+      \CONST \LPAREN \metav{constname} \COLON \Setexp \RPAREN = \Term\\
+      
+      A local abbreviation of a term.  The set containing the constant
+      may be inferred from the \Term.  The possible names are the same
+      as in the previous case for \CONST.
+
+\item{} [\STABLE{}] \RELATION \metav{relationname} \COLON \Setexp\\
+     {} [\STABLE{}] \PREDICATE \metav{relationname} \COLON \Setexp
+  
+     A relation of the given name exists, with the given set as its
+     domain (but see below).  The relation is not assumed to be stable
+     unless explicitly stated with the \STABLE keyword.  The name of
+     the relation can be:
+\begin{enumerate}
+\item  An ordinary alphanumeric identifier;
+\item  A unary operator (symbolic characters beginning with \Verb|?|, \Verb|~|, or \Verb|!|) enclosed in parentheses;
+\item  Or a binary operator (any other identifier composed of symbolic characters) enclosed in parentheses, in which case the \Setexp should be of the (uncurried) form $\Setexp \TIMES \Setexp$
+
+See the above discussion of \CONST for the precedences of binary
+operators.
+
+\NB Despite the syntax of the specification, the system \emph{uncurries}
+binary operators ranging over a product of sets.  Thus uses of
+\Verb|<| can be written either in the usual infix form \Verb|x < y| or
+in the curried form \Verb|( < ) x y|.
+\end{enumerate}
+
+\NB If the set specified is of the (curried) form $\ldots \TO \PROP$,
+this declares not a predicate on functions, but rather a proposition
+that takes its arguments ($\cdots$) in curried form.
+
+\item{} [\STABLE{}] \RELATION \metav{relationname}\ \EQUALS\ \Proposition\\
+     {} [\STABLE{}] \PREDICATE \metav{relationname}\ \EQUALS\ \Proposition
+  
+     A local definition of a relation (or stable relation) of the
+     given name exists.  The arguments implicitly give the domain of
+     the relation; each argument must either be of the form $\LPAREN
+     \Id \COLON \Setexp \RPAREN$ or must be a single
+     $\Id$ that has previously appeared in an \IMPLICIT
+     declaration.
+
+
+\item $\AXIOM\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\COROLLARY\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\LEMMA\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\PROPOSITION\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$\\
+      $\THEOREM\ \metav{axiomname}\ [\MParam]^*\ [\Param]^*\ =\ \Proposition$
+      
+      Each model parameter, if present, must be written
+      with the syntax $\LPAREN \MId \COLON \Theoryexp \RPAREN$.
+      Each term parameter, if present, must either be
+      explicitly typed with the syntax $\LPAREN \Id \COLON 
+      \Setexp \RPAREN$ or must be a single $\Id$ that has
+      previously appeared in an \IMPLICIT declaration.
+
+      \textbf{Need to change the parser so that model parameters are
+      surrounded by parentheses as stated here, rather than 
+      square brackets.}
+
+\item \MODEL \MId \COLON \Theoryexp\\
+      \STRUCTURE \MId \COLON \Theoryexp\\
+
+      A model of the given theory must exist.  Names of models must be
+      capitalized.
+
+\item \EQUIV \Id \COLON \Setexp\\
+      \EQUIVALENCE \Id \COLON \Setexp
+  
+  An stable equivalence relation on the given set (i.e., a predicate on the
+  cartesian product of the set with itself) must exist.  The
+  name can be alphanumeric or a binary operator in parentheses.
+
+\item $\EQUIV\ \Id\ \Param\ \Param\ =\ \Proposition$\\
+      $\EQUIVALENCE\ \Id\ \Param\ \Param\ =\ \Proposition$
+ 
+  A local definition of an stable equivalence relation.  Both term parameters
+  must be present and must either be explicitly typed with the syntax
+  $\LPAREN \Id \COLON \Setexp \RPAREN$ or must be a single
+  $\Id$ that has previously appeared in an \IMPLICIT
+  declaration.  
+
+  The proposition must be almost negative, so that the system can 
+  verify that the equivalence relation is indeed stable.
+  
+\end{itemize}
+
+Propositions can be:
+
+\begin{itemize}
+\item |True|
+
+\item |False|
+
+\item |not|\ \Propexp
+
+item 
+     
+      
+      Application of the given relation to the specified terms.  The
+      relation is specified by 0 or more projections from models,
+      followed by the relation name.  If a symbolic binary relation
+      is applied in prefix form, the entire sequence of projections
+      must be parenthesized. 
+      Examples: \Verb|x < y| or \Verb|lt x y| or \Verb|Numeric.Nat.lt x y| or
+      \Verb|( Numeric.Nat.< ) x y| or \Verb|x Numeric.Nat.< y| .
+
+\item \Exp\ |=|\ \Exp
+
+   Compares the terms for equivalence.
+
+\item $\ALL\ \Param\ \PERIOD\ \Proposition$\\
+      $\FORALL\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\EXISTS\ \Param\ \PERIOD\ \Proposition$\\
+      $\SOME\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\EXISTSONE\ \Param\ \PERIOD\ \Proposition$\\
+      $\SOMEONE\ \Param\ \PERIOD\ \Proposition$
+
+   Parameter must be implicitly typed or parenthesized, as usual.
+
+\item $\MATCH\ \Term\ \WITH\ \Case\ [\BAR\ \Case\ ]^*\ \END$
+  
+  Generalized if-then-else proposition, where
+  $\Term$ must be a member of a sum.  For non-value-carrying
+  sum labels the \Case must be of the form  $\Label\ \ARROW\
+  \Proposition$ .  Otherwise, it should be of the pattern-matching
+  form $\Label\ \Param\ \ARROW\ \Proposition$, where \Param must
+  either be a \Ident or of the form $\LPAREN\ \Id\ \COLON\ 
+  \Setexp\ \RPAREN$, and this parameter can be used in the
+  corresponding \Proposition.  The cases must be non-redundant
+  and exhaustive.
+  
+  \NB A single identifier in a pattern-matching case need not
+  be described in an \IMPLICIT; there is enough information from
+  looking at the \Term and the \Label.
+\end{itemize}
+
+\textbf{It would be good to explain the order of operations}
+
+
+\subsection{Terms}
+
 Terms can be of the following forms:
 \begin{itemize}
 \item $\metav{longfunctionname}\ [\ \Term\ ]^*$\\
@@ -537,7 +672,7 @@ Terms can be of the following forms:
   sum labels the \Case must be of the form  $\Label\ \ARROW\
   \Term$ .  Otherwise, it should be of the pattern-matching
   form $\Label\ \Param\ \ARROW\ \Term$, where \Param must
-  either be a \Ident or of the form $\LPAREN\ \Identifier\ \COLON\ 
+  either be a \Ident or of the form $\LPAREN\ \Id\ \COLON\ 
   \Setexp\ \RPAREN$, and this parameter can be used in the
   corresponding \Term.  The cases must be non-redundant
   and exhaustive; all their terms must either be inferred
