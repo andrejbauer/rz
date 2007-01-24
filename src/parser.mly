@@ -183,10 +183,6 @@ ident_list:
   | ident                        { [$1] }
   | ident ident_list             { $1 :: $2 }
 
-arg:
-  | ident                              { $1, None }
-  | LPAREN ident COLON expr RPAREN     { $2, Some $4 }
-
 arg_noparen_required:
   | ident                              { $1, None }
   | ident COLON expr                   { $1, Some $3 }
@@ -234,7 +230,6 @@ name:
   | LPAREN operator RPAREN                { makeIdent $2 }
 
 simple_expr:
-  | LBRACE RBRACE                             { Empty }
   | EMPTY                                     { Empty }
   | UNIT                                      { Unit }
   | SET                                       { Set }
@@ -335,7 +330,7 @@ binding1:
   | ident COLON expr   { $1, Some $3 }
 
 case1:
-  | LABEL arg DOUBLEARROW expr                   { $1, Some $2, $4 }
+  | LABEL arg_noparen_required DOUBLEARROW expr  { $1, Some $2, $4 }
   | LABEL DOUBLEARROW expr                       { $1, None, $3 }
 
 case_list:
