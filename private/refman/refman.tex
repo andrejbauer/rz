@@ -1,5 +1,5 @@
 \documentclass[11pt]{article}
-\usepackage{fancyvrb,xspace,fullpage,eqnarray,array,ifpdf}
+\usepackage{fancyvrb,xspace,fullpage,array,ifpdf}
 %\usepackage{ccfonts,eulervm}
 
 \ifpdf
@@ -13,11 +13,11 @@
 \newcommand{\Case}{\metav{case}}
 \newcommand{\Ident}{\metav{name}}
 \newcommand{\Label}{\metav{\texttt{\`}label}}
-\newcommand{\MId}{\metav{Modelid}}
-\newcommand{\TId}{\metav{Theoryid}}
+\newcommand{\MId}{\metav{mdlid}}
+\newcommand{\TId}{\metav{thrid}}
 \newcommand{\SId}{\metav{setid}}
-\newcommand{\PId}{\metav{propid}}
-\newcommand{\EId}{\metav{termid}}
+\newcommand{\PId}{\metav{prpid}}
+\newcommand{\EId}{\metav{trmid}}
 \newcommand{\Id}{\metav{id}}
 \newcommand{\Phrase}{\metav{phrase}}
 \newcommand{\Class}{\metav{class}}
@@ -56,6 +56,7 @@
                  obeytabs=true,showtabs=true]{../../examples/misc/#1}}
 
 \newcommand{\NB}{\textbf{NB: }}
+\newcommand{\TODO}[1]{[\textbf{TODO: }#1]}
 
 \newcommand{\Maybe}[1]{$[${}#1{}$]$}
 \newcommand{\Repeat}[1]{$[${}#1{}$]^*$}
@@ -114,8 +115,8 @@ Two sorts of comments are allowed:
   the line |(* # *)| is a complete comment.
 \end{itemize}
 
-\NB{Multi-line comments are retained in the final ML output, while line
-  comments are discarded.}
+Multi-line comments are retained in the final ML output, while line
+  comments are discarded.
 
 \subsection{Names}
 \label{sec:names}
@@ -135,7 +136,7 @@ Two sorts of comments are allowed:
 Model and theory names must begin with an uppercase letter.
 
 Term, set, and predicate identifiers can be:
-\begin{enumerate}
+\begin{itemize}
 \item An ordinary lowercase alphanumeric identifier, beginning with a
   letter or underscore, containing letters, digits, underscores, and
   single quotes. (Integers such as |0| are therefore not valid names for constants.)
@@ -153,10 +154,11 @@ creating the end-of-comment token \Verb|*)|.}.  The precedence of a
   *   /   %
   **
 \end{Verbatim}
-  When a binary operator such as |&| is actually applied, the prefix form |(&) X Y| and infix form |X & Y| are interchangeable.
-\end{enumerate}
 
-\NB{Why do we require parentheses for unary (prefix) operators?}
+Wherever a binary operator such as |&| is actually applied, the prefix form |(&) X Y| and infix form |X & Y| are interchangeable.  This is actually true of operators projected from models as well:  |(M.&) X Y| and |X M.& Y| are interchangeable.
+\end{itemize}
+
+\TODO{Why do we require parentheses for unary (prefix) operators?}
 
 \subsection{Syntax for Function Parameters}
 
@@ -167,6 +169,14 @@ creating the end-of-comment token \Verb|*)|.}.  The precedence of a
 		& \mid & \RRepeat{\UseVerb{VLParen}\ \Repeat{\Id\ \textbar\ \UseVerb{VWildcard}}\ \UseVerb{VColon}\ \Class\ \UseVerb{VRParen}}\\ 
 	\end{tabular}
 \end{center}
+
+\subsubsection*{Notes}
+
+There are two global restrictions on parameters that are not reflected in this grammar:
+\begin{itemize}
+	\item Only term parameters (classified by sets) and model parameters (classified by theories) are permitted.
+	\item Model parameters may appear \emph{only} in outermost |forall|s in an |Axiom| declaration or in outermost |fun|s in a |Definition|.   
+\end{itemize}
 
 \subsection{Theories}
 
@@ -199,8 +209,8 @@ creating the end-of-comment token \Verb|*)|.}.  The precedence of a
 \subsection{Theory Elements}
 \begin{center}
 	\begin{tabular}{rRlE}
-		\Specification &::=& |Parameter|\ \Repeat{\Id}\ |:| \Class\ |.|&Abstract constant declaration\label{gr:te:parameter}\\
-	 	& \mid & |Parameter|\ \RRepeat{\Verb+(+ \Repeat{\Id}\ \Verb+:+\ \Class\ \Verb+)+}\ |.|&Alternate form\label{gr:te:parameter2}\\
+		\Specification &::=& |Parameter|\ \RRepeat{\Id}\ |:| \Class\ |.|&Abstract constant declaration\label{gr:te:parameter}\\
+	 	& \mid & |Parameter|\ \RRepeat{\Verb+(+ \RRepeat{\Id}\ \Verb+:+\ \Class\ \Verb+)+}\ |.|&Alternate form\label{gr:te:parameter2}\\
 	    & \mid & |Axiom|\ \Id\ |:| \Propexp\ |.|&Logical assertion\label{gr:te:axiom}\\
 		& \mid & |Definition|\ \Id\ \Repeat{\Id\ \textbar\ \Verb+(+\ \Id\ \Verb+:+ \Class\ \Verb+)+}\ |:=| \Phrase\ |.|&Definition\label{gr:te:definition}\\
 		& \mid & |implicit| \Repeat{\EId}\ |:|\ \Setexp\ |.|&Implicit range for variable\label{gr:te:implicit}\\
@@ -220,6 +230,19 @@ creating the end-of-comment token \Verb|*)|.}.  The precedence of a
   enclosing |thy|$\cdots$|end| as its scope.
 \end{itemize}
 
+\subsection{Models}
+
+\begin{center}
+	\begin{tabular}{rRlE}
+	 \Modelexp & ::= & \MId &\label{gr:m:id}\\
+	& \mid & \Modelexp|.|\MId & \label{gr:m:mproj}\\
+	& \mid & \Modelexp\ \Modelexp& \label{gr:m:app}\\
+	\end{tabular}
+\end{center}
+
+\subsubsection*{Notes}
+
+There is no way to actually define the contents of a model.  
 
 \subsection{Set Kinds}
 
@@ -283,29 +306,38 @@ listed here merely for completeness.
 
 \begin{center}
 	\begin{tabular}{rRlE}
-	 \Propexp & ::= & |True|\\
-	   & \mid & |False| \\
-	   & \mid & \PId\\
-	   & \mid & \Modelexp|.|\PId\\
-	   & \mid & |(|\ \Propexp\ |)|\\
-	   & \mid & \Propexp\ \Termexp\\
-	   & \mid & \Propexp\ |:|\ \Propkind\\  
-	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Propexp \Verb+|+ $\cdots$\\
-	   & \mid & |fun| \Params\ |=>|\ \Propexp\\
-	   & \mid & \Termexp\ |=|\ \Termexp\\
-	   & \mid & |not|\ \Propexp\\
-	   & \mid & \Propexp\ |/\|\ $\cdots$\ |/\|\ \Propexp\\
-	   & \mid & \Propexp\ |\/|\ $\cdots$\ |\/|\ \Propexp\\
-	   & \mid & \Propexp\ |->|\ \Propexp\\
-	   & \mid & \Propexp\ |<->|\ \Propexp\\
-	   & \mid & |forall|\ \Params\ |,|\ \Propexp\\
-	   & \mid & |exists|\ \Params\ |,|\ \Propexp\\
-	   & \mid & |exists1|\ \Params\ |,|\ \Propexp\\
+	 \Propexp & ::= & |True|&\label{gr:p:true}\\
+	   & \mid & |False|&\label{gr:p:false} \\
+	   & \mid & \PId&Propositional identifiers\label{gr:p:id}\\
+	   & \mid & \Modelexp|.|\PId&Proposition/predicate in a model\label{gr:p:mproj}\\
+	   & \mid & |(|\ \Propexp\ |)|&Grouping parentheses\label{gr:p:parens}\\
+	   & \mid & \Propexp\ \Termexp&Application\label{gr:p:app}\\
+	   & \mid & \Propexp\ |:|\ \Propkind&Propositional kind coercion\label{gr:p:coerce}\\  
+	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Propexp \Verb+|+ $\cdots$&Case analysis\label{gr:p:match}\\
+	   & \mid & |fun| \Params\ |=>|\ \Propexp&Predicate\label{gr:p:lambda}\\
+	   & \mid & \Termexp\ |=|\ \Termexp&Equivalence\label{gr:p:eq}\\
+	   & \mid & |not|\ \Propexp&\label{gr:p:not}\\
+	   & \mid & \Propexp\ |/\|\ $\cdots$\ |/\|\ \Propexp&\label{gr:p:and}\\
+	   & \mid & \Propexp\ |\/|\ $\cdots$\ |\/|\ \Propexp&\label{gr:p:or}\\
+	   & \mid & \Propexp\ |->|\ \Propexp&\label{gr:p:imply}\\
+	   & \mid & \Propexp\ |<->|\ \Propexp&\label{gr:p:iff}\\
+	   & \mid & |forall|\ \Params\ |,|\ \Propexp&\label{gr:p:all}\\
+	   & \mid & |exists|\ \Params\ |,|\ \Propexp&\label{gr:p:some}\\
+	   & \mid & |exists1|\ \Params\ |,|\ \Propexp&\label{gr:p:some1}\\
 	\end{tabular}
 \end{center}
 
+\subsubsection*{Notes}
+
 The propositions are listed roughly in decreasing order of precedence.
-(This suggests |:|, |match|, and |fun| need to be moved.)
+\TODO{The precedences for \texttt{:}, \texttt{match}, and \texttt{fun} look like they need to be fixed.}
+
+\begin{enumerate}
+	\item[(\ref{gr:p:coerce})] The typechecker will let you coerce any  $t$|->|$t$|->Stable| relation to |Equiv(|$t$|)|.  RZ cannot check that the relation is really reflexive, symmetric, and transitive, and so an obligation is produced.
+	\item[(\ref{gr:p:lambda})] Term identifiers in \Params\ must be annotated with their set or must appear in an |implicit|.
+	\item[(\ref{gr:p:and}),(\ref{gr:p:or})] Conjunction and disjunction are $n$-ary, so that the translation yields flat $n$-tuples rather than nested pairs.
+	\item[(\ref{gr:p:all})--(\ref{gr:p:some1})] Term identifiers in \Params\ must be annotated with their set or must appear in an |implicit|.
+\end{enumerate}
 
 \iffalse
 & \mid & $\metav{longrelation}\ [\ \Term\ ]^*$\\
@@ -323,21 +355,22 @@ The propositions are listed roughly in decreasing order of precedence.
 	   &\mid& \Modelexp|.|\SId & Set from a model\label{gr:s:mproj}\\
 	   &\mid& |(|\ \Setexp\ |)|&Grouping parentheses\label{gr:s:parens}\\
 	   &\mid& \Setexp\ \Termexp&Application\label{gr:s:app}\\
+	   &\mid& |rz|\ \Setexp & Set of realizers\label{gr:s:rz}\\
+	   &\mid& \Setexp\ |:|\ \Setkind&Kind coercion\label{gr:s:coerce}\\
+	   &\mid& \Setexp\ \verb+%+ \Propexp&Quotient set\label{gr:s:quotient}\\
 	   &\mid& |fun|\ \Params\ |=>|\ \Setexp&Dependent set\label{gr:s:fun}\\
 	   &\mid& \RRepeat{\UseVerb{VLBrack}\ \EId\ \UseVerb{VColon}\ \Setexp\ \UseVerb{VRBrack}\ \UseVerb{VTimes}}\ \Setexp& Dependent sum\label{gr:s:times}\\
-	   &\mid& |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Setexp&
-	Dependent product\label{gr:s:arrow}\\
-	   &\mid& \Setexp\ \verb+%+ \Propexp&Quotient set\label{gr:s:quotient}\\
-	   &\mid& \Setexp\ |:|\ \Setkind&Kind coercion\label{gr:s:coerce}\\
-	   &\mid& |rz|\ \Setexp & Set of realizers\label{gr:s:rz}\\
+	   &\mid& \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \RRepeat{\UseVerb{VPlus}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}}& Tagged disjoint union\\
 	   &\mid& |{|\ \EId\ |:|\ \Setexp\ \Verb+|+\ \Propexp\ |}| &
 	Subset\label{gr:s:subset}\\
-	   &\mid& \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \RRepeat{\UseVerb{VPlus}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}}& Tagged disjoint union\\
+	   &\mid& |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Setexp&
+	Dependent product\label{gr:s:arrow}\\
 	\end{tabular}
 \end{center}
 
 \subsubsection*{Notes}
 
+The above sets are generally listed in order of decreasing precedence.  \TODO{Update when \texttt{:} and \texttt{fun} are changed.}
 \begin{itemize}
 \item[(\ref{gr:s:empty})] The syntax |{}| can be used as a synonym for |empty|.
 \item[(\ref{gr:s:id})] Set identifiers must be symbolic or lowercase, as described in \S\ref{sec:names}.
@@ -361,28 +394,44 @@ If there is no dependency on the argument then the brackets, the identifier, and
 
 \begin{center}
 	\begin{tabular}{rRlE}
-	 \Termexp & ::= & |()| & Unit value\label{gr:t:unit}\\
-	   &\mid& \EId &Term identifier \label{gr:t:id}\\
-	   &\mid& \Modelexp|.|\EId\\
-	   &\mid& \Termexp|.|$n$\\
-	   &\mid& |(|\ \Termexp\ |)|\\
-	   &\mid& |(|\ \Termexp\ \RRepeat{\UseVerb{VComma}\ \Termexp}\ |)|\\
-	   &\mid& \Label\ \Maybe{\Termexp}\\
-	   &\mid& \Termexp\ \Termexp\\
-	   &\mid& |fun|\ \Params\ |=>|\ \Termexp\\
-	   &\mid& \Termexp\ |:|\ \Setexp\\
-	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Termexp \Verb+|+ $\cdots$\\
-	   &\mid& |the|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |,|\ \Termexp\\
-	   &\mid& |let|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |=|\ \Termexp\ |in|\ \Termexp\\
-	   &\mid& |let|\ |[|\ \EId\ |]|\ |=|\ \Termexp\ |in|\ \Termexp\\
-       &\mid& \Termexp\ \verb+%+\ \Propexp\\
-	   &\mid& |let|\ |rz|\ \EId\ |=|\ \Termexp\ |in|\ \Termexp\\
-	   &\mid& |rz|\ \Termexp\\
+	 \Termexp & ::= & |()| & Unit value\label{gr:e:unit}\\
+	   &\mid& \EId &Term identifier \label{gr:e:id}\\
+	   &\mid& \Modelexp|.|\EId&Term from a model\label{gr:e:mproj}\\
+	   &\mid& \Termexp|.|$n$&$n^{\rm th}$ tuple component $(n\ge 0)$\label{gr:e:proj}\\
+	   &\mid& |(|\ \Termexp\ |)|&Grouping parentheses\label{gr:e:parens}\\
+	   &\mid& |(|\ \Termexp\ \RRepeat{\UseVerb{VComma}\ \Termexp}\ |)|&Tuple\label{gr:e:tuple}\\
+	   &\mid& \Label\ \Maybe{\Termexp}&Injection into a union\label{gr:e:inj}\\
+	   &\mid& \Termexp\ \Termexp&Application\label{gr:e:app}\\
+	   &\mid& \Termexp\ |:|\ \Setexp&Set coercion\label{gr:e:coerce}\\
+	   &\mid& |rz|\ \Termexp&Term realized by realizer\label{gr:e:rz}\\
+	   &\mid& |fun|\ \Params\ |=>|\ \Termexp&Function\label{gr:e:lambda}\\
+	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Termexp \Verb+|+ $\cdots$&Case analysis\label{gr:e:match}\\
+	   &\mid& |let|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |=|\ \Termexp\ |in|\ \Termexp&Local definition\label{gr:e:let}\\
+	   &\mid& |let|\ |[|\ \EId\ |]|\ |=|\ \Termexp\ |in|\ \Termexp&Representative of an equivalence class\label{gr:e:letquot}\\
+       &\mid& \Termexp\ \verb+%+\ \Propexp&Equivalence class of a term\label{gr:e:quot}\\
+	   &\mid& |let|\ |rz|\ \EId\ |=|\ \Termexp\ |in|\ \Termexp&Realizer of a term\label{gr:e:letrz}\\
+	   &\mid& |the|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |,|\ \Termexp&Definite description\label{gr:e:the}\\
+	\\
+	\Pat & ::= & \Label\ \Maybe{\EId \Maybe{\UseVerb{VColon}\ \Setexp}}&Pattern match\label{gr:pat}\\
 	\end{tabular}
 \end{center}
 
-\ref{gr:t:id}\ \ref{gr:t:unit}
+\subsubsection*{Notes}
+The above terms are generally ordered in decreasing order of precedence. \TODO{Update if we move \texttt{:} and \texttt{fun}.}
 
+\begin{itemize}
+	\item[(\ref{gr:e:proj})] Tuple projections are zero-based.
+	\item[(\ref{gr:e:lambda})] Function parameters must either be explicitly annotated with their set or be declared |implicit|.
+	\item[(\ref{gr:e:match})]
+  For non-value-carrying
+  sum labels the \Pat must just be a \Label; otherwise it must have a label and an identifier; the identifier must have an explicit set annotation, or appear in an |implicit| declaration.  The cases must be non-redundant
+  and exhaustive
+	\item[(\ref{gr:e:the})] The described term must be unique.  This is not checked by RZ, but an obligation to this effect is created. 
+	\item[(\ref{gr:e:letquot})] The body of this |let| must be independent of the particular choice of representative for the equivalence class.  This is not checked by RZ, but an obligation is created.
+	\item[(\ref{gr:e:letrz})] The body of this |let| must be independent of the particular choice of realizer for the given term.  This is not checked by RZ, but an obligation is created.
+	\item[(\ref{gr:pat})] Identifiers in patterns must either be explicitly annotated with their set or be declared |implicit|.
+	\TODO{We should permit wildcards too, but don't yet.}
+\end{itemize}
 \end{document}
 
 \subsection{Sets}
@@ -690,59 +739,6 @@ Terms can be of the following forms:
   define constants with these names.  Also, other integers are not permissible
   as either terms or named constants.}
 
-\item \LET \Param \EQUALS \Term \IN \Term
-  
-  Local definition of a term.  As usual, either parentheses and a set
-  are required for the defined variable, or \Param must be a lowercase
-  variable that has appeared in a previous \IMPLICIT.
-
-\item \LAMBDA \Param \PERIOD \Term
-  
-  An anonymous function.  Either parentheses and a set are required
-  for the argument, or \Param must be a lowercase variable that has
-  appeared in a previous \IMPLICIT.
-
-\item \THE \Param \PERIOD \Proposition
-
-  The description operator.  Either parentheses and a set are required
-  for the argument, or \Param must be a lowercase variable that has
-  appeared in a previous \IMPLICIT.  
-
-  \THE should be used only when there exists exactly one value making
-  the proposition true; the system does not verify this, but produces
-  an obligation to be checked by the user.
-
-\item \Term \PERCENT \metav{longrelationname}\\
-      \Term \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN
-
-  The equivalence class, under the given relation, containing the
-  given term.  The result belongs in a quotient set.  As shown,
-  currently a quotient by a symbolic binary relation requires
-  parentheses.
-
-\item \LET \Param \PERCENT \metav{longrelationname} \EQUALS \Term \IN \Term\\
-      \LET \Param \PERCENT \LPAREN \metav{longbinaryrelation} \RPAREN \EQUALS \Term \IN \Term\\
-
-  Picks an arbitrary member of the equivalence class given by the first
-  term to use in computing the second term.  No type annotation or
-  \IMPLICIT for the variable containing this memory is required.
-
-  \NB This should not be used unless the choice of representative has 
-  no effect on the value of this whole term.
-  
-\item \LBRACK \Term \RBRACK
-
-  The element whose realizer is the given term.
-
-  \NB These brackets are concrete syntax rather than EBNF.
-
-\item \LET \LBRACK \Param \RBRACK \EQUALS \Term \IN \Term
-
-  Picks an arbitrary realizer for the first term, to be used
-  in the last term.
-
-  \NB This should not be used unless the choice of representative has 
-  no effect on the value of this last term.
 
 \item \Term \SUBIN \Setexp
   
