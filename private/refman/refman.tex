@@ -154,11 +154,14 @@ creating the end-of-comment token \Verb|*)|.}.  The precedence of a
   *   /   %
   **
 \end{Verbatim}
+(Applications of unary symbolic or alphanumeric operators have equal precedence, higher than any of these binary operators.)
 
 Wherever a binary operator such as |&| is actually applied, the prefix form |(&) X Y| and infix form |X & Y| are interchangeable.  This is actually true of operators projected from models as well:  |(M.&) X Y| and |X M.& Y| are interchangeable.
 \end{itemize}
 
 \TODO{Why do we require parentheses for unary (prefix) operators?}
+
+\goodbreak
 
 \subsection{Syntax for Function Parameters}
 
@@ -229,6 +232,8 @@ There are two global restrictions on parameters that are not reflected in this g
   Like all other specifications, |implicit| has the remainder of the
   enclosing |thy|$\cdots$|end| as its scope.
 \end{itemize}
+
+\TODO{Make the syntax for implicit variable declarations closer to Coq's.}
 
 \subsection{Models}
 
@@ -432,6 +437,8 @@ The above terms are generally ordered in decreasing order of precedence. \TODO{U
 	\item[(\ref{gr:pat})] Identifiers in patterns must either be explicitly annotated with their set or be declared |implicit|.
 	\TODO{We should permit wildcards too, but don't yet.}
 \end{itemize}
+
+\TODO{We don't have an elim form for values in \texttt{empty}}
 \end{document}
 
 \subsection{Sets}
