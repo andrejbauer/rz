@@ -67,8 +67,10 @@
 \newcolumntype{R}{@{\quad}>{$}r<{$}@{\quad}}
  
 \title{RZ Reference Manual}
-\date{Version of: \today}
+\date{\vspace{-0.25cm}Version of: \today}
 \author{Andrej Bauer and Chris Stone}
+
+\raggedbottom
 
 \begin{document}
 \maketitle
@@ -110,13 +112,12 @@ output file has the same name but with its extension replaced by |.mli|.
 Two sorts of comments are allowed:
 \begin{itemize}
 \item Line comments, which go from |#| to the end-of-line.
-\item Multi-line comments, which are marked |(*|$\cdots$|*)| and which may be nested.  |#| is not treated as a
-  special line-comment character within a multi-line comment, e.g.,
-  the line |(* # *)| is a complete comment.
+\item Multi-line comments, which are marked |(*|$\cdots$|*)| and which may be nested. (|#| is not treated as a
+  special character within a multi-line comment.
 \end{itemize}
-
 Multi-line comments are retained in the final ML output, while line
   comments are discarded.
+\goodbreak
 
 \subsection{Names}
 \label{sec:names}
@@ -161,7 +162,7 @@ Wherever a binary operator such as |&| is actually applied, the prefix form |(&)
 
 \TODO{Why do we require parentheses for unary (prefix) operators?}
 
-\goodbreak
+\clearpage
 
 \subsection{Syntax for Function Parameters}
 
@@ -216,7 +217,7 @@ There are two global restrictions on parameters that are not reflected in this g
 	 	& \mid & |Parameter|\ \RRepeat{\Verb+(+ \RRepeat{\Id}\ \Verb+:+\ \Class\ \Verb+)+}\ |.|&Alternate form\label{gr:te:parameter2}\\
 	    & \mid & |Axiom|\ \Id\ |:| \Propexp\ |.|&Logical assertion\label{gr:te:axiom}\\
 		& \mid & |Definition|\ \Id\ \Repeat{\Id\ \textbar\ \Verb+(+\ \Id\ \Verb+:+ \Class\ \Verb+)+}\ |:=| \Phrase\ |.|&Definition\label{gr:te:definition}\\
-		& \mid & |implicit| \Repeat{\EId}\ |:|\ \Setexp\ |.|&Implicit range for variable\label{gr:te:implicit}\\
+		& \mid & |Implicit|\ |Type| \Repeat{\EId}\ |:|\ \Setexp\ |.|&Implicit range for variable\label{gr:te:implicit}\\
 	\end{tabular}
 \end{center}
 \begin{itemize}
@@ -228,12 +229,15 @@ There are two global restrictions on parameters that are not reflected in this g
   on a model satisfying this theory (it only simplifies writing
   the rest of the theory), and hence generates to
   no output.  
+
+  Unlike Coq, the declaration only affects the variables listed, so
+ |Implicit Type x : s.| only affects the variable |x|, not related
+variables like |x1| or |x'|.
   
   Like all other specifications, |implicit| has the remainder of the
   enclosing |thy|$\cdots$|end| as its scope.
 \end{itemize}
 
-\TODO{Make the syntax for implicit variable declarations closer to Coq's.}
 
 \subsection{Models}
 
