@@ -9,17 +9,19 @@ TEXFILES = cie.tex \
 	comparison.tex \
 	wtype.tex
 
-all: cie.pdf cie.ps
+all: cie-long.pdf cie-short.pdf
 
-cie.ps: $(TEXFILES) rzbib.bib
-	latex cie.tex
-	bibtex cie
-	latex cie.tex
-	latex cie.tex
-	dvips cie.dvi -o cie.ps
+cie-long.pdf: cie-long.tex $(TEXFILES) rzbib.bib
+	latex cie-long.tex
+	bibtex cie-long
+	latex cie-long.tex
+	pdflatex cie-long.tex
 
-cie.pdf: cie.ps
-	pdflatex cie.tex
+cie-short.pdf: cie-short.tex $(TEXFILES) rzbib.bib
+	latex cie-short.tex
+	bibtex cie-short
+	latex cie-short.tex
+	pdflatex cie-short.tex
 
 clean:
-	/bin/rm -f *.{aux,log} cie.{ps,pdf,bbl,blg,pdfsync}
+	/bin/rm -f *.{aux,log} cie-{long,short}.{ps,pdf,bbl,blg,pdfsync,dvi}
