@@ -11,13 +11,13 @@ TEXFILES = cie.tex \
 
 all: cie-long.pdf cie-short.pdf
 
-cie-long.pdf: cie-long.tex $(TEXFILES) rzbib.bib
+cie-long.pdf: cie-long.tex $(TEXFILES) rzbib.bib wtype.mli
 	latex cie-long.tex
 	bibtex cie-long
 	latex cie-long.tex
 	pdflatex cie-long.tex
 
-cie-short.pdf: cie-short.tex $(TEXFILES) rzbib.bib
+cie-short.pdf: cie-short.tex $(TEXFILES) rzbib.bib wtype.mli
 	latex cie-short.tex
 	bibtex cie-short
 	latex cie-short.tex

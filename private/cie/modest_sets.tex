@@ -258,7 +258,12 @@ and~$B$, with
 %
 \begin{align*}
   \typeOf{B^A} &= \typeOf{A} \to \typeOf{B},\\
-  u \per_{B^A} v &\iff \xall{w}{\support{A}}{u\;w \per_B v\;w}.
+  \support{B^A} &=
+  \set{v \in \values{\typeOf{A} \to \typeOf{B}} \such 
+    \all{u,u'}{\values{\typeOf{A}}}{u \per_A u' \implies v\,u \per_B v\,u'}}
+  \\
+  u \per_{B^A} v &\iff u, v \in \support{A} \land
+  \xall{w}{\support{A}}{u\;w \per_B v\;w}.
 \end{align*}
 %
 The evaluation map $e : B^A \times A \to B$ is realized by OCaml
@@ -588,8 +593,14 @@ and the \emph{product} $\depprod{i \in I}{A_i}$ as
   \typeOf{\depprod{i \in I}{A_i}} &=
   \typeOf{I} \to \typeOf{A}
   \\
+  \support{\depprod{i \in I}{A_i}} &=
+  \set{v \in \values{\typeOf{I} \to \typeOf{A}} \such
+    \all{i, j}{\values{\typeOf{I}}}{i \per_{I} j \implies v\,i
+      \per_{A_i} v\,j}
+    } \\
   u \per_{\depprod{i \in I}{A_i}} v
   &\iff
+  u, v \in \support{\depprod{i \in I}{A_i}} \land
   \all{i,j}{\values{\typeOf{I}}}{
     i \per_I j \implies u\;i \per_{A_i} v\;j
   }.
@@ -630,5 +641,5 @@ take an extra argument $n$.
 
 %%% Local Variables: 
 %%% mode: latex
-%%% TeX-master: "cie"
+%%% TeX-master: "cie-long"
 %%% End: 

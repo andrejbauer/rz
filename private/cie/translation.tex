@@ -25,7 +25,7 @@ predicate (\iPer{s}) : s \iTo s \iTo bool
 assertion symmetric_s :  \iForall x:s, y:s, x \iPer{s} y -> y \iPer{s} x
 assertion transitive_s : \iForall x:s, y:s, z:s, x \iPer{s} y \iAnd y \iPer{s} z \iTo x \iPer{s} z
 predicate \iT{s} : s \iTo bool
-assertion total_def_s :  \iForall x:s,  x : \iT{s} \iIff x \iPer{s} x
+assertion support_def_s :  \iForall x:s,  x : \iT{s} \iIff x \iPer{s} x
 \end{source}
 %
 This says that the programmer should define a type~$s$ and a per
@@ -41,14 +41,14 @@ sets as uniform families (Section~\ref{sec:uniform-families}):
 \begin{source}
 type t
 predicate \iPer{t} : s \iTo t \iTo t \iTo bool
-assertion strict_t :  \iForall x:s, y:t, z:t, y \iPer{t x} z \iTo x : ||s||
+assertion strict_t :  \iForall x:s, y:t, z:t, y \iPer{t x} z \iTo x : \iT{s}
 assertion extensional_t :
   \iForall x:s, y:s, z:t, w:t, x \iPer{s} y \iTo z \iPer{t x} w \iTo z \iPer{t y} w
 assertion symmetric_t : \iForall x:s, y:t, z:t, y \iPer{t x} z \iTo z \iPer{t x} y
 assertion transitive_t :
   \iForall x:s, y:t, z:t, w:t, y \iPer{t x} z \iAnd z \iPer{t x} w \iTo y \iPer{t x} w
-predicate ||t|| : s \iTo t \iTo bool
-assertion total_def_t :  \iForall x:s, y:t, y : ||t x|| <\iTo y \iPer{t x} y
+predicate \iT{t} : s \iTo t \iTo bool
+assertion support_def_t :  \iForall x:s, y:t, y : \iT{t x} <\iTo y \iPer{t x} y
 \end{source}
 %
 The underlying output type~$\f{t}$ is still non-dependent, but the per is
@@ -162,7 +162,7 @@ set $A/\rho$ may be constructed for an any equivalence relation~$\rho$
 on~$A$. However, because equality does not carry any computational
 content, equality of equivalence classes $\ieclass{x}{\rho} =
 \ieclass{y}{\rho}$ implies only $\inot{\inot{\rho(x,y)}}$, not the
-usual~$\rho(x,y)$. Because this may cause a great deal of confusion
+usual~$\rho(x,y)$. As this may cause confusion
 and mistakes, it is better to permit only quotients by \emph{stable}
 equivalence relations, which behave as expected.
 

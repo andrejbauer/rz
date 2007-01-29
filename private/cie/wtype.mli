@@ -3,14 +3,14 @@ module type Branching =
    type s
     
    (** predicate (=s=) : s -> s -> bool *)
-   (**  Assertion symmetric_s =  forall x:s, y:s,  x =s= y -> y =s= x
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
          
-        Assertion transitive_s = 
+        assertion transitive_s : 
           forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  Assertion total_def_s =  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    (** branching types *)
@@ -18,21 +18,21 @@ module type Branching =
    type t
     
    (** predicate (=t=) : s -> t -> t -> bool *)
-   (**  Assertion strict_t =  forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s||
+   (**  assertion strict_t :  forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s||
          
-        Assertion extensional_t = 
+        assertion extensional_t : 
           forall x:s, y:s, z:t, w:t,  x =s= y -> z =(t x)= w -> z =(t y)= w
          
-        Assertion symmetric_t = 
+        assertion symmetric_t : 
           forall x:s, y:t, z:t,  y =(t x)= z -> z =(t x)= y
          
-        Assertion transitive_t = 
+        assertion transitive_t : 
           forall x:s, y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w ->
             y =(t x)= w
    *)
     
    (** predicate ||t|| : s -> t -> bool *)
-   (**  Assertion total_def_t = 
+   (**  assertion total_def_t : 
           forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y
    *)
     
@@ -44,19 +44,19 @@ sig
   type w
    
   (** predicate (=w=) : w -> w -> bool *)
-  (**  Assertion symmetric_w = 
+  (**  assertion symmetric_w : 
          forall x:w, y:w,  x =w= y -> y =w= x
         
-       Assertion transitive_w = 
+       assertion transitive_w : 
          forall x:w, y:w, z:w,  x =w= y /\ y =w= z -> x =w= z
   *)
    
   (** predicate ||w|| : w -> bool *)
-  (**  Assertion total_def_w =  forall x:w,  x : ||w|| <-> x =w= x
+  (**  assertion total_def_w :  forall x:w,  x : ||w|| <-> x =w= x
   *)
    
   val tree : B.s -> (B.t -> w) -> w
-  (**  Assertion tree_support = 
+  (**  assertion tree_support : 
          forall x:B.s, y:B.s,  x =B.s= y ->
            forall f:B.t -> w, g:B.t -> w, 
              (forall z:B.t, t:B.t,  z =(B.t x)= t -> f z =w= g t) ->
@@ -64,7 +64,7 @@ sig
   *)
    
   val induction : (B.s -> (B.t -> w) -> (B.t -> 'ty_p) -> 'ty_p) -> w -> 'ty_p
-  (**  Assertion 'ty_p [p:w -> 'ty_p -> bool] induction = 
+  (**  assertion 'ty_p [p:w -> 'ty_p -> bool] induction : 
          (forall x:w, a:'ty_p,  p x a -> x : ||w||) ->
          (forall x:w, y:w, a:'ty_p,  x =w= y -> p x a -> p y a) ->
          forall f:B.s -> (B.t -> w) -> (B.t -> 'ty_p) -> 'ty_p, 

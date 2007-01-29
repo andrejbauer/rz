@@ -113,8 +113,8 @@
 \newcommand{\ilet}[3]{\texttt{let}\,#1\,\texttt{=}\,#2\,\texttt{in}\, #3}
 \newcommand{\iquot}[2]{#1\,\texttt{\%}\,#2}
 \newcommand{\iletquot}[4]{\texttt{let}\ #1\texttt{\%}\,#2\,\texttt{=}\,#3\ \texttt{in}\ #4}
-\newcommand{\irz}[1]{\texttt{rz}\,#1}
-\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,\texttt{=}\,#2\ \texttt{in}\ #3}
+\newcommand{\irz}[1]{\texttt{rz}\;#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\;#1\;\texttt{=}\;#2\ \texttt{in}\ #3}
 
 \newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
 \newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
@@ -154,8 +154,8 @@
 \newcommand{\ilet}[3]{\texttt{let}\,#1{=}#2\,\texttt{in}\, #3}
 \newcommand{\ieclass}[2]{[#1]_{#2}}
 \newcommand{\ileteclass}[4]{\texttt{let}\ [#1]_{#2}\,{=}#3\ \texttt{in}\ #4}
-\newcommand{\irz}[1]{\texttt{rz}\,#1}
-\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\,#1\,{=}\,#2\ \texttt{in}\ #3}
+\newcommand{\irz}[1]{\texttt{rz}\;#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\;#1\;{=}\;#2\ \texttt{in}\ #3}
 \newcommand{\iinj}[2]{{#1}\,#2}
 \newcommand{\imatches}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
 \newcommand{\imatch}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
@@ -217,7 +217,7 @@
 \newcommand{\omatch}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}\to{#4}\obar\oinj{#5}{#6}\to{#7}}
 \newcommand{\omatchx}[5]{\mathtt{match}\;#1\;\mathtt{with}\,\oinjx{#2}\to{#3}\obar\oinjx{#4}\to{#5}}
 \newcommand{\omatches}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}\to{#4}\,|\cdots\,|\oinj{#5}{#6}\to{#7}}
-\newcommand{\ooblig}[4]{\mathtt{assure}\,#1{:}#2.\,#3\,\mathtt{in}\,#4}
+\newcommand{\ooblig}[4]{\mathtt{assure}\,#1{:}#2,\,#3\,\mathtt{in}\,#4}
 \newcommand{\oobligx}[2]{\mathtt{assure}\,#1\,\mathtt{in}\,#2}
 \newcommand{\olet}[3]{\mathtt{let}\,#1{=}#2\,\mathtt{in}\,#3}
 %%%% propositions
@@ -264,5 +264,5 @@
 
 %%% Local Variables: 
 %%% mode: latex
-%%% TeX-master: "cie"
+%%% TeX-master: "cie-long"
 %%% End: 

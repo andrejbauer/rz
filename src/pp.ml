@@ -90,7 +90,7 @@ and output_term_12 ppf = function
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a@]@ in %a@]" 
         output_prop_0 p   output_term_12 trm
   | Obligation (bnds, p, trm) ->
-      fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a,@ @[%a@]@]@ in %a@]" 
         output_bnds bnds   output_prop_0 p   output_term_12 trm
   | trm -> output_term_9 ppf trm
       
@@ -309,7 +309,7 @@ and output_prop_14 ppf = function
 	output_prop_13 p   output_prop_14 q
 
   | PObligation (bnds, p, q) ->
-      fprintf ppf "@[<hov 2>@[<hov 4>assure %a.@ @[%a@]@]@ in %a@]" 
+      fprintf ppf "@[<hov 2>@[<hov 4>assure %a,@ @[%a@]@]@ in %a@]" 
         output_bnds bnds   output_prop_13 p   output_prop_14 q
 
   | PLet (pat, t, u) ->

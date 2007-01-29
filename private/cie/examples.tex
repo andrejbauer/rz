@@ -43,7 +43,7 @@ $\mathtt{`or0}$ or $\mathtt{`or1}$. If it returns $\mathtt{`or0}$,
 then $\oper{\f{s}}{\f{x}}{\f{y}}$, and if it returns
 $\mathtt{`or1}$, then $\onot{(\oper{\f{s}}{\f{x}}{\f{y}})}$. In
 other words $\f{eq}$ is a decision procedure%
-\iflong
+\iflong\ 
 which tells when
 values~$\f{x}$ and~$\f{y}$ represent the same element of the modest
 set.
@@ -84,7 +84,7 @@ Translation sees $\f{inv}(\f{x} \mathbin{{:}}
 \f{nonZeroReal})$ instead of $\f{inv\ x}$ and translates this to
 %
 \begin{source}
-inv (assure u:unit . \iNot (x \iPer{real} zero) in (x, u))
+inv (assure u:unit, \iNot (x \iPer{real} zero) in (x, u))
 \end{source}
 %
 If this were the final output, the programmer would have to verify
@@ -147,7 +147,7 @@ Not surprisingly, RZ cannot determine that there is a unique such~$x$,
 so it outputs an obligation:
 %
 \begin{source}
-assure x:real.
+assure x:real,
   (x : \iT{real} \iAnd zero < x \iAnd x * x =real= x + one \iAnd
     (\iForall (x':\iT{real}),  zero < x' \iAnd x' * x' \iPer{real} x' + one \iTo x \iPer{real} x'))
   in x

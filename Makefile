@@ -9,7 +9,7 @@ release: $(TARFILE)
 $(TARFILE):
 	(cd src && make clean)
 	echo "RZ Version ALPHA $(VERSION)" > VERSION
-	$(TAR) --create --file=$(TARFILE) --compress --verbose --directory=.. --exclude='*/.svn' --exclude='rz/private' --exclude='rz/Makefile' rz
+	$(TAR) --create --file=$(TARFILE) --gzip --verbose --directory=.. --exclude='*/.svn' --exclude='rz/private' --exclude='rz/Makefile' rz
 	echo "Created $(TARFILE)"
 
 publish: $(TARFILE)
