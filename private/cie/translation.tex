@@ -310,7 +310,7 @@ Thus an axiom $\iAxiom{\f{A}}{\phi}$ in the input is translated to
 \newcommand{\iTypeOfPhi}{$|\phi|$}
 \newcommand{\iPhi}{$\phi$}
 \begin{source}
-val r : \iTypeOfPhi
+val u : \iTypeOfPhi
 assertion A : u \iRz \iPhi
 \end{source}
 %
@@ -360,7 +360,7 @@ $\f{ty\_p}$ and it does not give $p$ an extra argument.
 Another special kind in RZ input language is the kind $\iEquiv{s}$ of
 stable equivalence relations on a set~$s$. When an equivalence
 relation is declared with $\iParameter{p}{\iEquiv{s}}$, RZ will output
-1assertions stating that $p$ is strict, extensional, 
+assertions stating that $p$ is strict, extensional, 
 reflexive, symmetric and transitive.
 
 
