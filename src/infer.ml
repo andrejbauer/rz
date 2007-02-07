@@ -863,11 +863,20 @@ let rec annotateExpr cntxt orig_expr =
 
       | Or exprs  ->
 	  begin
-	    let pairs = List.map (annotateProperProp cntxt orig_expr) exprs
-	    in let (prps, pts) = List.split pairs
+	    let lbls, prps =
+	      List.fold_right
+		(fun (lbl, e) (lbls, prps) ->
+		  let lbl =
+		    (match lbl with | None -> Name.freshLabel lbls | Some lbl -> lbl)
+		  in
+		    (lbl::lbls, (lbl, fst (annotateProperProp cntxt orig_expr e))::prps))
+		exprs
+		([], [])
 	    in 
-		 ResProp ( L.Or prps,
-			 L.Prop )
+	      if noDuplicates lbls then
+		ResProp (L.Or prps, L.Prop)
+	      else
+		E.tyGenericError ("There are duplicate labels in " ^ string_of_expr orig_expr)
 	  end
 
       | Not expr  ->

@@ -63,7 +63,7 @@ and proposition =
     | And     of proposition list
     | Imply   of proposition * proposition
     | Iff     of proposition * proposition
-    | Or      of proposition list
+    | Or      of (label * proposition) list
     | Forall  of binding * proposition
     | Exists  of binding * proposition
     | Unique  of binding * proposition
@@ -358,7 +358,8 @@ and string_of_prop prp =
     | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
     | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
-    | Or trms -> "(" ^ String.concat " || " (List.map toStr trms) ^ ")"
+    | Or trms ->
+	"(" ^ String.concat " \\/ " (List.map (fun (lbl, trm) -> lbl ^ ":" ^ toStr trm) trms) ^ ")"
     | Not trm -> "(not " ^ toStr trm ^ ")"
     | Equal(st,trm1,trm2) -> "(" ^ string_of_term trm1 ^ " =" ^ string_of_set st ^ "= " ^ string_of_term trm2 ^ ")"
     | Forall(bnd,trm) ->
@@ -596,8 +597,8 @@ and fnProp = function
     False | True -> NameSet.empty
   | Atomic(LN(None, nm), pt) -> NameSet.union (NameSet.singleton nm) (fnProptype pt)
   | Atomic(LN(Some mdl, nm), pt) -> NameSet.union (fnModel mdl) (fnProptype pt)
-  | And prps
-  | Or prps -> unionNameSetList (List.map fnProp prps)
+  | And prps -> unionNameSetList (List.map fnProp prps)
+  | Or prps -> unionNameSetList (List.map (fun (_, p) -> fnProp p) prps)
   | Not prp -> fnProp prp
   | Imply(prp1, prp2)
   | Iff(prp1, prp2) -> NameSet.union (fnProp prp1) (fnProp prp2)
@@ -872,14 +873,14 @@ and substProp sbst =
     | Atomic (LN (None, nm), pt) -> getPropvar sbst nm (substProptype sbst pt)
     | Atomic (LN (Some mdl, nm), pt) -> 
 	Atomic( LN(Some(substModel sbst mdl), nm), substProptype sbst pt)
-    | And ts        -> And(List.map sub ts)
-    | Imply(t1,t2)  -> Imply(sub t1, sub t2)
-    | Iff(t1,t2)    -> Iff(sub t1, sub t2)
-    | Or ts         -> Or(List.map sub ts)
-    | Not t         -> Not(sub t)
-    | Equal(ty,t1,t2) -> Equal(substSet sbst ty,
-                              subst sbst t1,
-			      subst sbst t2)
+    | And ts         -> And(List.map sub ts)
+    | Imply (t1,t2)  -> Imply (sub t1, sub t2)
+    | Iff (t1,t2)    -> Iff (sub t1, sub t2)
+    | Or ts          -> Or (List.map (fun (lbl, p) -> (lbl, sub p)) ts)
+    | Not t          -> Not (sub t)
+    | Equal (ty,t1,t2) -> Equal (substSet sbst ty,
+				 subst sbst t1,
+				 subst sbst t2)
     | Forall((y,sopt),t1) ->
 	let (sbst', y') = updateBoundName sbst y in 
           Forall((y',substSet sbst sopt),

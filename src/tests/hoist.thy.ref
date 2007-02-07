@@ -47,11 +47,11 @@ module type HoistTerms =
     
    val tuple : (s * ty_p) * s * (s * ty_p)
    (**  assertion tuple_def : 
-          let q = assure x:s, d:ty_p.
+          let q = assure x:s, d:ty_p,
                       (x : ||s|| /\ p x d /\ 
                        (forall (x':||s||), 
                           forall a':ty_p,  p x' a' -> x =s= x')) in (x,d)
-          in let t = assure x:s, d:ty_p.
+          in let t = assure x:s, d:ty_p,
                          (x : ||s|| /\ p (f x) d /\ 
                           (forall (x':||s||), 
                              forall a':ty_p,  p (f x') a' -> x =s= x'))
@@ -71,7 +71,7 @@ module type HoistTerms =
           forall h:s -> s, r:s -> s, 
             (forall x:s, y:s,  x =s= y -> h x =s= r y) ->
             g h =s= r
-                      (assure x:s, d:ty_p.
+                      (assure x:s, d:ty_p,
                            (x : ||s|| /\ p x d /\ 
                             (forall (x':||s||), 
                                forall a':ty_p,  p x' a' -> x =s= x')) in x)
@@ -79,7 +79,7 @@ module type HoistTerms =
     
    val application : s
    (**  assertion application_def : 
-          application =s= (assure h:(s -> s) -> s.
+          application =s= (assure h:(s -> s) -> s,
                                (h : ||(s -> s) -> s|| /\ 
                                 (forall r:s -> s, f':s -> s, 
                                    (forall x:s, y:s,  x =s= y -> r x =s= f' y) ->
@@ -93,7 +93,7 @@ module type HoistTerms =
                                         r x =s= f' y) -> h r =s= h' f'))
                              in h
                                   (fun x : s =>
-                                   assure y:s, d:ty_p.
+                                   assure y:s, d:ty_p,
                                        (y : ||s|| /\ p y d /\ 
                                         (forall (y':||s||), 
                                            forall a':ty_p,  p y' a' ->
@@ -102,24 +102,24 @@ module type HoistTerms =
     
    val description : s * ty_p
    (**  assertion description_def : 
-          let x = assure x:s, d:ty_p.
+          let x = assure x:s, d:ty_p,
                       (x : ||s|| /\ 
-                       p (assure y:s.
+                       p (assure y:s,
                               (y : ||s|| /\ y =s= x /\ 
                                (forall (y':||s||),  y' =s= x -> y =s= y'))
                             in y) d /\ 
                        (forall (x':||s||), 
                           forall a':ty_p, 
-                            p (assure y:s.
+                            p (assure y:s,
                                    (y : ||s|| /\ y =s= x' /\ 
                                     (forall (y':||s||),  y' =s= x' ->
                                        y =s= y')) in y) a' -> x =s= x'))
                     in (x,d)
-          in p (assure y:s.
+          in p (assure y:s,
                     (y : ||s|| /\ y =s= pi0 description /\ 
                      (forall (y':||s||),  y' =s= pi0 description -> y =s= y'))
                   in y) (pi1 description) /\ 
-          p (assure y:s.
+          p (assure y:s,
                  (y : ||s|| /\ y =s= pi0 x /\ 
                   (forall (y':||s||),  y' =s= pi0 x -> y =s= y')) in y) 
           (pi1 x) /\ pi0 description =s= pi0 x
@@ -128,7 +128,7 @@ module type HoistTerms =
    val cases : s
    (**  assertion cases_def : 
           let x = assure ((forall (Z__1:||s||),  b =s= c))
-                    in assure x:s.
+                    in assure x:s,
                            (x : ||s|| /\ x =s= b /\ 
                             (forall (x':||s||),  x' =s= b -> x =s= x')) in x
           in cases =s= b /\ x =s= b /\ cases =s= x
@@ -144,7 +144,7 @@ module type HoistTerms =
     
    val rzchoose : s
    (**  assertion rzchoose_def : 
-          rzchoose =s= (assure x:s.
+          rzchoose =s= (assure x:s,
                             (x : ||s|| /\ a =s= x /\ 
                              (forall (x':||s||),  a =s= x' -> x =s= x')) in x)
    *)
@@ -165,29 +165,29 @@ module type HoistTerms =
     
    val quot : s
    (**  assertion quot_def : 
-          eq quot (assure x:s.
+          eq quot (assure x:s,
                        (x : ||s|| /\ x =s= a /\ 
                         (forall (x':||s||),  x' =s= a -> x =s= x')) in x)
    *)
     
    val choose_term : s
    (**  assertion choose_term_def : 
-          eq choose_term (let x = assure w:s.
+          eq choose_term (let x = assure w:s,
                                       (w : ||s|| /\ eq w quot /\ 
                                        (forall (w':||s||),  eq w' quot ->
                                           eq w w')) in w
                           in assure (forall x':s,  eq x x' ->
-                                       eq (assure y:s.
+                                       eq (assure y:s,
                                                (y : ||s|| /\ x =s= y /\ 
                                                 (forall (y':||s||), 
                                                    x =s= y' -> y =s= y'))
-                                             in y) (assure y:s.
+                                             in y) (assure y:s,
                                                         (y : ||s|| /\ 
                                                          x' =s= y /\ 
                                                          (forall (y':||s||), 
                                                             x' =s= y' ->
                                                             y =s= y')) in y))
-                               in assure y:s.
+                               in assure y:s,
                                       (y : ||s|| /\ x =s= y /\ 
                                        (forall (y':||s||),  x =s= y' ->
                                           y =s= y')) in y)
@@ -195,11 +195,11 @@ module type HoistTerms =
     
    val let_term : s * s
    (**  assertion let_term_def : 
-          let x = assure x:s.
+          let x = assure x:s,
                       (x : ||s|| /\ x =s= a /\ 
                        (forall (x':||s||),  x' =s= a -> x =s= x')) in x
           in pi0 let_term =s= x /\ 
-          pi1 let_term =s= (assure y:s.
+          pi1 let_term =s= (assure y:s,
                                 (y : ||s|| /\ x =s= y /\ 
                                  (forall (y':||s||),  x =s= y' -> y =s= y'))
                               in y)
@@ -207,7 +207,7 @@ module type HoistTerms =
     
    val subin : s * ty_p
    (**  assertion subin_def :  p (pi0 subin) (pi1 subin) /\ 
-          p a (assure d:ty_p. (p a d) in d) /\ pi0 subin =s= a
+          p a (assure d:ty_p, (p a d) in d) /\ pi0 subin =s= a
    *)
     
    (** fishy *)

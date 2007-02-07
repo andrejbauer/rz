@@ -863,15 +863,17 @@ and eqProp cntxt prp1 prp2 =
       match (hnfProp cntxt prp1, hnfProp cntxt prp2) with
 	  (False, False) -> []
 	| (True, True) -> []
+
 	| (Atomic(LN(None, nm1), _), Atomic(LN(None, nm2), _) ) when nm1=nm2 -> 
 	    []
+
 	| (Atomic(LN(Some mdl1, nm1), _), 
 	  Atomic(LN(Some mdl2, nm2), _)) when nm1 = nm2 ->
 	    eqModel cntxt mdl1 mdl2
 	      
-	| (And prps1, And prps2) 
-	| (Or prps1, Or prps2 )->
-	    eqProps cntxt prps1 prps2
+	| (And prps1, And prps2) -> eqProps cntxt prps1 prps2
+
+	| (Or prps1, Or prps2 )-> eqDisjuncts cntxt prps1 prps2
 	      
 	| (Imply(prp1a, prp1b), Imply(prp2a, prp2b)) 
 	| (Iff(prp1a, prp1b), Iff(prp2a, prp2b)) ->
@@ -947,8 +949,22 @@ and eqProps cntxt prps1 prps2 =
   with
       Invalid_argument _ -> 
 	raise (E.TypeError ["Different numbers of propositions"])
-	                             
 
+and eqDisjunct cntxt (lbl1, prp1) (lbl2, prp2) =
+  if lbl2 = lbl2 then
+    eqProp cntxt prp1 prp2
+  else
+    raise (E.TypeError ["Incompatible labels on disjuncts"])
+	                             
+and eqDisjuncts cntxt disj1 disj2 = 
+  let disj1 = List.sort (fun (lbl1, _) (lbl2, _) -> compare lbl1 lbl2) disj1 in
+  let disj2 = List.sort (fun (lbl1, _) (lbl2, _) -> compare lbl1 lbl2) disj2 in
+    try  
+      List.flatten (List.map2 (eqDisjunct cntxt) disj1 disj2)
+    with
+	Invalid_argument _ -> 
+	  raise (E.TypeError ["Different numbers of disjuncts"])
+	                             
 and eqTerm cntxt trm1 trm2 = 
   if (trm1 = trm2) then
     []

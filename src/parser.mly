@@ -301,8 +301,8 @@ and_list:
   | and_list ANDSYMBOL expr  { $1 @ [$3] }
 
 or_list:
-  | expr ORSYMBOL expr  %prec ORSYMBOL2 { [$1; $3] }
-  | or_list ORSYMBOL expr               { $1 @ [$3] }
+  | LABEL COLON expr ORSYMBOL LABEL COLON expr  %prec ORSYMBOL2 { [(Some $1, $3); (Some $5, $7)] }
+  | or_list ORSYMBOL LABEL COLON expr                           { $1 @ [(Some $3, $5)] }
 
 expr_list:
   | expr COMMA expr                   { [$1; $3] }

@@ -500,21 +500,15 @@ and translateProp = function
 	  ])
 	  
   | L.Or lst ->
-      let rec make_labels i j =
-	if i >= j then [] else ("or" ^ (string_of_int i)) :: (make_labels (i+1) j)
-      in
-      let lst' = List.map translateProp lst in
-      let lbs = make_labels 0 (List.length lst) in
-      let ty = SumTy (List.map2 (fun lb (t,_) -> (lb, Some t)) lbs lst') in
+      let lst' = List.map (fun (lb, p) -> (lb, translateProp p)) lst in
+      let ty = SumTy (List.map (fun (lb, (t, _)) -> (lb, Some t)) lst') in
       let u = fresh ty in
 	makeProp (u, ty)
 	  (PCase
 	     (id u,
-	      List.map2 (fun lb (t,p) ->
-			   let x = fresh t in
-			     ConstrPat (lb, Some (x,t)), pApp p (id x)
-			) lbs lst'
-	     ))
+	      List.map
+		(fun (lb, (t,p)) -> let x = fresh t in ConstrPat (lb, Some (x,t)), pApp p (id x))
+		lst'))
 
   | L.Forall ((n, s), p) ->
       let {ty=t; tot=q} = translateSet s in
@@ -575,8 +569,8 @@ and translateProp = function
 
 
   | L.PCase (t, _, lst) ->
-      let tys, arms = List.fold_left
-	(fun (tys, arms) -> function
+      let tys, arms = List.fold_right
+	(fun arm (tys, arms) -> match arm with
 	    (lb, Some (n, s), p) ->
 	      let {ty=ty2; tot=q} = translateSet s in
 	      let (ty1, p') = translateProp p in
@@ -592,8 +586,8 @@ and translateProp = function
 	        (TuplePat [ConstrPat(lb, Some (x, ty1));
 			   ConstrPat(lb, None)], pApp p' (id x))::arms
 	)
+	lst
 	([], [])
-        lst
       in
       let r = fresh (SumTy tys) in
 	makeProp (r, SumTy tys) (PCase (Tuple[id r; translateTerm t], arms))

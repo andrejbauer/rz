@@ -170,6 +170,16 @@ let freshNameString = gensym [("___1", Word)]
 
 let freshModelNameString = gensym [("Z__1", Word)]
 
+let freshLabel bad =
+  let rec search k =
+    let lbl = "or" ^ string_of_int k in
+      if List.mem lbl bad then
+	search (k+1)
+      else
+	lbl
+  in
+    search 0
+
 (*******************************)
 (** {2: Fresh Name Generation} *)
 (*******************************)

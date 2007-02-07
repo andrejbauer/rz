@@ -75,7 +75,7 @@ and expr =
   | True
   | And    of prop list
   | Iff    of prop  * prop
-  | Or     of prop list
+  | Or     of (label option * prop) list
   | Not    of prop
   | Equal  of term * term
   | Forall of binding * prop
@@ -186,7 +186,11 @@ and string_of_expr = function
   | True -> "true"
   | And lst -> String.concat " /\\ " (List.map string_of_expr lst)
   | Iff (e1, e2) -> string_of_expr e1 ^ " <-> " ^ string_of_expr e2
-  | Or lst -> String.concat " \\/ " (List.map string_of_expr lst)
+  | Or lst ->
+      String.concat " \\/ "
+	(List.map (function
+		     | (Some lbl, e) -> lbl ^ ":" ^ string_of_expr e
+		     | (None, e) -> string_of_expr e) lst)
   | Not e -> "not " ^ string_of_expr e
   | Equal (e1, e2) -> string_of_expr e1 ^ " = " ^ string_of_expr e2
   | Forall (bnd, e) -> "forall " ^ string_of_binding bnd ^ ", " ^ string_of_expr e

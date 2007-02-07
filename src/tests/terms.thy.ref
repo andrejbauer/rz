@@ -65,7 +65,7 @@ module type Terms =
     
    val description : s * ty_p
    (**  assertion description_def : 
-          let x = assure x:s, d:ty_p.
+          let x = assure x:s, d:ty_p,
                       (x : ||s|| /\ p x d /\ 
                        (forall (x':||s||), 
                           forall a':ty_p,  p x' a' -> x =s= x')) in (x,d)
@@ -117,7 +117,7 @@ module type Terms =
     
    val subin : s * ty_p
    (**  assertion subin_def :  p (pi0 subin) (pi1 subin) /\ 
-          p a (assure d:ty_p. (p a d) in d) /\ pi0 subin =s= a
+          p a (assure d:ty_p, (p a d) in d) /\ pi0 subin =s= a
    *)
     
    (** fishy *)

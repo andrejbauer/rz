@@ -149,11 +149,11 @@ module type P =
           
    *)
     
-   val tst_pcase : [`bar of ty_p | `foo of ty_p]
+   val tst_pcase : [`foo of ty_p | `bar of ty_p]
    (**  assertion tst_pcase : 
           match (tst_pcase,w) with
-            (`bar(x:ty_p),`bar(u:s * s)) => u : ||s * s|| /\ p (pi0 u) x 
-          | (`foo(x:ty_p),`foo) => p x0 x 
+            (`foo(x:ty_p),`foo) => p x0 x 
+          | (`bar(x:ty_p),`bar(u:s * s)) => u : ||s * s|| /\ p (pi0 u) x 
           
    *)
  end

@@ -1,5 +1,3 @@
-coq_pp.cmo: outsyn.cmo name.cmo 
-coq_pp.cmx: outsyn.cmx name.cmx 
 error.cmo: syntax.cmo name.cmo logic.cmo 
 error.cmx: syntax.cmx name.cmx logic.cmx 
 infer.cmo: syntax.cmo name.cmo logicrules.cmo logic.cmo error.cmo 
