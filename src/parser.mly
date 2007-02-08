@@ -252,17 +252,20 @@ simple_expr:
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
-  | RZ simple_expr                            { Rz $2 }
-  | EQUIV simple_expr                         { Equiv $2 }
   | simple_expr                               { $1 } 
-
+  
+neg_expr:
+  | apply_expr                                { $1 }
+  | NOT neg_expr                              { Not $2 }
+  | EQUIV neg_expr                            { Equiv $2 }
+  | RZ neg_expr                               { Rz $2 }
+    
 expr:
 /*  | simple_expr                               { $1 }  */
-  | apply_expr                                { $1 }
+  | neg_expr                                  { $1 }
   | or_list                                   { Or $1 }
   | and_list                                  { And $1 }
   | expr EQUAL expr                           { Equal ($1, $3) }
-  | NOT expr                                  { Not $2 }
   | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
   | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
   | product_list %prec PLUS /* < STAR */      { Product $1 }
