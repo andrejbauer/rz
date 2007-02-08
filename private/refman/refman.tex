@@ -6,6 +6,10 @@
 \usepackage{pdfsync}
 \fi
 
+\DefineShortVerb{\+}
+\SaveVerb{VBar}+|+
+\UndefineShortVerb{\+}
+
 \DefineShortVerb{\|}
 
 \newcommand{\metav}[1]{\mbox{\textit{#1}}}
@@ -34,6 +38,7 @@
 \newcommand{\Pat}{\metav{pat}}
 \newcommand{\BOp}{\metav{bop}}
 \newcommand{\UOp}{\metav{uop}}
+\newcommand{\Disjunct}{\metav{dj}}
 
 \SaveVerb{VWildcard}|_|
 \SaveVerb{VColon}|:|
@@ -144,8 +149,8 @@ Term, set, and predicate identifiers can be:
 \item An ordinary lowercase alphanumeric identifier, beginning with a
   letter or underscore, containing letters, digits, underscores, and
   single quotes. (Integers such as |0| are therefore not valid names for constants.)
-\item Or, a unary operator (any purely symbolic characters beginning with |?|, |~|, or |!|) enclosed in parentheses
-\item Or a binary operator (any other identifier composed \emph{only} of
+\item Or, a unary operator $\UOp$ (any purely symbolic characters beginning with |?|, |~|, or |!|) enclosed in parentheses
+\item Or a binary operator $\BOp$ (any other identifier composed \emph{only} of
   symbolic characters) enclosed in parentheses\footnote{The parenthesized version of a binary operator \Verb|*| must be
 written \Verb|(* )| rather than as \Verb|(*)| in order to avoid
 creating the end-of-comment token \Verb|*)|.}.  The precedence of a
@@ -323,21 +328,23 @@ listed here merely for completeness.
 	   & \mid & \PId&Propositional identifiers\label{gr:p:id}\\
 	   & \mid & \Modelexp|.|\PId&Proposition/predicate in a model\label{gr:p:mproj}\\
 	   & \mid & |(|\ \Propexp\ |)|&Grouping parentheses\label{gr:p:parens}\\
-	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Propexp \Verb+|+ $\cdots$\ |end|&Case analysis\label{gr:p:match}\\
+	   & \mid & |match|\ \Termexp\ |with|\ \Repeat{\UseVerb{VBar}\ \Pat\ \UseVerb{VDArrow}\ \Propexp}\ |end|&Case analysis\label{gr:p:match}\\
 	   &\mid& \Maybe{\Modelexp\UseVerb{VDot}}\UOp\ \Termexp&Unary operator\label{gr:p:uop}\\
 	   & \mid & \Propexp\ \Termexp&Application\label{gr:p:app}\\
 	   &\mid& \Termexp\ \Maybe{\Modelexp\UseVerb{VDot}}\BOp\ \Termexp&Binary operator{\label{gr:p:binop}}\\    
-	   & \mid & \Termexp\ |=|\ \Termexp&Equivalence\label{gr:p:eq}\\
-	   & \mid & |not|\ \Propexp&\label{gr:p:not}\\
-	   & \mid & \Propexp\ |/\|\ $\cdots$\ |/\|\ \Propexp&\label{gr:p:and}\\
-	   & \mid & \Propexp\ |\/|\ $\cdots$\ |\/|\ \Propexp&\label{gr:p:or}\\
-	   & \mid & \Propexp\ |->|\ \Propexp&\label{gr:p:imply}\\
-	   & \mid & \Propexp\ |<->|\ \Propexp&\label{gr:p:iff}\\
-	   & \mid & \Propexp\ |:|\ \Propkind&Propositional kind coercion\label{gr:p:coerce}\\  
-	   & \mid & |forall|\ \Params\ |,|\ \Propexp&\label{gr:p:all}\\
-	   & \mid & |exists|\ \Params\ |,|\ \Propexp&\label{gr:p:some}\\
-	   & \mid & |exists1|\ \Params\ |,|\ \Propexp&\label{gr:p:some1}\\
-	   & \mid & |fun| \Params\ |=>|\ \Propexp&Predicate\label{gr:p:lambda}\\
+	   & \mid & \Termexp\ |=|\ \Termexp&Term equivalence\label{gr:p:eq}\\
+	   & \mid & |not|\ \Propexp&Negation\label{gr:p:not}\\
+	   & \mid & \Propexp\ |/\|\ $\cdots$\ |/\|\ \Propexp&Conjunction\label{gr:p:and}\\
+	   & \mid & \Disjunct\ |\/|\ $\cdots$\ |\/|\ \Disjunct&Disjunction\label{gr:p:or}\\
+	   & \mid & \Propexp\ |->|\ \Propexp&Implication\label{gr:p:imply}\\
+	   & \mid & \Propexp\ |<->|\ \Propexp&Logical equivalence\label{gr:p:iff}\\ 
+	   & \mid & |forall|\ \Params\ |,|\ \Propexp&Universal\label{gr:p:all}\\
+	   & \mid & |exists|\ \Params\ |,|\ \Propexp&Existential\label{gr:p:some}\\
+	   & \mid & |exists1|\ \Params\ |,|\ \Propexp&Unique existential\label{gr:p:some1}\\
+	   & \mid & \Propexp\ |:|\ \Propkind&Propositional kind coercion\label{gr:p:coerce}\\ 
+	   & \mid & |fun| \Params\ |=>|\ \Propexp&Predicate\label{gr:p:lambda}\\[10pt]\\
+	\Disjunct & ::= & \Propexp&Unlabeled disjunct\label{gr:dj:unlabeled}\\
+	   & \mid & |[|\ \Label\ |:|\ \Propexp\ |]|&Labeled disjunct\label{gr:dj:labeled}\\
 	\end{tabular}
 \end{center}
 
@@ -346,10 +353,11 @@ listed here merely for completeness.
 The propositions are listed roughly in decreasing order of precedence.
 
 \begin{enumerate}
-	\item[(\ref{gr:p:coerce})] The typechecker will let you coerce any  $t$|->|$t$|->Stable| relation to |Equiv(|$t$|)|.  RZ cannot check that the relation is really reflexive, symmetric, and transitive, and so an obligation is produced.
-	\item[(\ref{gr:p:lambda})] Term identifiers in \Params\ must be annotated with their set or must appear in an |implicit|.
+	\item[(\ref{gr:p:match})] The bar before the first pattern can be omitted.
 	\item[(\ref{gr:p:and}),(\ref{gr:p:or})] Conjunction and disjunction are $n$-ary, so that the translation yields flat $n$-tuples rather than nested pairs.
 	\item[(\ref{gr:p:all})--(\ref{gr:p:some1})] Term identifiers in \Params\ must be annotated with their set or must appear in an |implicit|.
+	\item[(\ref{gr:p:coerce})] The typechecker will let you coerce any  $t$|->|$t$|->Stable| relation to |Equiv(|$t$|)|.  RZ cannot check that the relation is really reflexive, symmetric, and transitive, and so an obligation is produced.
+	\item[(\ref{gr:p:lambda})] Term identifiers in \Params\ must be annotated with their set or must appear in an |implicit|.
 \end{enumerate}
 
 \iffalse
@@ -389,7 +397,6 @@ The above sets are generally listed in order of decreasing precedence.
 \begin{itemize}
 \item[(\ref{gr:s:empty})] The syntax |{}| can be used as a synonym for |empty|.
 \item[(\ref{gr:s:id})] Set identifiers must be symbolic or lowercase, as described in \S\ref{sec:names}.
-\item[(\ref{gr:s:fun})] Sets may only have dependencies on terms (i.e., all identifiers in $\Params$ must be term identifiers, and all classifiers in $\Params$ must be sets).  All parameters must either have a set explicitly declared, or else they must have previously appeared in an |implicit|.
 \item[(\ref{gr:s:times})] The full syntax for cartesian product supports dependencies, e.g. |[x:s] * [y:t(x)] * u x y| (where |s|:|Set|, |t|:|s->Set|, and |u|:|[x:s]->t(x)->Set|) stands
 for 
 \[
@@ -403,6 +410,7 @@ for
 \]
 If there is no dependency on the argument then the brackets, the identifier, and the colon can call be omitted, and we have just |s->t|.
 \item[(\ref{gr:s:coerce})] Sets have unique kinds up to equivalence, so all RZ does in this case is verify that the given set does have the given kind.
+\item[(\ref{gr:s:fun})] Sets may only have dependencies on terms (i.e., all identifiers in $\Params$ must be term identifiers, and all classifiers in $\Params$ must be sets).  All parameters must either have a set explicitly declared, or else they must have previously appeared in an |implicit|.
 \end{itemize}
 
 \subsection{Terms}
@@ -415,7 +423,7 @@ If there is no dependency on the argument then the brackets, the identifier, and
 	   &\mid& \Termexp|.|$n$&$n^{\rm th}$ tuple component $(n\ge 0)$\label{gr:e:proj}\\
 	   &\mid& |(|\ \Termexp\ |)|&Grouping parentheses\label{gr:e:parens}\\
 	   &\mid& |(|\ \Termexp\ \RRepeat{\UseVerb{VComma}\ \Termexp}\ |)|&Tuple\label{gr:e:tuple}\\
-	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Termexp \Verb+|+ $\cdots$\ |end|&Case analysis\label{gr:e:match}\\
+	   & \mid & |match|\ \Termexp\ |with|\ \Repeat{\UseVerb{VBar}\ \Pat\ \UseVerb{VDArrow}\ \Termexp}\ |end|&Case analysis\label{gr:e:match}\\
 	   &\mid& \Label\ \Maybe{\Termexp}&Injection into a union\label{gr:e:inj}\\
 	   &\mid& \Maybe{\Modelexp\UseVerb{VDot}}\UOp\ \Termexp&Unary operator\label{gr:e:uop}\\
 	   &\mid& \Termexp\ \Termexp&Application\label{gr:e:app}\\
@@ -438,14 +446,18 @@ The above terms are generally ordered in decreasing order of precedence.
 
 \begin{itemize}
 	\item[(\ref{gr:e:proj})] Tuple projections are zero-based.
-	\item[(\ref{gr:e:lambda})] Function parameters must either be explicitly annotated with their set or be declared |implicit|.
 	\item[(\ref{gr:e:match})]
-  For non-value-carrying
-  sum labels the \Pat must just be a \Label; otherwise it must have a label and an identifier; the identifier must have an explicit set annotation, or appear in an |implicit| declaration.  The cases must be non-redundant
-  and exhaustive
-	\item[(\ref{gr:e:the})] The described term must be unique.  This is not checked by RZ, but an obligation to this effect is created. 
+  For non-value-carrying sum labels the \Pat must just be a \Label; otherwise it
+  must have a label and an identifier; the identifier must have an explicit set
+  annotation, or appear in an |implicit| declaration. The cases must be
+  non-redundant and exhaustive.
+
+  The bar before the first pattern may be omitted.
+
 	\item[(\ref{gr:e:letquot})] The body of this |let| must be independent of the particular choice of representative for the equivalence class.  This is not checked by RZ, but an obligation is created.
 	\item[(\ref{gr:e:letrz})] The body of this |let| must be independent of the particular choice of realizer for the given term.  This is not checked by RZ, but an obligation is created.
+	\item[(\ref{gr:e:the})] The described term must be unique.  This is not checked by RZ, but an obligation to this effect is created. 
+	\item[(\ref{gr:e:lambda})] Function parameters must either be explicitly annotated with their set or be declared |implicit|.
 	\item[(\ref{gr:pat})] Identifiers in patterns must either be explicitly annotated with their set or be declared |implicit|.
 	\TODO{We should permit wildcards too, but don't yet.}
 \end{itemize}

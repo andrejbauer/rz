@@ -345,6 +345,9 @@ binding1:
 case1:
   | LABEL arg_noparen_required DOUBLEARROW expr  { $1, Some $2, $4 }
   | LABEL DOUBLEARROW expr                       { $1, None, $3 }
+  /* Permit an optional bar before the first case */
+  | BAR LABEL arg_noparen_required DOUBLEARROW expr  { $2, Some $3, $5 }
+  | BAR LABEL DOUBLEARROW expr                       { $2, None, $4 }
 
 case_list:
   | case1                                        { [$1] }
