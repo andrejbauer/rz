@@ -23,6 +23,11 @@ let noDuplicates strngs =
   let sset = List.fold_right StringSet.add strngs StringSet.empty
   in
     List.length strngs = StringSet.cardinal sset
+    
+let rec gatherSomes = function
+    [] -> []
+  | None   :: rest -> gatherSomes rest
+  | Some x :: rest -> x :: gatherSomes rest
 
 (*************************)
 (** {3 Inference proper} *)
@@ -863,18 +868,23 @@ let rec annotateExpr cntxt orig_expr =
 
       | Or exprs  ->
 	  begin
-	    let lbls, prps =
-	      List.fold_right
-		(fun (lbl, e) (lbls, prps) ->
-		  let lbl =
-		    (match lbl with | None -> Name.freshLabel lbls | Some lbl -> lbl)
-		  in
-		    (lbl::lbls, (lbl, fst (annotateProperProp cntxt orig_expr e))::prps))
-		exprs
-		([], [])
+	    let orig_labels = gatherSomes (List.map fst exprs)
+	    in let rec processDisjuncts used_lbls = function
+	        [] -> ([], [])
+	      | (lblopt,e) :: rest -> 
+	          let lbl = 
+  		        (match lblopt with 
+  		            None -> Name.freshLabel used_lbls 
+  		          | Some lbl -> lbl)
+              in let (lbls, lprps) = 
+                      processDisjuncts (lbl :: used_lbls) rest
+              in let (prp, _) = annotateProperProp cntxt orig_expr e
+              in (lbl :: lbls, prp :: lprps)
+               
+	    in let lbls, prps = processDisjuncts orig_labels exprs 
 	    in 
 	      if noDuplicates lbls then
-		ResProp (L.Or prps, L.Prop)
+		ResProp (L.Or (List.combine lbls prps), L.Prop)
 	      else
 		E.tyGenericError ("There are duplicate labels in " ^ string_of_expr orig_expr)
 	  end

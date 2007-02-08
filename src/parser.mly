@@ -18,6 +18,7 @@
 	[] -> st
       | bnd -> Lambda (bnd, st)
 
+(*
   let nameError str1 str2 n = 
     raise (Message.Parse (Message.loc_here n,  
 			 "End " ^ str2 ^ " found where End " ^
@@ -26,6 +27,7 @@
   let unclosed what n =
     raise (Message.Parse (Message.loc_here n,  
 			 "Missing " ^ what))
+*)
 
 %}
 
@@ -128,7 +130,7 @@
 %nonassoc PERIOD PERIOD_LPAREN MPROJECT
 %nonassoc EQUAL 
 %nonassoc FUN MATCH WITH BAR
-%nonassoc SUBIN SUBOUT
+%left SUBIN SUBOUT COLON
 %left     INFIXOP0
 %right    INFIXOP1
 %left     INFIXOP2 PLUS
@@ -137,7 +139,6 @@
 %left     PERCENT
 %nonassoc RZ
 %nonassoc PREFIXOP
-%right    COLON
 
 /* Entry points */
 
@@ -287,9 +288,12 @@ or_expr:
   | bin_expr ORSYMBOL or_list                 { Or ((None,$1) :: $3) }
   | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list { Or((Some $2,$4) :: $7) }    
 
-expr:
-  | or_expr                                   { $1 }
+and_expr:
+  | or_expr                                  { $1 }
   | or_expr ANDSYMBOL and_list               { And ($1 :: $3) }
+  
+expr:
+  | and_expr                                   { $1 }
   | summand PLUS sum_list                     { Sum ($1 :: $3) }
   | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
   | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
