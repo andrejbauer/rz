@@ -111,7 +111,7 @@ module type T =
     
    val n : s
    (**  assertion n_def :  n : ||s|| /\ 
-          n =s= (assure y:s. (y : ||s|| /\ (forall (y':||s||),  y =s= y'))
+          n =s= (assure y:s, (y : ||s|| /\ (forall (y':||s||),  y =s= y'))
                    in y)
    *)
     
@@ -434,21 +434,21 @@ module type TestSubset =
     
    val warning : ty_q
    (**  assertion warning : 
-          q (pi0 c,(assure a:ty_p. (p (pi0 c) a) in a)) warning
+          q (pi0 c,(assure a:ty_p, (p (pi0 c) a) in a)) warning
    *)
     
    val foo : s -> ty_p -> ty_q
    (**  assertion foo : 
           forall (x:||s||), 
             forall y:ty_p,  p x y ->
-              q (x,(assure a:ty_p. (p x a) in a)) (foo x y)
+              q (x,(assure a:ty_p, (p x a) in a)) (foo x y)
    *)
     
    val bar : s -> ty_p -> ty_q
    (**  assertion bar : 
           forall (x:||s||), 
             forall y:ty_p,  p x y ->
-              q (x,(assure a:ty_p. (p x a) in a)) (bar x y)
+              q (x,(assure a:ty_p, (p x a) in a)) (bar x y)
    *)
     
    val baz : t -> ty_r

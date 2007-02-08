@@ -32,6 +32,8 @@
 \newcommand{\Theorykind}{\metav{thrykind}}
 \newcommand{\Params}{\metav{params}}
 \newcommand{\Pat}{\metav{pat}}
+\newcommand{\BOp}{\metav{bop}}
+\newcommand{\UOp}{\metav{uop}}
 
 \SaveVerb{VWildcard}|_|
 \SaveVerb{VColon}|:|
@@ -44,6 +46,7 @@
 \SaveVerb{VDArrow}|=>|
 \SaveVerb{VArrow}|->|
 \SaveVerb{VComma}|,|
+\SaveVerb{VDot}|.|
 
 \newcounter{grammaritem}
 
@@ -58,9 +61,9 @@
 \newcommand{\NB}{\textbf{NB: }}
 \newcommand{\TODO}[1]{[\textbf{TODO: }#1]}
 
-\newcommand{\Maybe}[1]{$[${}#1{}$]$}
-\newcommand{\Repeat}[1]{$[${}#1{}$]^*$}
-\newcommand{\RRepeat}[1]{$[${}#1{}$]^+$}
+\newcommand{\Maybe}[1]{$\langle${}#1{}$\rangle$}
+\newcommand{\Repeat}[1]{$\langle${}#1{}$\rangle^*$}
+\newcommand{\RRepeat}[1]{$\langle${}#1{}$\rangle^+$}
 
 
 \newcolumntype{E}{>{\quad\refstepcounter{grammaritem}}l<{\ (\arabic{grammaritem})}}
@@ -234,7 +237,7 @@ There are two global restrictions on parameters that are not reflected in this g
  |Implicit Type x : s.| only affects the variable |x|, not related
 variables like |x1| or |x'|.
   
-  Like all other specifications, |implicit| has the remainder of the
+  Like all other specifications, |Implicit Type| has the remainder of the
   enclosing |thy|$\cdots$|end| as its scope.
 \end{itemize}
 
@@ -320,26 +323,27 @@ listed here merely for completeness.
 	   & \mid & \PId&Propositional identifiers\label{gr:p:id}\\
 	   & \mid & \Modelexp|.|\PId&Proposition/predicate in a model\label{gr:p:mproj}\\
 	   & \mid & |(|\ \Propexp\ |)|&Grouping parentheses\label{gr:p:parens}\\
+	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Propexp \Verb+|+ $\cdots$\ |end|&Case analysis\label{gr:p:match}\\
+	   &\mid& \Maybe{\Modelexp\UseVerb{VDot}}\UOp\ \Termexp&Unary operator\label{gr:p:uop}\\
 	   & \mid & \Propexp\ \Termexp&Application\label{gr:p:app}\\
-	   & \mid & \Propexp\ |:|\ \Propkind&Propositional kind coercion\label{gr:p:coerce}\\  
-	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Propexp \Verb+|+ $\cdots$&Case analysis\label{gr:p:match}\\
-	   & \mid & |fun| \Params\ |=>|\ \Propexp&Predicate\label{gr:p:lambda}\\
+	   &\mid& \Termexp\ \Maybe{\Modelexp\UseVerb{VDot}}\BOp\ \Termexp&Binary operator{\label{gr:p:binop}}\\    
 	   & \mid & \Termexp\ |=|\ \Termexp&Equivalence\label{gr:p:eq}\\
 	   & \mid & |not|\ \Propexp&\label{gr:p:not}\\
 	   & \mid & \Propexp\ |/\|\ $\cdots$\ |/\|\ \Propexp&\label{gr:p:and}\\
 	   & \mid & \Propexp\ |\/|\ $\cdots$\ |\/|\ \Propexp&\label{gr:p:or}\\
 	   & \mid & \Propexp\ |->|\ \Propexp&\label{gr:p:imply}\\
 	   & \mid & \Propexp\ |<->|\ \Propexp&\label{gr:p:iff}\\
+	   & \mid & \Propexp\ |:|\ \Propkind&Propositional kind coercion\label{gr:p:coerce}\\  
 	   & \mid & |forall|\ \Params\ |,|\ \Propexp&\label{gr:p:all}\\
 	   & \mid & |exists|\ \Params\ |,|\ \Propexp&\label{gr:p:some}\\
 	   & \mid & |exists1|\ \Params\ |,|\ \Propexp&\label{gr:p:some1}\\
+	   & \mid & |fun| \Params\ |=>|\ \Propexp&Predicate\label{gr:p:lambda}\\
 	\end{tabular}
 \end{center}
 
 \subsubsection*{Notes}
 
 The propositions are listed roughly in decreasing order of precedence.
-\TODO{The precedences for \texttt{:}, \texttt{match}, and \texttt{fun} look like they need to be fixed.}
 
 \begin{enumerate}
 	\item[(\ref{gr:p:coerce})] The typechecker will let you coerce any  $t$|->|$t$|->Stable| relation to |Equiv(|$t$|)|.  RZ cannot check that the relation is really reflexive, symmetric, and transitive, and so an obligation is produced.
@@ -363,23 +367,25 @@ The propositions are listed roughly in decreasing order of precedence.
 	   &\mid& \SId & Set identifier \label{gr:s:id}\\
 	   &\mid& \Modelexp|.|\SId & Set from a model\label{gr:s:mproj}\\
 	   &\mid& |(|\ \Setexp\ |)|&Grouping parentheses\label{gr:s:parens}\\
-	   &\mid& \Setexp\ \Termexp&Application\label{gr:s:app}\\
-	   &\mid& |rz|\ \Setexp & Set of realizers\label{gr:s:rz}\\
-	   &\mid& \Setexp\ |:|\ \Setkind&Kind coercion\label{gr:s:coerce}\\
-	   &\mid& \Setexp\ \verb+%+ \Propexp&Quotient set\label{gr:s:quotient}\\
-	   &\mid& |fun|\ \Params\ |=>|\ \Setexp&Dependent set\label{gr:s:fun}\\
-	   &\mid& \RRepeat{\UseVerb{VLBrack}\ \EId\ \UseVerb{VColon}\ \Setexp\ \UseVerb{VRBrack}\ \UseVerb{VTimes}}\ \Setexp& Dependent sum\label{gr:s:times}\\
-	   &\mid& \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \RRepeat{\UseVerb{VPlus}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}}& Tagged disjoint union\\
 	   &\mid& |{|\ \EId\ |:|\ \Setexp\ \Verb+|+\ \Propexp\ |}| &
 	Subset\label{gr:s:subset}\\
+	   &\mid& \Maybe{\Modelexp\UseVerb{VDot}}\UOp\ \Termexp&Unary operator\label{gr:s:uop}\\
+	   &\mid& \Setexp\ \Termexp&Application\label{gr:s:app}\\
+	   &\mid& |rz|\ \Setexp & Set of realizers\label{gr:s:rz}\\
+	   &\mid& \Setexp\ \verb+%+ \Propexp&Quotient set\label{gr:s:quotient}\\
+       &\mid& \Termexp\ \Maybe{\Modelexp\UseVerb{VDot}}\BOp\ \Termexp&Binary operator{\label{gr:s:binop}}\\	
+	   &\mid& \RRepeat{\UseVerb{VLBrack}\ \EId\ \UseVerb{VColon}\ \Setexp\ \UseVerb{VRBrack}\ \UseVerb{VTimes}}\ \Setexp& Dependent sum\label{gr:s:times}\\
+	   &\mid& |[| \Label\ \Maybe{\UseVerb{VColon}\ \Setexp} |]|\ \RRepeat{\UseVerb{VPlus}\ \UseVerb{VLBrack}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \UseVerb{VRBrack}}& Tagged disjoint union\\
 	   &\mid& |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Setexp&
 	Dependent product\label{gr:s:arrow}\\
+	   &\mid& \Setexp\ |:|\ \Setkind&Kind coercion\label{gr:s:coerce}\\
+	   &\mid& |fun|\ \Params\ |=>|\ \Setexp&Dependent set\label{gr:s:fun}\\
 	\end{tabular}
 \end{center}
 
 \subsubsection*{Notes}
 
-The above sets are generally listed in order of decreasing precedence.  \TODO{Update when \texttt{:} and \texttt{fun} are changed.}
+The above sets are generally listed in order of decreasing precedence.  
 \begin{itemize}
 \item[(\ref{gr:s:empty})] The syntax |{}| can be used as a synonym for |empty|.
 \item[(\ref{gr:s:id})] Set identifiers must be symbolic or lowercase, as described in \S\ref{sec:names}.
@@ -409,24 +415,26 @@ If there is no dependency on the argument then the brackets, the identifier, and
 	   &\mid& \Termexp|.|$n$&$n^{\rm th}$ tuple component $(n\ge 0)$\label{gr:e:proj}\\
 	   &\mid& |(|\ \Termexp\ |)|&Grouping parentheses\label{gr:e:parens}\\
 	   &\mid& |(|\ \Termexp\ \RRepeat{\UseVerb{VComma}\ \Termexp}\ |)|&Tuple\label{gr:e:tuple}\\
+	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Termexp \Verb+|+ $\cdots$\ |end|&Case analysis\label{gr:e:match}\\
 	   &\mid& \Label\ \Maybe{\Termexp}&Injection into a union\label{gr:e:inj}\\
+	   &\mid& \Maybe{\Modelexp\UseVerb{VDot}}\UOp\ \Termexp&Unary operator\label{gr:e:uop}\\
 	   &\mid& \Termexp\ \Termexp&Application\label{gr:e:app}\\
-	   &\mid& \Termexp\ |:|\ \Setexp&Set coercion\label{gr:e:coerce}\\
 	   &\mid& |rz|\ \Termexp&Term realized by realizer\label{gr:e:rz}\\
-	   &\mid& |fun|\ \Params\ |=>|\ \Termexp&Function\label{gr:e:lambda}\\
-	   & \mid & |match|\ \Termexp\ |with|\ \Pat\ |=>| \Termexp \Verb+|+ $\cdots$&Case analysis\label{gr:e:match}\\
+       &\mid& \Termexp\ \verb+%+\ \Propexp&Equivalence class of a term\label{gr:e:quot}\\
+       &\mid& \Termexp\ \Maybe{\Modelexp\UseVerb{VDot}}\BOp\ \Termexp&Binary operator{\label{gr:e:binop}}\\
 	   &\mid& |let|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |=|\ \Termexp\ |in|\ \Termexp&Local definition\label{gr:e:let}\\
 	   &\mid& |let|\ |[|\ \EId\ |]|\ |=|\ \Termexp\ |in|\ \Termexp&Representative of an equivalence class\label{gr:e:letquot}\\
-       &\mid& \Termexp\ \verb+%+\ \Propexp&Equivalence class of a term\label{gr:e:quot}\\
 	   &\mid& |let|\ |rz|\ \EId\ |=|\ \Termexp\ |in|\ \Termexp&Realizer of a term\label{gr:e:letrz}\\
 	   &\mid& |the|\ \EId\ \Maybe{\UseVerb{VColon}\ \Setexp}\ |,|\ \Termexp&Definite description\label{gr:e:the}\\
+	   &\mid& \Termexp\ |:|\ \Setexp&Set coercion\label{gr:e:coerce}\\
+	   &\mid& |fun|\ \Params\ |=>|\ \Termexp&Function\label{gr:e:lambda}\\
 	\\
 	\Pat & ::= & \Label\ \Maybe{\EId \Maybe{\UseVerb{VColon}\ \Setexp}}&Pattern match\label{gr:pat}\\
 	\end{tabular}
 \end{center}
 
 \subsubsection*{Notes}
-The above terms are generally ordered in decreasing order of precedence. \TODO{Update if we move \texttt{:} and \texttt{fun}.}
+The above terms are generally ordered in decreasing order of precedence. 
 
 \begin{itemize}
 	\item[(\ref{gr:e:proj})] Tuple projections are zero-based.

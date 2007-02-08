@@ -38,7 +38,6 @@
 %token ARROW
 %token AXIOM
 %token BAR
-%token CHOOSE
 %token COLON
 %token COLONEQUAL
 %token COMMA
@@ -54,7 +53,6 @@
 %token EXISTS
 %token FALSE
 %token FORALL
-%token FROM
 %token FUN
 %token HYPOTHESIS
 %token IFFSYMBOL
@@ -117,7 +115,7 @@
 %nonassoc COLONEQUAL
 
 %nonassoc COMMA DOUBLEARROW
-%nonassoc FORALL EXISTS UNIQUE THE
+%left SUBIN SUBOUT COLON
 %nonassoc IFFSYMBOL
 %right ARROW
 %left ORSYMBOL2
@@ -126,11 +124,10 @@
 %left ANDSYMBOL
 %nonassoc NOT
 
-%nonassoc LET IN CHOOSE FROM
+%nonassoc IN 
 %nonassoc PERIOD PERIOD_LPAREN MPROJECT
 %nonassoc EQUAL 
-%nonassoc FUN MATCH WITH BAR
-%left SUBIN SUBOUT COLON
+%nonassoc WITH BAR
 %left     INFIXOP0
 %right    INFIXOP1
 %left     INFIXOP2 PLUS
@@ -278,7 +275,6 @@ bin_expr:
   | bin_expr INFIXOP4 bin_expr                        
     { App(App(makeIdent($2,Infix4), $1), $3) }
   | bin_expr EQUAL bin_expr                           { Equal ($1, $3) }
-  | bin_expr COLON bin_expr                           { Constraint ($1, $3) } 
   | bin_expr PERCENT bin_expr                         { Quotient ($1, $3) }
   | bin_expr SUBIN bin_expr                           { Subin ($1, $3) }
   | bin_expr SUBOUT bin_expr                          { Subout ($1, $3) }
@@ -307,6 +303,7 @@ expr:
   | LET RZ ident EQUAL expr IN expr           { RzChoose ($3, $5, $7) }
   | LET arg_noparen_required EQUAL expr IN expr { Let ($2, $4, $6) }
   | FUN xbinder_list DOUBLEARROW expr          { Lambda ($2, $4) }
+  | expr COLON expr                            { Constraint ($1, $3) } 
 
 and_list:
   | or_expr                     { [$1] }
