@@ -12,7 +12,7 @@ thy
   Axiom tst_and : phi /\ psi /\ rho.
   Axiom tst_imply : phi -> psi.
   Axiom tst_iff : phi <-> psi.
-  Axiom tst_or : `or0:phi \/ `or1:psi \/ `or2:rho.
+  Axiom tst_or : [`or0:phi] \/ [`or1:psi] \/ [`or2:rho].
   Axiom tst_forall : forall x : s, p x.
   Axiom tst_exists: exists x : s, p x.
   Axiom tst_exists1: exists1 x : s, p x.
@@ -26,7 +26,7 @@ thy
   Definition r1 := fun x y : s => (not p x /\ not p y).
   Definition r2 := r1 : Equiv s.
 
-  Parameter w : [`foo + `bar:(s*s)].
+  Parameter w : [`foo] + [`bar:(s*s)].
   Axiom tst_pcase : match w with `foo => p x0 | `bar (u:s*s) => p (u.0)	 end.
 end.
 

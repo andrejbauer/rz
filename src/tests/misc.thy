@@ -76,7 +76,7 @@ thy
 
 	Parameter a b c : s.
 
-        Definition sum : Set := [`yes : s + `no : unit + `maybe].
+        Definition sum : Set := [`yes : s] + [`no : unit] + [`maybe].
 
 	Definition tmp1  := `yes a.
 	Definition tmp2 : sum := tmp1.

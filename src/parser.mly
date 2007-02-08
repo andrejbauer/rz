@@ -118,10 +118,10 @@
 %nonassoc FORALL EXISTS UNIQUE THE
 %nonassoc IFFSYMBOL
 %right ARROW
-%left ORSYMBOL
 %left ORSYMBOL2
-%left ANDSYMBOL
+%left ORSYMBOL
 %left ANDSYMBOL2
+%left ANDSYMBOL
 %nonassoc NOT
 
 %nonassoc LET IN CHOOSE FROM
@@ -245,27 +245,52 @@ simple_expr:
   | LABEL                                     { Label $1 }
   | LBRACE binding1 WITH expr RBRACE          { Subset ($2, $4) }
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
-  | LBRACK sum_list RBRACK                    { Sum $2 }
 
   | THY theory_elements END                   { Theory (snd $2) }
   | simple_expr PROJECT                       { Proj ($2, $1) }
+  | MATCH expr WITH case_list END             { Case ($2, $4) }
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
   | simple_expr                               { $1 } 
   
-neg_expr:
+unary_expr:
   | apply_expr                                { $1 }
-  | NOT neg_expr                              { Not $2 }
-  | EQUIV neg_expr                            { Equiv $2 }
-  | RZ neg_expr                               { Rz $2 }
+  | NOT unary_expr                            { Not $2 }
+  | EQUIV unary_expr                          { Equiv $2 }
+  | RZ unary_expr                             { Rz $2 }
+  | apply_expr MPROJECT                       { makeMProj $1 ($2, Word) }
+
+bin_expr:
+  | unary_expr { $1 }
+  | bin_expr INFIXOP0 bin_expr                        
+    { App(App(makeIdent($2,Infix0), $1), $3) }
+  | bin_expr INFIXOP1 bin_expr                        
+    { App(App(makeIdent($2,Infix1), $1), $3) }
+  | bin_expr INFIXOP2 bin_expr                        
+    { App(App(makeIdent($2,Infix2), $1), $3) }
+  | bin_expr PLUS bin_expr
+    { App(App(makeIdent("+",Infix2), $1), $3) }
+  | bin_expr INFIXOP3 bin_expr                        
+    { App(App(makeIdent($2,Infix3), $1), $3) }
+  | bin_expr INFIXOP4 bin_expr                        
+    { App(App(makeIdent($2,Infix4), $1), $3) }
+  | bin_expr EQUAL bin_expr                           { Equal ($1, $3) }
+  | bin_expr COLON bin_expr                           { Constraint ($1, $3) } 
+  | bin_expr PERCENT bin_expr                         { Quotient ($1, $3) }
+  | bin_expr SUBIN bin_expr                           { Subin ($1, $3) }
+  | bin_expr SUBOUT bin_expr                          { Subout ($1, $3) }
     
+or_expr:
+  | bin_expr                                  { $1 }
+  | bin_expr ORSYMBOL or_list                 { Or ((None,$1) :: $3) }
+  | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list { Or((Some $2,$4) :: $7) }    
+
 expr:
-/*  | simple_expr                               { $1 }  */
-  | neg_expr                                  { $1 }
-  | or_list                                   { Or $1 }
-  | and_list                                  { And $1 }
-  | expr EQUAL expr                           { Equal ($1, $3) }
+  | or_expr                                   { $1 }
+  | or_expr ANDSYMBOL and_list               { And ($1 :: $3) }
+  | summand PLUS sum_list                     { Sum ($1 :: $3) }
+/*  | unary_expr PLUS sum_list                    { Sum (("XX",Some $1) :: $3) } */
   | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
   | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
   | product_list %prec PLUS /* < STAR */      { Product $1 }
@@ -274,39 +299,23 @@ expr:
   | EXISTS xbinder_list COMMA expr             { Exists ($2, $4) }
   | UNIQUE xbinder_list COMMA expr             { Unique ($2, $4) }
   | THE arg_noparen_required COMMA expr       { The ($2, $4) }
-  | MATCH expr WITH case_list END             { Case ($2, $4) }
   | LET LBRACK ident RBRACK EQUAL expr IN expr { Choose ($3, $6, $8) }
   | LET RZ ident EQUAL expr IN expr           { RzChoose ($3, $5, $7) }
   | LET arg_noparen_required EQUAL expr IN expr { Let ($2, $4, $6) }
   | FUN xbinder_list DOUBLEARROW expr          { Lambda ($2, $4) }
-  | expr COLON expr                           { Constraint ($1, $3) } 
-  | expr PERCENT expr                         { Quotient ($1, $3) }
-  | expr SUBIN expr                           { Subin ($1, $3) }
-  | expr SUBOUT expr                          { Subout ($1, $3) }
-  | expr INFIXOP0 expr                        
-      { App(App(makeIdent($2,Infix0), $1), $3) }
-  | expr INFIXOP1 expr                        
-      { App(App(makeIdent($2,Infix1), $1), $3) }
-  | expr INFIXOP2 expr                        
-      { App(App(makeIdent($2,Infix2), $1), $3) }
-  | expr PLUS expr
-      { App(App(makeIdent("+",Infix2), $1), $3) }
-  | expr INFIXOP3 expr                        
-      { App(App(makeIdent($2,Infix3), $1), $3) }
-  | expr INFIXOP4 expr                        
-      { App(App(makeIdent($2,Infix4), $1), $3) }
-  | expr MPROJECT { makeMProj $1 ($2, Word) }
 
   /* Also need cases for binary relations inside modules */
 
 and_list:
-  | expr ANDSYMBOL expr  %prec ANDSYMBOL2    { [$1; $3] }
-  | and_list ANDSYMBOL expr  { $1 @ [$3] }
+  | or_expr                     { [$1] }
+  | and_list ANDSYMBOL or_expr  { $1 @ [$3] }
 
 or_list:
-  | LABEL COLON expr ORSYMBOL LABEL COLON expr  %prec ORSYMBOL2 { [(Some $1, $3); (Some $5, $7)] }
-  | or_list ORSYMBOL LABEL COLON expr                           { $1 @ [(Some $3, $5)] }
-
+  | bin_expr                        { [(None,$1)] }
+  | LBRACK LABEL COLON expr RBRACK  { [(Some $2, $4)] }
+  | or_list ORSYMBOL bin_expr       { $1 @ [(None,$3)] }
+  | or_list ORSYMBOL LBRACK LABEL COLON expr RBRACK %prec ORSYMBOL  { $1 @ [(Some $4, $6)] }
+    
 expr_list:
   | expr COMMA expr                   { [$1; $3] }
   | expr COMMA expr_list              { $1 :: $3 }
@@ -319,11 +328,15 @@ product_list:
   | product_list STAR dep_expr         { $1 @ [$3] }
   | product_list STAR expr             { $1 @ [(wildName(), $3)] }
 
+summand:
+  | LBRACK LABEL RBRACK               { ($2, None) }
+  | LBRACK LABEL COLON expr RBRACK    { ($2, Some $4) }
+  
 sum_list:
-  | LABEL                                  { [($1, None)] }
-  | LABEL COLON apply_expr                 { [($1, Some $3)] }
-  | LABEL PLUS sum_list                    { ($1, None) :: $3 }
-  | LABEL COLON apply_expr PLUS sum_list   { ($1, Some $3) :: $5 }
+  | summand                           { [$1] }
+/*  | unary_expr                          { ("XX", Some $1) } */
+  | sum_list PLUS summand             { $1 @ [$3] }
+/*  | sum_list PLUS unary_expr            { $1 @ [("XX", Some $3)] } */
 
 dep_expr:
   | LBRACK ident COLON expr RBRACK    { $2, $4 }
