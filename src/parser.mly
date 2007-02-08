@@ -224,8 +224,8 @@ operator:
   | INFIXOP4         { $1, Infix4 }
 
 name:
-  | name MPROJECT                        { makeMProj $1 ($2, Word) }
-  | name PERIOD_LPAREN operator RPAREN   { makeMProj $1 $3 }
+/*  | name MPROJECT                        { makeMProj $1 ($2, Word) } */
+/*  | name PERIOD_LPAREN operator RPAREN   { makeMProj $1 $3 } */
   | NAME                                  { makeIdent ($1, Word) }
   | LPAREN operator RPAREN                { makeIdent $2 }
 
@@ -247,8 +247,10 @@ simple_expr:
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
 
   | THY theory_elements END                   { Theory (snd $2) }
-  | simple_expr PROJECT                       { Proj ($2, $1) }
   | MATCH expr WITH case_list END             { Case ($2, $4) }
+  | simple_expr PROJECT                       { Proj ($2, $1) }
+  | simple_expr MPROJECT                       { makeMProj $1 ($2, Word) }
+  | simple_expr PERIOD_LPAREN operator RPAREN  { makeMProj $1 $3 }
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
@@ -259,7 +261,6 @@ unary_expr:
   | NOT unary_expr                            { Not $2 }
   | EQUIV unary_expr                          { Equiv $2 }
   | RZ unary_expr                             { Rz $2 }
-  | apply_expr MPROJECT                       { makeMProj $1 ($2, Word) }
 
 bin_expr:
   | unary_expr { $1 }
@@ -290,7 +291,6 @@ expr:
   | or_expr                                   { $1 }
   | or_expr ANDSYMBOL and_list               { And ($1 :: $3) }
   | summand PLUS sum_list                     { Sum ($1 :: $3) }
-/*  | unary_expr PLUS sum_list                    { Sum (("XX",Some $1) :: $3) } */
   | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
   | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
   | product_list %prec PLUS /* < STAR */      { Product $1 }
@@ -303,8 +303,6 @@ expr:
   | LET RZ ident EQUAL expr IN expr           { RzChoose ($3, $5, $7) }
   | LET arg_noparen_required EQUAL expr IN expr { Let ($2, $4, $6) }
   | FUN xbinder_list DOUBLEARROW expr          { Lambda ($2, $4) }
-
-  /* Also need cases for binary relations inside modules */
 
 and_list:
   | or_expr                     { [$1] }
@@ -334,9 +332,7 @@ summand:
   
 sum_list:
   | summand                           { [$1] }
-/*  | unary_expr                          { ("XX", Some $1) } */
   | sum_list PLUS summand             { $1 @ [$3] }
-/*  | sum_list PLUS unary_expr            { $1 @ [("XX", Some $3)] } */
 
 dep_expr:
   | LBRACK ident COLON expr RBRACK    { $2, $4 }
