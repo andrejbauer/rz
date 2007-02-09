@@ -1,0 +1,88 @@
+[Processing ./ops.thy]
+module type T =
+ sig
+   type s
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
+         
+        assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+   *)
+    
+   (** predicate ||s|| : s -> bool *)
+   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   *)
+    
+   val (??) : s -> s
+   (**  assertion (??)_support :  (??) : ||s -> s||
+   *)
+    
+   val (++) : s -> s -> s
+   (**  assertion (++)_support :  (++) : ||s -> s -> s||
+   *)
+    
+   val (&&) : s -> s -> s
+   (**  assertion (&&)_support :  (&&) : ||s -> s -> s||
+   *)
+    
+   val x : s
+   (**  assertion x_support :  x : ||s||
+   *)
+    
+   val f : s -> s
+   (**  assertion f_support :  f : ||s -> s||
+   *)
+    
+   val y : s
+   (**  assertion y_def :  y =s= f ((??) x)
+   *)
+    
+   val z : s
+   (**  assertion z_def :  z =s= (x ++ x)
+   *)
+    
+   val w : s
+   (**  assertion w_def :  w =s= (&&) x x
+   *)
+    
+   val g : (s -> s -> s) -> s
+   (**  assertion g_support :  g : ||(s -> s -> s) -> s||
+   *)
+    
+   val u : s
+   (**  assertion u_def :  u =s= g (&&)
+   *)
+ end
+ 
+module M : T
+ 
+module type Q =
+ sig
+   val a : M.s
+   (**  assertion a_support :  a : ||M.s||
+   *)
+    
+   val f : M.s -> M.s
+   (**  assertion f_support :  f : ||M.s -> M.s||
+   *)
+    
+   val b : M.s
+   (**  assertion b_def :  b =M.s= f (M.(??) a)
+   *)
+    
+   val c : M.s
+   (**  assertion c_def :  c =M.s= M.(++) a a
+   *)
+    
+   val d : M.s
+   (**  assertion d_def :  d =M.s= M.(++) a a
+   *)
+    
+   (** Unfortunately, we can't parse
+            a M.++ a
+       So we might as well make the parens optional
+       in the input.
+     *)
+ end
+

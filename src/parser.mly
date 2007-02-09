@@ -234,8 +234,8 @@ binop:
 name:
 /*  | name MPROJECT                        { makeMProj $1 ($2, Word) } */
 /*  | name PERIOD_LPAREN operator RPAREN   { makeMProj $1 $3 } */
-  | NAME                                  { makeIdent ($1, Word) }
-  | LPAREN operator RPAREN                { makeIdent $2 }
+  | NAME                                   { makeIdent ($1, Word) }
+  | LPAREN binop RPAREN                    { makeIdent $2 }
 
 simple_expr:
   | EMPTY                                     { Empty }
@@ -265,7 +265,7 @@ simple_expr:
   | simple_expr MPROJECT3                     { makeMProj $1 ($2, Infix3) }
   | simple_expr MPROJECT4                     { makeMProj $1 ($2, Infix4) }
   | simple_expr PERIOD_LPAREN operator RPAREN  { makeMProj $1 $3 }
-  | PREFIXOP simple_expr                      { App (makeIdent($1,Prefix), $2) }
+  | PREFIXOP                                  { makeIdent($1,Prefix) }
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }

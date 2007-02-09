@@ -129,5 +129,15 @@ module type Terms =
    val subout : s
    (**  assertion subout_def :  subout =s= pi0 d
    *)
+    
+   val impossible : void
+   (**  assertion impossible_support :  false
+   *)
+    
+   val magic : s
+   (**  assertion magic_def :  magic =s= impossible
+   *)
+    
+   (** subset *)
  end
 

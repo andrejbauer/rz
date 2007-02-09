@@ -8,7 +8,6 @@
       "Axiom", AXIOM;
       "Definition", DEFINITION;
       "empty", EMPTY;
-      "Empty", EMPTY;
       "end", END;
       "End", END;
       "Equiv", EQUIV;
