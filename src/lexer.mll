@@ -8,7 +8,7 @@
       "Axiom", AXIOM;
       "Definition", DEFINITION;
       "empty", EMPTY;
-      "Empty_set", EMPTY;
+      "Empty", EMPTY;
       "end", END;
       "End", END;
       "Equiv", EQUIV;
@@ -74,6 +74,13 @@ let ident = ['A'-'Z' 'a'-'z' '_']['a'-'z' 'A'-'Z' '0'-'9' '_']* '\''*
 
 let symbolchar =
   ['!' '$' '%' '&' '*' '+' '-' '.' '/' ':' '<' '=' '>' '?' '@' '^' '|' '~']
+  
+let prefixop = ['~' '?' '!']             symbolchar*
+let infixop0 = ['=' '<' '>' '|' '&' '$'] symbolchar*
+let infixop1 = ['@' '^']                 symbolchar*
+let infixop2 = ['+' '-']                 symbolchar*
+let infixop4 = "**"                      symbolchar*
+let infixop3 = ['*' '/' '%']             symbolchar*
 
 rule token = parse
     '#' [^'\n']* '\n'? { incr_linenum lexbuf; incr Message.lineno; token lexbuf }
@@ -86,6 +93,12 @@ rule token = parse
   | '`' ident       { LABEL (trim (Lexing.lexeme lexbuf)) }
   | '.' ['0'-'9']+  { PROJECT (int_of_string (trim (Lexing.lexeme lexbuf))) }
   | '.' ident       { MPROJECT (trim (Lexing.lexeme lexbuf)) }
+  | '.' prefixop    { MPROJECTP (trim (Lexing.lexeme lexbuf)) }
+  | '.' infixop0    { MPROJECT0 (trim (Lexing.lexeme lexbuf)) }
+  | '.' infixop1    { MPROJECT1 (trim (Lexing.lexeme lexbuf)) }
+  | '.' infixop2    { MPROJECT2 (trim (Lexing.lexeme lexbuf)) }
+  | '.' infixop3    { MPROJECT3 (trim (Lexing.lexeme lexbuf)) }
+  | '.' infixop4    { MPROJECT4 (trim (Lexing.lexeme lexbuf)) }
   | '.' '('         { PERIOD_LPAREN }
   | '.'             { PERIOD }
   | ':'             { COLON }
@@ -112,28 +125,17 @@ rule token = parse
                           with Not_found -> NAME w
                         end
                     }
-(*
-  | tident           { let w = Lexing.lexeme lexbuf in
-                        begin
-                          try
-                            List.assoc w reserved 
-                          with Not_found -> TNAME w
-                        end
-                    }
-*)
-  | "!" symbolchar *
+  | prefixop
             { PREFIXOP(Lexing.lexeme lexbuf) }
-  | ['~' '?'] symbolchar *
-            { PREFIXOP(Lexing.lexeme lexbuf) }
-  | ['=' '<' '>' '|' '&' '$'] symbolchar *
+  | infixop0
             { INFIXOP0(Lexing.lexeme lexbuf) }
-  | ['@' '^'] symbolchar *
+  | infixop1
             { INFIXOP1(Lexing.lexeme lexbuf) }
-  | ['+' '-'] symbolchar *
+  | infixop2
             { INFIXOP2(Lexing.lexeme lexbuf) }
-  | "**" symbolchar *
+  | infixop4 (* Comes before infixop3 because ** matches the infixop3 pattern too *)
             { INFIXOP4(Lexing.lexeme lexbuf) }
-  | ['*' '/' '%'] symbolchar *
+  | infixop3
             { INFIXOP3(Lexing.lexeme lexbuf) }
   | "(*"    { commentdepth := 1;
 	      current_comment := [];

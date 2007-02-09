@@ -26,4 +26,8 @@ thy
   Parameter d : {x:s | p x}.
   Definition subout      := d :< s.
   # assure cannot be tested directly
+
+  Parameter impossible : empty.
+  Definition magic : s  :=  impossible.  (* subset *)
+
 end.

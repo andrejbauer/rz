@@ -73,6 +73,12 @@
 %token MODEL
 %token MODULE
 %token <string> MPROJECT
+%token <string> MPROJECTP /* Prefix-operator projection */
+%token <string> MPROJECT0 /* Level-0 binary operator projection */
+%token <string> MPROJECT1 /* Level-1 binary operator projection */
+%token <string> MPROJECT2 /* Level-2 binary operator projection */
+%token <string> MPROJECT3 /* Level-3 binary operator projection */
+%token <string> MPROJECT4 /* Level-4 binary operator projection */
 %token <string> NAME
 %token NOT
 %token ORSYMBOL
@@ -128,11 +134,11 @@
 %nonassoc PERIOD PERIOD_LPAREN MPROJECT
 %nonassoc EQUAL 
 %nonassoc WITH BAR
-%left     INFIXOP0
-%right    INFIXOP1
-%left     INFIXOP2 PLUS
-%left     INFIXOP3 STAR
-%right    INFIXOP4
+%left     INFIXOP0 MPROJECT0
+%right    INFIXOP1 MPROJECT1
+%left     INFIXOP2 MPROJECT2 PLUS 
+%left     INFIXOP3 MPROJECT3 STAR
+%right    INFIXOP4 MPROJECT4
 %left     PERCENT
 %nonassoc RZ
 %nonassoc PREFIXOP
@@ -210,9 +216,13 @@ binder:
 ident:
     NAME                          { N ($1, Word) }
   | LPAREN operator RPAREN        { let nm, fx = $2 in N (nm, fx) }
+  | operator                      { let nm, fx = $1 in N (nm, fx) }
 
 operator:
   | PREFIXOP         { $1, Prefix }
+  | binop            { $1 }
+  
+binop: 
   | INFIXOP0         { $1, Infix0 }
   | INFIXOP1         { $1, Infix1 }
   | INFIXOP2         { $1, Infix2 }
@@ -248,7 +258,14 @@ simple_expr:
   | MATCH expr WITH case_list END             { Case ($2, $4) }
   | simple_expr PROJECT                       { Proj ($2, $1) }
   | simple_expr MPROJECT                       { makeMProj $1 ($2, Word) }
+  | simple_expr MPROJECTP                     { makeMProj $1 ($2, Prefix) } 
+  | simple_expr MPROJECT0                     { makeMProj $1 ($2, Infix0) }
+  | simple_expr MPROJECT1                     { makeMProj $1 ($2, Infix1) }
+  | simple_expr MPROJECT2                     { makeMProj $1 ($2, Infix2) }
+  | simple_expr MPROJECT3                     { makeMProj $1 ($2, Infix3) }
+  | simple_expr MPROJECT4                     { makeMProj $1 ($2, Infix4) }
   | simple_expr PERIOD_LPAREN operator RPAREN  { makeMProj $1 $3 }
+  | PREFIXOP simple_expr                      { App (makeIdent($1,Prefix), $2) }
 
 apply_expr:
   | apply_expr simple_expr                    { App ($1, $2) }
@@ -262,22 +279,17 @@ unary_expr:
 
 bin_expr:
   | unary_expr { $1 }
-  | bin_expr INFIXOP0 bin_expr                        
-    { App(App(makeIdent($2,Infix0), $1), $3) }
-  | bin_expr INFIXOP1 bin_expr                        
-    { App(App(makeIdent($2,Infix1), $1), $3) }
-  | bin_expr INFIXOP2 bin_expr                        
-    { App(App(makeIdent($2,Infix2), $1), $3) }
-  | bin_expr PLUS bin_expr
-    { App(App(makeIdent("+",Infix2), $1), $3) }
-  | bin_expr INFIXOP3 bin_expr                        
-    { App(App(makeIdent($2,Infix3), $1), $3) }
-  | bin_expr INFIXOP4 bin_expr                        
-    { App(App(makeIdent($2,Infix4), $1), $3) }
-  | bin_expr EQUAL bin_expr                           { Equal ($1, $3) }
-  | bin_expr PERCENT bin_expr                         { Quotient ($1, $3) }
-  | bin_expr SUBIN bin_expr                           { Subin ($1, $3) }
-  | bin_expr SUBOUT bin_expr                          { Subout ($1, $3) }
+  | bin_expr INFIXOP0 bin_expr                { App(App(makeIdent($2,Infix0), $1), $3) }
+  | bin_expr INFIXOP1 bin_expr                { App(App(makeIdent($2,Infix1), $1), $3) }
+  | bin_expr INFIXOP2 bin_expr                { App(App(makeIdent($2,Infix2), $1), $3) }
+  | bin_expr PLUS bin_expr                    { App(App(makeIdent("+",Infix2), $1), $3) }
+  | bin_expr INFIXOP3 bin_expr                { App(App(makeIdent($2,Infix3), $1), $3) }
+  | bin_expr INFIXOP4 bin_expr                { App(App(makeIdent($2,Infix4), $1), $3) }
+/*  | bin_expr simple_expr MPROJECT0 bin_expr   {} */
+  | bin_expr EQUAL bin_expr                   { Equal ($1, $3) }
+  | bin_expr PERCENT bin_expr                 { Quotient ($1, $3) }
+  | bin_expr SUBIN bin_expr                   { Subin ($1, $3) }
+  | bin_expr SUBOUT bin_expr                  { Subout ($1, $3) }
     
 or_expr:
   | bin_expr                                  { $1 }

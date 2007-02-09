@@ -657,7 +657,10 @@ let rec eqSet' do_subset cntxt =
 	     []
 	   else
              (match (s1',s2') with
-		 ( Basic (SLN(mdlopt1, nm1), _),
+         (Empty, _) when do_subset -> 
+             (* The empty set is a subset of every other set  *)
+                []
+		   | ( Basic (SLN(mdlopt1, nm1), _),
 		 Basic (SLN(mdlopt2, nm2), _) ) when (nm1 = nm2) -> 
                    (** Neither has a definition *)
 		   eqModelOpt cntxt mdlopt1 mdlopt2 
