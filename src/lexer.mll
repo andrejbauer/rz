@@ -22,8 +22,6 @@
       "include", INCLUDE;
       "let", LET;
       "match", MATCH;
-      "model", MODEL;
-      "Module", MODULE;
       "not", NOT;
       "Parameter", PARAMETER;
       "Prop", PROP;

@@ -70,8 +70,6 @@
 %token LET
 %token LPAREN
 %token MATCH
-%token MODEL
-%token MODULE
 %token <string> MPROJECT
 %token <string> MPROJECTP /* Prefix-operator projection */
 %token <string> MPROJECT0 /* Level-0 binary operator projection */
@@ -114,7 +112,7 @@
 
 /* Precedence and associativity */
 
-%nonassoc MODEL THEORY THY
+%nonassoc THEORY THY
 
 %nonassoc AXIOM COMMENT DEFINITION EQIUIV HYPOTHESIS IMPLICIT INCLUDE PARAMETER TYPE
 
