@@ -154,7 +154,7 @@ Axiom archimedean:
 (* Cauchy completeness. *)
 
 Definition cauchy (a : I.nat -> real) :=
-  forall k : I.nat, leq (abs (sub (a (I.add1 k)) (a k))) (ratio I.one (I.pow I.two k)).
+  forall k : I.nat, lt (abs (sub (a (I.add1 k)) (a k))) (ratio I.one (I.pow I.two k)).
 
 Definition limit (a : I.nat -> real) x :=
   forall epsilon : positiveReal,

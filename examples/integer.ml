@@ -33,8 +33,8 @@ struct
 	     let (q, r) = quomod_big_int n two in
 	     let x = initial q in
 	       match sign_big_int r with
-		   0 -> R.mul x x
-		 | 1 -> R.add (R.mul x x) R.one
+		   0 -> R.mul 2 x
+		 | 1 -> R.add (R.mul 2 x) R.one
 		 | _ -> failwith "Impossible result of quomod_big_int"
 	   end
       | _ -> failwith "Impossible result of sign_big_int"
