@@ -23,16 +23,27 @@
 % (Use number=left to get source line numbers.)
 
 % To include a source file
+\iflong
 \newcommand{\sourcefile}[1]{%
 \VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
+\else % \iflong
+\newcommand{\sourcefile}[1]{%
+\VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
+\fi % \iflong
 
 % To include lots of source
 \newcommand{\sourcefilex}[1]{%
 \VerbatimInput[xleftmargin=1.5em,fontsize=\scriptsize]{#1}}
 
 % To show source
+\iflong
 \DefineVerbatimEnvironment{source}{Verbatim}%
 {xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
+\else
+\DefineVerbatimEnvironment{source}{Verbatim}%
+{xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
+\fi
+
 
 % macros within source
 \newcommand{\iTo}{$\to$}
@@ -104,9 +115,11 @@ By using the realizability
   proofs by other tools.
 \end{abstract}
 
+\iffalse
 \begin{center}
   Version of \today.
 \end{center}
+\fi
 
 \input{introduction.tex}
 \input{modest_sets.tex}

@@ -10,6 +10,7 @@
 \end{figure}
 \fi % \iflong
 
+\iflong
 \begin{figure}
   \[
   \begin{array}{rl@{\qquad}l}
@@ -84,7 +85,7 @@
   \label{fig:output}
   \caption{The syntax of specifications (Simplified)}
 \end{figure}
-
+\fi % \iflong
 
 In programming we distinguish between \emph{implementation} and
 \emph{specification} of a structure. In OCaml these two notions are
@@ -102,8 +103,6 @@ values, while a module type simply lists the types, type definitions,
 and values provided by a module. For a complete specification, a
 module type must also be annotated with \emph{assertions} which
 specify the required properties of declared types and values.
-\iflong
-%
 \iflong
 %
 For example, if we look at the definition of module type $\mathtt{Ab}$
@@ -156,7 +155,6 @@ $\mathtt{zero}$, $\mathtt{neg}$, and $\mathtt{add}$ realize a
 constant, a unary, and a binary operation, respectively, while
 assertions \ref{enum:ab-group-axiom-1}--\ref{enum:ab-group-axiom-4}
 correspond to axioms for Abelian groups. 
-\fi % \iflong
 
 The output of RZ consists of \emph{module specifications}, each of which consists of a module type
 plus assertions about its components.  More specifically, a specification
@@ -241,8 +239,7 @@ The output of RZ consists of \emph{module specifications}, each of which consist
 plus assertions about its components.  More specifically, a typical specification
 may contain value declarations, type declarations and definitions, module
 declarations, specification definitions, proposition declarations, and
-assertions.  The language of specifications is summarized in
-Figure~\ref{fig:output}.
+assertions. 
 
 The least familiar construct is the 
 \emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term

@@ -31,10 +31,9 @@ to produce a realizer for equality
 %
 \begin{source}
 val eq : s \iTo s \iTo [`or0 | `or1]
-assertion eq : \iForall (x:\iT{s}, y:\iT{s}),
-                   (match eq x y with
-                      `or0 \iImply x \iPer{s} y
-                    | `or1 \iImply \iNot (x \iPer{s} y) )
+assertion eq : \iForall (x:\iT{s}, y:\iT{s}), (match eq x y with
+                                           `or0 \iImply x \iPer{s} y
+                                         | `or1 \iImply \iNot (x \iPer{s} y) )
 \end{source}
 %
 We read this as follows: $\f{eq}$ is a function which takes
@@ -354,6 +353,7 @@ thy
     \iForall t : w, M.p t.
 end.
 \end{source}
+\vspace{-0.5cm}
   \caption{General inductive types}
   \label{fig:wtype}
 \end{figure}
@@ -399,8 +399,7 @@ $\f{induction}$ into a specification of a polymorphic function
   (B.s \to (B.t \to w) \to (B.t \to {\alpha}) \to {\alpha}) \to w \to {\alpha}},
 \end{equation*}
 %
-which is a form of recursion on well-founded trees. Instead of trying
-to explain what $\f{induction}$ is supposed to do, we show a surprisingly simple,
+which is a form of recursion on well-founded trees. Instead of explaining $\f{induction}$, we show a surprisingly simple,
 hand-written implementation of W-types in OCaml. The reader may enjoy figuring out how it works:
 %
 \sourcefile{wtype.ml}
@@ -417,7 +416,7 @@ Choice:
 Parameter a b : Set.
 Parameter r : a \iTo b \iTo Prop.
 Axiom ac: (\iForall x : a, \iExists y : b, r x y) \iTo
-          (\iExists c : a \iTo b, \iForall x : a, r x (c x)).
+             (\iExists c : a \iTo b, \iForall x : a, r x (c x)).
 \end{source}
 %
 The relevant part of the output is
@@ -461,10 +460,12 @@ assertion iac :
       (\iForall x:a, x : \iT{a} \iTo g x : \iT{b}) \iAnd (\iForall (x:\iT{a}),  r x (g x) (h x))
 \end{source}
 %
-which is exactly the same as before, \emph{except} that the
-troublesome requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$ turned into
-$\oforall{\f{x}}{\f{a}}{(\oimply{\ototal{\f{x}}{\f{a}}}{\ototal{\f{g\;x}}{\f{b}}})}$, which
-is weaker. We can implement $\f{iac}$ in OCaml as
+This is exactly the same as before \emph{except} the
+troublesome requirement 
+\iflong $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$ 
+\fi
+was weakened to
+$\oforall{\f{x}}{\f{a}}{(\oimply{\ototal{\f{x}}{\f{a}}}{\ototal{\f{g\;x}}{\f{b}}})}$. We can implement $\f{iac}$ in OCaml as
 %
 \begin{source}
 let iac f = (fun x -> fst (f x)), (fun x -> snd (f x))
@@ -495,11 +496,11 @@ as follows:
 Axiom continuity: \iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
   \iExists k, \iForall b : nat \iTo nat, (\iForall m, m \iLeq k \iTo a m = b m) \iTo f a = f b.
 \end{source}
-%
+\goodbreak
+
 The axiom says that for any $\f{f}$ and $\f{a}$ there exists $\f{k} \in
-\f{nat}$ such that $\f{f(b) = f(a)}$ as soon as the sequences~$\f{a}$
-and~$\f{b}$ agree on the first $\f{k}$ terms. The axiom is translated to the
-specification
+\f{nat}$ such that $\f{f(b) = f(a)}$ when sequences~$\f{a}$
+and~$\f{b}$ agree on the first $\f{k}$ terms. It translate to:
 %
 \begin{source}
 val continuity : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
@@ -510,7 +511,7 @@ assertion continuity :
        (\iForall (m:\iT{nat}),  m \iLeq p \iTo a m \iPer{nat} b m) \iTo f a \iPer{nat} f b)
 \end{source}
 %
-which says that $\f{continuity\;f\;a}$ is a number~$\f{p}$ such that
+i.e., that $\f{continuity\;f\;a}$ is a number~$\f{p}$ such that
 $\f{f(a) = f(b)}$ whenever $\f{a}$ and $\f{b}$ agree on the first~$\f{p}$ terms. In
 other words, $\f{continuity}$ is a \emph{modulus of continuity}
 functional. It cannot be implemented in a purely functional
@@ -521,10 +522,9 @@ language,\footnote{There are models of $\lambda$-calculus which validate
 store we can implement it in OCaml as
 %
 \begin{source}
-let continuity f a =
-  let p = ref 0 in
-  let a' n = (p := max !p n; a n) in
-    f a' ; !p
+let continuity f a = let p = ref 0 in
+                     let a' n = (p := max !p n; a n) in
+                       f a' ; !p
 \end{source}
 %
 To compute a modulus for~$\f{f}$ at~$\f{a}$, the program creates a
