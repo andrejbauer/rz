@@ -38,7 +38,7 @@ $\ell_V = [1; 2;
 Thus we define the datatype of graphs as\footnote{We use OCaml
   notation in which $\clist{t}$ classifies finite lists of elements of
   type~$t$, and $t_1 * t_2$ classifies pairs containing a value of
-  type $t_1$ and and value of type $t_2$.}
+  type $t_1$ and a value of type $t_2$.}
 %
 \begin{equation*}
   \ctype \mathtt{graph} = \clist{\cint} \ \ * \ \ \clist{(\cint * \cint)}
@@ -361,7 +361,6 @@ We say that a formula~$\phi$ is \emph{valid} if it has at least one
 realizer.
 %
 \begin{figure*}[t]
-	\footnotesize
   \textbf{Underlying types of realizers:}
 \[
   \begin{array}{ll@{\qquad}ll}

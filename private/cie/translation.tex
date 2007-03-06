@@ -213,13 +213,14 @@ unnecessary.
 \else % iflong
 %
 For example, the coincidence relation on Cauchy sequences is expressed
-by a $\forall\exists\forall$~formula, but if we restrict to the
-\emph{rapid} Cauchy sequences, it becomes a (negative)
+by a $\forall\exists\forall$~formula, but if we consider \emph{rapid}
+Cauchy sequences (i.e., those sequences $a$ satisfying
+$\xall{i}{\NN}{|a_{i+1} - a_i| \leq 2^{-i}}$), it becomes a (negative)
 $\forall$~formula.
 %
 \fi % iflong
 It is interesting that most practical implementations of
-real numbers follow this line of reasoning and represent real numbers in
+real numbers follow this line of reasoning and represent real numbers in a
 way that avoids annotating every sequence with its rate of convergence.
 
 Translation of an equivalence class $\ieclass{e}{\rho}$ is quite

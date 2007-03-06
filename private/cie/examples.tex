@@ -342,6 +342,12 @@ Figure~\ref{fig:wtype} shows an RZ axiomatization of W-types.
 %
 \begin{figure}
 \begin{source}
+Definition Branching :=
+thy
+  Parameter s : Set.      (* branching types *)
+  Parameter t : s -> Set. (* branch labels *)
+end.
+
 Parameter W : [B : Branching] \iTo
 thy
   Parameter w : Set.
