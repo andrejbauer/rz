@@ -4,8 +4,12 @@
 The RZ implementation consists of several sequential passes.
 
 After the initial parsing, a \emph{type reconstruction} phase checks
-that the input is well-typed (and checks for well-formedness to the
-extent that it is easily decidable), and if successful produces an
+that the input is well-typed%
+\iflong 
+\ (and checks for well-formedness to the
+extent that it is easily decidable)%
+\fi
+, and if successful produces an
 annotated result with all variables explicitly tagged with types. The
 type checking phase uses a system of dependent types, with limited
 subtyping (implicit coercions) for sum types and subset types. 

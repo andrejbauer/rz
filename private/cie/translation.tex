@@ -178,8 +178,7 @@ with $\typeOf{A/\rho} = \typeOf{A}$ and $x \per_{A/\rho} y \iff
 \rho(x,y)$.
 
 Luckily, it seems that many equivalence relations occurring in
-computable mathematics are stable, or can be made stable with a little
-bit of manipulation.
+computable mathematics are stable, or can be made stable.
 %
 \iflong
 For example, Cauchy sequences $(a_n)_{n\in\NN}$
@@ -214,7 +213,7 @@ unnecessary.
 %
 For example, the coincidence relation on Cauchy sequences is expressed
 by a $\forall\exists\forall$~formula, but if we consider \emph{rapid}
-Cauchy sequences (i.e., those sequences $a$ satisfying
+Cauchy sequences (those sequences $a$ satisfying
 $\xall{i}{\NN}{|a_{i+1} - a_i| \leq 2^{-i}}$), it becomes a (negative)
 $\forall$~formula.
 %
@@ -346,6 +345,7 @@ assertions that~$p$ is strict and extensional.
 %
 \fi % iflong
 
+\iflong
 Frequently we know that a predicate is stable, which can be taken into
 account when computing its realizability interpretation. For this
 purpose the input language has the subkind $\iStable$ of $\iProp$.
@@ -353,12 +353,12 @@ When RZ encounters a predicate which is declared to be stable, such as
 $p : \iarrow{s}{\iStable}$, it does not generate a declaration of
 $\f{ty\_p}$ and it does not give $p$ an extra argument.
 
-Another special kind in RZ input language is the kind $\iEquiv{s}$ of
+Another special kind in the RZ input language is the kind $\iEquiv{s}$ of
 stable equivalence relations on a set~$s$. When an equivalence
 relation is declared with $\iParameter{p}{\iEquiv{s}}$, RZ will output
 assertions stating that $p$ is strict, extensional, 
 reflexive, symmetric and transitive.
-
+\fi % \iflong
 
 
 %%% Local Variables: 

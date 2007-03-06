@@ -35,18 +35,25 @@ full theorem proving.
 \fi % \iflong
 
 Komagata and Schmidt~\cite{komagata+:tr95} describe a system that uses
-a similar realizability translation to ours. Like Coq, the system
-translates formal proofs to programs.
+a realizability in a way similar to RZ.  Like Coq, it extracts code from
+proofs.
 %
-An interesting technical difference is that the algorithm they use,
-attributed to John Hatcliff, does thinning as it goes along, rather
-than making a separate pass. 
+An interesting implementation difference is that  the algorithm
+they use (attributed to John Hatcliff) does thinning as it goes along,
+rather than making a separate pass as RZ does.
+%
 \iflong
-For example, the translation of the
+(For example, the translation of the
 conjunction-introduction rule has four cases, depending on whether the
 left and/or right propositions being proved are almost negative, in
-which case the trivial contribution can be immediately discarded.
+which case the trivial contribution can be immediately discarded.')
 \fi
+%
+Unlike RZ, their system needs full formal proofs as input; it checks
+the proofs, and generates executable code.  RZ also handles a much
+richer input language (function, subset, quotient, and dependent
+types; quantification over theories; parameterized theories; etc.)
+that goes well beyond simple predicate logic over integers and lists.
 
 The idea of annotating ML signatures with assertions is not new (e.g., \cite{kahrs+:tcs97}).
  
