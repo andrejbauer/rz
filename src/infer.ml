@@ -50,7 +50,7 @@ type genericBinding =
 let rec annotateExpr cntxt orig_expr = 
   try
     match orig_expr with 	
-	Ident nm -> 
+      | Ident nm -> 
 	  begin
 	    (* The input is just a variable. *)
 	    let nm = LR.applyContextSubst cntxt nm 
@@ -452,6 +452,8 @@ let rec annotateExpr cntxt orig_expr =
       | Empty -> ResSet(L.Empty, L.KindSet)
 
       | Unit  -> ResSet(L.Unit, L.KindSet)
+
+      | Bool -> ResSet(L.Bool, L.KindSet)
 
       | Product sbnds   ->
 	  begin
@@ -856,6 +858,10 @@ let rec annotateExpr cntxt orig_expr =
       | False -> ResProp(L.False, L.StableProp)
 
       | True -> ResProp(L.True, L.StableProp)
+
+      | BFalse -> ResTerm (L.BFalse, L.Bool)
+
+      | BTrue -> ResTerm (L.BTrue, L.Bool)
 
       | And exprs  ->
 	  begin

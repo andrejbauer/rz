@@ -43,6 +43,7 @@ and expr =
   (*** sets ***)
   | Empty                                  (* empty set, a.k.a, void *)
   | Unit                                   (* unit set *)
+  | Bool                                   (* decidable propositions *)
   | Product  of (name * expr) list         (* finite (dependent) product *)
   | Sum      of (label * set option) list  (* finite coproduct *)
   | Subset   of binding1 * prop            (* subset *)
@@ -57,6 +58,8 @@ and expr =
 
   (*** terms ***)
   | EmptyTuple                             (* the member of Unit *)
+  | BTrue                                  (* decidable truth values (type bool) *)
+  | BFalse
   | Tuple  of term list
   | Proj   of int   * term                 (* projection from a tuple *)
   | Label  of label                        (* tag for a sum type *)
@@ -145,6 +148,7 @@ and string_of_expr = function
   | Constraint (e1, e2) -> string_of_expr e1 ^ " : " ^  string_of_expr e2
   | Empty -> "{}"
   | Unit -> "unit"
+  | Bool -> "bool"
   | Product lst -> String.concat " * " (List.map string_of_name_expr lst)
   | Sum lst -> String.concat " | " (List.map string_of_label_set lst)
   | Subset (bnd, e) -> "{" ^ string_of_bnd bnd ^ " | " ^ string_of_expr e ^ "}"
@@ -182,8 +186,10 @@ and string_of_expr = function
   | Let (bnd, e1, e2) ->
       "let " ^ string_of_bnd bnd ^ " = " ^ string_of_expr e1 ^ " in " ^ string_of_expr e2
   | The (bnd, e) -> "the " ^ string_of_bnd bnd ^ " , " ^ string_of_expr e
-  | False -> "false"
-  | True -> "true"
+  | False -> "False"
+  | True -> "True"
+  | BFalse -> "false"
+  | BTrue -> "true"
   | And lst -> String.concat " /\\ " (List.map string_of_expr lst)
   | Iff (e1, e2) -> string_of_expr e1 ^ " <-> " ^ string_of_expr e2
   | Or lst ->

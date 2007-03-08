@@ -275,7 +275,7 @@ and thinPBnds ctx pbnds =
 and thinTerm (ctx : context) orig_term = 
   try
     match orig_term with
-	Id (LN(None,nm)) ->
+      | Id (LN(None,nm)) ->
 	  begin
 	    let nm = applyTermRenaming ctx nm
 	    in let (oldty, newty) = lookupTermVariable ctx nm
@@ -298,6 +298,10 @@ and thinTerm (ctx : context) orig_term =
 	  end
 
       | EmptyTuple -> (UnitTy, EmptyTuple, UnitTy)
+
+      | BTrue -> (BoolTy, BTrue, BoolTy)
+
+      | BFalse -> (BoolTy, BFalse, BoolTy)
 
       | Dagger -> (TopTy, Dagger, TopTy)
 

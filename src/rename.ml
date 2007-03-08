@@ -104,7 +104,7 @@ and renLN ctx = function
       end
 
 and renTerm ctx = function
-    (EmptyTuple | Dagger | Inj (_, None)) as t -> t
+  | (EmptyTuple | BTrue | BFalse | Dagger | Inj (_, None)) as t -> t
       
   | Id ln -> Id (renLN ctx ln)
 
@@ -145,7 +145,7 @@ and renTermList ctx lst = renList' renTerm ctx lst
 and renTy ctx = function
     NamedTy ln -> NamedTy (renLN ctx ln)
 
-  | (UnitTy | VoidTy | TopTy) as ty -> ty
+  | (UnitTy | VoidTy | TopTy | BoolTy) as ty -> ty
 
   | SumTy lst ->
       SumTy (renList'
@@ -171,7 +171,7 @@ and renTyOpt ctx = function
 
 and renSimpleTy ctx = function
   | SNamedTy ln -> SNamedTy (renLN ctx ln)
-  | (SUnitTy | SVoidTy | STopTy) as sty -> sty
+  | (SUnitTy | SVoidTy | STopTy | SBoolTy) as sty -> sty
   | STupleTy lst -> STupleTy (renSimpleTyList ctx lst)
   | SArrowTy (sty1, sty2) -> SArrowTy (renSimpleTy ctx sty1, renSimpleTy ctx sty2)
 

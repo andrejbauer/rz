@@ -25,6 +25,7 @@ let rec good = function
     VoidTy -> [mk "v"; mk "w"; mk "u"]
   | UnitTy -> [mk "u"; mk "v"; mk "w"]
   | TopTy -> [mk "dagger"]
+  | BoolTy -> [mk "b"; mk "c"; mk "d"]
   | NamedTy _ -> [mk "x"; mk "y"; mk "z"; mk "w"; mk "t"]
   | SumTy _ -> [mk "i"; mk "j"; mk "k"; mk "m"]
   | TupleTy (ArrowTy _ as ty :: _) -> good ty
@@ -159,10 +160,17 @@ let rec translateSet = function
   | L.Unit ->
       let x, y = fresh2 UnitTy in
       { ty  = UnitTy;
-	tot = makeTot (x, UnitTy) (Equal (id x, EmptyTuple));
+	tot = makeTot (x, UnitTy) True;
 	per = makePer (x, y, UnitTy) (Equal (id x, id y));
       }
 
+  | L.Bool ->
+      let x, y = fresh2 BoolTy in
+	{ ty = BoolTy;
+	  tot = makeTot (x, BoolTy) True;
+	  per = makePer (x, y, BoolTy) (Equal (id x, id y));
+	}
+      
   | L.Basic (sln, L.KindSet) ->
       let tynm, _, _ = translateSLN sln in
 	{ ty  = NamedTy tynm;
@@ -356,9 +364,13 @@ let rec translateSet = function
        }
 
 and translateTerm = function
-    L.Var ln -> Id (translateLN ln)
+  | L.Var ln -> Id (translateLN ln)
 
   | L.EmptyTuple -> EmptyTuple
+
+  | L.BTrue -> BTrue
+
+  | L.BFalse -> BFalse
 
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
 

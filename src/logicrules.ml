@@ -510,7 +510,9 @@ let typeOfProj cntxt bnds trm n =
 
 let rec typeOf cntxt trm = 
   match trm with
-      EmptyTuple -> Unit
+    | EmptyTuple -> Unit
+
+    | BTrue | BFalse -> Bool
 	
     | Var (LN ( None, nm )) ->
 	begin

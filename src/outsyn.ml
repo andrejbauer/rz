@@ -33,6 +33,7 @@ and ty =
   | UnitTy                                 (* 0 *)
   | VoidTy                                 (* 0 *)
   | TopTy                                  (* 0 *)
+  | BoolTy                                 (* 0 *)
   | SumTy of (label * ty option) list      (* 1 *)
   | TupleTy of ty list                     (* 2 *)
   | ArrowTy of ty * ty                     (* 3 *)
@@ -44,6 +45,7 @@ and simple_ty =
   | SUnitTy
   | SVoidTy
   | STopTy
+  | SBoolTy
   | STupleTy of simple_ty list
   | SArrowTy of simple_ty * simple_ty
 (* Note: hoistProp will break if simple_ty may contain terms. *)
@@ -66,6 +68,8 @@ and pattern =
 
 and term =
   | EmptyTuple
+  | BTrue
+  | BFalse
   | Dagger
   | Id         of longname
   | App        of term * term
@@ -179,6 +183,7 @@ let rec ty_of_simple_ty = function
   | SUnitTy -> UnitTy
   | SVoidTy -> VoidTy
   | STopTy -> TopTy
+  | SBoolTy -> BoolTy
   | STupleTy lst -> TupleTy (List.map ty_of_simple_ty lst)
   | SArrowTy (sty1, sty2) -> ArrowTy (ty_of_simple_ty sty1, ty_of_simple_ty sty2)
 
@@ -187,6 +192,7 @@ let rec simple_ty_of_ty = function
   | UnitTy -> SUnitTy
   | VoidTy -> SVoidTy
   | TopTy -> STopTy
+  | BoolTy -> SBoolTy
   | TupleTy lst -> STupleTy (List.map simple_ty_of_ty lst)
   | ArrowTy (ty1, ty2) -> SArrowTy (simple_ty_of_ty ty1, simple_ty_of_ty ty2)
   | _ -> failwith "simple_ty_of_ty: invalid type"
@@ -227,6 +233,7 @@ let rec dagger_of_ty = function
   | UnitTy -> failwith "Cannot make a dagger from UnitTy"
   | VoidTy -> failwith "Cannot make a dagger from VoidTy"
   | TopTy -> Dagger
+  | BoolTy -> failwith "Cannot make a dagger from BoolTy"
   | SumTy _ -> failwith "Cannot make a dagger from SumTy"
   | TupleTy lst -> Tuple (List.map dagger_of_ty lst)
   | ArrowTy (t1, t2) -> Lambda ((wildName(), t1), Dagger)
@@ -275,6 +282,8 @@ let rec fvTerm' flt acc = function
       if List.mem nm flt then acc else nm :: acc
   | Id (LN(Some _, _)) -> acc
   | EmptyTuple -> acc
+  | BTrue -> acc
+  | BFalse -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
   | Lambda ((n, s), t) -> fvTerm' (n::flt) (fvTy' flt acc s) t
@@ -357,22 +366,20 @@ and fvSimpleTyList' flt acc lst = fvList' fvSimpleTy' flt acc lst
 and fvModest' flt acc {tot=p; per=q} = fvProp' flt (fvProp' flt acc p) q
 
 and fvTy' flt acc = function
-    NamedTy(LN(None,nm)) ->
-      if List.mem nm flt then acc else nm :: acc
-  | NamedTy(LN(Some _, _)) -> acc
-  | (UnitTy | VoidTy | TopTy) -> acc
-  | SumTy(sumarms) -> List.fold_left (fvSum' flt) acc sumarms
-  | TupleTy tys -> List.fold_left (fvTy' flt) acc tys
-  | ArrowTy(ty1,ty2) ->
-      fvTy' flt (fvTy' flt acc ty1) ty2
-  | PolyTy(nms,ty) ->
-      fvTy' (nms @ flt) acc ty
+  | UnitTy | VoidTy | TopTy | BoolTy -> acc
+  | NamedTy(LN(None,nm))    -> if List.mem nm flt then acc else nm :: acc
+  | NamedTy(LN(Some _, _))  -> acc
+  | SumTy(sumarms)          -> List.fold_left (fvSum' flt) acc sumarms
+  | TupleTy tys             -> List.fold_left (fvTy' flt) acc tys
+  | ArrowTy(ty1,ty2)        -> fvTy' flt (fvTy' flt acc ty1) ty2
+  | PolyTy(nms,ty)          -> fvTy' (nms @ flt) acc ty
 
 and fvSimpleTy' flt acc = function
   | SNamedTy _
   | SUnitTy
   | SVoidTy
-  | STopTy -> acc
+  | STopTy
+  | SBoolTy -> acc
   | STupleTy lst -> fvSimpleTyList' flt acc lst
   | SArrowTy (sty1, sty2) ->
       fvSimpleTy' flt (fvSimpleTy' flt acc sty1) sty2
@@ -465,6 +472,8 @@ let rec countTerm (cp: countPred) trm =
     | Id (LN(None,nm)) -> 0
     | Id (LN(Some mdl, _)) -> countModul cp mdl
     | EmptyTuple -> 0
+    | BTrue -> 0
+    | BFalse -> 0
     | Dagger -> 0
     | App (u, v) -> countTerm cp u + countTerm cp v
     | Lambda ((n, s), t) -> countTerm cp t
@@ -533,7 +542,8 @@ and countTy cp ty =
 	countModul cp mdl
     | UnitTy
     | VoidTy
-    | TopTy -> 0
+    | TopTy
+    | BoolTy -> 0
     | SumTy lst -> countSumArms cp lst
     | TupleTy lst -> countTys cp lst
     | ArrowTy (ty1,ty2) -> countTy cp ty1 + countTy cp ty2
@@ -544,7 +554,7 @@ and countSimpleTy cp sty =
     1
   else
     match sty with
-      | SNamedTy(LN(None,_)) | SUnitTy | SVoidTy | STopTy -> 0
+      | SNamedTy(LN(None,_)) | SUnitTy | SVoidTy | STopTy | SBoolTy -> 0
       | SNamedTy(LN(Some mdl, _)) -> countModul cp mdl
       | STupleTy lst -> countSimpleTys cp lst
       | SArrowTy (sty1,sty2) -> countSimpleTy cp sty1 + countSimpleTy cp sty2
@@ -832,8 +842,10 @@ and substTerm ?occ sbst orig_term =
 		| Some trm' -> trm'
 	      end 
 	  | EmptyTuple -> EmptyTuple
+	  | BTrue      -> BTrue
+	  | BFalse     -> BFalse
 	  | Dagger     -> Dagger
-	  | App (t,u) -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
+	  | App (t,u)  -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
 	  | Lambda ((n, ty), t) ->
 	      let n' = refresh n in
 		Lambda ((n', substTy ?occ sbst ty), 
@@ -884,6 +896,7 @@ and substTy ?occ sbst = function
   | UnitTy -> UnitTy
   | VoidTy -> VoidTy
   | TopTy  -> TopTy
+  | BoolTy -> BoolTy
   | SumTy lst -> 
       SumTy (List.map (fun (lbl, tyopt) -> 
 	                 (lbl, substTyOption ?occ sbst tyopt)) 
@@ -906,7 +919,7 @@ and substSimpleTy ?occ sbst = function
 	  	  None -> SNamedTy (substLN ?occ sbst ln)
         | Some ty' -> simple_ty_of_ty ty'
     end	
-  | (SUnitTy | SVoidTy | STopTy) as sty -> sty
+  | (SUnitTy | SVoidTy | STopTy | SBoolTy) as sty -> sty
   | STupleTy lst -> STupleTy (List.map (substSimpleTy ?occ sbst) lst)
   | SArrowTy (sty1, sty2) ->
       SArrowTy (substSimpleTy ?occ sbst sty1, substSimpleTy ?occ sbst sty2)
@@ -1058,6 +1071,7 @@ and string_of_ty' level t =
 	  | UnitTy         -> (0, "unit")
 	  | TopTy          -> (0, "top")
 	  | VoidTy         -> (0, "void")
+	  | BoolTy         -> (0, "bool")
 	  | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
           | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2))
@@ -1082,6 +1096,8 @@ and string_of_term' level t =
   let (level', str) = match t with
       Id ln -> (0, string_of_ln ln)
     | EmptyTuple -> (0, "()")
+    | BTrue -> (0, "true")
+    | BFalse -> (0, "false")
     | Dagger -> (0, "DAGGER")
     | App (App (Id (LN(_,N(_, Infix0)) as ln), t), u) -> 
 	(9, string_of_infix (string_of_term' 9 t) ln (string_of_term' 8 u))
@@ -1709,6 +1725,8 @@ and hoist trm =
   match trm with
       Id _ 
     | EmptyTuple 
+    | BTrue
+    | BFalse
     | Dagger 
     | Inj(_, None) -> ([], trm)
 

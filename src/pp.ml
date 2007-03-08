@@ -214,8 +214,10 @@ and output_totalbinds ppf lst =
 	output_loop ppf lst
 
 and output_term_0 ppf = function
-    Id ln -> output_ln ppf ln
+  | Id ln -> output_ln ppf ln
   | EmptyTuple -> fprintf ppf "()"
+  | BTrue -> fprintf ppf "true"
+  | BFalse -> fprintf ppf "false"
   | Dagger -> fprintf ppf "DAGGER"
   | Tuple [] -> fprintf ppf "()"
   | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t
@@ -358,7 +360,7 @@ and output_prop_8 ppf = function
   | prp -> output_prop_0 ppf prp
 
 and output_prop_0 ppf = function
-    True -> fprintf ppf "true"
+  | True -> fprintf ppf "true"
   | False -> fprintf ppf "false"
   | BasicProp (LN (_, Name.N(_, Name.Per)) as ln) ->
       fprintf ppf "=%a="
@@ -446,6 +448,7 @@ and output_ty_0 ppf = function
     NamedTy ln -> output_ln ppf ln
   | UnitTy     -> fprintf ppf "unit"
   | VoidTy     -> fprintf ppf "void"
+  | BoolTy     -> fprintf ppf "bool"
   | TopTy      -> fprintf ppf "top"
   | TupleTy [] -> fprintf ppf "top"
   | SumTy []   -> fprintf ppf "void"

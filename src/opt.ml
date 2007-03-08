@@ -379,7 +379,7 @@ and optPt ctx = function
 and optTerm ctx orig_term = 
   try
     match orig_term with
-        Id (LN(None, nm)) ->
+      | Id (LN(None, nm)) ->
 	  (** We maintain a renaming substitution as we go along to make
 	      sure that shadowing is eliminated.  The renaming is extended
               whenever we encounter a bound variable; so when we see the
@@ -408,6 +408,12 @@ and optTerm ctx orig_term =
       | EmptyTuple -> 
 	  (** The unit value is already as simple as possible. *)
 	  (UnitTy, EmptyTuple)
+
+      | BTrue ->
+	  (BoolTy, BTrue)
+
+      | BFalse ->
+	  (BoolTy, BFalse)
 
       | Dagger -> 
 	  (TopTy, Dagger)

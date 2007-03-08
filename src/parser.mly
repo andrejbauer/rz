@@ -38,6 +38,9 @@
 %token ARROW
 %token AXIOM
 %token BAR
+%token BOOL
+%token BFALSE
+%token BTRUE
 %token COLON
 %token COLONEQUAL
 %token COMMA
@@ -238,13 +241,16 @@ name:
 simple_expr:
   | EMPTY                                     { Empty }
   | UNIT                                      { Unit }
+  | BOOL                                      { Bool }
   | SET                                       { Set }
   | PROP                                      { Prop }
   | STABLE                                    { Stable }
   | LPAREN RPAREN                             { EmptyTuple }
   | EMPTYTUPLE                                { EmptyTuple }
   | FALSE                                     { False }
+  | BFALSE                                    { BFalse }
   | TRUE                                      { True }
+  | BTRUE                                     { BTrue }
   | name                                      { $1 }
   | LPAREN expr RPAREN                        { $2 }
   | LPAREN expr_list RPAREN                   { Tuple $2 }

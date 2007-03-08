@@ -6,6 +6,7 @@
   let reserved =
     [
       "Axiom", AXIOM;
+      "bool", BOOL;
       "Definition", DEFINITION;
       "empty", EMPTY;
       "end", END;
@@ -14,6 +15,7 @@
       "exists", EXISTS;
       "exists1", UNIQUE;
       "False", FALSE;
+      "false", BFALSE;
       "forall", FORALL;
       "fun", FUN;
       "Hypothesis", HYPOTHESIS;
@@ -34,6 +36,7 @@
       "thy", THY ;
       "Thy", THY ;
       "True", TRUE;
+      "true", BTRUE;
       "tt", EMPTYTUPLE;
       "Type", TYPE;
       "unit", UNIT;

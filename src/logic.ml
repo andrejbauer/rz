@@ -79,12 +79,13 @@ and proposition =
 and set =
     | Empty
     | Unit  (* Unit is the singleton containing EmptyTuple *)
+    | Bool  (* Decidable propositions *)
     | Basic    of set_longname * setkind
     | Product  of binding list
     | Exp      of name * set * set
     | Sum      of (label * set option) list
     | Subset   of binding * proposition
-    | Rz       of set (** the set of realizers *)
+    | Rz       of set (* the set of realizers *)
     | Quotient of set * proposition
     | SApp     of set * term
     | SLambda  of binding * set
@@ -101,6 +102,8 @@ and setkind =
 
 and term =
     | EmptyTuple
+    | BTrue
+    | BFalse
     | Var      of longname
     | Tuple    of term list
     | Proj     of int * term
@@ -233,7 +236,7 @@ let maybePAssure reqs prp =
 
 (** Is a set suitable for ||...|| abreviation? *)
 let rec isSimple = function
-  | Empty | Unit -> true
+  | Empty | Unit | Bool -> true
   | Basic (_, KindSet) -> true
   | Basic (_, _) -> false
   | Product lst -> List.for_all (fun (_, s) -> isSimple s) lst
@@ -265,6 +268,7 @@ and string_of_sln = function
 and string_of_set = function
     Empty -> "empty"
   | Unit -> "unit"
+  | Bool -> "bool"
   | Basic (lname, _) -> string_of_sln lname
   | Product lst ->
       "(" ^ (String.concat " * "
@@ -299,6 +303,8 @@ and string_of_term trm =
       Var(LN(None, nm))  -> string_of_name nm
     | Var(LN(Some mdl, nm)) -> string_of_model mdl ^ "." ^ string_of_name nm
     | EmptyTuple -> "()"
+    | BTrue -> "true"
+    | BFalse -> "false"
     | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
     | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
@@ -526,7 +532,7 @@ let fnOpt fnFun = function
   | Some x -> fnFun x
 
 let rec fnSet = function
-    Empty | Unit  -> NameSet.empty
+  | Empty | Unit | Bool -> NameSet.empty
   | Basic (SLN(None, nm), knd) -> NameSet.union (NameSet.singleton nm) (fnSetkind knd)
   | Basic (SLN(Some mdl, _), knd) -> NameSet.union (fnModel mdl) (fnSetkind knd)
   | Product noss -> fnProduct noss
@@ -559,7 +565,7 @@ and fnSetkind = function
   | KindArrow(nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnSetkind knd))
       
 and fnTerm = function
-    EmptyTuple | Inj(_, None)-> NameSet.empty
+  | EmptyTuple | BTrue | BFalse | Inj(_, None)-> NameSet.empty
   | Var(LN(None, nm)) -> NameSet.singleton nm
   | Var(LN(Some mdl, nm)) -> NameSet.add nm (fnModel mdl)
   | Subin(trm, (nm,st), prp) ->
@@ -800,7 +806,9 @@ let checkNoCapture sbst nm =
 let rec subst sbst =
   
   let rec sub = function
-      EmptyTuple -> EmptyTuple
+    | EmptyTuple -> EmptyTuple
+    | BTrue -> BTrue
+    | BFalse -> BFalse
     | Var (LN (None, nm)) -> getTermvar sbst nm
     | Var (LN (Some mdl, nm)) -> 
 	Var( LN(Some(substModel sbst mdl), nm) )
@@ -923,6 +931,7 @@ and substSet sbst =
   let rec sub = function
       Unit -> Unit
     | Empty -> Empty
+    | Bool -> Bool
     | Basic (SLN (None, stnm), knd) ->
 	getSetvar sbst stnm (substSetkind sbst knd)
     | Basic (SLN (Some mdl, stnm), knd) -> 
