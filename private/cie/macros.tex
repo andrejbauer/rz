@@ -227,8 +227,8 @@
 \newcommand{\ofalse}{\bot} % false
 \newcommand{\onot}[1]{\lnot #1} % not
 \newcommand{\oand}[2]{#1 \land #2} % and
-\newcommand{\oimply}[2]{#1 \Rightarrow #2} % imply
-\newcommand{\oiff}[2]{#1 \Leftrightarrow #2} % iff
+\newcommand{\oimply}[2]{#1 \rightarrow #2} % imply
+\newcommand{\oiff}[2]{#1 \leftrightarrow #2} % iff
 \newcommand{\opcase}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}{\Rightarrow}{#4}\,|\,\oinj{#5}{#6}\Rightarrow{#7}}
 \newcommand{\opcasex}[5]{\mathtt{match}\;#1\;\mathtt{with}\,\oinjx{#2}{\Rightarrow}{#3}\,|\,\oinjx{#4}\Rightarrow{#5}}
 \newcommand{\opcases}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}\Rightarrow{#4}\,|\cdots\,|\oinj{#5}{#6}\Rightarrow{#7}}
@@ -261,6 +261,21 @@
 \newcommand{\oMT}{S}
 \newcommand{\osig}[1]{\mathtt{sig}\,#1\,\mathtt{end}}
 \newcommand{\ofunctor}[3]{\mathtt{functor}\, (#1{:}#2) \to #3}
+
+% macros within source
+\newcommand{\iTo}{$\to$}
+\newcommand{\iForall}{$\forall$}
+\newcommand{\iOr}{$\lor$}
+\newcommand{\iAnd}{$\land$}
+\newcommand{\iImply}{$\Rightarrow$}
+\newcommand{\iNot}{$\lnot$}
+\newcommand{\iExists}{$\exists$}
+\newcommand{\iExistsOne}{$\exists!$}
+\newcommand{\iT}[1]{$\|$#1$\|$}
+\newcommand{\iPer}[1]{$\approx_{\mathtt{#1}}$}
+\newcommand{\iIff}{$\leftrightarrow$}
+\newcommand{\iLeq}{$\leq$}
+\newcommand{\iRz}{$\rz$}
 
 %%% Local Variables: 
 %%% mode: latex

@@ -235,13 +235,15 @@ unimplementable.
 
 \else % \iflong
 
-The output of RZ consists of \emph{module specifications}, module types
-plus assertions about their components.  More specifically, a typical specification
-may contain value declarations, type declarations and definitions, module
-declarations, specification definitions, proposition declarations, and
-assertions. 
+The output of RZ consists of \emph{module specifications}, module
+types plus assertions about their components. More specifically, a
+typical specification may contain value declarations, type
+declarations and definitions, module declarations, specification
+definitions, proposition declarations, and assertions. RZ only outputs
+assertions that are free of computational content, and do not require
+knowledge of constructive mathematics to be understood.
 
-The least familiar construct is the 
+A special construct is the 
 \emph{obligation} $\ooblig{\ox}{\oty}{\op}{\oe}$ which means ``in term
 $e$, let $x$ be any element of $\values{\oty}$ that satisfies~$\op$''.
 An obligation is equivalent to a combination of Hilbert's indefinite

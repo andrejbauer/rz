@@ -17,7 +17,7 @@ A set declaration $\iParameter{s}{\iSet}$ is translated to
 \begin{source}
 type s
 predicate (\iPer{s}) : s \iTo s \iTo bool
-assertion symmetric_s :  \iForall x:s, y:s, x \iPer{s} y -> y \iPer{s} x
+assertion symmetric_s :  \iForall x:s, y:s, x \iPer{s} y \iTo y \iPer{s} x
 assertion transitive_s : \iForall x:s, y:s, z:s, x \iPer{s} y \iAnd y \iPer{s} z \iTo x \iPer{s} z
 predicate \iT{s} : s \iTo bool
 assertion support_def_s :  \iForall x:s,  x : \iT{s} \iIff x \iPer{s} x
@@ -43,7 +43,7 @@ assertion symmetric_t : \iForall x:s, y:t, z:t, y \iPer{t x} z \iTo z \iPer{t x}
 assertion transitive_t :
   \iForall x:s, y:t, z:t, w:t, y \iPer{t x} z \iAnd z \iPer{t x} w \iTo y \iPer{t x} w
 predicate \iT{t} : s \iTo t \iTo bool
-assertion support_def_t :  \iForall x:s, y:t, y : \iT{t x} <\iTo y \iPer{t x} y
+assertion support_def_t :  \iForall x:s, y:t, y : \iT{t x} \iIff y \iPer{t x} y
 \end{source}
 %
 The underlying output type~$\f{t}$ is still non-dependent, but the per is
