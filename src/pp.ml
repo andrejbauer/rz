@@ -370,7 +370,7 @@ and output_prop_0 ppf = function
 	output_ln ln
   | BasicProp ln -> output_ln ppf ln
   | SimpleSupport sty -> fprintf ppf "||%a||" output_simple_ty sty
-  | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_ty sty
+  | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_per sty
   | And [] -> fprintf ppf "true"
   | prp ->
 (*      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp)); *)
@@ -390,7 +390,7 @@ and output_per ppf p =
 	    output_ln ln
       | SimplePer sty ->
 	  fprintf ppf "=%a="
-	    output_simple_ty sty
+	    output_simple_per sty
       | _ ->
 	  fprintf ppf "=(%a)="
 	    output_per' p
@@ -456,6 +456,13 @@ and output_ty_0 ppf = function
 		   fprintf ppf "(%a)"  output_ty typ)
 
 and output_simple_ty ppf sty = output_ty ppf (ty_of_simple_ty sty)
+
+and output_simple_per ppf sty =
+  match sty with
+    | SNamedTy _ | SUnitTy | SVoidTy | STopTy | SBoolTy ->
+	output_simple_ty ppf sty
+    | STupleTy _ | SArrowTy _ ->
+	fprintf ppf "(%a)"  output_simple_ty sty
 
 and output_annots ppf = function
     [] -> ()

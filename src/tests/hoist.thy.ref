@@ -11,7 +11,7 @@ module type HoistTerms =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    val a : s
@@ -68,29 +68,23 @@ module type HoistTerms =
     
    val g : (s -> s) -> s
    (**  assertion g_def : 
-          forall h:s -> s, r:s -> s, 
-            (forall x:s, y:s,  x =s= y -> h x =s= r y) ->
-            g h =s= r
-                      (assure x:s, d:ty_p,
-                           (x : ||s|| /\ p x d /\ 
-                            (forall (x':||s||), 
-                               forall a':ty_p,  p x' a' -> x =s= x')) in x)
+          g =((s -> s) -> s)= (fun f' : s -> s =>
+                               f'
+                                 (assure x:s, d:ty_p,
+                                      (x : ||s|| /\ p x d /\ 
+                                       (forall (x':||s||), 
+                                          forall a':ty_p,  p x' a' ->
+                                            x =s= x')) in x))
    *)
     
    val application : s
    (**  assertion application_def : 
           application =s= (assure h:(s -> s) -> s,
                                (h : ||(s -> s) -> s|| /\ 
-                                (forall r:s -> s, f':s -> s, 
-                                   (forall x:s, y:s,  x =s= y -> r x =s= f' y) ->
-                                   g r =s= h f') /\ 
+                                g =((s -> s) -> s)= h /\ 
                                 (forall (h':||(s -> s) -> s||), 
-                                   (forall r:s -> s, f':s -> s, 
-                                      (forall x:s, y:s,  x =s= y ->
-                                         r x =s= f' y) -> g r =s= h' f') ->
-                                   forall r:s -> s, f':s -> s, 
-                                     (forall x:s, y:s,  x =s= y ->
-                                        r x =s= f' y) -> h r =s= h' f'))
+                                   g =((s -> s) -> s)= h' ->
+                                   h =((s -> s) -> s)= h'))
                              in h
                                   (fun x : s =>
                                    assure y:s, d:ty_p,
@@ -195,14 +189,15 @@ module type HoistTerms =
     
    val let_term : s * s
    (**  assertion let_term_def : 
-          let x = assure x:s,
-                      (x : ||s|| /\ x =s= a /\ 
-                       (forall (x':||s||),  x' =s= a -> x =s= x')) in x
-          in pi0 let_term =s= x /\ 
-          pi1 let_term =s= (assure y:s,
-                                (y : ||s|| /\ x =s= y /\ 
-                                 (forall (y':||s||),  x =s= y' -> y =s= y'))
-                              in y)
+          let_term =(s * s)= (let x = assure x:s,
+                                          (x : ||s|| /\ x =s= a /\ 
+                                           (forall (x':||s||),  x' =s= a ->
+                                              x =s= x')) in x
+                              in (x,
+                                 (assure y:s,
+                                      (y : ||s|| /\ x =s= y /\ 
+                                       (forall (y':||s||),  x =s= y' ->
+                                          y =s= y')) in y)))
    *)
     
    val subin : s * ty_p

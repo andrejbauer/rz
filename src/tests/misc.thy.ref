@@ -11,7 +11,7 @@ module type T =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type t
@@ -31,7 +31,7 @@ module type T =
    *)
     
    (** predicate ||t|| : s -> t -> bool *)
-   (**  assertion total_def_t : 
+   (**  assertion support_def_t : 
           forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y
    *)
     
@@ -66,7 +66,7 @@ module type T =
    *)
     
    (** predicate ||u|| : s -> s -> u -> bool *)
-   (**  assertion total_def_u : 
+   (**  assertion support_def_u : 
           forall x:s, y:s, z:u,  z : ||u x y|| <-> z =(u x y)= z
    *)
     
@@ -132,9 +132,7 @@ module type T =
    *)
     
    (** predicate (=q=) : q -> q -> bool *)
-   (**  assertion q_def_per : 
-          forall f:q, g:q,  f =q= g <->
-            (forall x:s, y:s,  x =s= y -> f x =s= g y)
+   (**  assertion q_def_per :  forall f:q, g:q,  f =q= g <-> f =(s -> s)= g
    *)
     
    val dd : q
@@ -187,7 +185,7 @@ module type U =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type t = s
@@ -217,7 +215,7 @@ module type Iteration =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    val x : a
@@ -241,7 +239,7 @@ module type DenseLinearOrder =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type ty_less
@@ -305,7 +303,7 @@ module type Sums =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    val a : s
@@ -355,11 +353,11 @@ module type Sums =
     
    val d : s * unit
    (**  assertion d_def : 
-          pi0 d =s= pi0 (match tmp2 with
-                           `yes(q:s) -> (q,()) 
-                         | `no(r:unit) -> (c,r) 
-                         | `maybe -> (a,()) 
-                         ])
+          d =(s * unit)= (match tmp2 with
+                            `yes(q:s) -> (q,()) 
+                          | `no(r:unit) -> (c,r) 
+                          | `maybe -> (a,()) 
+                          ])
         *)
     
    val e : s
@@ -379,7 +377,7 @@ module type TestSubset =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type ty_p
@@ -468,7 +466,7 @@ module type Choice =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    type b
@@ -481,7 +479,7 @@ module type Choice =
    *)
     
    (** predicate ||b|| : b -> bool *)
-   (**  assertion total_def_b :  forall x:b,  x : ||b|| <-> x =b= x
+   (**  assertion support_def_b :  forall x:b,  x : ||b|| <-> x =b= x
    *)
     
    type ty_r
@@ -525,7 +523,7 @@ module type Quotients =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    (** predicate (<<) : s -> s -> bool *)

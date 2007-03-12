@@ -11,7 +11,7 @@ module type A =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
  end
  
@@ -27,7 +27,7 @@ module type B =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    type b
@@ -40,7 +40,7 @@ module type B =
    *)
     
    (** predicate ||b|| : b -> bool *)
-   (**  assertion total_def_b :  forall x:b,  x : ||b|| <-> x =b= x
+   (**  assertion support_def_b :  forall x:b,  x : ||b|| <-> x =b= x
    *)
  end
  
@@ -56,7 +56,7 @@ module type C =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    type b
@@ -69,7 +69,7 @@ module type C =
    *)
     
    (** predicate ||b|| : b -> bool *)
-   (**  assertion total_def_b :  forall x:b,  x : ||b|| <-> x =b= x
+   (**  assertion support_def_b :  forall x:b,  x : ||b|| <-> x =b= x
    *)
     
    type d = a * b
@@ -79,8 +79,7 @@ module type C =
    *)
     
    (** predicate (=d=) : d -> d -> bool *)
-   (**  assertion d_def_per : 
-          forall p:d, q:d,  p =d= q <-> pi0 p =a= pi0 q /\ pi1 p =b= pi1 q
+   (**  assertion d_def_per :  forall p:d, q:d,  p =d= q <-> p =(a * b)= q
    *)
  end
 

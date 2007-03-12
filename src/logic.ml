@@ -234,16 +234,6 @@ let maybePAssure reqs prp =
       [] -> prp
     | reqs -> PAssure(None, And reqs, prp)
 
-(** Is a set suitable for ||...|| abreviation? *)
-let rec isSimple = function
-  | Empty | Unit | Bool -> true
-  | Basic (_, KindSet) -> true
-  | Basic (_, _) -> false
-  | Product lst -> List.for_all (fun (_, s) -> isSimple s) lst
-  | Exp (x, s1, s2) -> isWild x && isSimple s1 && isSimple s2
-  | Sum _ | Subset _ | Rz _ | Quotient _ | SApp _ | SLambda _ -> false
-
-
 (****************************************)
 (** (Not-Very)-Pretty-Printing Routines *)
 (****************************************)
@@ -689,7 +679,19 @@ and fnKind = function
       NameSet.union (fnSet ty) (NameSet.remove nm (fnKind knd))
 
 
-    
+(** Is a set suitable for ||...|| abreviation? *)
+let rec isSimple s =
+  let isFree x s = not (NameSet.mem x (fnSet s)) in
+    match s with
+      | Empty | Unit | Bool -> true
+      | Basic (_, KindSet) -> true
+      | Basic (_, _) -> false
+      | Product [] -> true
+      | Product [(_, s)] -> isSimple s
+      | Product ((x,s)::lst) ->
+	  isSimple s && isFree x (Product lst) && isSimple (Product lst)
+      | Exp (x, s1, s2) -> isFree x s2 && isSimple s1 && isSimple s2
+      | Sum _ | Subset _ | Rz _ | Quotient _ | SApp _ | SLambda _ -> false
       
 
 (***************************)

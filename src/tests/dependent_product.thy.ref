@@ -11,7 +11,7 @@ module type T =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type t
@@ -31,7 +31,7 @@ module type T =
    *)
     
    (** predicate ||t|| : s -> t -> bool *)
-   (**  assertion total_def_t : 
+   (**  assertion support_def_t : 
           forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y
    *)
     

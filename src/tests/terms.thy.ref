@@ -11,7 +11,7 @@ module type Terms =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    val a : s
@@ -42,8 +42,7 @@ module type Terms =
    *)
     
    val tuple : s * s * s
-   (**  assertion tuple_def :  pi0 tuple =s= a /\ pi1 tuple =s= b /\ 
-          pi2 tuple =s= c
+   (**  assertion tuple_def :  tuple =(s * s * s)= (a,b,c)
    *)
     
    val proj : s
@@ -51,16 +50,12 @@ module type Terms =
    *)
     
    val g : (s -> s) -> s -> s
-   (**  assertion g_def : 
-          forall f:s -> s, h:s -> s, 
-            (forall x:s, y:s,  x =s= y -> f x =s= h y) ->
-            forall x:s, y:s,  x =s= y -> g f x =s= h y
+   (**  assertion g_def :  g =((s -> s) -> s -> s)= (fun f : s -> s => f)
    *)
     
    val application : s -> s
    (**  assertion application_def : 
-          forall x:s, y:s,  x =s= y ->
-            application x =s= g (fun x' : s => a) y
+          application =(s -> s)= g (fun x : s => a)
    *)
     
    val description : s * ty_p
@@ -112,7 +107,7 @@ module type Terms =
    *)
     
    val let_term : s * s
-   (**  assertion let_term_def :  pi0 let_term =s= a /\ pi1 let_term =s= a
+   (**  assertion let_term_def :  let_term =(s * s)= (a,a)
    *)
     
    val subin : s * ty_p

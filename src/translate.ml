@@ -186,6 +186,7 @@ let rec translateSet = function
 	}
 
   | L.Product lst ->
+      let simple = L.isSimple (L.Product lst) in
       let nms, ws =
 	List.fold_left
 	  (fun (nms, ws) (nm,st) -> (nm::nms, (translateSet st)::ws))
@@ -200,7 +201,7 @@ let rec translateSet = function
 	  ty = v;
 	  tot = 
 	    begin
-	      if L.isSimple (L.Product lst) then
+	      if simple then
 		SimpleSupport (simple_ty_of_ty v)
 	      else
 		(let t = fresh v in
@@ -213,21 +214,26 @@ let rec translateSet = function
 		     ))
 	      )
 	    end;
-	  per = (
-	      let t, u = fresh2 v in
-	      let nms' = List.map refresh nms in
-		makePer (t, u, v) 
-		  (fst (List.fold_right (fun nm (p,k) -> PLet (VarPat nm, Proj (k, id t), p), k-1) nms
-			 (
-			   (fst (List.fold_right (fun nm (p,k) -> PLet (VarPat nm, Proj (k, id u), p), k-1) nms'
-				  (And (map3 (fun nm nm' w -> pApp (pApp w.per (id nm)) (id nm')) nms nms' ws), n))
-			   ), n)
-		  ))
-	  )
+	  per =
+	    begin
+	      if simple then
+		SimplePer (simple_ty_of_ty v)
+	      else
+		let t, u = fresh2 v in
+		let nms' = List.map refresh nms in
+		  makePer (t, u, v) 
+		    (fst (List.fold_right (fun nm (p,k) -> PLet (VarPat nm, Proj (k, id t), p), k-1) nms
+			    (
+			      (fst (List.fold_right (fun nm (p,k) -> PLet (VarPat nm, Proj (k, id u), p), k-1) nms'
+				      (And (map3 (fun nm nm' w -> pApp (pApp w.per (id nm)) (id nm')) nms nms' ws), n))
+			      ), n)
+			 ))
+	    end
 	}
 
 
   | L.Exp (nm, s, t) ->
+      let simple = L.isSimple (L.Exp (nm, s, t)) in
       let {ty=u; per=p} = translateSet s in
       let {ty=v; per=q} = translateSet t in
       let w = ArrowTy (u, v) in
@@ -236,7 +242,7 @@ let rec translateSet = function
 	{ ty = w;
 	  tot =
 	    begin
-	      if L.isSimple (L.Exp (nm, s, t)) then
+	      if simple then
 		SimpleSupport (simple_ty_of_ty w)
 	      else
 		makeTot (f, w)
@@ -247,13 +253,19 @@ let rec translateSet = function
 				     pApp (pApp (sbp nm (id z) q) (App (id f, id z))) (App (id f, id z'))
 				 ))))
 	    end;
-	  per = makePer (f, g, w)
-	    (Forall ((z, u),
-		    Forall ((z', u),
-			   Imply (
-			       pApp (pApp p (id z)) (id z'),
-			       pApp (pApp (sbp nm (id z) q) (App (id f, id z))) (App (id g, id z'))
-			   ))))
+	  per = 
+	    begin
+	      if simple then
+		SimplePer (simple_ty_of_ty w)
+	      else
+		makePer (f, g, w)
+		  (Forall ((z, u),
+			   Forall ((z', u),
+				   Imply (
+				     pApp (pApp p (id z)) (id z'),
+				     pApp (pApp (sbp nm (id z) q) (App (id f, id z))) (App (id g, id z'))
+				   ))))
+	    end
 	}
 
 
@@ -697,7 +709,7 @@ and translateTheoryElement = function
 		aprop = spec_trans}
 	      ]);
 	 Spec (totnm, PropSpec (total_propkind (NamedTy (ln_of_name n)) knd),
-		[{alabel = "total_def_" ^ string_of_name n;
+		[{alabel = "support_def_" ^ string_of_name n;
 		  atyvars = [];
 		  apbnds = [];
 		  aannots = [Annot_NoOpt];

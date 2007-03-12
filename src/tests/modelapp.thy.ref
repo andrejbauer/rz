@@ -11,7 +11,7 @@ module type A =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    val c : a
@@ -30,7 +30,7 @@ module type A =
                 *)
                  
                 (** predicate ||e|| : e -> bool *)
-                (**  assertion total_def_e : 
+                (**  assertion support_def_e : 
                        forall x:e,  x : ||e|| <-> x =e= x
                 *)
                  
@@ -60,7 +60,7 @@ module type B =
    *)
     
    (** predicate ||a|| : a -> bool *)
-   (**  assertion total_def_a :  forall x:a,  x : ||a|| <-> x =a= x
+   (**  assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x
    *)
     
    type b = a
@@ -83,7 +83,7 @@ module type B =
    *)
     
    (** predicate ||b'|| : b' -> bool *)
-   (**  assertion total_def_b' :  forall x:b',  x : ||b'|| <-> x =b'= x
+   (**  assertion support_def_b' :  forall x:b',  x : ||b'|| <-> x =b'= x
    *)
     
    val c : a

@@ -11,7 +11,7 @@ module type T =
    *)
     
    (** predicate ||s|| : s -> bool *)
-   (**  assertion total_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
    *)
     
    type ty_greater
