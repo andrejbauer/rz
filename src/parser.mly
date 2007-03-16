@@ -103,6 +103,7 @@
 %token STABLE
 %token STAR
 %token THE
+%token THEOREM
 %token THEORY
 %token THY
 /* %token <string> TNAME */
@@ -117,7 +118,7 @@
 
 %nonassoc THEORY THY
 
-%nonassoc AXIOM COMMENT DEFINITION EQIUIV HYPOTHESIS IMPLICIT INCLUDE PARAMETER TYPE
+%nonassoc AXIOM COMMENT DEFINITION EQIUIV HYPOTHESIS IMPLICIT INCLUDE PARAMETER THEOREM TYPE
 
 %nonassoc COLONEQUAL
 
@@ -161,6 +162,7 @@ theory_elements:
 parameter_decl:
   | PARAMETER                   { Parameter }
   | AXIOM                       { Axiom }
+  | THEOREM                     { Theorem }
   | HYPOTHESIS                  { Hypothesis }
 
 definition_decl:

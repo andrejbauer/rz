@@ -32,6 +32,7 @@
       "Set", SET;
       "Stable", STABLE;
       "the", THE;
+      "Theorem", THEOREM;
       "theory", THEORY;
       "thy", THY ;
       "Thy", THY ;
