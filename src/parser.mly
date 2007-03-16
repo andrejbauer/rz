@@ -297,22 +297,7 @@ bin_expr:
   | bin_expr SUBIN bin_expr                   { Subin ($1, $3) }
   | bin_expr SUBOUT bin_expr                  { Subout ($1, $3) }
     
-or_expr:
-  | bin_expr                                  { $1 }
-  | bin_expr ORSYMBOL or_list                 { Or ((None,$1) :: $3) }
-  | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list { Or((Some $2,$4) :: $7) }    
-
-and_expr:
-  | or_expr                                  { $1 }
-  | or_expr ANDSYMBOL and_list               { And ($1 :: $3) }
-  
-expr:
-  | and_expr                                   { $1 }
-  | summand PLUS sum_list                     { Sum ($1 :: $3) }
-  | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
-  | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
-  | product_list %prec PLUS /* < STAR */      { Product $1 }
-  | expr IFFSYMBOL expr                       { Iff ($1, $3) }
+long_expr:    
   | FORALL xbinder_list COMMA expr             { Forall ($2, $4) }
   | EXISTS xbinder_list COMMA expr             { Exists ($2, $4) }
   | UNIQUE xbinder_list COMMA expr             { Unique ($2, $4) }
@@ -321,17 +306,56 @@ expr:
   | LET RZ ident EQUAL expr IN expr           { RzChoose ($3, $5, $7) }
   | LET arg_noparen_required EQUAL expr IN expr { Let ($2, $4, $6) }
   | FUN xbinder_list DOUBLEARROW expr          { Lambda ($2, $4) }
+
+and_expr_long:
+  | long_expr                                  { $1 }
+  | bin_expr ANDSYMBOL and_list_long           { And ($1 :: $3) }
+
+and_expr_short:
+  | bin_expr                                   { $1 }
+  | bin_expr ANDSYMBOL and_list_short          { And ($1 :: $3) }
+    
+or_expr_long:
+  | and_expr_long                                   { $1 }
+  | and_expr_short ORSYMBOL or_list_long            { Or ((None,$1) :: $3) }
+  | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list_long { Or((Some $2,$4) :: $7) }    
+
+or_expr_short:
+    | and_expr_short                                        { $1 }
+    | and_expr_short ORSYMBOL or_list_short                 { Or ((None,$1) :: $3) }
+    | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list_short { Or((Some $2,$4) :: $7) }    
+
+  
+expr:
+  | or_expr_long                              { $1 }
+  | or_expr_short                             { $1 }
+  | summand PLUS sum_list                     { Sum ($1 :: $3) }
+  | dep_expr ARROW expr                       { let x, y = $1 in Arrow (x, y, $3) }
+  | expr ARROW expr                           { Arrow (wildName(), $1, $3) }
+  | product_list %prec PLUS /* < STAR */      { Product $1 }
+  | expr IFFSYMBOL expr                       { Iff ($1, $3) }
   | expr COLON expr                            { Constraint ($1, $3) } 
 
-and_list:
-  | or_expr                     { [$1] }
-  | and_list ANDSYMBOL or_expr  { $1 @ [$3] }
+and_list_short:
+  | bin_expr                     { [$1] }
+  | bin_expr ANDSYMBOL and_list_short  { $1 :: $3 }
 
-or_list:
-  | bin_expr                        { [(None,$1)] }
+and_list_long:
+    | long_expr                        { [$1] }
+    | bin_expr ANDSYMBOL and_list_long  { $1 :: $3 }
+
+or_list_short:
+  | and_expr_short                  { [(None,$1)] }
   | LBRACK LABEL COLON expr RBRACK  { [(Some $2, $4)] }
-  | or_list ORSYMBOL bin_expr       { $1 @ [(None,$3)] }
-  | or_list ORSYMBOL LBRACK LABEL COLON expr RBRACK %prec ORSYMBOL  { $1 @ [(Some $4, $6)] }
+  | and_expr_short ORSYMBOL or_list_short { (None, $1) :: $3 }
+  | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list_short %prec ORSYMBOL  
+                                         { (Some $2, $4) :: $7 }
+
+or_list_long:
+  | and_expr_long                        { [(None,$1)] }
+  | and_expr_short ORSYMBOL or_list_long { (None,$1) :: $3 }
+  | LBRACK LABEL COLON expr RBRACK ORSYMBOL or_list_long %prec ORSYMBOL  
+                                         { (Some $2, $4) :: $7 }
     
 expr_list:
   | expr COMMA expr                   { [$1; $3] }
