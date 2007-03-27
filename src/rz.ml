@@ -119,7 +119,7 @@ let parse str = Parser.toplevels Lexer.token (Lexing.from_string str);;
 let send_to_formatter ppf toplevels =
    Pp.output_toplevel ppf toplevels
 
-let rec processOne (state : state) writeOutput filename =
+let rec processOne (state : state) (doWrap,writeOutput) filename =
   (* Normalize the filename; otherwise foo.thy and ./foo.thy
      get treated as different files.  
 
@@ -150,7 +150,7 @@ let rec processOne (state : state) writeOutput filename =
 	  let directory = Filename.dirname filename
 	  in let basename' = String.uncapitalize r ^ ".thy"
 	  in let filename = Filename.concat directory basename'
-	  in let state = processOne state false filename
+	  in let state = processOne state (doWrap,false) filename
 	  in processRequires state rs
 
     in let state = processRequires state requires
@@ -161,18 +161,21 @@ let rec processOne (state : state) writeOutput filename =
     in let thryname =
 	String.capitalize 
 	   (Filename.chop_extension (Filename.basename filename))
-    in let thy = Syntax.Value(Syntax.Parameter,
-			     [([Name.mk_word(thryname)],
-			      Syntax.Theory thy_elts)])
+    in let elems = if doWrap then
+                     [Syntax.Value(Syntax.Parameter,
+			                      [([Name.mk_word(thryname)],
+			                       Syntax.Theory thy_elts)])]
+			       else 
+			         thy_elts
 
 
     in let (infer_state', lthys) = 
       try
-	Infer.annotateTheoryElems state.infer_state [thy] 
+	     Infer.annotateTheoryElems state.infer_state elems 
       with 
-	  Error.TypeError msgs -> 
-	    (Error.printErrors msgs;
-	     failwith "Typechecking failed.")
+	     Error.TypeError msgs -> 
+	       (Error.printErrors msgs;
+	       failwith "Typechecking failed.")
 
     in let _ = 
       (if writeOutput && (! Flags.do_dumpinfer) then
@@ -205,10 +208,13 @@ let rec processOne (state : state) writeOutput filename =
 
 
       let spec3 = 
-	match spec2 with
-	    [Outsyn.Spec(_, Outsyn.ModulSpec(Outsyn.Signat elts), _)] ->
-	      elts
-	  | _ -> failwith "Cannot unwrap translated code"
+        if (doWrap) then
+	        match spec2 with
+	          [Outsyn.Spec(_, Outsyn.ModulSpec(Outsyn.Signat elts), _)] ->
+	               elts  
+	        | _ -> failwith "Cannot unwrap translated code"
+	    else
+	        spec2
       in
 
       let spec4 = fst (Rename.renSignatElementList Rename.emptyRen spec3) in
@@ -250,14 +256,14 @@ let rec processOne (state : state) writeOutput filename =
 let rec process state = function
     [] -> ()
   | filename::filenames  ->
-      let state = processOne state true filename
+      let state = processOne state (true,true) filename
       in process state filenames
 
 
 ;;
   
-let load_preamble f = failwith "Preamble loading not implemented"
-
+let load_preamble state f = 
+    processOne state (false,false) f
 ;;
 
 
@@ -281,7 +287,7 @@ try
   let initialState = begin
     match !Flags.preamble with
       | None -> emptyState
-      | Some f -> load_preamble f
+      | Some f -> load_preamble emptyState f
   end in
 
   (** Finally, translate the theories in the order specified on the

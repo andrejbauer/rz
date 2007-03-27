@@ -674,8 +674,8 @@ and thinSignat ctx = function
       in let body' = thinSignat ctx' body
       in SignatFunctor ( arg', body' )
   | SignatApp(sgnt1,mdl) ->
-	SignatApp(thinSignat ctx sgnt1, 
-		  thinModul' ctx mdl)
+      SignatApp(thinSignat ctx sgnt1, 
+	            thinModul' ctx mdl)
   | SignatProj(mdl, nm) ->
       SignatProj(thinModul' ctx mdl, nm)
 
