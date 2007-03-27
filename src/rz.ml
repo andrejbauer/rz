@@ -43,6 +43,10 @@ let command_line_options =
      ("--longerr",  Error.set_longerr, Error.get_longerr,
       "<int>  Minimum lines in a 'long' error message")
      ]
+  in let extraFlags =
+      [
+	("--preamble", Arg.String (fun s -> Flags.preamble := Some s), "<file> Preload the given file")
+      ]
   in let processBooleanFlag (flag, (action,result) , boolref, description) =
     (flag, action boolref, 
      description ^ (if (!boolref = result) then " [default]" else ""))
@@ -50,8 +54,9 @@ let command_line_options =
     (flag, Arg.Int setter, 
      description ^ " [" ^ string_of_int (getter()) ^ "]")
   in
-       (List.map processBooleanFlag booleanFlags) @ 
-       (List.map processIntFlag intFlags)
+    extraFlags @
+    (List.map processBooleanFlag booleanFlags) @ 
+    (List.map processIntFlag intFlags)
 
 (** One-line usage message
  *)
@@ -251,6 +256,10 @@ let rec process state = function
 
 ;;
   
+let load_preamble f = failwith "Preamble loading not implemented"
+
+;;
+
 
 (** MAIN PROGRAM *)
 
@@ -268,11 +277,18 @@ try
       Arg.usage command_line_options usage_msg
   end ;
 
+  (** Load the preamble *)
+  let initialState = begin
+    match !Flags.preamble with
+      | None -> emptyState
+      | Some f -> load_preamble f
+  end in
+
   (** Finally, translate the theories in the order specified on the
     command-line (which is the reverse of the order that they were
     stored).
   *)
-  process emptyState (List.rev !filenames)
+    process initialState (List.rev !filenames)
 
 with
     Arg.Bad s

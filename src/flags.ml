@@ -1,17 +1,24 @@
 (** Global flags controlling the system *)
 
-let do_opt = ref true   (* Should the optimizer run? *)
-let do_thin = ref true   (* Should the optimizer run? *)
+(* Should the optimizer run? *)
+let do_opt = ref true
 
-let do_print = ref true (* Should output be sent to stdout too? *)
+(* Should the optimizer run? *)
+let do_thin = ref true
 
-let do_save = ref true  (* Should output be sent to a file? *)
+(* Preamble file to load *)
+let preamble = ref (None : string option)
 
-let do_sigapp = ref false (* Should signature applications be retained,
-			     instead of being beta-expanded? *)
+(* Should output be sent to stdout too? *)
+let do_print = ref true
 
-let do_dumpinfer = ref false (* Should result of infer be written to
-                                stdout? *)
+(* Should output be sent to a file? *)
+let do_save = ref true
+
+(* Should signature applications be retained, instead of being beta-expanded? *)
+let do_sigapp = ref false
+
+let do_dumpinfer = ref false (* Should result of infer be written to stdout? *)
 
 let do_hoist = ref false (* Should obligations be hoisted in assertions? *)
 

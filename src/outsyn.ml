@@ -11,13 +11,13 @@ module L = Logic
 type modul_name = L.model_name
 
 type modul =
-    ModulName of modul_name
+  | ModulName of modul_name
   | ModulProj of modul * modul_name
   | ModulApp  of modul * modul
   | ModulStruct of moduldef list
 
 and moduldef =
-    DefType of name * ty
+  | DefType of name * ty
   | DefTerm of name * ty * term
   | DefModul of name * signat * modul
   | DefSignat of name * signat
