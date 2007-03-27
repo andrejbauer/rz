@@ -482,6 +482,11 @@ let rec hnfProp cntxt = function
 	  | trm1' -> PCase(trm1', ty, arms)
       end
 
+  | PLet((nm,_),trm1,prp2) ->
+          let sub = insertTermvar emptysubst nm trm1
+          in
+    	hnfProp cntxt (substProp sub prp2)
+    	
   | PAssure(_, _, prp) -> hnfProp cntxt prp
 
   | prp -> prp
