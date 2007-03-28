@@ -27,8 +27,9 @@ exception TooFast
         If a bound variable is not in the domain of this mapping, it is not
         being renamed.
 *)
+type timestamp = int
 
-type context = {bindings : declaration NameMap.t;
+type context = {bindings : (declaration * timestamp) NameMap.t;
 		implicits : declaration NameMap.t;
 	        renaming  : name NameMap.t}
 
@@ -37,7 +38,7 @@ let emptyContext = {bindings = NameMap.empty;
 		    renaming = NameMap.empty}
 
 let displayContext cntxt = 
-  NameMap.iter (fun n decl -> print_endline(string_of_theory_element(Declaration(n,decl)))) cntxt.bindings
+  NameMap.iter (fun n (decl,_) -> print_endline(string_of_theory_element(Declaration(n,decl)))) cntxt.bindings
 
 (**************)
 (* {3 Lookup} *)
@@ -48,8 +49,11 @@ let lookupImplicit cntxt nm =
       Not_found -> None
 
 let lookupId cntxt nm =
-  try Some (NameMap.find nm cntxt.bindings) with
+  try Some (fst (NameMap.find nm cntxt.bindings)) with
       Not_found -> None
+
+let lookupTimestamp cntxt nm =
+  snd (NameMap.find nm cntxt.bindings)
 
 let isUnbound cntxt nm =
   not (NameMap.mem nm cntxt.bindings)
@@ -58,6 +62,7 @@ let isUnbound cntxt nm =
 (*****************)
 (* {3 Insertion} *)
 (*****************)
+
 
 let rec insertImplicits cntxt names info = 
   let infos = List.map (fun _ -> info) names
@@ -76,10 +81,13 @@ let rec insertImplicits cntxt names info =
 (** Wrapper for the non-checking (primed) insert functions to check for
     shadowing and for proper variable names (e.g., capitalization)
 *)
+let timestamp_counter = ref 0
+
 let doInsert validator idString cntxt nm info =
     if validator nm then
       if isUnbound cntxt nm then
-	{cntxt with bindings = NameMap.add nm info cntxt.bindings }
+         (timestamp_counter := !timestamp_counter + 1;
+	      {cntxt with bindings = NameMap.add nm (info, !timestamp_counter) cntxt.bindings })
       else
 	E.shadowingError nm
     else
@@ -268,7 +276,8 @@ let searchElems cntxt nm' mdl elems =
     Postcondition:  The returned theory is neither a variable nor
     an application (since we don't have abstract theory variables).
 *)
-let rec hnfTheory cntxt = function
+(*
+    let rec hnfTheory cntxt = function
     TheoryName nm ->
       begin
 	match lookupId cntxt nm with
@@ -296,7 +305,45 @@ let rec hnfTheory cntxt = function
 	  | _ -> failwith "hnfTheory 4"
       end
   | thry -> thry
+*)
 
+let rec hnfTheory cntxt thry =
+    begin
+        match hnfTheory1 cntxt thry with
+            Some thry' -> hnfTheory cntxt thry'
+          | None -> thry
+    end 
+
+and hnfTheory1 cntxt = function
+      TheoryName nm ->
+        begin
+  	match lookupId cntxt nm with
+  	    Some(DeclTheory (thry, _)) ->  Some thry
+  	  | Some _ -> failwith ("hnfTheory1 1a " ^ string_of_name nm)
+  	  | None -> failwith ("hnfTheory1 1b " ^ string_of_name nm)
+        end
+    | TheoryApp (thry, mdl) ->
+        begin
+  	        match (hnfTheory1 cntxt thry, thry) with
+  	        (Some thry',_) -> Some (TheoryApp(thry', mdl))
+  	        | (None, TheoryLambda((nm,_), thry2)) ->
+  	            let subst = insertModelvar emptysubst nm mdl
+  	        in Some (substTheory subst thry2)
+  	        | _ -> failwith "hnfTheory1 2"
+        end
+    | TheoryProj(mdl, nm) ->
+        begin
+  	        match hnfTheory cntxt (modelToTheory cntxt mdl) with
+  	        Theory elems ->
+  	            begin
+  		            match searchElems cntxt nm mdl elems with
+  		            Some (DeclTheory (thry,_)) -> Some thry
+  		            | _ -> failwith "hnfTheory1 3"
+  	            end
+  	        | _ -> failwith "hnfTheory1 4"
+        end
+    | thry -> None
+    
 (* cntxt -> model -> theory *)
 (** Assumes that the given model is well-formed.
 *)
@@ -1318,12 +1365,48 @@ and eqTheory cntxt thry1 thry2 =
 	    ("...in comparing theories " ^ string_of_theory thry1 ^ "\nand " ^
 		string_of_theory thry2)
 
+and theoryToTimestamp cntxt = function
+  | TheoryName nm -> lookupTimestamp cntxt nm
+  | TheoryApp (thry, _) -> theoryToTimestamp cntxt thry
+  | TheoryProj(mdl, _) -> modelToTimestamp cntxt mdl
+  | TheoryLambda((nm,thry'), thry'') ->
+      (* We add one so that the application
+            (LAMBDA X. FOO(X))(Y)
+         has a later timestamp than
+            FOO(Y),
+         instead of the two being equal. *)
+      theoryToTimestamp (insertModelVariable cntxt nm thry') thry'' + 1
+  | _ -> -1
+   
+and modelToTimestamp cntxt = function
+  | ModelName nm -> lookupTimestamp cntxt nm
+  | ModelProj (mdl, _) -> modelToTimestamp cntxt mdl
+  | ModelApp (mdl, _) -> modelToTimestamp cntxt mdl
+  | ModelOf thry -> theoryToTimestamp cntxt thry
+
+and quickEqTheory cntxt thry1 thry2 =
+  if (thry1 = thry2) then
+      true
+  else
+    let ts1 = theoryToTimestamp cntxt thry1
+    in let ts2 = theoryToTimestamp cntxt thry2
+    in if ts1 < ts2 then
+        match (hnfTheory1 cntxt thry2) with
+           None -> false
+        |  Some thry2' -> quickEqTheory cntxt thry1 thry2'
+    else 
+        match (hnfTheory1 cntxt thry1) with
+           None -> false
+        |  Some thry1' -> quickEqTheory cntxt thry1' thry2
+   
+           
 (* Inputs must be a well-formed logical model, its inferred theory, and
    some other theory *)
 and checkModelConstraint cntxt mdl1 thry1 thry2 = 
-  if thry1 = thry2 then
+  if quickEqTheory cntxt thry1 thry2 then
     []
   else
+  (
   try
     match (hnfTheory cntxt thry1, hnfTheory cntxt thry2) with
 	(TheoryArrow ((nm1, thry1a), thry1b), 
@@ -1542,7 +1625,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	E.generalizeError msgs
 	  ("...in comparing theories " ^ string_of_theory thry1 ^
 	      "\nand " ^ string_of_theory thry2)
-	  
+	)  
 (* coerce: cntxt -> term -> set -> set -> trm option *)
 (**
      coerce trm st1 st2 coerces trm from the set st1 to the set st2
