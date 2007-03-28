@@ -1463,6 +1463,13 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
        in let reqs3 = List.map (substProp subst) prereqs3
        in reqs12 @ reqs3       
 
+      (* fastLoop tries to compute the same answer as slowLoop above,
+         but tries to speed things up (linear rather than quadratic)
+         by walking through both lists of declarations in parallel,
+         rather than walking through one and doing searches in the
+         other.  If anything seems wrong, we punt back to the
+         more general case to either succeed or report the error. *)
+
 	  in let rec fastLoop cntxt subst1 = function
 	      (_,[]) -> []
 	    | ([],_) -> raise TooFast (* Punt to the general case *)
@@ -1523,14 +1530,10 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
     in reqs12 @ reqs3       
 
 	  in 
-      fastLoop cntxt emptysubst (elems1, elems2)
-
-(*	     (try
+	     (try
 	        fastLoop cntxt emptysubst (elems1, elems2)
 	     with 
         TooFast -> slowLoop cntxt elems2)
-*)
-
 
     | _ -> E.tyGenericError "Incompatible theories"
 
