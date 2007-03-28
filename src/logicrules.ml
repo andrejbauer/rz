@@ -2,6 +2,8 @@ open Name
 open Logic
 module E = Error
 
+exception TooFast
+
 (*****************)
 (** {2 Contexts} *)
 (*****************)
@@ -194,45 +196,55 @@ and jointModelNameSubsts' nm1 nm2 subst1 subst2 =
 
 (** *)
 
-let rec searchElems cntxt nm' mdl = 
+(* the primed version takes in an initial substitution and extends
+   in as it goes along, and also returns the final substitution at
+   the point where the desired element occurs.  The idea is that we
+   can stop the search when we find one element, and then restart
+   a new search (with the right substitution) right after that point.
+   
+   If you just want to search once, from the beginning, call the
+   unprimed version   
+*)
+
+let rec searchElems' subst0 cntxt nm' mdl = 
   let rec loop subst = function 
-      [] -> None
+      [] -> subst, None
     | elem :: rest ->
 	match substTheoryElt subst elem with
 	  | Declaration(nm, (DeclSet(_,knd) as decl)) ->
 	      if (nm = nm') then
-		Some decl (** XXX Or selfify? *)
+		     subst, Some decl (** XXX Or selfify? *)
 	      else 
 		loop (insertSetvar subst nm 
 			 (Basic(SLN(Some mdl, nm), knd)))
 		  rest
 	  | Declaration(nm, (DeclProp(_,pt) as decl)) ->
 	      if (nm = nm') then
-		Some decl
+		     subst, Some decl
 	      else 
 		loop (insertPropvar subst nm 
 			 (Atomic(LN(Some mdl, nm), pt)))
 		  rest
 	  | Declaration(nm, (DeclTerm _ as decl))  -> 
 	      if (nm = nm') then
-		Some decl
+		     subst, Some decl
 	      else 
 		loop (insertTermvar subst nm (Var(LN(Some mdl, nm))))
 		  rest
 	  | Declaration(nm, (DeclModel _ as decl) ) ->
 	      if (nm = nm') then
-		Some decl
+		     subst, Some decl
 	      else 
 		loop (insertModelvar subst nm (ModelProj(mdl, nm))) 
 		  rest
 	  | Declaration(nm, (DeclSentence _ as decl)) ->
 	      if (nm = nm') then
-		Some decl
+		     subst, Some decl
 	      else 
 		loop subst rest
 	  | Declaration(nm, (DeclTheory _ as decl)) ->
 	      if (nm = nm') then
-		Some decl
+		     subst, Some decl
 	      else 
 		loop (insertTheoryvar subst nm (TheoryProj(mdl,nm)))
 		  rest
@@ -240,7 +252,11 @@ let rec searchElems cntxt nm' mdl =
 	      (** Comments cannot be searched for, currently *)
 	      loop subst rest
   in
-    loop emptysubst 
+    loop subst0
+    
+let searchElems cntxt nm' mdl elems = 
+    let (_, answer) = searchElems' emptysubst cntxt nm' mdl elems
+    in answer
 
 (**************************************)
 (** {3 Type and Theory Normalization} *)
@@ -1337,112 +1353,186 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	      (** Checks for equality iff an optional value is given *)
 	      None -> []
 	    | Some right -> eqFun left right
-	  in let rec loop cntxt = function
-	      [] -> []
-	    | Declaration(nm, DeclSet(st2opt, knd2)) :: rest ->
-		begin
-		  match searchElems cntxt nm mdl1 elems1 with
-		      Some (DeclSet (_,knd1)) -> 
+	    
+	  in let compareDeclSet cntxt (nm, st2opt, knd2, knd1) =
 			let projAsSet = Basic(SLN(Some mdl1, nm), knd1)
 			in let reqs1 = subKind cntxt knd1 knd2
 			in let reqs2 = weakEq (eqSet cntxt) projAsSet st2opt
 			in let cntxt' = 
 			  insertSetVariable cntxt nm knd1 (Some projAsSet)
-			in let prereqs3 = loop cntxt' rest
 			in let subst = insertSetvar emptysubst nm projAsSet
-			in let reqs3 = List.map (substProp subst) prereqs3
-			in reqs1 @ reqs2 @ reqs3
-		    | _ -> 
-			E.tyGenericError ("Missing set component " ^ 
-					     string_of_name nm)
-		end    
-	    | Declaration(nm, DeclProp(prpopt2, pt2)) :: rest ->
-		begin
-		  match searchElems cntxt nm mdl1 elems1 with
-		      Some (DeclProp(_, pt1)) ->
+			in (cntxt', reqs1 @ reqs2, subst)
+	          
+	  in let compareDeclProp cntxt (nm, prpopt2, pt2, pt1) =
 			let projAsProp = Atomic(LN(Some mdl1, nm), pt1)
 			in let reqs1 = subPropType cntxt pt1 pt2
 			in let reqs2 = weakEq (eqProp cntxt) projAsProp prpopt2
 			in let cntxt' = 
 			  insertPropVariable cntxt nm pt1 (Some projAsProp)
-			in let prereqs3 = loop cntxt' rest
 			in let subst = insertPropvar emptysubst nm projAsProp
-			in let reqs3 = List.map (substProp subst) prereqs3
-			in reqs1 @ reqs2 @ reqs3
-		    | _ -> 
-			E.tyGenericError ("Missing proposition component " ^ 
-					     string_of_name nm)
-		end
-
-	    | Declaration(nm, DeclTerm(trmopt2, st2)) :: rest ->
-		begin
-		  match searchElems cntxt nm mdl1 elems1 with
-		      Some (DeclTerm(_, st1)) ->
+	        in (cntxt', reqs1 @ reqs2, subst) 
+	      	    
+	  in let compareDeclTerm cntxt (nm, trmopt2, st2, st1) =
 			let projAsTerm = Var(LN(Some mdl1, nm))
 			in let reqs1 = subSet cntxt st1 st2 
 			in let reqs2 = weakEq (eqTerm cntxt) projAsTerm trmopt2
 			in let cntxt' = 
 			  insertTermVariable cntxt nm st1 (Some projAsTerm)
-			in let prereqs3 = loop cntxt' rest
 			in let subst = insertTermvar emptysubst nm projAsTerm
-			in let reqs3 = List.map (substProp subst) prereqs3
-			in reqs1 @ reqs2 @ reqs3
-		    | _ -> 
-			E.tyGenericError ("Missing term component " ^ 
-					     string_of_name nm)
-		end
-
-            | Declaration(nm, DeclModel(thry2)) :: rest ->
-		begin
-		  match searchElems cntxt nm mdl1 elems1 with
-		      Some (DeclModel thry1) ->
+			in (cntxt', reqs1 @ reqs2, subst)	      
+	      
+	  in let compareDeclModel cntxt (nm, thry2, thry1) =
 			let projAsModel = ModelProj(mdl1, nm)
 			in let reqs1 = 
 			  checkModelConstraint cntxt projAsModel thry1 thry2
 			in let cntxt' = 
 			  insertModelVariable cntxt nm thry1
-			in let prereqs3 = loop cntxt' rest
 			in let subst = insertModelvar emptysubst nm projAsModel
-			in let reqs3 = List.map (substProp subst) prereqs3
-			in reqs1 @  reqs3
-		    | _ -> 
-			E.tyGenericError ("Missing model component " ^ 
+		    in (cntxt', reqs1, subst) 
+			
+	  in let compareDeclSentence cntxt (nm, mbnds2, prp2, mbnds1, prp1) =
+		  let (cntxt'', subst1, subst2) = 
+		    eqMbnds cntxt mbnds1 mbnds2 
+		  in let prp1' = substProp subst1 prp1
+		  in let prp2' = substProp subst2 prp2
+		  in let prereqs1 = eqProp cntxt'' prp1' prp2'
+		  in let reqs1 = if (prereqs1 <> []) then
+		      (* We can't wrap with "forall mbnds1" *)
+		      E.tyGenericError "UNIMPLEMENTED: CheckModelConstraint/Declaration"
+		    else 
+		      []
+     	  in (cntxt, reqs1, emptysubst)
+     	  
+	  in let rec slowLoop cntxt = function
+	      [] -> []
+	    | decl :: rest ->
+	        let (cntxt', reqs12, subst) =
+              match decl with
+	          | Declaration(nm, DeclSet(st2opt, knd2)) ->
+ 		        begin
+          		  match searchElems cntxt nm mdl1 elems1 with
+  		            Some (DeclSet (_,knd1)) -> 
+		              compareDeclSet cntxt (nm, st2opt, knd2, knd1)
+		          | _ -> 
+			        E.tyGenericError ("Missing set component " ^ 
 					     string_of_name nm)
-		end
-		  
-	    | Comment _ :: rest -> loop cntxt rest
-
-            | Declaration(nm, DeclSentence (mbnds2, prp2)) :: rest ->
-		begin
-		  match searchElems cntxt nm mdl1 elems1 with
-		      Some (DeclSentence(mbnds1, prp1)) ->
-			begin
-			  let (cntxt'', subst1, subst2) = 
-			    eqMbnds cntxt mbnds1 mbnds2 
-			  in let prp1' = substProp subst1 prp1
-			  in let prp2' = substProp subst2 prp2
-			  in let prereqs1 = eqProp cntxt'' prp1' prp2'
-			  in let reqs1 = if (prereqs1 <> []) then
-			      (* We can't wrap with "forall mbnds1" *)
-			      E.tyGenericError "UNIMPLEMENTED: CheckModelConstraint/Declaration"
-			    else 
-			      []
-			  in let reqs3 = loop cntxt rest
-			  in reqs1 @ reqs3
-			end
-		    | _ -> 
-			E.tyGenericError ("Missing axiom " ^ 
+		        end    
+	          | Declaration(nm, DeclProp(prpopt2, pt2)) ->
+		        begin
+		          match searchElems cntxt nm mdl1 elems1 with
+		            Some (DeclProp(_, pt1)) ->
+		              compareDeclProp cntxt (nm, prpopt2, pt2, pt1)
+		          | _ -> 
+			        E.tyGenericError ("Missing proposition component " ^ 
 					     string_of_name nm)
+		        end
+	          | Declaration(nm, DeclTerm(trmopt2, st2)) ->
+		        begin
+		          match searchElems cntxt nm mdl1 elems1 with
+		            Some (DeclTerm(_, st1)) ->
+		              compareDeclTerm cntxt (nm, trmopt2, st2, st1)
+		          | _ -> 
+			          E.tyGenericError ("Missing term component " ^ 
+					     string_of_name nm)
+		        end
+              | Declaration(nm, DeclModel(thry2)) ->
+		        begin
+		          match searchElems cntxt nm mdl1 elems1 with
+		            Some (DeclModel thry1) ->
+			          compareDeclModel cntxt (nm, thry2, thry1) 
+		          | _ -> 
+			        E.tyGenericError ("Missing model component " ^ 
+					     string_of_name nm)
+		        end
+	         | Comment _ ->
+	             (cntxt, [], emptysubst)
+        
+	         | Declaration(nm, DeclSentence (mbnds2, prp2)) ->
+		       begin
+		         match searchElems cntxt nm mdl1 elems1 with
+		           Some (DeclSentence(mbnds1, prp1)) ->
+			         compareDeclSentence cntxt (nm, mbnds2, prp2, mbnds1, prp1)
+ 		         | _ -> 
+			       E.tyGenericError ("Missing axiom " ^ 
+					     string_of_name nm)
+		       end
 
-		end
+	         | Declaration(nm, DeclTheory _) ->
+		        E.noNestedTheoriesError nm
+       in let prereqs3 = slowLoop cntxt' rest
+       in let reqs3 = List.map (substProp subst) prereqs3
+       in reqs12 @ reqs3       
 
-	    | Declaration(nm, DeclTheory _) :: rest ->
-		E.noNestedTheoriesError nm
+	  in let rec fastLoop cntxt subst1 = function
+	      (_,[]) -> []
+	    | ([],_) -> raise TooFast (* Punt to the general case *)
+	    | (((_ :: rest1) as elems1), decl2 :: rest2) ->
+	        let (subst1', (cntxt', reqs12, subst)) =
+           match decl2 with
+	          | Declaration(nm, DeclSet(st2opt, knd2)) ->
+		        begin
+       		      match searchElems' subst1 cntxt nm mdl1 elems1 with
+		            (subst1', Some (DeclSet (_,knd1))) ->
+		              (subst1',  
+		               compareDeclSet cntxt (nm, st2opt, knd2, knd1))
+		          | _ -> 
+		            raise TooFast
+		        end    
+	          | Declaration(nm, DeclProp(prpopt2, pt2)) ->
+		        begin
+		          match searchElems' subst1 cntxt nm mdl1 elems1 with
+		            (subst1', Some (DeclProp(_, pt1))) ->
+		              (subst1', compareDeclProp cntxt (nm, prpopt2, pt2, pt1))
+		          | _ -> 
+		            raise TooFast
+		        end
+	          | Declaration(nm, DeclTerm(trmopt2, st2)) ->
+		        begin
+		          match searchElems' subst1 cntxt nm mdl1 elems1 with
+		            (subst1', Some (DeclTerm(_, st1))) ->
+		              (subst1', compareDeclTerm cntxt (nm, trmopt2, st2, st1))
+		          | _ -> 
+			          raise TooFast
+		        end
+              | Declaration(nm, DeclModel(thry2)) ->
+		        begin
+		          match searchElems' subst1 cntxt nm mdl1 elems1 with
+		            (subst1', Some (DeclModel thry1)) ->
+			          (subst1', compareDeclModel cntxt (nm, thry2, thry1))
+		          | _ -> 
+					raise TooFast
+		        end
+	         | Comment _ ->
+	             (subst1, (cntxt, [], emptysubst))
+     
+	         | Declaration(nm, DeclSentence (mbnds2, prp2)) ->
+		       begin
+		         match searchElems' subst1 cntxt nm mdl1 elems1 with
+		           (subst1', Some (DeclSentence(mbnds1, prp1))) ->
+			         (subst1',
+			          compareDeclSentence cntxt (nm, mbnds2, prp2, mbnds1, prp1))
+		         | _ -> 
+				   raise TooFast
+		       end
+
+	         | Declaration(nm, DeclTheory _) ->
+		        E.noNestedTheoriesError nm
+		        
+    in let prereqs3 = fastLoop cntxt' subst1' (rest1, rest2)
+    in let reqs3 = List.map (substProp subst) prereqs3
+    in reqs12 @ reqs3       
 
 	  in 
-	       loop cntxt elems2
+      fastLoop cntxt emptysubst (elems1, elems2)
 
-      | _ -> E.tyGenericError "Incompatible theories"
+(*	     (try
+	        fastLoop cntxt emptysubst (elems1, elems2)
+	     with 
+        TooFast -> slowLoop cntxt elems2)
+*)
+
+
+    | _ -> E.tyGenericError "Incompatible theories"
 
   with
       E.TypeError msgs -> 
