@@ -32,7 +32,6 @@ type model =
     | ModelName of model_name
     | ModelProj of model * model_name
     | ModelApp of model * model
-    | ModelOf of theory
 
 (** names of components inside models *)
 and longname = LN of model option * name
@@ -245,7 +244,6 @@ let rec string_of_model = function
   | ModelApp (mdl1, mdl2) ->
       string_of_model mdl1 ^ "(" ^ string_of_model mdl2 ^ ")"
   | ModelProj (mdl, nm) -> string_of_model mdl ^ "." ^ string_of_name nm
-  | ModelOf thry -> "ModelOf " ^ string_of_theory thry ^ ""
 
 and string_of_ln = function
     LN (None, nm) -> string_of_name nm
@@ -639,7 +637,6 @@ and fnModel = function
     ModelName nm -> NameSet.singleton nm
   | ModelProj (mdl, _) -> fnModel mdl
   | ModelApp (mdl1, mdl2) -> NameSet.union (fnModel mdl1) (fnModel mdl2)
-  | ModelOf thry -> fnTheory thry
 
 and fnTheory = function
     TheoryName nm -> NameSet.singleton nm
@@ -972,7 +969,6 @@ and substModel sbst = function
   | ModelProj (mdl, lbl) -> ModelProj(substModel sbst mdl, lbl)
   | ModelApp (mdl1, mdl2) -> ModelApp(substModel sbst mdl1,
 				     substModel sbst mdl2)
-  | ModelOf thry -> ModelOf (substTheory sbst thry)
 
 and substSetkind sbst = function
     KindArrow(y, st, k) -> 

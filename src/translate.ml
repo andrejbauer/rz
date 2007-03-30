@@ -6,7 +6,6 @@ let rec translateModel = function
     L.ModelName nm -> ModulName nm
   | L.ModelProj (mdl, nm) -> ModulProj (translateModel mdl, nm)
   | L.ModelApp (mdl1, mdl2) -> ModulApp (translateModel mdl1, translateModel mdl2)
-  | L.ModelOf _ -> failwith "Translate.translateModel: unimplemented"
 
 let translateModelOpt = function
   | None -> None

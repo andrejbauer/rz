@@ -352,8 +352,7 @@ and modelToTheory cntxt = function
       begin
 	match (lookupId cntxt nm) with
 	    Some(DeclModel thry) -> thry
-	  | _ -> (*failwith "modelToTheory 1" *) (* XXX *)
-	      E.tyGenericError "oops modelToTheory 1"
+	  | _ -> failwith "modelToTheory 1"
       end
   | ModelProj (mdl, nm) -> 
       begin
@@ -374,7 +373,6 @@ and modelToTheory cntxt = function
 	      in substTheory subst thry2
 	  | _ -> failwith "modelToTheory 4"
       end
-  | ModelOf thry -> thry
 	
 
 (** Expand out any top-level definitions or function
@@ -1372,9 +1370,10 @@ and theoryToTimestamp cntxt = function
   | TheoryLambda((nm,thry'), thry'') ->
       (* We add one so that the application
             (LAMBDA X. FOO(X))(Y)
-         has a later timestamp than
+         ends up with a later timestamp than
             FOO(Y),
-         instead of the two being equal. *)
+         instead of the two being equal.   This is a hack, but
+         the whole timestamp thing is just a heuristic anyway. *)
       theoryToTimestamp (insertModelVariable cntxt nm thry') thry'' + 1
   | _ -> -1
    
@@ -1382,8 +1381,28 @@ and modelToTimestamp cntxt = function
   | ModelName nm -> lookupTimestamp cntxt nm
   | ModelProj (mdl, _) -> modelToTimestamp cntxt mdl
   | ModelApp (mdl, _) -> modelToTimestamp cntxt mdl
-  | ModelOf thry -> theoryToTimestamp cntxt thry
 
+(* Sound but not complete --- might return "false" if the
+   answer is really "true".
+   
+   Uses an ad-hoc method to try to avoid fully expanding out
+   all definitions.  E.g., if we have
+      X = ...something big...
+      Z = X
+   it's faster to reduce Z to X, rather than reducing both
+   X and Z to something big, and then comparing the big things.
+   
+   The idea is that we keep track of a "timestamp" describing when
+   variables entered the context.  A variable with a later timestamp
+   might be an abbreviation for something with an earlier timestamp,
+   so we try expanding later-timestamp theories first. 
+   
+   Note that this optimization doesn't help when comparing
+      FOO (X)
+   vs 
+      FOO (Y);
+   when FOO has a definition, we still end up expanding out
+   both copies, rather than comparing X and Y.  Future work, I guess. *)
 and quickEqTheory cntxt thry1 thry2 =
   if (thry1 = thry2) then
       true
