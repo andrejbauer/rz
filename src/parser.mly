@@ -48,7 +48,6 @@
 %token DEFINITION
 %token DOUBLEARROW
 %token EMPTY
-%token EMPTYTUPLE
 %token END
 %token EOF
 %token EQUAL
@@ -248,7 +247,6 @@ simple_expr:
   | PROP                                      { Prop }
   | STABLE                                    { Stable }
   | LPAREN RPAREN                             { EmptyTuple }
-  | EMPTYTUPLE                                { EmptyTuple }
   | FALSE                                     { False }
   | BFALSE                                    { BFalse }
   | TRUE                                      { True }
