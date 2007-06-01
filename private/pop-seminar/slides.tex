@@ -1,0 +1,430 @@
+\documentclass[compress,t]{beamer}
+
+\usepackage{palatino}
+\usepackage{amsfonts}
+\usepackage[all]{xypic}
+
+\usepackage{fancyvrb}
+% To show source
+\DefineVerbatimEnvironment{source}{Verbatim}%
+{fontsize=\small,commandchars=\\\{\}}
+
+\DefineVerbatimEnvironment{sourcex}{Verbatim}%
+{fontsize=\footnotesize,commandchars=\\\{\}}
+
+% macros within source
+\newcommand{\iTo}{{\ensuremath{\to}}}
+\newcommand{\iForall}{$\forall$}
+\newcommand{\iOr}{$\lor$}
+\newcommand{\iAnd}{$\land$}
+\newcommand{\iImply}{$\Rightarrow$}
+\newcommand{\iNot}{$\lnot$}
+\newcommand{\iExists}{$\exists$}
+\newcommand{\iExistsOne}{$\exists!$}
+\newcommand{\iT}[1]{$\|$#1$\|$}
+\newcommand{\iPer}[1]{$\approx_{\mathtt{#1}}$}
+\newcommand{\iIff}{$\leftrightarrow$}
+\newcommand{\iLeq}{$\leq$}
+\newcommand{\iAlpha}{$\alpha$}
+
+\newcommand{\per}{\approx}
+\newcommand{\typeOf}[1]{|#1|}
+
+\title{How to Connect\\the Theory and Practice\\of Computable Mathematics}
+\author{Andrej Bauer}
+\institute{Department of Mathematics and Physics\\
+University of Ljubljana, Slovenia
+\and
+{\normalsize Joint work with Iztok Kavkler and Chris Stone}
+}
+\date{CMU SCS, POP Seminar, April 2007}
+
+%\beamerdefaultoverlayspecification{<+->}
+\mode<presentation>
+%\usetheme{Goettingen}
+\usecolortheme{rose}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+
+\begin{document}
+
+\begin{frame}
+    \titlepage
+\end{frame}
+
+
+\begin{frame}[fragile]
+\frametitle{How would you implement a group?}
+\begin{source}
+Definition Group :=
+thy
+  Parameter s : Set.
+  Parameter e : s.
+  Parameter mul : s \iTo s \iTo s.
+  Parameter inv : s \iTo s.
+  Axiom associative :
+    \iForall x y z : s, mul (mul x y) z = mul x (mul y z).
+  Axiom neutral :
+     \iForall x : s, mul e x = x \iAnd mul x e = x.
+  Axiom inverse :
+    \iForall x : s, mul (inv x) x = e \iAnd mul x (inv x) = e.
+end.
+\end{source}
+\end{frame}
+
+\begin{frame}[fragile]
+\frametitle{A signature for a group implementation}
+\begin{source}
+module type Group =
+ sig
+   type s
+   val e : s
+   val mul : s \iTo s \iTo s
+   val inv : s \iTo s
+ end
+\end{source}
+
+\pause
+
+The axioms should become \emph{assertions}, e.g.,
+%
+\begin{source}
+assertion neutral :
+  \iForall x : s, mul x one = x \iAnd mul one x = x.
+\end{source}
+%
+
+But what do ``$=$'' and ``$\forall \mathtt{x} : \mathtt{s}$'' mean?
+\end{frame}
+
+\begin{frame}
+  \frametitle{An implementation of graphs}
+  
+  \begin{tabular}{cl}
+   \includegraphics[width=0.4\textheight]{digraph}
+   &
+   \parbox{0.5\textwidth}{
+     \footnotesize
+      $V = [1; 4; 3; 2]$,\\
+      $E = [(1,2); (2,2); (3,1); (2,3); (3,2)]$
+    }
+  \end{tabular}
+
+  \pause
+
+  \begin{gather*}
+    \mathtt{type\ graph\ =\ int\ list\ *\ (int * int)\ list}
+  \end{gather*}
+
+  \pause
+
+  We also need a relation on values of type $\mathtt{graph}$
+  % 
+  \begin{equation*}
+    (v_1,e_1) \per (v_2,e_2)
+  \end{equation*}
+  %
+  meaning ``$(v_1, e_1)$ and $(v_2, e_2)$ represent the same graph''.
+  Relation $\per$ is symmetric and transitive, a \emph{partial
+    equivalence relation (per)}.
+\end{frame}
+
+\begin{frame}
+  \frametitle{The category of pers}
+
+  \begin{itemize}
+
+  \item Object $(\tau, {\per_\tau})$:
+    % 
+    \begin{itemize}
+    \item $\tau$ is an ML (monomorphic) type
+    \item $\per_\tau$ is a per on values of type~$\tau$.
+    \item define the \emph{support} $\|\tau\| = \{v : \tau \mid v
+      \per_\tau v \}$.
+    \end{itemize}
+  \item Morphism $f : (\tau, {\per_\tau}) \to (\sigma, {\per_\sigma})$
+    is represented by an \emph{extensional} value $f : \tau \to \sigma$:
+    %
+    \begin{equation*}
+      u \per_\tau v \implies f\; u \per_\sigma f\; v \;.
+    \end{equation*}
+    %
+  \end{itemize}  
+
+  The category supports the interpretation of first-order logic,
+  dependent types, subsets and quotients (but no powersets).
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{The realizability interpretation of logic}
+
+  \begin{itemize}
+  \item<1-> Classical predicate $p : A \to \mathtt{bool}$
+  \item<2-> Realizability predicate on a per $(\sigma, {\per_\sigma})$:
+    %
+    \begin{equation*}
+      p : \sigma \to \tau_p \to \mathtt{bool}
+    \end{equation*}
+    %
+    \begin{itemize}
+    \item strict: $p\;u\;v \Rightarrow u \per_{\sigma} u$
+    \item extensional: $p\;u\;v \land u \per_\sigma u' \Rightarrow p\;u'\;v$
+    \end{itemize}
+  \item<3-> Read $p\;u\;v$ as ``$v$ realizes/witnesses the fact that $u$ has
+    property $p$''.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Realizability predicates}
+
+  Underlying type $\typeOf{p} = \tau_p$ of realizers:
+  %
+  \begin{align*}
+    \typeOf{e_1 = e_2} &= \mathtt{unit} \\
+    \typeOf{p \land q} &= \typeOf{p} * \typeOf{q} \\
+    \typeOf{p \Rightarrow q} &= \typeOf{p} \to \typeOf{q} \\
+    \text{etc.}
+  \end{align*}
+
+  Interpretation of logical connectives:
+  %
+  \begin{align*}
+    (e_1 = e_2)\; ()     &\iff \text{$e_1 \per_\tau e_2$} \\
+    (p \land q)\; (u, v) &\iff \text{$p\; u$ and $q\; v$} \\
+    (p \Rightarrow q)\; f  &\iff \text{if $p\; u$ then $q\; (f\; u)$}\\
+    \text{etc.}
+  \end{align*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Observations about realizability}
+
+  \begin{itemize}
+  \item<1-> Unlike in propositions-as-types, realizers may be partial
+    functions, and may use computational effects.
+  \item<2-> Dependent sets are translated to \emph{simple} types and
+    \emph{dependent} pers.
+  \item<3-> A part of a realizer may be ``trivial'', e.g., $r : \tau \to
+    \sigma \times (\tau \to \mathtt{unit})$ may be \emph{thinned} to
+    $\tau \to \sigma$.
+  \item<4-> \emph{Negative} formulas (built from $\top$, $\bot$, $=$,
+    $\land$, $\Rightarrow$, $\forall$) have trivial realizers.
+  \item<5-> The formula ``$v$ realizes $p$'' is negative.
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{RZ}
+
+  \begin{itemize}
+  \item \textbf{Input:} Theories
+  \item \textbf{Output:} Specifications (ML signatures with assertions)    
+  \end{itemize}
+
+  \pause
+
+  The translation procedure has several passes:
+  %
+  \begin{itemize}
+  \item Translation:
+    \begin{itemize}
+    \item ML signature: computational content of a theory
+    \item assertions: the non-computational part
+    \end{itemize}
+  \item Thinning: removes trivial (parts of) realizers
+  \item Optimization: simplifications such as $\top \land \phi \mapsto
+    \phi$.
+  \item Phase-splitting: replace functors by polymorphic values
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Obligations}
+
+Input:
+%
+\begin{source}
+Axiom inv_positive:
+  \iForall x : real, zero < x \iTo zero < inv x.
+\end{source}
+
+Output:
+%
+\begin{source}
+assertion inv_positive:
+   \iForall (x:\iT{real}), zero < x \iTo
+   zero < inv (assure (not (x \iPer{real} zero)) in x)
+\end{source}
+
+\pause
+
+General form:
+%
+\begin{equation*}
+  \mathtt{assure}\ x : \tau, \phi\ \mathtt{in}\ e
+\end{equation*}
+%
+Equivalently expressed with Hilbert's \emph{indefinite description}
+operator $\varepsilon$:
+%
+\begin{equation*}
+  \mathtt{let}\ x = \varepsilon\, x : \tau. \phi\ \mathtt{in}\ e
+\end{equation*}
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Parameterized theories}
+
+\begin{sourcex}
+Definition ChainCompletion
+  (I : Integer)
+  (P : Poset I) :=
+thy
+  include CompletePoset I.
+  Parameter incl : P.s \iTo s.
+  Definition incl_chain (a : P.chain) :=
+    (fun n : I.nat \iImply incl (a n)) : chain.
+  Axiom incl_injective :
+    \iForall x y : P.s, incl x = incl y \iTo x = y.
+  Axiom incl_monotone :
+    \iForall x y : P.s, P.below x y \iTo below (incl x) (incl y).
+  Axiom incl_continuous:
+    \iForall x : P.s, \iForall a : P.chain,
+      P.supremum a x \iTo supremum (incl_chain a) (incl x).
+  Axiom stage :
+    \iForall x : s, \iExists a : P.chain, supremum (incl_chain a) x.
+  Definition extend (f : P.continuous) :=
+    the g : continuous, \iForall x : P.s, incl (f x) = g (incl x).
+end. 
+\end{sourcex}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Parameterized axioms}
+
+  Input:
+  %
+\begin{source}
+Axiom induction :
+  \iForall M : thy Parameter p : nat \iTo Prop. end,
+  M.p zero \iTo (\iForall k, M.p k \iTo M.p (succ k)) \iTo
+  \iForall k, M.p k.    
+\end{source}
+
+Output:
+%
+\begin{sourcex}
+val induction : \iAlpha \iTo (nat \iTo \iAlpha \iTo \iAlpha) \iTo nat \iTo \iAlpha
+(**  assertion \iAlpha [p:nat \iTo \iAlpha \iTo bool] induction : 
+  (\iForall x:nat, a:\iAlpha,  p x a \iTo x : \iT{nat}) \iTo
+  (\iForall x:nat, y:nat, a:\iAlpha,  x \iPer{nat} y \iTo p x a \iTo p y a) \iTo
+  \iForall x:\iAlpha,  p zero x \iTo
+  \iForall f:nat \iTo \iAlpha \iTo \iAlpha,
+  (\iForall (k:\iT{nat}), \iForall y:\iAlpha,  p k y \iTo p (succ k) (f k y)) \iTo
+  \iForall (k:\iT{nat}),  p k (induction x f k)
+*)
+\end{sourcex}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Computational effects}
+
+Input:
+%
+\begin{sourcex}
+Axiom continuity:
+  \iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
+  \iExists k, \iForall b : nat \iTo nat,
+    (\iForall m, m \iLeq k \iTo a m = b m) \iTo f a = f b.
+\end{sourcex}
+
+Output:
+%
+\begin{sourcex}
+val continuity : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
+assertion continuity :
+  \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iT{nat \iTo nat}),
+    let p = continuity f a in p : \iT{nat} \iAnd
+    (\iForall (b:\iT{nat \iTo nat}),
+       (\iForall (m:\iT{nat}),  m \iLeq p \iTo a m \iPer{nat} b m) \iTo f a \iPer{nat} f b)
+\end{sourcex}
+
+\pause
+
+Realized by:
+%
+\begin{sourcex}
+let continuity f a =
+  let p = ref 0 in
+  let a' n = (p := max !p n; a n) in
+    f a' ; !p
+\end{sourcex}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Real numbers}
+
+  Two ways of approximating a real number by a dyadic\footnote{A
+    \emph{dyadic} rational is of the form $m \cdot 2^{-e}$.} rational:
+  %
+  \begin{itemize}
+  \item<1-> Old:
+    %
+    \begin{gather*}
+      \mathtt{val\ approx : real \to nat \to dyadic}\\
+      |x - \mathtt{approx}\;x\;k| \leq 2^{-k}
+    \end{gather*}
+    %
+  \item<2-> New:
+    \begin{gather*}
+      \mathtt{val\ stage : real \to nat \to dyadic}\\
+      x = \lim_{k \to \infty} \mathtt{stage}\;x\;k
+    \end{gather*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Two axiomatizations of reals}
+
+  \begin{itemize}
+  \item<1-> A complete Archimedean ordered field.
+    %
+\begin{source}
+Axiom dense:
+  \iForall x : real, \iForall k : nat, \iExists d : dyadic,
+    abs (x - incl d) \iLeq incl (pow2 (neg k)).
+\end{source}
+% 
+\item<2-> Via Scott's \emph{interval domain}.
+\begin{source}
+Axiom stage :
+  \iForall x : real, \iExists a : ID.chain,
+    supremum (incl_chain a) x.
+\end{source}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Wish list}
+
+  Realizability:
+  %
+  \begin{itemize}
+  \item allow realizers which expose computational effects
+  \item adopt the internal logic of pers to such realizers
+  \end{itemize}
+
+  ML:
+  \begin{itemize}
+  \item support for logical assertions
+  \item mappings from structures to signatures
+  \end{itemize}
+\end{frame}
+\end{document}

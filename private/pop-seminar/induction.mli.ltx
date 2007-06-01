@@ -1,0 +1,9 @@
+val induction : 'ty_p \iTo (nat \iTo 'ty_p \iTo 'ty_p) \iTo nat \iTo 'ty_p
+(**  assertion 'ty_p [p:nat \iTo 'ty_p \iTo bool] induction : 
+  (\iForall x:nat, a:'ty_p,  p x a \iTo x : \iT{nat}) \iTo
+  (\iForall x:nat, y:nat, a:'ty_p,  x \iPer{nat} y \iTo p x a \iTo p y a) \iTo
+  \iForall x:'ty_p,  p (assure (leq zero zero) in zero) x \iTo
+  \iForall f:nat \iTo 'ty_p \iTo 'ty_p,
+  (\iForall (k:\iT{nat}), \iForall y:'ty_p,  p k y \iTo p (succ k) (f k y)) \iTo
+  \iForall (k:\iT{nat}),  p k (induction x f k)
+*)
