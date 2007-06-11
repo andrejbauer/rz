@@ -86,7 +86,7 @@ and expr =
   | Unique of binding * prop
 
   (*** Theories ***)
-  | Theory of theory_element list
+  | Thy of theory_element list
 
 and sentence_type =
     Axiom
@@ -202,7 +202,7 @@ and string_of_expr = function
   | Forall (bnd, e) -> "forall " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
   | Exists (bnd, e) -> "exists " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
   | Unique (bnd, e) -> "exists1 " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
-  | Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "\nend"
+  | Thy elts -> "thy\n" ^ string_of_theory_elements elts ^ "\nend"
 
 and string_of_bnds = function
     [] -> ""

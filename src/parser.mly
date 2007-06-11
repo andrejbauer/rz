@@ -258,7 +258,7 @@ simple_expr:
   | LBRACE binding1 WITH expr RBRACE          { Subset ($2, $4) }
   | LBRACE binding1 BAR expr RBRACE           { Subset ($2, $4) }
 
-  | THY theory_elements END                   { Theory (snd $2) }
+  | THY theory_elements END                   { Thy (snd $2) }
   | MATCH expr WITH case_list END             { Case ($2, $4) }
   | simple_expr PROJECT                       { Proj ($2, $1) }
   | simple_expr MPROJECT                       { makeMProj $1 ($2, Word) }

@@ -15,6 +15,8 @@ exception TooFast
 (* A context contains three components:
      1) The traditional typing context, containing mappings from bound
         variables to their sorts (and, optionally a value for this variable.)
+        We also keep a timestamp recording when each variable entered
+        the context; see below for more information.
      2) Implicit type (or, more generally, kind/theory/etc.) information
         declared by the user.  If a bound variable is introduced without
         an explicit classifier or definition, we look here to see if the
@@ -30,15 +32,18 @@ exception TooFast
 type timestamp = int
 
 type context = {bindings : (declaration * timestamp) NameMap.t;
-		implicits : declaration NameMap.t;
-	        renaming  : name NameMap.t}
+		        implicits : declaration NameMap.t;
+	            renaming  : name NameMap.t}
 
 let emptyContext = {bindings = NameMap.empty; 
-		    implicits = NameMap.empty;
-		    renaming = NameMap.empty}
+                    implicits = NameMap.empty;
+		            renaming = NameMap.empty}
 
 let displayContext cntxt = 
-  NameMap.iter (fun n (decl,_) -> print_endline(string_of_theory_element(Declaration(n,decl)))) cntxt.bindings
+  NameMap.iter 
+    (fun n (decl,_) -> 
+        print_endline(string_of_theory_element(Declaration(n,decl))))
+    cntxt.bindings
 
 (**************)
 (* {3 Lookup} *)
@@ -1392,8 +1397,8 @@ and modelToTimestamp cntxt = function
    it's faster to reduce Z to X, rather than reducing both
    X and Z to something big, and then comparing the big things.
    
-   The idea is that we keep track of a "timestamp" describing when
-   variables entered the context.  A variable with a later timestamp
+   The idea is that to keep track of a "timestamp" describing when
+   each variable entered the context.  A variable with a later timestamp
    might be an abbreviation for something with an earlier timestamp,
    so we try expanding later-timestamp theories first. 
    

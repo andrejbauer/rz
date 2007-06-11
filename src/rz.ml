@@ -164,7 +164,7 @@ let rec processOne (state : state) (doWrap,writeOutput) filename =
     in let elems = if doWrap then
                      [Syntax.Value(Syntax.Parameter,
 			                      [([Name.mk_word(thryname)],
-			                       Syntax.Theory thy_elts)])]
+			                       Syntax.Thy thy_elts)])]
 			       else 
 			         thy_elts
 
