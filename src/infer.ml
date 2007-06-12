@@ -338,8 +338,6 @@ and annotateThe cntxt orig_expr sbnd1 expr2 =
   that "The x:s.phi" now has type "{x:s | phi}").  *)
   ResTerm ( L.The (lbnd1, prp2),
             L.Subset((nm1,ty1), prp2) )
-  
-
   	 
 (* Thy elems *)
 and annotateThy cntxt orig_expr elems =
@@ -394,6 +392,7 @@ and annotateExpr cntxt orig_expr =
     | MProj (expr1, nm2)      -> annotateMProj cntxt orig_expr expr1 nm2
     | Rz expr1                -> annotateRz cntxt orig_expr expr1
     | Product sbnds           -> annotateProduct cntxt orig_expr sbnds
+    | Constraint (expr1, expr2) -> annotateConstraint cntxt orig_expr expr1 expr2
 
   
     | App (expr1, expr2) ->
@@ -650,93 +649,7 @@ and annotateExpr cntxt orig_expr =
 		    end
 	  end
 
-      | Constraint (expr1, expr2) ->
-	  begin
-	    match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
-		(ResTerm(trm1,ty1), ResSet(ty2,L.KindSet)) ->
-		  begin
-		    (* Typecheck a term constrained by a type *)
-		    try 
-		      let trm1' = LR.coerce cntxt trm1 ty1 ty2
-		      in ResTerm(trm1', ty2)
-		    with 
-			E.TypeError msgs -> 
-			  E.specificateError msgs
-			    (E.tyMismatchMsg expr1 ty2 ty1)
-		  end
 
-              | (ResProp(prp1, ( (L.PropArrow(nm1a, st1a, 
-					     L.PropArrow(_, st1b, 
-							L.StableProp))) as pt1) ), 
-		ResPropType( (L.EquivProp st2) as pt2 ) ) ->
-		  begin
-		    (* Special case of coercion into an equivalence relation!*)
-		    let (cntxt, nm1a) = LR.renameBoundVar cntxt nm1a
-		    in let cntxt' = LR.insertTermVariable cntxt nm1a st1a None
-		    in 
-			 try
-			   let reqs = (LR.subSet cntxt st2 st1a) @ 
-			     (LR.subSet cntxt' st2 st1b) @ 
-			     [L.IsEquiv(prp1, st2)]
-			     (** Is this enough to make translate happy about
-				 using prp1 as an equivalence relation? *)
-			   in 
-			     ResProp(L.maybePAssure reqs prp1,
-				    L.EquivProp(st2))
-			 with
-			     E.TypeError msgs -> 
-			       E.specificateError msgs
-				 (E.propTypeMismatchMsg expr1 pt2 pt1)
-		  end
-
-	      | (ResProp(prp1,pt1), ResPropType(pt2)) ->
-		  begin
-		    (* Typecheck a proposition constrained by a prop. type *)
-		    try
-		      let reqs = LR.subPropType cntxt pt1 pt2
-		      in ResProp( L.maybePAssure reqs prp1, pt2 )
-		    with
-			E.TypeError msgs -> 
-			  E.specificateError msgs
-			    (E.propTypeMismatchMsg expr1 pt2 pt1)
-		  end
-
-	      | (ResSet(st1,knd1), ResKind(knd2)) ->
-		  begin
-		    (* Typecheck a set constrained by a kind *)
-		    try
-		      let reqs = LR.subKind cntxt knd1 knd2
-		      in if (reqs <> []) then
-			  (* XXX *)
-			  failwith "UNIMPLEMENTED: annotateExpr/Constrant/ResSet"
-			else ResSet(st1, knd2)
-		    with 
-			E.TypeError msgs -> 
-			  E.specificateError msgs
-			    (E.kindMismatchMsg expr1 knd2 knd1)
-		  end
-
-	      | (ResModel(mdl1,thry1), ResTheory (thry2, L.ModelTheoryKind)) ->
-		  begin
-		    (* Typecheck a model constrained by a theory *)
-		    try
-		      let reqs = LR.checkModelConstraint cntxt mdl1 thry1 thry2
-		      in if (reqs <> []) then
-			  (* XXX *)
-			  failwith "UNIMPLEMENTED: annotateExpr/Constrant/ResModel"
-			else
-			  ResModel(mdl1, thry2)  
-		    with 
-			E.TypeError msgs -> 
-			  E.specificateError msgs
-			    (E.tyGenericError "Module constraint failed")
-		  end
-	      | (ResModel _, ResTheory _) -> 
-		  E.tyGenericError "Can't constrain a model by a family of theories"
-              | _ -> E.tyGenericError 
-		  ("Incoherent constraint " ^ string_of_expr orig_expr)
-	  end
-	    
       | Quotient (expr1, expr2)  -> 
 	  begin
 	    let badRelation() =
@@ -955,6 +868,87 @@ and annotateExpr cntxt orig_expr =
 	  (("Caught unexpected exception " ^ Printexc.to_string e)
 	    :: [E.inMsg orig_expr])
   (* ********End of annotateExpr ********* *)
+
+and annotateConstraint cntxt orig_expr expr1 expr2 =
+  match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
+    (ResTerm(trm1,ty1), ResSet(ty2,L.KindSet)) ->
+      (* Typecheck a term constrained by a type *)
+      begin
+        try 
+          ResTerm(LR.coerce cntxt trm1 ty1 ty2,  ty2)
+        with 
+	        E.TypeError msgs ->  (* LR.coerce must have failed *)
+	          E.specificateError msgs (E.tyMismatchMsg expr1 ty2 ty1)
+      end
+
+  | (ResProp(prp1, ( (L.PropArrow(nm1a, st1a, L.PropArrow(_, st1b, 	L.StableProp))) as pt1) ), 
+     ResPropType( (L.EquivProp st2) as pt2 ) ) ->
+      (* Special case of coercion into an equivalence relation!*)
+      begin
+        let (cntxt, nm1a) = LR.renameBoundVar cntxt nm1a in
+        let cntxt' = LR.insertTermVariable cntxt nm1a st1a None in
+	      try
+  	      (** XXX Is this enough to make translate happy about
+  		        using prp1 as an equivalence relation? *)
+	        let reqs = (LR.subSet cntxt st2 st1a) @ 
+	                   (LR.subSet cntxt' st2 st1b) @ 
+	                   [L.IsEquiv(prp1, st2)] in
+	        ResProp(L.maybePAssure reqs prp1,  L.EquivProp(st2))
+	      with
+	        E.TypeError msgs -> (* LR.subSet must have failed *)
+	          E.specificateError msgs (E.propTypeMismatchMsg expr1 pt2 pt1)
+      end
+
+    | (ResProp(prp1,pt1), ResPropType(pt2)) ->
+      (* Typecheck a proposition constrained by a prop. type *)
+      begin
+        try
+          let reqs = LR.subPropType cntxt pt1 pt2 in
+          ResProp( L.maybePAssure reqs prp1, pt2 )
+        with
+	        E.TypeError msgs -> (* LR.subPropType must have failed *)
+	          E.specificateError msgs (E.propTypeMismatchMsg expr1 pt2 pt1)
+      end
+
+    | (ResSet(st1,knd1), ResKind(knd2)) ->
+      (* Typecheck a set constrained by a kind *)
+      begin
+        try
+          let reqs = LR.subKind cntxt knd1 knd2 in
+          if (reqs <> []) then
+	          (* XXX.  We don't have a way to embed assurances into
+	             the set we're returning.  *)
+	          failwith "UNIMPLEMENTED: annotateConstrant/ResSet"
+	        else 
+	          ResSet(st1, knd2)
+        with 
+	        E.TypeError msgs -> (* subKind must have failed *)
+	          E.specificateError msgs (E.kindMismatchMsg expr1 knd2 knd1)
+      end
+
+    | (ResModel(mdl1,thry1), ResTheory (thry2, L.ModelTheoryKind)) ->
+      (* Typecheck a model constrained by a theory *)
+      begin
+        try
+          let reqs = LR.checkModelConstraint cntxt mdl1 thry1 thry2
+          in if (reqs <> []) then
+	          (* XXX.  We don't have a way to embed assurances into
+	             the model we're returning. *)
+	          failwith "UNIMPLEMENTED: annotateConstrant/ResModel"
+	        else
+	          ResModel(mdl1, thry2)  
+        with 
+	        E.TypeError msgs -> (* LR.checkModelConstraint must have failed *)
+	          E.specificateError msgs 
+	            (E.tyGenericError "Module constraint failed")
+      end
+
+    | (ResModel _, ResTheory _) -> 
+      E.tyGenericError "Can't constrain a model by a family of theories"
+
+    | _ -> E.tyGenericError 
+      ("Incoherent constraint " ^ string_of_expr orig_expr)
+
 
 and annotateTerm cntxt surrounding_expr expr = 
   (match annotateExpr cntxt expr with
