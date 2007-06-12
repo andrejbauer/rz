@@ -393,6 +393,7 @@ and annotateExpr cntxt orig_expr =
     | Rz expr1                -> annotateRz cntxt orig_expr expr1
     | Product sbnds           -> annotateProduct cntxt orig_expr sbnds
     | Constraint (expr1, expr2) -> annotateConstraint cntxt orig_expr expr1 expr2
+    | Quotient (expr1, expr2) -> annotateQuotient cntxt orig_expr expr1 expr2
 
   
     | App (expr1, expr2) ->
@@ -650,54 +651,6 @@ and annotateExpr cntxt orig_expr =
 	  end
 
 
-      | Quotient (expr1, expr2)  -> 
-	  begin
-	    let badRelation() =
-	      E.notWhatsExpectedInError expr2 "equivalence relation" orig_expr
-	    in
-	      match (annotateExpr cntxt expr1) with
-		  ResSet(ty1, L.KindSet) -> 
-		    (* Quotient of a set *)
-		    begin
-		      match annotateProp cntxt orig_expr expr2 with 
-			  (prp2, L.EquivProp(domty2)) ->
-			    begin
-			      try 
-				let reqs = LR.subSet cntxt ty1 domty2
-				in let prp2' = L.maybePAssure reqs prp2
-				in 
-				     ResSet( L.Quotient (ty1, prp2'),
-					   L.KindSet )
-			      with
-				  E.TypeError msgs ->
-				    E.specificateError msgs
-				      (E.notEquivalenceOnMsg expr2 expr1)
-			    end
-			| _ -> badRelation()
-		    end
-		      
-		| ResTerm(trm1, ty1) ->
-		    (* Quotient [equivalence class] of a term *)
-		    begin
-		      match annotateProp cntxt orig_expr expr2 with 
-			  (prp2, L.EquivProp(domty2)) ->
-			    begin
-			      try
-				let trm1' = LR.coerce cntxt trm1 ty1 domty2
-				in 
-				  ResTerm( L.Quot (trm1', prp2),
-					 L.Quotient (domty2, prp2) )
-			      with 
-				  E.TypeError msgs ->
-				    E.specificateError msgs
-				      (E.notEquivalenceOnMsg expr2 expr1)
-			    end
-			| _ -> badRelation()
-		    end
-		      
-		| _ -> 
-		    E.notWhatsExpectedInError expr1 "term or proper set" orig_expr
-	  end
         
 
       | Case (expr1, arms2)  -> 
@@ -948,6 +901,44 @@ and annotateConstraint cntxt orig_expr expr1 expr2 =
 
     | _ -> E.tyGenericError 
       ("Incoherent constraint " ^ string_of_expr orig_expr)
+
+(* Quotient(expr1, expr2) *)
+and annotateQuotient cntxt orig_expr expr1 expr2 = 
+  match (annotateExpr cntxt expr1, annotateProp cntxt orig_expr expr2) with
+    ResSet(ty1, L.KindSet), (prp2, L.EquivProp(domty2)) -> 
+      (* Quotient of a set *)
+      begin
+	      try 
+          let reqs = LR.subSet cntxt ty1 domty2 in
+          ResSet( L.Quotient (ty1, L.maybePAssure reqs prp2),
+                  L.KindSet )
+        with
+          E.TypeError msgs -> (* LR.subSet must have failed *)
+            E.specificateError msgs (E.notEquivalenceOnMsg expr2 expr1)
+      end
+      
+  | ResTerm(trm1, ty1), (prp2, L.EquivProp(domty2)) ->
+    (* Quotient [equivalence class] of a term *)
+    begin
+	    try
+		    let trm1' = LR.coerce cntxt trm1 ty1 domty2 in
+		    ResTerm( L.Quot (trm1', prp2),
+			           L.Quotient (domty2, prp2) )
+	    with 
+		    E.TypeError msgs -> (* LR.coerce must have failed *)
+		      E.specificateError msgs
+		        (E.notEquivalenceOnMsg expr2 expr1)
+
+    end
+
+  | (ResSet _ | ResTerm _), _ -> 
+    (* First part is a set or a term, so the relation must not
+       have been an equivalence. *)
+    E.notWhatsExpectedInError expr2 "equivalence relation" orig_expr
+      
+  | _ -> 
+    (* First part wasn't even a set or a term *)
+    E.notWhatsExpectedInError expr1 "term or proper set" orig_expr
 
 
 and annotateTerm cntxt surrounding_expr expr = 
