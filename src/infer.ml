@@ -43,8 +43,74 @@ type inferResult =
   | ResTheory   of L.theory      * L.theorykind
   | ResSentence of L.model_binding list * L.proposition
 
+let rec annotateExpr cntxt orig_expr = 
+  try
+    match orig_expr with 	
+    | Set -> ResKind (L.KindSet)
+
+    | Empty    -> ResSet(L.Empty, L.KindSet)
+    | Unit     -> ResSet(L.Unit,  L.KindSet)
+    | Bool     -> ResSet(L.Bool,  L.KindSet)
+    | Sum lsos -> annotateSum cntxt orig_expr lsos
+    | Subset (sbnd1, expr2)  -> annotateSubset cntxt orig_expr sbnd1 expr2
+
+    | EmptyTuple       -> ResTerm ( L.EmptyTuple, L.Unit )
+    | BFalse           -> ResTerm ( L.BFalse, L.Bool )
+    | BTrue            -> ResTerm ( L.BTrue, L.Bool )
+    | Label label      -> ResTerm ( L.Inj(label, None), L.Sum[(label, None)] )
+
+    | Tuple exprs      -> annotateTuple cntxt orig_expr exprs
+    | Proj(n1, expr2)  -> annotateProj cntxt orig_expr n1 expr2
+    | App(Label label, expr2) -> 
+                              annotateAppLabel cntxt orig_expr label expr2
+    | Choose(nm1, expr2, expr3) -> 
+                              annotateChoose cntxt orig_expr nm1 expr2 expr3
+    | RzChoose(nm1, expr2, expr3) -> 
+                              annotateRzChoose cntxt orig_expr nm1 expr2 expr3
+    | Subin(expr1, expr2)  -> annotateSubin cntxt orig_expr expr1 expr2
+    | Subout(expr1, expr2) -> annotateSubout cntxt orig_expr expr1 expr2
+    | The(sbnd1, expr2)    -> annotateThe cntxt orig_expr sbnd1 expr2
+
+    | Prop         -> ResPropType (L.Prop)
+    | Stable       -> ResPropType (L.StableProp)
+    | Equiv expr1  -> annotateEquiv cntxt orig_expr expr1
+
+    | False                 -> ResProp(L.False, L.StableProp)
+    | True                  -> ResProp(L.True, L.StableProp)
+    | And exprs             -> annotateAnd cntxt orig_expr exprs
+    | Or exprs              -> annotateOr cntxt orig_expr exprs
+    | Not expr1             -> annotateNot cntxt orig_expr expr1
+    | Iff (expr1, expr2)    -> annotateIff cntxt orig_expr expr1 expr2
+    | Equal (expr1, expr2)  -> annotateEqual cntxt orig_expr expr1 expr2
+    | Exists (bnd1, expr2)  -> annotateExists cntxt orig_expr false bnd1 expr2
+    | Unique (bnd1, expr2)  -> annotateExists cntxt orig_expr true bnd1 expr2
+    | Forall (bnd1, expr2)  -> annotateForall cntxt orig_expr bnd1 expr2
+
+    | Thy elems -> annotateThy cntxt orig_expr elems
+
+    | Ident nm                 -> annotateIdent cntxt orig_expr nm
+    | MProj (expr1, nm2)       -> annotateMProj cntxt orig_expr expr1 nm2
+    | Rz expr1                 -> annotateRz cntxt orig_expr expr1
+    | Product sbnds            -> annotateProduct cntxt orig_expr sbnds
+    | Constraint (expr1, expr2) -> annotateConstraint cntxt orig_expr expr1 expr2
+    | Quotient (expr1, expr2)  -> annotateQuotient cntxt orig_expr expr1 expr2
+    | App (expr1, expr2)       -> annotateApp cntxt orig_expr expr1 expr2    
+    | Lambda (binding1, expr2) -> annotateLambda cntxt orig_expr binding1 expr2
+    | Arrow (nm, expr1, expr2) -> annotateArrow cntxt orig_expr nm expr1 expr2
+    | Let(sbnd1, expr2, expr3) -> annotateLet cntxt orig_expr sbnd1 expr2 expr3
+    | Case (expr1, arms2)      -> annotateCase cntxt orig_expr expr1 arms2
+
+  with
+    | E.TypeError msgs -> 
+        E.generalizeError msgs (E.inMsg orig_expr)
+    | e                -> 
+        E.tyGenericErrors 
+          (("Caught unexpected exception " ^ Printexc.to_string e) ::
+	         [E.inMsg orig_expr])
+  
+
 (* Ident nm *)
-let rec annotateIdent cntxt orig_expr nm =
+and annotateIdent cntxt orig_expr nm =
   let nm = LR.applyContextSubst cntxt nm 
   in
     match LR.lookupId cntxt nm with
@@ -84,8 +150,7 @@ and annotateMProj cntxt orig_expr expr1 nm2 =
             E.badModelProjectionError nm2 orig_expr 
               "Axioms cannot be projected from a theory"
         | None -> 
-            E.badModelProjectionError nm2 orig_expr 
-              "Name not found"
+            E.badModelProjectionError nm2 orig_expr "Name not found"
       end
   | _ -> 
     E.notWhatsExpectedInError expr1 "theory of a model" orig_expr
@@ -149,8 +214,6 @@ and annotateProduct cntxt orig_expr sbnds =
     else
       E.tyGenericError "Term products can't be labeled"
   | _ -> E.tyGenericError "First component can't appear in a product"
-
-
 
 (* Equiv expr1 *)
 and annotateEquiv cntxt orig_expr expr1 =
@@ -371,75 +434,11 @@ and annotateThe cntxt orig_expr sbnd1 expr2 =
   	 
 (* Thy elems *)
 and annotateThy cntxt orig_expr elems =
-  let (_, lelems) = annotateTheoryElems cntxt elems in
+  let cntxt' = LR.markThy cntxt in
+  let (_, lelems) = annotateTheoryElems cntxt' elems in
   ResTheory(L.Theory lelems, L.ModelTheoryKind)  	 
   	 
-and annotateExpr cntxt orig_expr = 
-  try
-    match orig_expr with 	
-    | Set -> ResKind (L.KindSet)
-
-    | Empty    -> ResSet(L.Empty, L.KindSet)
-    | Unit     -> ResSet(L.Unit,  L.KindSet)
-    | Bool     -> ResSet(L.Bool,  L.KindSet)
-    | Sum lsos -> annotateSum cntxt orig_expr lsos
-    | Subset (sbnd1, expr2)  -> annotateSubset cntxt orig_expr sbnd1 expr2
-
-    | EmptyTuple       -> ResTerm ( L.EmptyTuple, L.Unit )
-    | BFalse           -> ResTerm ( L.BFalse, L.Bool )
-    | BTrue            -> ResTerm ( L.BTrue, L.Bool )
-    | Label label      -> ResTerm ( L.Inj(label, None), L.Sum[(label, None)] )
-    
-    | Tuple exprs      -> annotateTuple cntxt orig_expr exprs
-    | Proj(n1, expr2)  -> annotateProj cntxt orig_expr n1 expr2
-    | App(Label label, expr2) -> 
-                              annotateAppLabel cntxt orig_expr label expr2
-    | Choose(nm1, expr2, expr3) -> 
-                              annotateChoose cntxt orig_expr nm1 expr2 expr3
-    | RzChoose(nm1, expr2, expr3) -> 
-                              annotateRzChoose cntxt orig_expr nm1 expr2 expr3
-    | Subin(expr1, expr2)  -> annotateSubin cntxt orig_expr expr1 expr2
-    | Subout(expr1, expr2) -> annotateSubout cntxt orig_expr expr1 expr2
-    | The(sbnd1, expr2)    -> annotateThe cntxt orig_expr sbnd1 expr2
-
-    | Prop         -> ResPropType (L.Prop)
-    | Stable       -> ResPropType (L.StableProp)
-    | Equiv expr1  -> annotateEquiv cntxt orig_expr expr1
-
-    | False                 -> ResProp(L.False, L.StableProp)
-    | True                  -> ResProp(L.True, L.StableProp)
-    | And exprs             -> annotateAnd cntxt orig_expr exprs
-    | Or exprs              -> annotateOr cntxt orig_expr exprs
-    | Not expr1             -> annotateNot cntxt orig_expr expr1
-    | Iff (expr1, expr2)    -> annotateIff cntxt orig_expr expr1 expr2
-    | Equal (expr1, expr2)  -> annotateEqual cntxt orig_expr expr1 expr2
-    | Exists (bnd1, expr2)  -> annotateExists cntxt orig_expr false bnd1 expr2
-    | Unique (bnd1, expr2)  -> annotateExists cntxt orig_expr true bnd1 expr2
-    | Forall (bnd1, expr2)  -> annotateForall cntxt orig_expr bnd1 expr2
-
-    | Thy elems -> annotateThy cntxt orig_expr elems
-
-    | Ident nm                 -> annotateIdent cntxt orig_expr nm
-    | MProj (expr1, nm2)       -> annotateMProj cntxt orig_expr expr1 nm2
-    | Rz expr1                 -> annotateRz cntxt orig_expr expr1
-    | Product sbnds            -> annotateProduct cntxt orig_expr sbnds
-    | Constraint (expr1, expr2) -> annotateConstraint cntxt orig_expr expr1 expr2
-    | Quotient (expr1, expr2)  -> annotateQuotient cntxt orig_expr expr1 expr2
-    | App (expr1, expr2)       -> annotateApp cntxt orig_expr expr1 expr2    
-    | Lambda (binding1, expr2) -> annotateLambda cntxt orig_expr binding1 expr2
-    | Arrow (nm, expr1, expr2) -> annotateArrow cntxt orig_expr nm expr1 expr2
-    | Let(sbnd1, expr2, expr3) -> annotateLet cntxt orig_expr sbnd1 expr2 expr3
-    | Case (expr1, arms2)  -> annotateCase cntxt orig_expr expr1 arms2
- 
-  with
-    | E.TypeError msgs -> 
-        E.generalizeError msgs (E.inMsg orig_expr)
-    | e                -> 
-        E.tyGenericErrors 
-          (("Caught unexpected exception " ^ Printexc.to_string e) ::
-	         [E.inMsg orig_expr])
 	           
-  (* ********End of annotateExpr ********* *)
 and annotateApp cntxt orig_expr expr1 expr2 =
   match (annotateExpr cntxt expr1, annotateExpr cntxt expr2) with
 	| ResProp(prp1,pt1), ResTerm(trm2,ty2) -> 
@@ -896,140 +895,128 @@ and annotateCase cntxt orig_expr expr1 arms2 =
       E.tyGenericError ("Case must have at least one arm")
 
 and annotateTerm cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResTerm(trm, ty) -> (trm, ty)
-    | _ -> E.notWhatsExpectedInError expr "term" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResTerm(trm, ty) -> (trm, ty)
+  | _ -> E.notWhatsExpectedInError expr "term" surrounding_expr
     
 and annotateSet cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResSet(st, knd) -> (st, knd)
-    | _ -> E.notWhatsExpectedInError expr "set" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResSet(st, knd) -> (st, knd)
+  | _ -> E.notWhatsExpectedInError expr "set" surrounding_expr
     
 and annotateType cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResSet(st, L.KindSet) -> st
-    | _ -> E.notWhatsExpectedInError expr "proper type" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResSet(st, L.KindSet) -> st
+  | _ -> E.notWhatsExpectedInError expr "proper type" surrounding_expr
     
 and annotateProp cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResProp(prp, pt) -> (prp, pt)
-    | _ -> E.notWhatsExpectedInError expr "proposition" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResProp(prp, pt) -> (prp, pt)
+  | _ -> E.notWhatsExpectedInError expr "proposition" surrounding_expr
     
 and annotateProperProp cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResProp(prp, ((L.Prop | L.StableProp) as pt)) -> (prp, pt)
-    | ResProp _ -> 
-	E.notWhatsExpectedInError expr "proper proposition" surrounding_expr
-    | _ -> 
-	E.notWhatsExpectedInError expr "proposition" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResProp(prp, ((L.Prop | L.StableProp) as pt)) -> (prp, pt)
+  | ResProp _ -> 
+	    E.notWhatsExpectedInError expr "proper proposition" surrounding_expr
+  | _ -> E.notWhatsExpectedInError expr "proposition" surrounding_expr
 
 and annotateKind cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResKind k -> k
-    | _ -> E.notWhatsExpectedInError expr "kind" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResKind k -> k
+  | _ -> E.notWhatsExpectedInError expr "kind" surrounding_expr
 
 and annotateProptype cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResPropType k -> k
-    | _ -> E.notWhatsExpectedInError expr "proposition-type" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResPropType k -> k
+  | _ -> E.notWhatsExpectedInError expr "proposition-type" surrounding_expr
     
 and annotateModel cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResModel(mdl, thry) -> (mdl, thry)
-    | _ -> E.notWhatsExpectedInError expr "model" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResModel(mdl, thry) -> (mdl, thry)
+  | _ -> E.notWhatsExpectedInError expr "model" surrounding_expr
 
 and annotateTheory cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResTheory(thry, tknd) -> (thry, tknd)
-    | _ -> E.notWhatsExpectedInError expr "theory" surrounding_expr)
-
+  match annotateExpr cntxt expr with
+  | ResTheory(thry, tknd) -> (thry, tknd)
+  | _ -> E.notWhatsExpectedInError expr "theory" surrounding_expr
 
 and annotateModelTheory cntxt surrounding_expr expr = 
-  (match annotateExpr cntxt expr with
-      ResTheory(thry, L.ModelTheoryKind) -> thry
-    | _ -> E.notWhatsExpectedInError expr "theory of a model" surrounding_expr)
+  match annotateExpr cntxt expr with
+  | ResTheory(thry, L.ModelTheoryKind) -> thry
+  | _ -> E.notWhatsExpectedInError expr "theory of a model" surrounding_expr
 
 
 (* annotateBinding: context -> expr -> binding -> L.binding list
+  
+   A binding consists of a bunch of pairs; each pair contains a list of
+   variables and a single set or theory.  So, the code has an outer loop 
+   over the pairs, and an inner loop over the variables in that pair.
+     
 *)
 and annotateBinding cntxt surrounding_expr binders =
   (* Loop over variable-list/type pairs *)
   let rec bLoop cntxt' = function
-      []                    -> (cntxt', [], [])
-    | ([],_)::rest          -> bLoop cntxt' rest
+    | []                   -> (cntxt', [], [])
+    | ([],_)::rest         -> bLoop cntxt' rest
     | (nms, expropt)::rest ->
-	(* Now loop to create this pair's bindings and extended context *)
-	let rec nLoop cntxt0 = function 
-	    [] -> (cntxt0, [], [])
-	  | n::ns -> 
-	      let doTypeBinding ty =
-		let (cntxt0', n) = LR.renameBoundVar cntxt0 n
-		in let cntxt0'' = LR.insertTermVariable cntxt0' n ty None
-		in let (cntxt0''', mbnds, lbnds) = nLoop cntxt0'' ns
-		in (cntxt0''', mbnds, (n,ty) :: lbnds)
-              in let doTheoryBinding thry =
-		begin
-		    let (cntxt0', n) = LR.renameBoundVar cntxt0 n
-		    in let cntxt0'' = LR.insertModelVariable cntxt0' n thry
-		    in let (cntxt0''', mbnds, lbnds) = nLoop cntxt0'' ns
-		    in
-			 if (lbnds = []) then
-			   (cntxt0''', (n,thry)::mbnds, lbnds)
-			 else
-			   E.innerModelBindingError surrounding_expr
-		end
-		  
-	      in
-		   begin
-		     match expropt with
-		       None -> 
-			 begin
-			   (* No type annotation; hope the variable was
-			      declared in an Implicit *)
-			   match LR.lookupImplicit cntxt n with
-			       Some(L.DeclTerm(_, ty))  ->
-				 doTypeBinding ty
-			     | Some(L.DeclModel thry) ->
-				 doTheoryBinding thry
-			     | None -> 
-		                 E.noTypeInferenceInError n surrounding_expr
-			     | Some(L.DeclSet _) ->
-				 E.noPolymorphismError surrounding_expr
-			     | Some(L.DeclTheory _) 
-			     | Some(L.DeclSentence _) ->
-				 (* Can't implicitly declare a theory name
-				    or a sentence *)
-				 raise Impossible
-			     | Some(L.DeclProp _) -> 
-				 E.noHigherOrderLogicError surrounding_expr
-			 end
-		     | Some expr ->
-			 begin
-			   (* Explicitly-annotated binding *)
-			   match annotateExpr cntxt0 expr with
-			       ResSet( ty, L.KindSet ) -> 
-				 doTypeBinding ty
-			     | ResTheory (thry, L.ModelTheoryKind) ->
-				 doTheoryBinding thry
-			     | _ -> E.illegalBindingError n expr surrounding_expr
-			 end
- 		   end
-	in let (cntxt'', mbnds, lbnds) = nLoop cntxt' nms
+	      (* Now loop to create this pair's bindings and extended context *)
+	      let rec nLoop cntxt0 = function 
+	      | [] -> (cntxt0, [], [])
+	      | n::ns -> 
+	          let doTypeBinding ty =
+		          let (cntxt0', n) = LR.renameBoundVar cntxt0 n in
+		          let cntxt0'' = LR.insertTermVariable cntxt0' n ty None in
+		          let (cntxt0''', mbnds, lbnds) = nLoop cntxt0'' ns in
+		          (cntxt0''', mbnds, (n,ty) :: lbnds)      in
+
+            let doTheoryBinding thry =
+		          let (cntxt0', n) = LR.renameBoundVar cntxt0 n in
+		          let cntxt0'' = LR.insertModelVariable cntxt0' n thry in
+		          let (cntxt0''', mbnds, lbnds) = nLoop cntxt0'' ns in
+			        if (lbnds = []) then
+			          (cntxt0''', (n,thry)::mbnds, lbnds)
+			        else
+			          E.innerModelBindingError surrounding_expr    in
+			          
+		        match expropt with
+		        | None -> 
+			        begin
+			          (* No type annotation; hope the variable was
+			             declared in an Implicit *)
+			          match LR.lookupImplicit cntxt n with
+			          | Some(L.DeclTerm(_, ty)) ->  doTypeBinding ty
+			          | Some(L.DeclModel thry) -> doTheoryBinding thry
+			          | None -> E.noTypeInferenceInError n surrounding_expr
+			          | Some(L.DeclSet _) -> E.noPolymorphismError surrounding_expr
+			          | Some(L.DeclProp _) -> E.noHigherOrderLogicError surrounding_expr
+			          | Some(L.DeclTheory _ | L.DeclSentence _) ->
+				          (* Can't implicitly declare a theory name
+				             or a sentence *)
+				          raise Impossible
+			      end
+		      | Some expr ->
+			      begin
+			        (* Explicitly-annotated binding *)
+			        match annotateExpr cntxt0 expr with
+			        | ResSet( ty, L.KindSet ) -> doTypeBinding ty
+			        | ResTheory (thry, L.ModelTheoryKind) -> doTheoryBinding thry
+			        | _ -> E.illegalBindingError n expr surrounding_expr
+			      end      in
+    let (cntxt'', mbnds, lbnds) = nLoop cntxt' nms  in
 	  
-	(* Now handle the rest of the pairs *)
-	in let (cntxt_final, mbnds_rest, lbnds_rest) = bLoop cntxt'' rest
+  	(* Now handle the rest of the pairs *)
+	  let (cntxt_final, mbnds_rest, lbnds_rest) = bLoop cntxt'' rest in
 
-	(* Combine results *)
-	in
-	     if (lbnds = [] || mbnds_rest = []) then
-	       (cntxt_final, mbnds @ mbnds_rest, lbnds @ lbnds_rest)
-	     else
-	       E.innerModelBindingError surrounding_expr
+  	(* Combine results *)
+	  if (lbnds = [] || mbnds_rest = []) then     
+	    (cntxt_final, mbnds @ mbnds_rest, lbnds @ lbnds_rest)
+    else
+	    E.innerModelBindingError surrounding_expr     in
+  bLoop cntxt binders
 
-in
-    bLoop cntxt binders
-
-
+(* An inner binding is just an ordinary binding list that should 
+   bind only term-variables *)
 and annotateInnerBinding cntxt surrounding_expr binders = 
   match annotateBinding cntxt surrounding_expr binders with
       (cntxt', [], lbnds) -> (cntxt', lbnds)
@@ -1037,13 +1024,13 @@ and annotateInnerBinding cntxt surrounding_expr binders =
 
 (*
    annotateSimpleBinding : context -> expr -> binding1 -> L.binding
+   
+   A "simple" binding is just a name/type-option pair.
 *)
 and annotateSimpleBinding cntxt surrounding_expr (nm, expropt) =
-  begin
-    match annotateInnerBinding cntxt surrounding_expr [([nm], expropt)] with
-	(cntxt', [lbnd]) -> (cntxt', lbnd)
-      | _ -> raise Impossible
-  end
+  match annotateInnerBinding cntxt surrounding_expr [([nm], expropt)] with
+	| (cntxt', [lbnd]) -> (cntxt', lbnd)
+  | _ -> raise Impossible (* Impossible unless annotateInnerBinding's buggy *)
 
 (** Like annotatebinding, but takes a (previously annotated) default set to
     be used if one is not implicitly specified in the binding or
@@ -1051,7 +1038,6 @@ and annotateSimpleBinding cntxt surrounding_expr (nm, expropt) =
 
     Raises an error (indirectly) if the set in the binding is ill-formed
 *)
-
 and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
   function
       (nm, None) -> 
@@ -1084,199 +1070,169 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
    earlier definition, which can only be an earlier top-level or
    theory-element definition.
 *)
-and annotateTheoryElem cntxt elem = 
+and annotateTheoryElem cntxt orig_elem = 
   try
-    match elem with
-	Definition(nm1, expropt2, expr3) as orig_elem -> 
-	  begin
-	    match annotateExpr cntxt expr3 with
-		ResTerm(trm3, ty3) ->
-		  begin
-		    (* Definition of a term constant *)
-		    match expropt2 with
-			None       -> 
-			  [ L.Declaration(nm1, L.DeclTerm(Some trm3, ty3)) ]
-		      | Some expr2 ->
-			  let ty2 = annotateType cntxt (Ident nm1) expr2 
-			  in 
-			    try 
-			      let trm3' = LR.coerce cntxt trm3 ty3 ty2
-			      in [ L.Declaration
-				     (nm1, L.DeclTerm(Some trm3', ty2)) ]
-			    with 
-				E.TypeError _ -> 
-				  E.tyMismatchError expr3 ty2 ty3 (Ident nm1)
-		  end
-
-	      | ResSet(st3, k3) ->
-		  begin
-		    (* Definition of a set constant *)
-		    match expropt2 with
-			None       ->
-			  [ L.Declaration(nm1, L.DeclSet(Some st3, k3)) ]
-		      | Some expr2 ->
-			  let k2 = annotateKind cntxt (Ident nm1) expr2
-			  in
-			    try
-			      let reqs = LR.subKind cntxt k3 k2
-			      in let _ = if reqs <> [] then
-				  (* XXX *)
-				  failwith "UNIMPLEMENTED: annotateTheoryElem"
-			      in
-				   [ L.Declaration(nm1, L.DeclSet(Some st3, k2)) ]
-			    with
-				E.TypeError _ ->
-				  E.kindMismatchError expr3 k2 k3 (Ident nm1)
-		  end
-
-	      | ResProp(prp3, pt3) ->
-		  begin
-		    (* Definition of a propositional constant *)
-		    match expropt2 with
-			None       -> 
-			  [ L.Declaration(nm1, L.DeclProp(Some prp3, pt3)) ]
-		      | Some expr2 ->
-			  let pt2 = annotateProptype cntxt (Ident nm1) expr2 
-			  in
-			    try
-			      let reqs = LR.subPropType cntxt pt3 pt2
-			      in let prp3' = L.maybePAssure reqs prp3
-			      in 
-				   [ L.Declaration(nm1, 
-						  L.DeclProp(Some prp3', pt2)) ]
-			    with
-				E.TypeError _ ->
-				  E.propTypeMismatchError expr3 pt2 pt3 (Ident nm1)
-		  end
-
-	      | ResTheory (thry3, tknd3) ->
-		  begin
-		    (* Definition of a theory *)
-		    match expropt2 with
-			None       ->
-			  [ L.Declaration(nm1, L.DeclTheory(thry3, tknd3)) ]
-		      | Some _ ->
-			  E.tyGenericError ("A theory definitions must not" ^
-					       " have a constraint")
-		  end
-
-	      | ResPropType _ | ResKind _ | ResModel _ | ResSentence _ ->
-		  E.tyGenericError 
-		    ("Invalid right-hand-side in " ^
-			string_of_theory_element orig_elem)
-	  end
-
-      | Comment c -> [L.Comment c]
-
-      | Include expr -> 
-	  begin
-	    let badTheory() = 
-	      E.tyGenericError ("Theory " ^ string_of_expr expr ^ 
-				   "is not includable.")
-	    in
-	      match annotateTheory cntxt expr(*X*) expr with
-		  (thry, L.ModelTheoryKind) ->
-		    begin
-		      match LR.hnfTheory cntxt thry with
-			  L.Theory elems -> elems
-			| _ -> badTheory()
-		    end
-		| _ -> badTheory()
-	  end
-
-      | Implicit _ -> raise Impossible (* Implicits were already removed *)
-
-      | Value (sentence_type, values) as orig_elem ->
-	  let process res nm = 
-	    begin
-	      L.Declaration(nm,
-			   match res with
-			       ResSet(ty, L.KindSet) -> L.DeclTerm(None, ty)
-			     | ResPropType pt        -> L.DeclProp(None, pt)
-			     | ResKind k             -> L.DeclSet (None, k)
-			     | ResTheory (thry, L.ModelTheoryKind) ->
-				 L.DeclModel(thry)
-			     | ResProp(prp, (L.Prop | L.StableProp)) ->
-				 L.DeclSentence([], prp)
-			     | ResSentence(mbnds, prp) ->
-				 L.DeclSentence(mbnds, prp)
-			     | ResSet _ | ResTerm _ | ResProp _ 
-			     | ResModel _ -> 
-				 E.tyGenericError 
-				   ("Model is an invalid classifier for " ^ string_of_name nm ^
-				       " in " ^ string_of_theory_element orig_elem)
-			     | ResTheory _ -> 
-				 E.tyGenericError 
-				   ("Parameterized theory is an invalid classifier for " ^ string_of_name nm ^
-				       " in " ^ string_of_theory_element orig_elem))
-	    end
-	  in let rec loop cntxt = function
-	      [] -> []
-            | (nms,expr)::rest ->
-		begin
-		  let res = annotateExpr cntxt expr 
-	          in let elems = List.map (process res) nms
-		  in let cntxt' = LR.updateContextForElems cntxt elems
-		  in 
-		       elems @ (loop cntxt' rest)
-		end
-	  in 
-	       loop cntxt values
-
+    match orig_elem with
+	  | Definition(nm1, expropt2, expr3) -> 
+	      annotateDefinition cntxt orig_elem nm1 expropt2 expr3
+    | Value (sentence_type, values) ->
+        annotateValue cntxt orig_elem sentence_type values
+    | Comment c    -> [L.Comment c]
+    | Include expr -> annotateInclude cntxt orig_elem expr
+    | Implicit _   -> raise Impossible (* Implicits were already removed *)
   with
       E.TypeError msgs ->
-	E.generalizeError msgs (E.inElemMsg elem)
+	      E.generalizeError msgs (E.inElemMsg orig_elem)
 
+(* Include expr *)
+and annotateInclude cntxt orig_elem expr =
+  let badTheory () = 
+    E.tyGenericError ("Theory " ^ string_of_expr expr ^ "can't be included") in
+  match annotateTheory cntxt expr(*XXX*) expr with
+  | (thry, L.ModelTheoryKind) ->
+    begin
+      match LR.hnfTheory cntxt thry with
+	    | L.Theory elems -> elems
+	    | _ -> badTheory()  (* Must be a theory for a family of models *)
+    end
+  | _ -> badTheory() (* Must be a parameterized theory *)
+
+(* Value(sentence_type, values) *)
+and annotateValue cntxt orig_elem sentence_type values =
+  let process res nm = 
+	   let nm', decl = match res with
+	     | ResSet(ty, L.KindSet) -> nm, L.DeclTerm(None, ty)
+	     | ResPropType pt        -> nm, L.DeclProp(None, pt)
+	     | ResKind k             -> nm, L.DeclSet (None, k)
+	     | ResTheory (thry, L.ModelTheoryKind) ->	nm, L.DeclModel(thry)
+	     | ResProp(prp, (L.Prop | L.StableProp)) -> 
+	         (* refresh *) nm, L.DeclSentence([], prp)
+	     | ResSentence(mbnds, prp) ->	 
+	         (* refresh *) nm, L.DeclSentence(mbnds, prp)
+	     | ResSet _ | ResTerm _ | ResProp _ | ResModel _ | ResTheory _ -> 
+		      E.tyGenericError 
+		      ("Invalid classifier for " ^ string_of_name nm ^
+		       " in " ^ string_of_theory_element orig_elem)   in
+		 L.Declaration(nm', decl) in
+  let rec loop cntxt = function
+    | [] -> []
+    | (nms,expr)::rest ->
+        let res = annotateExpr cntxt expr  in
+        let elems = List.map (process res) nms  in
+        let cntxt', elems' = LR.updateContextForElems cntxt elems  in
+        elems' @ (loop cntxt' rest)      in
+  loop cntxt values
+
+(* Definition(nm1, expropt2, expr3) *)
+and annotateDefinition cntxt orig_elem nm1 expropt2 expr3 =
+  match annotateExpr cntxt expr3 with
+	|	ResTerm(trm3, ty3) ->
+  	begin
+  	  (* Definition of a term constant *)
+  	  match expropt2 with
+  		|	None -> [ L.Declaration(nm1, L.DeclTerm(Some trm3, ty3)) ]
+  		| Some expr2 ->
+  			  let ty2 = annotateType cntxt (Ident nm1) expr2  in
+  			    try 
+  			      let trm3' = LR.coerce cntxt trm3 ty3 ty2 in
+  			      [ L.Declaration (nm1, L.DeclTerm(Some trm3', ty2)) ]
+  			    with 
+  				    E.TypeError _ -> (* LR.coerce must have failed *)
+  				      E.tyMismatchError expr3 ty2 ty3 (Ident nm1)
+    end 
+
+  | ResSet(st3, k3) ->
+    begin
+      (* Definition of a set constant *)
+      match expropt2 with
+  	  | None -> [ L.Declaration(nm1, L.DeclSet(Some st3, k3)) ]
+      | Some expr2 ->
+  			  let k2 = annotateKind cntxt (Ident nm1) expr2  in
+			    try
+			      let reqs = LR.subKind cntxt k3 k2  in 
+  			    let _ = if reqs <> [] then
+  				             (* XXX *)
+  				             failwith "UNIMPLEMENTED: annotateTheoryElem"   in
+ 				    [ L.Declaration(nm1, L.DeclSet(Some st3, k2)) ]
+  			  with
+  				  E.TypeError _ -> (* LR.subKind must have failed *)
+  				    E.kindMismatchError expr3 k2 k3 (Ident nm1)
+  	end
+
+  | ResProp(prp3, pt3) ->
+    begin
+      (* Definition of a propositional constant *)
+      match expropt2 with
+  		| None  -> [ L.Declaration(nm1, L.DeclProp(Some prp3, pt3)) ]
+      | Some expr2 ->
+  			  let pt2 = annotateProptype cntxt (Ident nm1) expr2  in
+			    try
+			      let reqs = LR.subPropType cntxt pt3 pt2 in
+			      let prp3' = L.maybePAssure reqs prp3 in
+  				  [ L.Declaration(nm1, L.DeclProp(Some prp3', pt2)) ]
+  			  with
+  				  E.TypeError _ -> (* LR.subPropType must have failed *)
+  				    E.propTypeMismatchError expr3 pt2 pt3 (Ident nm1)
+  	end
+
+  | ResTheory (thry3, tknd3) ->
+    begin
+      (* Definition of a theory *)
+      match expropt2 with
+  		|	None -> [ L.Declaration(nm1, L.DeclTheory(thry3, tknd3)) ]
+      | Some _ ->
+  			  E.tyGenericError ("A theory definition cannot have a constraint")
+	  end
+
+  | ResPropType _ | ResKind _ | ResModel _ | ResSentence _ ->
+  	  E.tyGenericError 
+  		    ("Invalid right-hand-side in " ^ string_of_theory_element orig_elem)
+
+
+(* context * elem list -> context * L.elem list *)
 and annotateTheoryElems cntxt = function
-    [] -> (cntxt, [])
+    [] -> cntxt, []
 
   | Implicit(names, expr)::rest ->    
       (** "implicit" declarations are eliminated here *)
       let cntxt' = 
-	begin
-	  match annotateExpr cntxt expr with
-	      ResSet(ty, L.KindSet) -> 
-		LR.insertImplicits cntxt names (L.DeclTerm(None, ty))
-	    | ResKind knd ->
-		LR.insertImplicits cntxt names (L.DeclSet(None, knd))
-	    | ResTheory (thry, L.ModelTheoryKind) ->
-		LR.insertImplicits cntxt names (L.DeclModel thry)
-	    | ResPropType pt ->
-		LR.insertImplicits cntxt names (L.DeclProp(None, pt))
-	    | _ -> E.notWhatsExpectedInError expr "classifier" expr
-	end
-      in
-	annotateTheoryElems cntxt' rest
+	      match annotateExpr cntxt expr with
+	      | ResSet(ty, L.KindSet) -> 
+	          LR.insertImplicits cntxt names (L.DeclTerm(None, ty))
+	      | ResKind knd ->
+		        LR.insertImplicits cntxt names (L.DeclSet(None, knd))
+	      | ResTheory (thry, L.ModelTheoryKind) ->
+		        LR.insertImplicits cntxt names (L.DeclModel thry)
+	      | ResPropType pt ->
+		        LR.insertImplicits cntxt names (L.DeclProp(None, pt))
+	      | _ -> E.notWhatsExpectedInError expr "classifier" expr    in
+	    annotateTheoryElems cntxt' rest
 
   | elem :: rest ->
-    (* Anything but "implicit" is passed to annotateTheoryElem *)
-      let    lelems1 = annotateTheoryElem cntxt elem
-      in let cntxt'  = LR.updateContextForElems cntxt lelems1
-      in let (cntxt_final, lelems2) = annotateTheoryElems cntxt' rest
-      in (cntxt_final, lelems1 @ lelems2)
+    (* Anything but "implicit" is handled by annotateTheoryElem *)
+      let lelems1 = annotateTheoryElem cntxt elem  in
+      let cntxt', lelems1'  = LR.updateContextForElems cntxt lelems1  in
+      let cntxt_final, lelems2 = annotateTheoryElems cntxt' rest  in
+      cntxt_final, lelems1' @ lelems2
  
 
 and annotateToplevel cntxt = function
-    TopComment c -> (cntxt, L.TopComment c)
+  | TopComment c -> (cntxt, L.TopComment c)
 
   | Theorydef(nm, expr) ->
-      begin
-	let (thry, tknd) = annotateTheory cntxt False(*X*) expr
-	in (LR.insertTheoryVariable cntxt nm thry tknd, 
-	   L.Theorydef(nm, thry))
-      end
+	    let (thry, tknd) = annotateTheory cntxt False(*XXX*) expr  in
+	    (LR.insertTheoryVariable cntxt nm thry tknd, L.Theorydef(nm, thry))
 	  
   | TopModel (nm, thry) -> 
-      let lthry = annotateModelTheory cntxt False(*X*) thry
-      in (LR.insertModelVariable cntxt nm lthry,
-	 L.TopModel(nm, lthry))
+      let lthry = annotateModelTheory cntxt False(*XXX*) thry  in
+      (LR.insertModelVariable cntxt nm lthry,	 L.TopModel(nm, lthry))
 
 and annotateToplevels cntxt = function
     [] -> (cntxt, [])
   | tl::tls -> 
-      let    (cntxt',  tl' ) = annotateToplevel cntxt tl
-      in let (cntxt'', tls') = annotateToplevels cntxt' tls
-      in (cntxt'', tl'::tls')
+      let cntxt',  tl'  = annotateToplevel cntxt tl  in
+      let cntxt'', tls' = annotateToplevels cntxt' tls  in
+      cntxt'', tl'::tls'
 
 
 

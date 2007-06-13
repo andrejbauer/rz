@@ -32,12 +32,14 @@ exception TooFast
 type timestamp = int
 
 type context = {bindings : (declaration * timestamp) NameMap.t;
-		        implicits : declaration NameMap.t;
-	            renaming  : name NameMap.t}
+		            implicits : declaration NameMap.t;
+	              renaming  : name NameMap.t;
+	              lastthy : timestamp}
 
 let emptyContext = {bindings = NameMap.empty; 
                     implicits = NameMap.empty;
-		            renaming = NameMap.empty}
+		                renaming = NameMap.empty;
+		                lastthy = max_int}
 
 let displayContext cntxt = 
   NameMap.iter 
@@ -63,6 +65,7 @@ let lookupTimestamp cntxt nm =
 let isUnbound cntxt nm =
   not (NameMap.mem nm cntxt.bindings)
 
+let lookupLastThy cntxt = cntxt.lastthy
 
 (*****************)
 (* {3 Insertion} *)
@@ -89,14 +92,15 @@ let rec insertImplicits cntxt names info =
 let timestamp_counter = ref 0
 
 let doInsert validator idString cntxt nm info =
-    if validator nm then
-      if isUnbound cntxt nm then
-         (timestamp_counter := !timestamp_counter + 1;
-	      {cntxt with bindings = NameMap.add nm (info, !timestamp_counter) cntxt.bindings })
-      else
-	E.shadowingError nm
+  if validator nm then
+    if isUnbound cntxt nm then
+      (timestamp_counter := !timestamp_counter + 1;
+	     {cntxt with 
+	        bindings = NameMap.add nm (info, !timestamp_counter) cntxt.bindings})
     else
-      E.illegalNameError nm idString
+	    E.shadowingError nm
+  else
+    E.illegalNameError nm idString
 
 let insertTermVariable cntxt nm ty trmopt = 
   doInsert validTermName "term" cntxt nm (DeclTerm (trmopt,ty))
@@ -116,24 +120,9 @@ let insertTheoryVariable cntxt nm thry tknd =
 let insertSentenceVariable cntxt nm mbnds prp =
   doInsert validSentenceName "sentence" cntxt nm (DeclSentence(mbnds,prp))
 
-let rec updateContextForElem cntxt = function
-    Declaration(nm, DeclSet(stopt, knd)) -> 
-      insertSetVariable  cntxt nm knd stopt
-  | Declaration(nm, DeclProp(prpopt, pt)) -> 
-      insertPropVariable cntxt nm pt prpopt
-  | Declaration(nm, DeclTerm(trmopt, ty)) -> 
-      insertTermVariable cntxt nm ty trmopt
-  | Declaration(nm, DeclModel(thry)) -> 
-      insertModelVariable cntxt nm thry
-  | Declaration(nm, DeclTheory(thry,tknd)) ->
-      insertTheoryVariable cntxt nm thry tknd
-  | Declaration(nm, DeclSentence(mbnds,prp)) ->
-      insertSentenceVariable cntxt nm mbnds prp
-  | Comment _   -> cntxt
+let markThy cntxt =
+  {cntxt with lastthy = !timestamp_counter}
 
-and updateContextForElems cntxt elems = 
-  List.fold_left updateContextForElem cntxt elems
-    
 (************************************)
 (** {3 Renaming of Bound Variables} *)
 (************************************)
@@ -1026,6 +1015,12 @@ and eqProps cntxt prps1 prps2 =
       Invalid_argument _ -> 
 	raise (E.TypeError ["Different numbers of propositions"])
 
+and eqPropOpt cntxt prpopt1 prpopt2 =
+  match prpopt1, prpopt2 with
+  | None, None -> []
+  | Some prp1, Some prp2 -> eqProp cntxt prp1 prp2
+  | _ -> raise (E.TypeError [])
+
 and eqDisjunct cntxt (lbl1, prp1) (lbl2, prp2) =
   if lbl2 = lbl2 then
     eqProp cntxt prp1 prp2
@@ -1175,6 +1170,12 @@ and eqTerms cntxt trms1 trms2 =
       Invalid_argument _ -> 
 	E.tyGenericError "Different numbers of terms"
 
+and eqTermOpt cntxt trmopt1 trmopt2 =
+  match trmopt1, trmopt2 with
+  | None, None -> []
+  | Some trm1, Some trm2 -> eqTerm cntxt trm1 trm2
+  | _ -> raise (E.TypeError [])
+
 and eqModel ctx mdl1 mdl2 = 
   if (mdl1 = mdl2) then
     []
@@ -1192,6 +1193,11 @@ and eqSet cntxt st1 st2 = eqSet' false cntxt st1 st2
 
 and subSet cntxt st1 st2 = eqSet' true cntxt st1 st2
 
+and eqSetOpt cntxt stopt1 stopt2 =
+  match stopt1, stopt2 with
+  | Some st1, Some st2 -> eqSet cntxt st1 st2
+  | None, None -> []
+  | _ -> raise (E.TypeError[])
 
 (** Computes the join of the two sets s1 and s2.
     Like subtSet (and unlike Coerce), 
@@ -1750,3 +1756,81 @@ let rec coerceProp cntxt prp pt1 pt2 =
      match (prp, pt1, pt2) with
 	 (_, PropArrow(s1a, PropArrow(s1b, StableProp), EquivProp s2))
 *)
+
+(* Wrapper for equality-testing functions: returns a bool, rather than
+     a list or an exception.
+   Tells us whether the equivalence holds *without assumptions* or not.
+   Never raises the TypeError exception.
+*)
+let reallyEq f x y z = 
+  try
+     f x y z = []
+  with
+     E.TypeError _ -> false
+
+(* New idea:  we can ignore/drop a theory element if it is identical
+   (say, up to equivalence, for generality) to a previous declaration
+  in the *same* thy...end group.  
+ *)
+let declaredInSameThy cntxt nm =
+  try
+    lookupTimestamp cntxt nm >= lookupLastThy cntxt
+  with
+    Not_found -> false
+
+let ignorableElem cntxt elem =
+  match elem with
+    Comment _ -> false
+  | Declaration(nm, decl) ->
+      try
+        begin
+        declaredInSameThy cntxt nm &&
+        match decl, lookupId cntxt nm with
+        | DeclSet(stopt, knd), Some(DeclSet(stopt', knd'))  ->
+            reallyEq eqKind cntxt knd knd' &&
+              reallyEq eqSetOpt cntxt stopt stopt'
+        | DeclProp(prpopt, pt), Some(DeclProp(prpopt', pt')) -> 
+            reallyEq eqPropType cntxt pt pt' &&
+              reallyEq eqPropOpt cntxt prpopt prpopt'
+        | DeclTerm(trmopt, ty), Some(DeclTerm(trmopt', ty')) -> 
+            reallyEq eqSet cntxt ty ty' &&
+              reallyEq eqTermOpt cntxt trmopt trmopt'
+        | DeclModel thry, Some(DeclModel thry') -> 
+            reallyEq eqTheory cntxt thry thry'
+        | DeclTheory(thry,tknd), Some(DeclTheory(thry',tknd')) ->
+            (tknd = tknd') &&
+              reallyEq eqTheory cntxt thry thry'
+        | DeclSentence([],prp), Some(DeclSentence([],prp')) ->
+            reallyEq eqProp cntxt prp prp'
+        | DeclSentence _, Some(DeclSentence _) ->
+            (* XXX *)
+            failwith "Unimplemented: ignoreableElem/DeclSentence"
+        | _ -> false
+        end
+      with
+        E.TypeError _ -> false
+
+let rec updateContextForElems cntxt = function
+  | [] -> cntxt, []
+  | elem :: elems -> 
+      if (ignorableElem cntxt elem) then
+        updateContextForElems cntxt elems
+      else 
+        let cntxt' = 
+          match elem with
+          | Declaration(nm, DeclSet(stopt, knd)) ->
+              insertSetVariable  cntxt nm knd stopt
+          | Declaration(nm, DeclProp(prpopt, pt)) -> 
+              insertPropVariable cntxt nm pt prpopt
+          | Declaration(nm, DeclTerm(trmopt, ty)) -> 
+              insertTermVariable cntxt nm ty trmopt
+          | Declaration(nm, DeclModel(thry)) -> 
+              insertModelVariable cntxt nm thry
+          | Declaration(nm, DeclTheory(thry,tknd)) ->
+              insertTheoryVariable cntxt nm thry tknd
+          | Declaration(nm, DeclSentence(mbnds,prp)) ->
+              insertSentenceVariable cntxt nm mbnds prp
+          | Comment _   -> cntxt  in
+        let cntxt'', elems' = updateContextForElems cntxt' elems  in
+        cntxt'', elem :: elems'
+
