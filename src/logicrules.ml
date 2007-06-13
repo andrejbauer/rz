@@ -1850,8 +1850,13 @@ let rec renameElem nm1 nm2 = function
       Declaration(nm2, decl) :: substTheoryElts sub rest
    | elem :: rest -> elem :: renameElem nm1 nm2 rest
    
+(* Unfortunately, if you rename all the sentences then you've
+   changed the theory:  a functor expecting a Group, for example, doesn't
+   get a model with the right axiom names. 
+
 let rec renameSentences = function
   | [] -> []
   | Declaration(nm, (DeclSentence _ as decl)) :: rest ->
       Declaration(refresh nm, decl) :: renameSentences rest
   | elem :: rest ->   elem :: renameSentences rest
+*)

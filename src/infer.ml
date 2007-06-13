@@ -1099,9 +1099,7 @@ and annotateInclude cntxt orig_elem expr =
   | (thry, L.ModelTheoryKind) ->
     begin
       match LR.hnfTheory cntxt thry with
-	    | L.Theory elems -> 
-	        (* Avoid clashes when we're doing multiple includes with renaming *)
-	        LR.renameSentences elems
+	    | L.Theory elems -> elems
 	    | _ -> badTheory()  (* Must be a theory for a family of models *)
     end
   | _ -> badTheory() (* Must be a parameterized theory *)
