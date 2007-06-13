@@ -233,6 +233,12 @@ let maybePAssure reqs prp =
       [] -> prp
     | reqs -> PAssure(None, And reqs, prp)
 
+let set_of_name nm knd = Basic(SLN(None, nm), knd)
+let term_of_name nm = Var(LN(None, nm))
+let prop_of_name nm pt = Atomic(LN(None, nm), pt)
+let model_of_name nm = ModelName nm
+let theory_of_name nm = TheoryName nm
+
 (****************************************)
 (** (Not-Very)-Pretty-Printing Routines *)
 (****************************************)

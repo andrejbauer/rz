@@ -87,6 +87,7 @@ let rec annotateExpr cntxt orig_expr =
     | Forall (bnd1, expr2)  -> annotateForall cntxt orig_expr bnd1 expr2
 
     | Thy elems -> annotateThy cntxt orig_expr elems
+    | Rename (thy, nm, nm') -> annotateRename cntxt orig_expr thy nm nm'
 
     | Ident nm                 -> annotateIdent cntxt orig_expr nm
     | MProj (expr1, nm2)       -> annotateMProj cntxt orig_expr expr1 nm2
@@ -129,11 +130,17 @@ and annotateIdent cntxt orig_expr nm =
     | None -> 
         E.tyUnboundError nm  
 
+and annotateRename cntxt orig_expr expr1 nm nm' =
+  let (thy, tk) = annotateTheory cntxt orig_expr expr1 in
+  match LR.hnfTheory cntxt thy with 
+  | L.Theory elems -> ResTheory(L.Theory (LR.renameElem nm nm' elems), tk)
+  | _ -> E.notWhatsExpectedInError expr1 "theory of a model" orig_expr
+  
 (* MProj(expr1, nm2) *)
 and annotateMProj cntxt orig_expr expr1 nm2 =
-  let (mdl, thry) = annotateModel cntxt orig_expr expr1 
-  in match LR.hnfTheory cntxt thry with
-    L.Theory elems ->
+  let (mdl, thry) = annotateModel cntxt orig_expr expr1  in
+  match LR.hnfTheory cntxt thry with
+  | L.Theory elems ->
       begin
         match LR.searchElems cntxt nm2 mdl elems with
         | Some ( L.DeclSet (_,knd) ) -> 
@@ -1092,7 +1099,9 @@ and annotateInclude cntxt orig_elem expr =
   | (thry, L.ModelTheoryKind) ->
     begin
       match LR.hnfTheory cntxt thry with
-	    | L.Theory elems -> elems
+	    | L.Theory elems -> 
+	        (* Avoid clashes when we're doing multiple includes with renaming *)
+	        LR.renameSentences elems
 	    | _ -> badTheory()  (* Must be a theory for a family of models *)
     end
   | _ -> badTheory() (* Must be a parameterized theory *)
@@ -1106,9 +1115,9 @@ and annotateValue cntxt orig_elem sentence_type values =
 	     | ResKind k             -> nm, L.DeclSet (None, k)
 	     | ResTheory (thry, L.ModelTheoryKind) ->	nm, L.DeclModel(thry)
 	     | ResProp(prp, (L.Prop | L.StableProp)) -> 
-	         (* refresh *) nm, L.DeclSentence([], prp)
+	         refresh nm, L.DeclSentence([], prp)
 	     | ResSentence(mbnds, prp) ->	 
-	         (* refresh *) nm, L.DeclSentence(mbnds, prp)
+	         refresh nm, L.DeclSentence(mbnds, prp)
 	     | ResSet _ | ResTerm _ | ResProp _ | ResModel _ | ResTheory _ -> 
 		      E.tyGenericError 
 		      ("Invalid classifier for " ^ string_of_name nm ^

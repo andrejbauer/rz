@@ -31,6 +31,8 @@ and proptype = expr
 
 and model = expr
 
+and theory = expr
+
 and expr =
   (*** general expressions ***)
   | Ident  of name                    	 (* variable *)
@@ -87,6 +89,7 @@ and expr =
 
   (*** Theories ***)
   | Thy of theory_element list
+  | Rename of theory * name * name  (* Old, new names for element of theory *)
 
 and sentence_type =
     Axiom
@@ -203,6 +206,8 @@ and string_of_expr = function
   | Exists (bnd, e) -> "exists " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
   | Unique (bnd, e) -> "exists1 " ^ string_of_binding bnd ^ ", " ^ string_of_expr e
   | Thy elts -> "thy\n" ^ string_of_theory_elements elts ^ "\nend"
+  | Rename (thy, nm, nm') -> string_of_expr thy ^ " with " ^ 
+    string_of_name nm ^ " -> " ^ string_of_name nm'
 
 and string_of_bnds = function
     [] -> ""

@@ -1834,3 +1834,24 @@ let rec updateContextForElems cntxt = function
         let cntxt'', elems' = updateContextForElems cntxt' elems  in
         cntxt'', elem :: elems'
 
+
+
+let rec renameElem nm1 nm2 = function
+  | [] -> []
+  | Declaration(nm, decl) :: rest when nm = nm1 ->
+      let sub = 
+        match decl with
+        | DeclProp(_,pt) -> insertPropvar emptysubst nm (prop_of_name nm2 pt)
+        | DeclSet(_,knd) -> insertSetvar emptysubst nm (set_of_name nm2 knd)
+        | DeclTerm _ -> insertTermvar emptysubst nm (term_of_name nm2)
+        | DeclModel _ -> insertModelvar emptysubst nm (model_of_name nm2)
+        | DeclTheory _ -> insertTheoryvar emptysubst nm (theory_of_name nm2)
+        | DeclSentence _ -> emptysubst    in
+      Declaration(nm2, decl) :: substTheoryElts sub rest
+   | elem :: rest -> elem :: renameElem nm1 nm2 rest
+   
+let rec renameSentences = function
+  | [] -> []
+  | Declaration(nm, (DeclSentence _ as decl)) :: rest ->
+      Declaration(refresh nm, decl) :: renameSentences rest
+  | elem :: rest ->   elem :: renameSentences rest

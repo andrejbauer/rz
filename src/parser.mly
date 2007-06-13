@@ -11,6 +11,9 @@
 
   let makeWord strng = N (strng, Word)
   let makeIdent (strng, fxty) = Ident (N (strng, fxty))
+  let fromIdent = function
+     | Ident(nm) -> nm
+     | _ -> failwith "Parser.mly/fromIdent on non-Ident"
   let makeMProj mdl (strng, fxty) = MProj (mdl, N (strng, fxty))
 
   let rec makeLambda lst st =
@@ -333,6 +336,7 @@ expr:
   | product_list %prec PLUS /* < STAR */      { Product $1 }
   | expr IFFSYMBOL expr                       { Iff ($1, $3) }
   | expr COLON expr                            { Constraint ($1, $3) } 
+  | expr WITH name ARROW name                { Rename ($1, fromIdent $3, fromIdent $5) }
 
 and_list_short:
   | bin_expr                     { [$1] }
