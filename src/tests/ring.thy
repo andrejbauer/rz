@@ -19,7 +19,8 @@ end.
 Definition Ring := thy
   include Monoid. 
   include Group with mul -> add 
-                with one -> zero.
+                with one -> zero
+                with associative -> associative_add.
 end.
 
   
