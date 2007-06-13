@@ -2180,3 +2180,15 @@ and reduceProp prp =
       in armLoop arms
 
   | prp -> prp
+
+
+
+let worthFlatteningInProp nm prp =
+  let nUses = countProp (occurrencesOfTermName nm) prp  in
+  let nProjs = countProp (occurrencesOfNameInProj nm) prp  in
+	nProjs >= max 1 (nUses - 2)
+	
+let worthFlatteningInTerm nm prp =
+  let nUses = countTerm (occurrencesOfTermName nm) prp  in
+  let nProjs = countTerm (occurrencesOfNameInProj nm) prp  in
+	nProjs >= max 1 (nUses - 2)
