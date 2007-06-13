@@ -1115,9 +1115,9 @@ and annotateValue cntxt orig_elem sentence_type values =
 	     | ResKind k             -> nm, L.DeclSet (None, k)
 	     | ResTheory (thry, L.ModelTheoryKind) ->	nm, L.DeclModel(thry)
 	     | ResProp(prp, (L.Prop | L.StableProp)) -> 
-	         refresh nm, L.DeclSentence([], prp)
+	         (* refresh *) nm, L.DeclSentence([], prp)
 	     | ResSentence(mbnds, prp) ->	 
-	         refresh nm, L.DeclSentence(mbnds, prp)
+	         (* refresh *) nm, L.DeclSentence(mbnds, prp)
 	     | ResSet _ | ResTerm _ | ResProp _ | ResModel _ | ResTheory _ -> 
 		      E.tyGenericError 
 		      ("Invalid classifier for " ^ string_of_name nm ^

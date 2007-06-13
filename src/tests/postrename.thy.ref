@@ -1,4 +1,4 @@
-[Processing ./rename.thy]
+[Processing ./postrename.thy]
 module type T =
  sig
    type s
