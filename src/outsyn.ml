@@ -403,6 +403,7 @@ let fvPCaseArms = fvPCaseArms' [] []
 let fvCaseArm   = fvCaseArm'   [] []
 let fvCaseArms  = fvCaseArms'  [] []
 let fvTy        = fvTy'        [] []
+let fvPat       = fvPat'       [] []
 
 (***************************************************************)
 (** {2: Count occurrences of subterms satisfying a predicate.} *)

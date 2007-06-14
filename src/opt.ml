@@ -906,14 +906,32 @@ and optProp ctx orig_prp =
 		 optReduceProp ctx (PApp(p', t'))
 		   
 	| PCase (e, arms) ->
-	  let (ty, e') = optTerm ctx e
-	  in let doArm (pat, p3) =
-	    let (ctx',pat') = optPattern ctx pat
-	    in let ctx'' = insertPattern ctx' pat'
-	    in let p3' = optProp ctx'' p3
-	    in (pat', p3')
-	  in let arms' = List.map doArm arms
-	  in optReduceProp ctx (PCase(e',arms'))
+	  let (ty, e') = optTerm ctx e in
+	  let doArm (pat, p3) =
+	    let (ctx',pat') = optPattern ctx pat in
+	    let ctx'' = insertPattern ctx' pat' in
+	    let p3' = optProp ctx'' p3 in
+	    (pat', p3')   in
+	  (* If all of the arms are equal, we'd like to eliminate the
+	     case altogether.  This isn't quite right, though, since
+	       "pcase ... of
+            `inl x => x
+          | `inr x => x"
+       cannot be further simplified.  So, we check that the
+       right-hand-sides are equal *and* that the right-hand-sides
+       do not refer to any pattern variables. *)
+	  let constantArm (pat, prp) =
+	     let pat_vars = bvPat pat in
+	     let prp_vars = fvProp prp in
+	     disjointNameLists pat_vars prp_vars    in
+	  let arms' = List.map doArm arms in
+    let first_prp = snd (List.hd arms') in    (* PCase must be non-empty *)
+    let rest_prps = List.map snd (List.tl arms') in
+    if (List.for_all ((=) first_prp) rest_prps && 
+        List.for_all constantArm arms') then
+      first_prp
+    else
+	    optReduceProp ctx (PCase(e',arms'))
 
 	| PLet(pat, trm1, prp2) ->
 

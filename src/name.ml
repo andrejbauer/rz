@@ -103,6 +103,12 @@ module NameSet = Set.Make(NameOrder)
 
 let unionNameSetList = List.fold_left NameSet.union NameSet.empty
 
+let nameset_of_list names = List.fold_right NameSet.add names NameSet.empty
+
+let disjointNameLists l1 l2 = 
+  let s2 = nameset_of_list l2 in
+  List.for_all (fun n -> not (NameSet.mem n s2)) l1
+
 (*************************************)
 (* {2: String-indexed Sets and Maps} *)
 (*************************************)
