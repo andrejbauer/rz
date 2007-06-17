@@ -100,13 +100,7 @@ module type T =
    *)
     
    val m : s -> s * [`or0 | `or1]
-   (**  assertion m : 
-          forall (x:||s||), 
-            let (p,q) = m x in p : ||s|| /\ 
-            (match q with
-               `or0 => true 
-             | `or1 => true 
-             )
+   (**  assertion m :  forall (x:||s||),  pi0 (m x) : ||s||
    *)
     
    val n : s
@@ -261,15 +255,14 @@ module type DenseLinearOrder =
    val transitive : s -> s -> s -> ty_less * ty_less -> ty_less
    (**  assertion transitive : 
           forall (x:||s||, y:||s||, z:||s||), 
-            forall p:ty_less * ty_less,  (<) x y (pi0 p) /\ 
-              (<) y z (pi1 p) -> (<) x z (transitive x y z p)
+            forall p:ty_less, q:ty_less,  (<) x y p /\ (<) y z q ->
+              (<) x z (transitive x y z (p,q))
    *)
     
    
    (**  assertion assymetric : 
           forall (x:||s||, y:||s||), 
-            forall p:ty_less * ty_less, 
-              not ((<) x y (pi0 p) /\ (<) y x (pi1 p))
+            forall p:ty_less, q:ty_less,  not ((<) x y p /\ (<) y x q)
    *)
     
    val linear : s -> s -> s -> ty_less -> [`or0 of ty_less | `or1 of ty_less]
@@ -393,12 +386,11 @@ module type TestSubset =
     
    (** predicate q : s * ty_p -> ty_q -> bool *)
    (**  assertion strict_q : 
-          forall t:s * ty_p, a:ty_q,  q t a -> pi0 t : ||s|| /\ 
-            p (pi0 t) (pi1 t)
+          forall t:s, u:ty_p, a:ty_q,  q (t,u) a -> t : ||s|| /\ p t u
          
         assertion extensional_q : 
-          forall t:s * ty_p, u:s * ty_p, a:ty_q,  p (pi0 t) (pi1 t) /\ 
-            p (pi0 u) (pi1 u) /\ pi0 t =s= pi0 u -> q t a -> q u a
+          forall t:s, u:ty_p, p':s, q':ty_p, a:ty_q,  p t u /\ p p' q' /\ 
+            t =s= p' -> q (t,u) a -> q (p',q') a
    *)
     
    type ty_r

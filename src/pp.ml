@@ -516,7 +516,7 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[<hov 2>type %s =@ %a@]%a@]"  
 	(Name.string_of_name tynm)   output_ty ty   output_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
-      fprintf ppf "@[<v>@[module %s : %a@]%a@]"
+      fprintf ppf "@[<hov 2>@[module %s : %a@]%a@]"
 	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, SignatSpec sgntr, assertions) ->
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
@@ -596,7 +596,7 @@ and output_def ppf = function
       fprintf ppf "module %a = %a : %a"
 	output_name nm   output_modul mdl   output_signat signat
   | DefSignat(nm,signat) ->
-      fprintf ppf "@[<v>module type %a = @,@[<v>%a@]@]@.@." 
+      fprintf ppf "@[<hov 2>module type %a =@ %a@]@.@." 
 	output_name nm   output_signat signat
 
 and output_toplevel ppf body =

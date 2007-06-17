@@ -165,7 +165,7 @@ creating the end-of-comment token \Verb|*)|.}.  The precedence of a
 \end{Verbatim}
 (Applications of unary symbolic or alphanumeric operators have equal precedence, higher than any of these binary operators.)
 
-Wherever a binary operator such as |&| is actually applied, the prefix form |(&) X Y| and infix form |X & Y| are interchangeable.  This is actually true of operators projected from models as well:  |(M.&) X Y| and |X M.& Y| are interchangeable.
+Wherever a binary operator such as |&| is actually applied, the prefix form |(&) X Y| and infix form |X & Y| are interchangeable.  This is actually true of operators projected from models as well:  |M.(&) X Y| and |X M.& Y| are interchangeable.
 \end{itemize}
 
 \TODO{Why do we require parentheses for unary (prefix) operators?}
@@ -383,7 +383,7 @@ The propositions are listed roughly in decreasing order of precedence.
 	   &\mid& \Setexp\ \verb+%+ \Propexp&Quotient set\label{gr:s:quotient}\\
        &\mid& \Termexp\ \Maybe{\Modelexp\UseVerb{VDot}}\BOp\ \Termexp&Binary operator{\label{gr:s:binop}}\\	
 	   &\mid& \RRepeat{\UseVerb{VLBrack}\ \EId\ \UseVerb{VColon}\ \Setexp\ \UseVerb{VRBrack}\ \UseVerb{VTimes}}\ \Setexp& Dependent sum\label{gr:s:times}\\
-	   &\mid& |[| \Label\ \Maybe{\UseVerb{VColon}\ \Setexp} |]|\ \RRepeat{\UseVerb{VPlus}\ \UseVerb{VLBrack}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \UseVerb{VRBrack}}& Tagged disjoint union\\
+	   &\mid& |[| \Label\ \Maybe{\UseVerb{VColon}\ \Setexp} |]|\ \RRepeat{\UseVerb{VPlus}\ \UseVerb{VLBrack}\ \Label\ \Maybe{\UseVerb{VColon}\ \Setexp}\ \UseVerb{VRBrack}}& Tagged disjoint union\label{gr:s:sum}\\
 	   &\mid& |[|\ \EId\ |:|\ \Setexp\ |]|\ |->| \Setexp&
 	Dependent product\label{gr:s:arrow}\\
 	   &\mid& \Setexp\ |:|\ \Setkind&Kind coercion\label{gr:s:coerce}\\
@@ -395,14 +395,16 @@ The propositions are listed roughly in decreasing order of precedence.
 
 The above sets are generally listed in order of decreasing precedence.  
 \begin{itemize}
-\item[(\ref{gr:s:empty})] The syntax |{}| can be used as a synonym for |empty|.
-\item[(\ref{gr:s:id})] Set identifiers must be symbolic or lowercase, as described in \S\ref{sec:names}.
+\item[(\ref{gr:s:empty})] The empty set is a subset of every other set.
+\item[(\ref{gr:s:id})] Set identifiers must be lowercase, as described in \S\ref{sec:names}.
 \item[(\ref{gr:s:times})] The full syntax for cartesian product supports dependencies, e.g. |[x:s] * [y:t(x)] * u x y| (where |s|:|Set|, |t|:|s->Set|, and |u|:|[x:s]->t(x)->Set|) stands
 for 
 \[
 \Sigma_{x:s}\ \Sigma_{y:t(x)}\ u(x)(y).
 \]
 If there is no dependency on a component then the brackets, the identifier, and the colon can call be omitted.  In the simplest form, we have just the cartesian product |a*b*c|.
+\item[(\ref{gr:s:sum})] Disjoint union is commutative, and supports ``width subtyping'' (e.g., |[`foo]+[`bar:int]| is a subset of
+|[`foo]+[`bar:int]+[`baz]|).
 \item[(\ref{gr:s:arrow})] The full syntax for sets of functions supports dependencies, e.g. |[x:s] -> t(x)| (where |s|:|Set| and |t|:|s->Set|) stands
 for 
 \[
@@ -462,7 +464,6 @@ The above terms are generally ordered in decreasing order of precedence.
 	\TODO{We should permit wildcards too, but don't yet.}
 \end{itemize}
 
-\TODO{We don't have an elim form for values in \texttt{empty}}
 \end{document}
 
 \subsection{Sets}

@@ -114,6 +114,6 @@ thy
        add x (add y u) = add y (add x u).
 
    Axiom countable:
-     forall u : s, exists e : I.nat -> [`skip + `enum : S.s],
+     forall u : s, exists e : I.nat -> [`skip] + [`enum : S.s],
        forall x : carrier u, exists n : I.nat, `enum (x :< S.s) = e n.
 end.

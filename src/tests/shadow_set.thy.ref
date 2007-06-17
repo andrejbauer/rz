@@ -1,18 +1,17 @@
 [Processing ./shadow_set.thy]
+module type T =
+ sig
+   type s
+    
+   (** predicate (=s=) : s -> s -> bool *)
+   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
+         
+        assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+   *)
+    
+   (** predicate ||s|| : s -> bool *)
+   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   *)
+ end
 
--------------------------------
-TYPE ERROR:
-Illegal shadowing; the name s appears twice in the same context,
-and automatic renaming is not possible.
-
-...in:  Parameter s : Set.
-
-...in:  thy
-Parameter s : Set.
-Parameter s : Set.
-
-end
-
--------------------------------
-
-Fatal error: exception Failure("Typechecking failed.")

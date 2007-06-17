@@ -24,7 +24,7 @@ thy
 
   (* Decidable order *)
 
-  Parameter compare : integer -> integer -> [`less + `equal + `greater].
+  Parameter compare : integer -> integer -> [`less] + [`equal] + [`greater].
 
   Definition lt x y := (compare x y = `less).
 

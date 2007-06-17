@@ -95,8 +95,8 @@ module type P =
    val tst_exists1 : s * ty_p
    (**  assertion tst_exists1 :  pi0 tst_exists1 : ||s|| /\ 
           p (pi0 tst_exists1) (pi1 tst_exists1) /\ 
-          (forall q:s * ty_p,  pi0 q : ||s|| /\ 
-             p (pi0 q) (pi1 tst_exists1) -> pi0 tst_exists1 =s= pi0 q)
+          (forall q:s, t:ty_p,  q : ||s|| /\ p q (pi1 tst_exists1) ->
+             pi0 tst_exists1 =s= q)
    *)
     
    

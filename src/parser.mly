@@ -280,7 +280,6 @@ apply_expr:
   
 unary_expr:
   | apply_expr                                { $1 }
-  | NOT unary_expr                            { Not $2 }
   | EQUIV unary_expr                          { Equiv $2 }
   | RZ unary_expr                             { Rz $2 }
 
@@ -297,6 +296,10 @@ bin_expr:
   | bin_expr PERCENT bin_expr                 { Quotient ($1, $3) }
   | bin_expr SUBIN bin_expr                   { Subin ($1, $3) }
   | bin_expr SUBOUT bin_expr                  { Subout ($1, $3) }
+
+not_expr:
+  | NOT not_expr                            { Not $2 }
+  | bin_expr                                { $1 }
     
 long_expr:    
   | FORALL xbinder_list COMMA expr             { Forall ($2, $4) }
@@ -310,11 +313,11 @@ long_expr:
 
 and_expr_long:
   | long_expr                                  { $1 }
-  | bin_expr ANDSYMBOL and_list_long           { And ($1 :: $3) }
+  | not_expr ANDSYMBOL and_list_long           { And ($1 :: $3) }
 
 and_expr_short:
-  | bin_expr                                   { $1 }
-  | bin_expr ANDSYMBOL and_list_short          { And ($1 :: $3) }
+  | not_expr                                   { $1 }
+  | not_expr ANDSYMBOL and_list_short          { And ($1 :: $3) }
     
 or_expr_long:
   | and_expr_long                                   { $1 }
@@ -339,12 +342,12 @@ expr:
   | expr WITH name ARROW name                { Rename ($1, fromIdent $3, fromIdent $5) }
 
 and_list_short:
-  | bin_expr                     { [$1] }
-  | bin_expr ANDSYMBOL and_list_short  { $1 :: $3 }
+  | not_expr                     { [$1] }
+  | not_expr ANDSYMBOL and_list_short  { $1 :: $3 }
 
 and_list_long:
     | long_expr                        { [$1] }
-    | bin_expr ANDSYMBOL and_list_long  { $1 :: $3 }
+    | not_expr ANDSYMBOL and_list_long  { $1 :: $3 }
 
 or_list_short:
   | and_expr_short                  { [(None,$1)] }
