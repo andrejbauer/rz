@@ -1,0 +1,388 @@
+\documentclass[t]{beamer}
+
+\usepackage{palatino}
+\usepackage{amsfonts}
+\usepackage[all]{xypic}
+
+\usepackage{fancyvrb}
+% To show source
+\DefineVerbatimEnvironment{source}{Verbatim}%
+{fontsize=\small,commandchars=\\\{\}}
+
+\DefineVerbatimEnvironment{sourcex}{Verbatim}%
+{fontsize=\footnotesize,commandchars=\\\{\}}
+
+% macros within source
+\newcommand{\iTo}{{\ensuremath{\to}}}
+\newcommand{\iForall}{$\forall$}
+\newcommand{\iOr}{$\lor$}
+\newcommand{\iAnd}{$\land$}
+\newcommand{\iImply}{$\Rightarrow$}
+\newcommand{\iNot}{$\lnot$}
+\newcommand{\iExists}{$\exists$}
+\newcommand{\iExistsOne}{$\exists!$}
+\newcommand{\iT}[1]{$\|$#1$\|$}
+\newcommand{\iPer}[1]{$\approx_{\mathtt{#1}}$}
+\newcommand{\iIff}{$\leftrightarrow$}
+\newcommand{\iLeq}{$\leq$}
+\newcommand{\iAlpha}{$\alpha$}
+
+\newcommand{\per}{\approx}
+\newcommand{\typeOf}[1]{|#1|}
+\newcommand{\sem}[1]{[\![#1]\!]}
+\newcommand{\dom}[1]{\mathrm{dom}(#1)}
+
+\newcommand{\rz}{\Vdash}
+
+
+\title{RZ: a Tool for Bringing\\Constructive and Computable\\
+  Mathematics Closer to Practice}
+\author{Andrej Bauer \and Chris Stone}
+\institute{Department of Mathematics and Physics\\
+  University of Ljubljana, Slovenia
+  \and
+  Computer Science Department\\
+  Harvey Mudd College, USA}
+\date{CiE 2007, Siena, June 2007}
+
+\beamerdefaultoverlayspecification{<+->}
+\mode<presentation>
+% \usetheme{Goettingen}
+\usecolortheme{rose}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+  \frametitle{Theory and practice}
+
+  \begin{itemize}
+  \item The theory of constructive \& computable mathematics:
+    % 
+    \begin{itemize}[<.->]
+    \item Structures from analysis and topology are studied.
+    \item \emph{Informal descriptions} of algorithms via Turing machines.
+    \item Deals mostly with: ``What \emph{can} be computed?''
+    \item Efficiency of computation is desired.
+    \end{itemize}
+  \item 
+    Practice of computing:
+    % 
+    \begin{itemize}[<.->]
+    \item Emphasis on discrete mathematics.
+    \item \emph{Implementations} of practical data structures and
+      algorithms.
+    \item Deals with: ``How \emph{fast} can we compute?''
+    \item Speed is essential.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Can we bring constructive math closer to practice?}
+
+  \begin{itemize}
+  \item Sacrificing performance for correctness is unacceptable.
+    \begin{itemize}[<.->]
+    \item Currently programs extracted from formal proofs are inefficient.
+    \item Programmers should be free to implement efficient code.
+    \item Provide support for proving correctness of implementation.
+    \end{itemize}
+  \item It is tricky to correctly implement structures from analysis
+    and topology.
+    \begin{itemize}[<.->]
+    \item We should link mathematical models with practical programming.
+    \item Give programmers tools that automate tasks.
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Our contribution}
+
+  \begin{itemize}
+  \item A theory of representations based on Objective Caml.
+    \begin{itemize}[<.->]
+    \item We replaced Turing machines (type I and II) with a
+      real-world programming language.
+    \item Representations can \emph{actually} be implemented.
+    \item Other programming languages could be used.
+    \end{itemize}
+  \item But we do not work with representations directly.
+    % 
+    \begin{itemize}[<.->]
+    \item Cumbersome and generally too low a level of abstraction to
+      do mathematics.
+    \item How do we know which representation of a given set is the
+      right one?
+    \end{itemize}
+  \item Instead, we use representations as a model in which to
+    interpret constructive mathematics.
+    % 
+    \begin{itemize}[<.->]
+    \item Use Kleene's realizability interpretation adapted to OCaml.
+    \item The translation of a constructive theory is a
+      \emph{specification} describing how to implement it in OCaml.
+    \end{itemize}
+  \item Most importantly, we built a tool RZ which
+    \emph{automatically} translates constructive logic to representations.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Representations}
+
+  \begin{itemize}
+  \item Representations are a successful idea in computable
+    mathematics:
+    % 
+    \begin{itemize}[<.->]
+    \item numbered sets,
+    \item Type Two Effectivity representations,
+    \item domain-theoretic representations,
+    \item equilogical spaces.
+    \end{itemize}
+  \item Phrased in various forms:
+    %
+    \begin{itemize}[<.->]
+    \item partial surjections,
+    \item partial equivalence relations,
+    \item modest sets,
+    \item assemblies,
+    \item multi-valued partial surjections,
+    \item realizability relations.
+    \end{itemize}
+  \item Can be described to programmers without much trouble.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Representations in Objective Caml}
+
+  \begin{itemize}
+  \item A representation $\delta: \mathtt{t} \to X$ consists of:
+    % 
+    \begin{itemize}[<.->]
+    \item represented set $X$
+    \item representing datatype $\mathtt{t}$
+    \item partial surjection $\delta : \mathtt{t} \to X$
+    \end{itemize}
+  \item 
+    Define the partial equivalence relation (per) $\per$ on
+    $\mathtt{t}$ by
+    % 
+    \begin{equation*}
+      u \per v \iff u, v \in \dom{\delta} \land \delta(u) = \delta(v) \;.
+    \end{equation*}
+    % 
+  \item 
+    We may recover $\delta : \mathtt{t} \to X $ from $(\mathtt{t},
+    \per)$ up to isomorphism:
+    % 
+    \begin{gather*}
+      \|\mathtt{t}\| = \{ u \in \mathtt{t} \mid u \per u \}
+      \\
+      X \cong \|\mathtt{t}\|/{\per}, \quad \dom{\delta} =
+      \|\mathtt{t}\|, \quad \delta(u) = [u]_{\per}
+    \end{gather*}
+  \item Note: $\delta$ and $\per$ are \emph{not} required to be
+    computable, they live ``outside'' the programming language.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Constructions of representations}
+
+  Representations, together with a suitable notion of morphisms, form a
+  rich category with many constructions:
+  %
+  \begin{itemize}[<.->]
+  \item products $A \times B$ and disjoint sums $A + B$,
+  \item function spaces $A \to B$,
+  \item dependent sums $\Sigma_{i \in A} B(i)$ and products $\Pi_{i
+      \in A} B(i)$,
+  \item subsets $\{x : A \mid \phi(x)\}$,
+  \item quotients $A/{\rho}$,
+  \item but \emph{no} powersets.
+  \end{itemize}
+  %
+  This is a convenient ``toolbox'' for constructive mathematics.
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Realizability interpretation of logic}
+
+  \begin{itemize}
+  \item A formalization of Brouwer-Heyting-Kolmogorov interpretation
+    of intuitionistic logic.
+  \item Validity of a proposition $\phi$ is witnessed by a
+    \emph{realizer}:
+    %
+    \begin{equation*}
+      r \rz \phi \qquad \text{``$r$ is computational witness of $\phi$''}
+    \end{equation*}
+  \item Note: $r$ could be any OCaml value, need not correspond to a
+    proof under the Curry-Howard correspondence.
+  \item The type of $r$ and $\Vdash$ are defined inductively on the
+    structure of~$\phi$, e.g.:
+    %
+    \begin{xalignat*}{2}
+      &\langle r_1, r_2 \rangle \rz \phi_1 \land \phi_2
+      &\text{iff}\quad
+      &\text{$r_1 \rz \phi_1$ and $r_2 \rz \phi_2$}
+      \\
+      &r \rz \phi \implies \psi
+      &\text{iff}\quad
+      &\text{whenever $s \rz \phi$ then $r(s) \rz \psi$}
+      \\
+      &\cdots & &\cdots
+    \end{xalignat*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{RZ}
+
+  \begin{itemize}
+  \item Input: one or more theories
+  \item Output: OCaml module type specifications
+  \item Translation has several phases:
+    \begin{enumerate}[<.->]
+    \item Type-checking: does the input make sense?
+    \item Translation via realizability interpretation
+    \item Thinning: remove computationally irrelevant realizers
+    \item Optimization: perform further simplifications to output
+    \item Phase splitting (will not explain here, read the paper)
+    \end{enumerate}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Input}
+
+  A theory consists of declarations, definitions, and axioms.
+
+\begin{source}
+Definition Ab :=
+thy
+  Parameter t : Set.
+  Parameter zero : t.
+  Parameter neg : t \iTo t.
+  Parameter add : t * t \iTo t.
+  Definition sub (u : t) (v : t) := add(u, neg v).
+  Axiom zero_neutral: \iForall u : t, add(zero,u) = zero.
+  Axiom neg_inverse: \iForall u : t, add(u,neg u) = zero.
+  Axiom add_assoc:
+   \iForall u v w : t, add(add(u,v),w) = add(u,add(v,w)).
+  Axiom abelian: \iForall u v : t, add(u,v) = add(v,u).
+end.    
+\end{source}
+
+Theories can be \emph{parametrized}, e.g., the theory of a vector
+space parametrized by a field, \texttt{VectorSpace(F:Field)}.
+
+\end{frame}
+
+
+\begin{frame}[fragile]
+  \frametitle{Translation and output}
+
+\begin{itemize}[<+->]
+\item
+  Consider the input:
+  %
+\begin{source}
+Axiom lpo : \iForall f : nat \iTo nat,
+  [`zero: \iForall n : nat, f n = zero] \iOr
+  [`nonzero: \iNot (\iForall n : nat, f n = zero)].    
+\end{source}
+
+\item
+  In the output we get a \emph{value declaration} and an \emph{assertion}:
+%
+\begin{source}
+val lpo : (nat \iTo nat) \iTo [`zero | `nonzero]
+(**  assertion lpo : 
+  \iForall (f:\iT{nat \iTo nat}), 
+    (match lpo f with
+       `zero \iImply \iForall (n:\iT{nat}), f n \iPer{nat} zero 
+     | `nonzero \iImply \iNot (\iForall (n:\iT{nat}), f n \iPer{nat} zero))
+*)
+\end{source}
+\item The value \texttt{lpo} is the computational content of the axiom.
+\item An implementation of \texttt{lpo} must satisfy the assertion.
+\item Assertion is free of computational content, thus its
+  constructive and classical readings agree.
+\end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Example: ``All functions are continuous''}
+
+  \begin{itemize}[<+->]
+  \item 
+    Input:
+%
+\begin{sourcex}
+Axiom modulus:
+\iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
+  \iExists k : nat, \iForall b : nat \iTo nat,
+    (\iForall m : nat, m \iLeq k \iTo a m = b m) \iTo f a = f b.
+\end{sourcex}
+%
+\item RZ output:
+%
+\begin{sourcex}
+val modulus : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
+(**  Assertion modulus = 
+  \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iT{nat \iTo nat}), 
+    let p = modulus f a in p : \iT{nat} \iAnd 
+    (\iForall (b:\iT{nat \iTo nat}), 
+       (\iForall (m:\iT{nat}), m \iLeq p \iTo a m \iPer{nat} b m) \iTo
+       f a \iPer{nat} f b) *)
+\end{sourcex}
+\item Implementation:
+%
+\begin{source}
+let modulus f a =
+  let p = ref 0 in
+  let a' n = (p := max !p n; a n) in
+    ignore (f a') ; !p
+\end{source}
+\end{itemize}
+
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Remarks}
+
+  \begin{itemize}
+  \item We have implemented real numbers using RZ:
+    \begin{itemize}[<.->]
+    \item see Bauer \& Kavkler at CCA 2007.
+    \end{itemize}
+  \item We would like to implement more advanced structures:
+    %
+    \begin{itemize}[<.->]
+    \item manifolds, Hilbert spaces, analytic functions, \ldots
+    \item we expect these to be painfully slow at first.
+    \end{itemize}
+  \item Even if you do not want to implement anything, you can use RZ
+    to \emph{automatically} compute representations from constructive
+    definitions.
+  \item It would be interesting to connect RZ with a tool that allows
+    formal verification of correctness, such as Coq.
+  \end{itemize}
+
+\end{frame}
+
+\end{document}

@@ -1,0 +1,16 @@
+Parameter nat : Set.
+Parameter zero : nat.
+Parameter s : nat \iTo nat.
+Parameter (+) : nat \iTo nat \iTo nat.
+
+Implicit Type k m n : nat.
+
+Axiom plus_zero: \iForall k, k + zero = k.
+Axiom plus_succ: \iForall k m, (s k) + m = s (k + m).
+
+Definition (\iLeq) k m := (\iNot \iForall n, \iNot (k + n = m)).
+
+Axiom continuity:
+\iForall f : (nat \iTo nat) \iTo nat, \iForall a : nat \iTo nat,
+  \iExists k, \iForall b : nat \iTo nat,
+    (\iForall m, m \iLeq k \iTo a m = b m) \iTo f a = f b.

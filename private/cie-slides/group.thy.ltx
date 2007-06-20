@@ -1,0 +1,11 @@
+Definition Ab :=
+thy
+  Parameter t : Set.
+  Parameter zero : t.
+  Parameter neg : t \iTo t.
+  Parameter add : t * t \iTo t.
+  Axiom zero_neutral: \iForall u : t, add(zero,u) = zero.
+  Axiom neg_inverse: \iForall u : t, add(u,neg u) = zero.
+  Axiom add_assoc: \iForall u v w : t, add(add(u,v),w) = add(u,add(v,w)).
+  Axiom abelian: \iForall u v : t, add(u,v) = add(v,u).
+end.

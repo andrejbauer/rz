@@ -1,0 +1,45 @@
+type nat
+ 
+(** predicate (\iPer{nat}) : nat \iTo nat \iTo bool *)
+(**  Assertion symmetric_nat =  \iForall x:nat, y:nat,  x \iPer{nat} y \iTo y \iPer{nat} x
+      
+     Assertion transitive_nat = 
+       \iForall x:nat, y:nat, z:nat,  x \iPer{nat} y \iAnd y \iPer{nat} z \iTo x \iPer{nat} z
+*)
+ 
+val zero : nat
+(**  Assertion zero_support =  zero : \iT{nat}
+*)
+ 
+val s : nat \iTo nat
+(**  Assertion s_support =  s : \iT{nat \iTo nat}
+*)
+ 
+val (+) : nat \iTo nat \iTo nat
+(**  Assertion (+)_support =  (+) : \iT{nat \iTo nat \iTo nat}
+*)
+ 
+
+(**  Assertion plus_zero =  \iForall (k:\iT{nat}),  (k + zero) \iPer{nat} k
+*)
+ 
+
+(**  Assertion plus_succ = 
+       \iForall (k:\iT{nat}, m:\iT{nat}),  (s k + m) \iPer{nat} s (k + m)
+*)
+ 
+(** predicate (\iLeq) : nat \iTo nat \iTo bool *)
+(**  Assertion (\iLeq)_def = 
+       \iForall (k:\iT{nat}, m:\iT{nat}),  (\iLeq) k m \iIff
+         \iNot (\iForall (n:\iT{nat}),  \iNot ((k + n) \iPer{nat} m))
+*)
+ 
+val continuity : ((nat \iTo nat) \iTo nat) \iTo (nat \iTo nat) \iTo nat
+(**  Assertion continuity = 
+       \iForall (f:\iT{(nat \iTo nat) \iTo nat}, a:\iT{nat \iTo nat}), 
+         let p = continuity f a in p : \iT{nat} \iAnd 
+         (\iForall (b:\iT{nat \iTo nat}), 
+            (\iForall (m:\iT{nat}),  (\iLeq) m p \iTo a m \iPer{nat} b m) \iTo f a \iPer{nat} 
+            f b)
+*)
+
