@@ -443,7 +443,7 @@ and annotateThe cntxt orig_expr sbnd1 expr2 =
 and annotateThy cntxt orig_expr elems =
   let cntxt' = LR.markThy cntxt in
   let (_, lelems) = annotateTheoryElems cntxt' elems in
-  ResTheory(L.Theory lelems, L.ModelTheoryKind)  	 
+  ResTheory(L.Theory lelems, L.ModelTheoryKind)
   	 
 	           
 and annotateApp cntxt orig_expr expr1 expr2 =
@@ -1080,13 +1080,13 @@ and annotateSimpleBindingWithDefault cntxt surrounding_expr default_ty =
 and annotateTheoryElem cntxt orig_elem = 
   try
     match orig_elem with
-	  | Definition(nm1, expropt2, expr3) -> 
-	      annotateDefinition cntxt orig_elem nm1 expropt2 expr3
-    | Value (sentence_type, values) ->
-        annotateValue cntxt orig_elem sentence_type values
-    | Comment c    -> [L.Comment c]
-    | Include expr -> annotateInclude cntxt orig_elem expr
-    | Implicit _   -> raise Impossible (* Implicits were already removed *)
+      | Definition(nm1, expropt2, expr3) -> 
+	  annotateDefinition cntxt orig_elem nm1 expropt2 expr3
+      | Value (sentence_type, values) ->
+          annotateValue cntxt orig_elem sentence_type values
+      | Comment c    -> [L.Comment c]
+      | Include expr -> annotateInclude cntxt orig_elem expr
+      | Implicit _   -> raise Impossible (* Implicits were already removed *)
   with
       E.TypeError msgs ->
 	      E.generalizeError msgs (E.inElemMsg orig_elem)
