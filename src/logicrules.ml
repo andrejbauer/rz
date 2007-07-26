@@ -381,7 +381,8 @@ let rec hnfSet cntxt = function
 	match (lookupId cntxt stnm) with
             Some(DeclSet(Some st, _)) -> hnfSet cntxt st
 	  | Some(DeclSet(None, _))    -> orig_set
-	  | _ -> failwith "hnfSet 1"
+	  | Some _ -> failwith ("hnfSet: Wrong sort: " ^ string_of_name stnm)
+	  | None -> failwith ("hnfSet: Unknown variable: " ^ string_of_name stnm)
       end
 
   | Basic (SLN ( Some mdl, nm), _) as orig_set -> 
@@ -419,9 +420,10 @@ let rec hnfTerm cntxt = function
     Var (LN ( None, nm )) as orig_term ->
       begin
 	match (lookupId cntxt nm) with
-            Some(DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
+      Some(DeclTerm(Some trm, _)) -> hnfTerm cntxt trm
 	  | Some(DeclTerm(None, _))    -> orig_term
-	  | _ -> failwith "hnfTerm 1"
+	  | Some _ -> failwith ("hnfTerm: Wrong sort: " ^ string_of_name nm)
+	  | None -> failwith ("hnfTerm: Missing variable: " ^ string_of_name nm)
       end
 
   | Var (LN ( Some mdl, nm)) as orig_term -> 
@@ -1470,44 +1472,57 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	      None -> []
 	    | Some right -> eqFun left right
 	    
-	  in let compareDeclSet cntxt (nm, st2opt, knd2, knd1) =
-			let projAsSet = Basic(SLN(Some mdl1, nm), knd1)
+	  in let compareDeclSet cntxt renaming (nm, st2opt, knd2, knd1) =
+	    let nm' = refresh nm
+			in let projAsSet = Basic(SLN(Some mdl1, nm), knd1)
 			in let reqs1 = subKind cntxt knd1 knd2
 			in let reqs2 = weakEq (eqSet cntxt) projAsSet st2opt
 			in let cntxt' = 
-			  insertSetVariable cntxt nm knd1 (Some projAsSet)
-			in let subst = insertSetvar emptysubst nm projAsSet
-			in (cntxt', reqs1 @ reqs2, subst)
+			  insertSetVariable cntxt nm' knd1 (Some projAsSet)
+			in let renaming' = 
+   	    insertSetvar renaming nm (Basic(SLN(None, nm'), knd1))
+			in let subst = insertSetvar emptysubst nm' projAsSet
+			in (cntxt', reqs1 @ reqs2, subst, renaming')
 	          
-	  in let compareDeclProp cntxt (nm, prpopt2, pt2, pt1) =
-			let projAsProp = Atomic(LN(Some mdl1, nm), pt1)
+	  in let compareDeclProp cntxt renaming (nm, prpopt2, pt2, pt1) =
+			let nm' = refresh nm
+			in let projAsProp = Atomic(LN(Some mdl1, nm), pt1)
 			in let reqs1 = subPropType cntxt pt1 pt2
 			in let reqs2 = weakEq (eqProp cntxt) projAsProp prpopt2
 			in let cntxt' = 
-			  insertPropVariable cntxt nm pt1 (Some projAsProp)
-			in let subst = insertPropvar emptysubst nm projAsProp
-	        in (cntxt', reqs1 @ reqs2, subst) 
+			  insertPropVariable cntxt nm' pt1 (Some projAsProp)
+			in let renaming' = 
+   	    insertPropvar renaming nm (Atomic(LN(None, nm'), pt1))
+			in let subst = insertPropvar emptysubst nm' projAsProp
+	        in (cntxt', reqs1 @ reqs2, subst, renaming') 
 	      	    
-	  in let compareDeclTerm cntxt (nm, trmopt2, st2, st1) =
-			let projAsTerm = Var(LN(Some mdl1, nm))
+	  in let compareDeclTerm cntxt renaming (nm, trmopt2, st2, st1) =
+			let nm' = refresh nm
+			in let projAsTerm = Var(LN(Some mdl1, nm))
 			in let reqs1 = subSet cntxt st1 st2 
 			in let reqs2 = weakEq (eqTerm cntxt) projAsTerm trmopt2
+  	  
 			in let cntxt' = 
-			  insertTermVariable cntxt nm st1 (Some projAsTerm)
-			in let subst = insertTermvar emptysubst nm projAsTerm
-			in (cntxt', reqs1 @ reqs2, subst)	      
+			  insertTermVariable cntxt nm' st1 (Some projAsTerm)
+			in let renaming' = 
+   	    insertTermvar renaming nm (Var(LN(None, nm')))
+			in let subst = insertTermvar emptysubst nm' projAsTerm
+			in (cntxt', reqs1 @ reqs2, subst, renaming')	      
 	      
-	  in let compareDeclModel cntxt (nm, thry2, thry1) =
-			let projAsModel = ModelProj(mdl1, nm)
+	  in let compareDeclModel cntxt renaming (nm, thry2, thry1) =
+			let nm' = refresh nm
+			in let projAsModel = ModelProj(mdl1, nm)
 			in let reqs1 = 
 			  checkModelConstraint cntxt projAsModel thry1 thry2
 			in let cntxt' = 
-			  insertModelVariable cntxt nm thry1
-			in let subst = insertModelvar emptysubst nm projAsModel
-		    in (cntxt', reqs1, subst) 
+			  insertModelVariable cntxt nm' thry1
+      in let renaming' = 
+   	    insertModelvar renaming nm (ModelName nm')
+			in let subst = insertModelvar emptysubst nm' projAsModel
+		    in (cntxt', reqs1, subst, renaming') 
 			
-	  in let compareDeclSentence cntxt (nm, mbnds2, prp2, mbnds1, prp1) =
-		  let (cntxt'', subst1, subst2) = 
+	  in let compareDeclSentence cntxt renaming (nm, mbnds2, prp2, mbnds1, prp1) =
+let (cntxt'', subst1, subst2) = 
 		    eqMbnds cntxt mbnds1 mbnds2 
 		  in let prp1' = substProp subst1 prp1
 		  in let prp2' = substProp subst2 prp2
@@ -1517,57 +1532,64 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 		      E.tyGenericError "UNIMPLEMENTED: CheckModelConstraint/Declaration"
 		    else 
 		      []
-     	  in (cntxt, reqs1, emptysubst)
+     	  in (cntxt, reqs1, emptysubst, renaming)
      	  
-	  in let rec slowLoop cntxt = function
+     	  
+     	  
+	  in let rec slowLoop cntxt renaming = function
 	      [] -> []
-	    | decl :: rest ->
-	        let (cntxt', reqs12, subst) =
-              match decl with
+	    | elem :: rest ->
+	        let (cntxt', reqs12, subst, renaming') =
+              match substTheoryElt renaming elem with
 	          | Declaration(nm, DeclSet(st2opt, knd2)) ->
  		        begin
-          		  match searchElems cntxt nm mdl1 elems1 with
+ 		            let decl1 = searchElems cntxt nm mdl1 elems1 in
+          		  match substTheoryDeclOpt renaming decl1 with
   		            Some (DeclSet (_,knd1)) -> 
-		              compareDeclSet cntxt (nm, st2opt, knd2, knd1)
+		              compareDeclSet cntxt renaming (nm, st2opt, knd2, knd1)
 		          | _ -> 
 			        E.tyGenericError ("Missing set component " ^ 
 					     string_of_name nm)
 		        end    
 	          | Declaration(nm, DeclProp(prpopt2, pt2)) ->
 		        begin
-		          match searchElems cntxt nm mdl1 elems1 with
+		          let decl1 = searchElems cntxt nm mdl1 elems1 in
+		          match substTheoryDeclOpt renaming decl1 with
 		            Some (DeclProp(_, pt1)) ->
-		              compareDeclProp cntxt (nm, prpopt2, pt2, pt1)
+		              compareDeclProp cntxt renaming (nm, prpopt2, pt2, pt1)
 		          | _ -> 
 			        E.tyGenericError ("Missing proposition component " ^ 
 					     string_of_name nm)
 		        end
 	          | Declaration(nm, DeclTerm(trmopt2, st2)) ->
 		        begin
-		          match searchElems cntxt nm mdl1 elems1 with
+		          let decl1 = searchElems cntxt nm mdl1 elems1 in
+		          match substTheoryDeclOpt renaming decl1 with
 		            Some (DeclTerm(_, st1)) ->
-		              compareDeclTerm cntxt (nm, trmopt2, st2, st1)
+		              compareDeclTerm cntxt renaming (nm, trmopt2, st2, st1)
 		          | _ -> 
 			          E.tyGenericError ("Missing term component " ^ 
 					     string_of_name nm)
 		        end
               | Declaration(nm, DeclModel(thry2)) ->
 		        begin
-		          match searchElems cntxt nm mdl1 elems1 with
+		          let decl1 = searchElems cntxt nm mdl1 elems1 in
+		          match substTheoryDeclOpt renaming decl1 with
 		            Some (DeclModel thry1) ->
-			          compareDeclModel cntxt (nm, thry2, thry1) 
+			          compareDeclModel cntxt renaming (nm, thry2, thry1) 
 		          | _ -> 
 			        E.tyGenericError ("Missing model component " ^ 
 					     string_of_name nm)
 		        end
 	         | Comment _ ->
-	             (cntxt, [], emptysubst)
+	             (cntxt, [], emptysubst, renaming)
         
 	         | Declaration(nm, DeclSentence (mbnds2, prp2)) ->
 		       begin
-		         match searchElems cntxt nm mdl1 elems1 with
+		          let decl1 = searchElems cntxt nm mdl1 elems1 in
+		          match substTheoryDeclOpt renaming decl1 with
 		           Some (DeclSentence(mbnds1, prp1)) ->
-			         compareDeclSentence cntxt (nm, mbnds2, prp2, mbnds1, prp1)
+			         compareDeclSentence cntxt renaming (nm, mbnds2, prp2, mbnds1, prp1)
  		         | _ -> 
 			       E.tyGenericError ("Missing axiom " ^ 
 					     string_of_name nm)
@@ -1575,7 +1597,7 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 
 	         | Declaration(nm, DeclTheory _) ->
 		        E.noNestedTheoriesError nm
-       in let prereqs3 = slowLoop cntxt' rest
+       in let prereqs3 = slowLoop cntxt' renaming' rest
        in let reqs3 = List.map (substProp subst) prereqs3
        in reqs12 @ reqs3       
 
@@ -1586,54 +1608,57 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
          other.  If anything seems wrong, we punt back to the
          more general case to either succeed or report the error. *)
 
-	  in let rec fastLoop cntxt subst1 = function
+    in let applyRenaming renaming (subst1', declopt) =
+       (subst1', substTheoryDeclOpt renaming declopt)
+
+	  in let rec fastLoop cntxt renaming subst1 = function
 	      (_,[]) -> []
 	    | ([],_) -> raise TooFast (* Punt to the general case *)
-	    | (((_ :: rest1) as elems1), decl2 :: rest2) ->
-	        let (subst1', (cntxt', reqs12, subst)) =
-           match decl2 with
+	    | (((_ :: rest1) as elems1), elem2 :: rest2) ->
+	        let (subst1', (cntxt', reqs12, subst, renaming')) =
+           match (substTheoryElt renaming elem2) with
 	          | Declaration(nm, DeclSet(st2opt, knd2)) ->
 		        begin
-       		      match searchElems' subst1 cntxt nm mdl1 elems1 with
+       		      match applyRenaming renaming (searchElems' subst1 cntxt nm mdl1 elems1) with
 		            (subst1', Some (DeclSet (_,knd1))) ->
 		              (subst1',  
-		               compareDeclSet cntxt (nm, st2opt, knd2, knd1))
+		               compareDeclSet cntxt renaming (nm, st2opt, knd2, knd1))
 		          | _ -> 
 		            raise TooFast
 		        end    
 	          | Declaration(nm, DeclProp(prpopt2, pt2)) ->
 		        begin
-		          match searchElems' subst1 cntxt nm mdl1 elems1 with
+		          match applyRenaming renaming (searchElems' subst1 cntxt nm mdl1 elems1) with
 		            (subst1', Some (DeclProp(_, pt1))) ->
-		              (subst1', compareDeclProp cntxt (nm, prpopt2, pt2, pt1))
+		              (subst1', compareDeclProp cntxt renaming (nm, prpopt2, pt2, pt1))
 		          | _ -> 
 		            raise TooFast
 		        end
 	          | Declaration(nm, DeclTerm(trmopt2, st2)) ->
 		        begin
-		          match searchElems' subst1 cntxt nm mdl1 elems1 with
+		          match applyRenaming renaming (searchElems' subst1 cntxt nm mdl1 elems1) with
 		            (subst1', Some (DeclTerm(_, st1))) ->
-		              (subst1', compareDeclTerm cntxt (nm, trmopt2, st2, st1))
+		              (subst1', compareDeclTerm cntxt renaming (nm, trmopt2, st2, st1))
 		          | _ -> 
 			          raise TooFast
 		        end
               | Declaration(nm, DeclModel(thry2)) ->
 		        begin
-		          match searchElems' subst1 cntxt nm mdl1 elems1 with
+		          match applyRenaming renaming (searchElems' subst1 cntxt nm mdl1 elems1) with
 		            (subst1', Some (DeclModel thry1)) ->
-			          (subst1', compareDeclModel cntxt (nm, thry2, thry1))
+			          (subst1', compareDeclModel cntxt renaming (nm, thry2, thry1))
 		          | _ -> 
 					raise TooFast
 		        end
 	         | Comment _ ->
-	             (subst1, (cntxt, [], emptysubst))
+	             (subst1, (cntxt, [], emptysubst, renaming))
      
 	         | Declaration(nm, DeclSentence (mbnds2, prp2)) ->
 		       begin
-		         match searchElems' subst1 cntxt nm mdl1 elems1 with
+		         match applyRenaming renaming (searchElems' subst1 cntxt nm mdl1 elems1) with
 		           (subst1', Some (DeclSentence(mbnds1, prp1))) ->
 			         (subst1',
-			          compareDeclSentence cntxt (nm, mbnds2, prp2, mbnds1, prp1))
+			          compareDeclSentence cntxt renaming (nm, mbnds2, prp2, mbnds1, prp1))
 		         | _ -> 
 				   raise TooFast
 		       end
@@ -1641,15 +1666,16 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
 	         | Declaration(nm, DeclTheory _) ->
 		        E.noNestedTheoriesError nm
 		        
-    in let prereqs3 = fastLoop cntxt' subst1' (rest1, rest2)
+    in let prereqs3 = fastLoop cntxt' renaming' subst1' (rest1, rest2)
     in let reqs3 = List.map (substProp subst) prereqs3
     in reqs12 @ reqs3       
 
 	  in 
-	     (try
-	        fastLoop cntxt emptysubst (elems1, elems2)
+	     (
+	       try
+	        fastLoop cntxt emptysubst emptysubst (elems1, elems2)
 	     with 
-        TooFast -> slowLoop cntxt elems2)
+        TooFast -> slowLoop cntxt emptysubst elems2)
 
     | _ -> E.tyGenericError "Incompatible theories"
 

@@ -821,7 +821,7 @@ let rec subst sbst =
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
     | Inj(l,termopt) -> Inj(l, doOpt (subst sbst) termopt)
-    | Case(t1,ty,arms,ty2) -> Case(t1, substSet sbst ty, 
+    | Case(t1,ty,arms,ty2) -> Case(sub t1, substSet sbst ty, 
 				   subarms arms, substSet sbst ty2)
     | RzQuot t -> RzQuot (sub t)
     | RzChoose ((y,sopt),t1,t2,ty) ->
@@ -1078,6 +1078,14 @@ and substTheoryElt sub elem =
       [elem'] -> elem'
     | _ -> raise Impossible
 
+and substTheoryDecl sub decl =
+  match substTheoryElt sub (Declaration(wildName(), decl)) with
+  | Declaration(_, decl') -> decl'
+  | _ -> raise Impossible
+
+and substTheoryDeclOpt sub = function
+  | None -> None
+  | Some decl -> Some (substTheoryDecl sub decl)
 
 and substMBnds sub = function
      [] -> ([], sub)

@@ -566,8 +566,8 @@ and output_signat ppf = function
   | SignatFunctor ((m,sgnt1),sgnt2) ->
       fprintf ppf "@[<v>functor (%s : %a) ->@ %a@]"
          (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
-  | (SignatApp (sgnt1,mdl))  ->
-	fprintf ppf "@[%a(%a)@]"    output_signat sgnt1    output_modul mdl
+  | SignatApp (sgnt1,mdl)  ->
+	    fprintf ppf "@[%a(%a)@]"    output_signat sgnt1    output_modul mdl
   | SignatProj (mdl, nm) -> 
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 
