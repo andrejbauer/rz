@@ -527,7 +527,7 @@ and output_spec ppf = function
 	output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
-      fprintf ppf "(**%s*)" cmmnt
+      fprintf ppf "(*%s*)" cmmnt
 
 and output_specs ppf = function
     [] -> ()
