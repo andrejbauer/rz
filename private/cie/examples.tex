@@ -97,7 +97,7 @@ inv (assure \iNot (x \iPer{real} zero) in x)
 \fi % \iflong
 %
 and then the optimizer determines that the obligation is not needed
-because the whole expressions appears under the hypothesis that~$x$ is
+because the whole expression appears under the hypothesis that~$x$ is
 not zero. So in the end the programmer sees
 %
 \begin{source}
@@ -133,7 +133,7 @@ assertion inv_positive:
 %
 Now it is easier to understand what must be checked, namely that
 positive reals are not zero---an easy consequence of irreflexivity
-of~$<$, but not something that RZ optimizer is aware of.
+of~$<$, but not something that the RZ optimizer is aware of.
 
 Lastly, we could define the golden ratio as the positive solution of
 $x^2 = x + 1$,
@@ -282,7 +282,7 @@ specification
 \end{equation*}
 %
 (with an appropriate assertion)
-which replaces the module parameter \texttt{S} by two extra term arguments term (corresponding to the module components \texttt{S.zero} and \texttt{S.join}) 
+which replaces the module parameter \texttt{S} by two extra term arguments (corresponding to the module components \texttt{S.zero} and \texttt{S.join}) 
 and a type argument $\alpha$ for the type of lattice elements (corresponding to the module input \texttt{S.s}).  This is even
 more recognizable as a folding operation over the set.
 
@@ -297,9 +297,10 @@ is required both for membership and for detecting
 whether the same element has been added twice to the same set\footnote{The natural implementation would thus
 be an unordered collection of elements, possibly with duplicates.}.
 
-Some operations are nevertheless computable.  Using \texttt{free} one
+Some operations are nevertheless computable.  Using \texttt{free} carefully, one
 can determine whether a finite set is empty.  In the case of a set of exact
-real numbers, we cannot compute their sum, but we could compute maximum or minimum.
+real numbers, we cannot compute the sum of a set (since there might
+be duplicate elements), but we could compute maximum or minimum.
 
 More common set implementations (e.g., the \texttt{Set} module in the OCaml standard library)
 implement sets over values with decidable total order; these could also be
@@ -386,8 +387,8 @@ said to be \emph{inductive} if a tree $\f{tree}\;\f{x}\;\f{f}$ satisfies it
 whenever all its successors satisfy it.
 
 \iflong
-In the translation, see Appendix~\ref{sec:outp-induct-types} for a
-complete output, dependencies at the level of types and terms disappear.
+In the translation (see Appendix~\ref{sec:outp-induct-types} for the
+complete output) dependencies at the level of types and terms disappear.
 \else
 In the translation dependencies at the level of types and terms disappear.
 \fi
@@ -537,8 +538,8 @@ To compute a modulus for~$\f{f}$ at~$\f{a}$, the program creates a
 function~$\f{a'}$ which is just like~$\f{a}$ except that it stores in~$\f{p}$ the
 largest argument at which it has been called. Then $\f{f\;a'}$ is
 computed, its value is discarded, and the value of~$\f{p}$ is returned.
-The program works because~$\f{f}$ is assumed to be extensional and must
-therefore not distinguish between extensionally equal sequences~$\f{a}$
+The program works because~$\f{f}$ is assumed to be extensional and
+therefore must not distinguish between extensionally equal sequences~$\f{a}$
 and~$\f{a'}$.
 
 

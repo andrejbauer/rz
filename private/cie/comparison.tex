@@ -8,15 +8,15 @@ Coq provides complete support for
 theorem-proving and creating trusted code.  Often one
 writes code in Coq's functional language%
 \iflong 
-(values whose types are \texttt{Set}s)
+ (values whose types are \texttt{Set}s)
 \fi % \iflong
 , states and proves theorems
 that the code behaves correctly% 
 \iflong
-(where the theorems are Coq values whose types are \texttt{Prop}s)
+ (where the theorems are Coq values whose types are \texttt{Prop}s)%
 \fi % \iflong
 , and has Coq extract
-correct code. In such cases RZ is complementary; it can
+correct code. In such cases RZ is complementary to Coq; it can
 \iflong
 clarify the constructive content of mathematical
 structures and hence 
@@ -46,13 +46,13 @@ rather than making a separate pass as RZ does.
 (For example, the translation of the
 conjunction-introduction rule has four cases, depending on whether the
 left and/or right propositions being proved are almost negative, in
-which case the trivial contribution can be immediately discarded.')
+which case the trivial contribution can be immediately discarded.)
 \fi
 %
 Unlike RZ, their system needs full formal proofs as input; it checks
 the proofs, and generates executable code.  RZ also handles a much
-richer input language (function, subset, quotient, and dependent
-types; quantification over theories; parameterized theories; etc.)
+richer input language (including function, subset, quotient, and dependent
+types; quantification over theories; and parameterized theories)
 that goes well beyond simple predicate logic over integers and lists.
 
 The idea of annotating ML signatures with assertions is not new (e.g., \cite{kahrs+:tcs97}).

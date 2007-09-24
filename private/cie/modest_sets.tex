@@ -10,7 +10,7 @@ real-world programming by way of example. Suppose we are asked to
 design a data structure for the set $\mathcal{G}$ of all finite
 simple%
 \iflong
-\footnote{At most one arrow between any two vertices.}
+\footnote{Simple means at most one arrow between any two vertices.}
 \fi % \iflong
 \ directed graphs with vertices labeled by distinct integers. 
 %
@@ -26,11 +26,11 @@ directed graph~$G$ is shown in Figure~\ref{fig:digraph}.
 \end{figure}
 \fi % \iflong
 %
-A common representation is a pair of lists $(\ell_V, \ell_A)$, where
+One common representation of such graphs uses a pair of lists $(\ell_V, \ell_A)$, where
 $\ell_V$ is the list of vertex labels and $\ell_A$ is the \emph{adjacency list} 
 representing the arrows by pairing the labels of each source and target.
 \iflong
-In our example,
+For the above graph $G$,
 $\ell_V = [1; 2;
 3; 4]$ and $\ell_A = [(1,2); (2,2); (2,3); (3,2); (3;1)]$.
 \fi % \iflong
@@ -44,8 +44,8 @@ Thus we define the datatype of graphs as\footnote{We use OCaml
   \ctype \mathtt{graph} = \clist{\cint} \ \ * \ \ \clist{(\cint * \cint)}
 \end{equation*}
 %
-However, this is not a complete description of the representation, as
-there would be representation invariants and conditions not expressed by the type, e.g.,
+However, this is not a complete description of the intended representation, as
+there are representation invariants and conditions not expressed by the type, e.g.,
 %
 \iflong
 \begin{enumerate}
@@ -301,7 +301,7 @@ element would be the integer constant \texttt{0}, and the equivalence
 $\per_Z$ would be integer equality.
 
 Alternatively, we could take $\cint$ as the underlying type
-$\typeOf{Z}$, but let $\support{Z}$ include all integers. In this
+$\typeOf{Z}$, but let $\support{Z}$ include all values of type $\cint$. In this
 case, negation and addition could be simply integer addition and
 negation\footnote{Taking care to prevent integer
   overflow.}. Here the neutral element could be implemented as any
@@ -309,9 +309,8 @@ integer multiple of \texttt{7}, and the equivalence $\per_Z$ would be
 equivalence-modulo-7.
 
 Both of these pers happen to be \emph{decidable}, i.e., it can be
-algorithmically decided whether two values represent the same element
-of~$\ZZ_7$, by code for integer equality and code for integer
-equivalence-modulo-7 respectively. \fi % \iflong
+algorithmically decided whether two values in $\support{Z}$ represent the same element
+of~$\ZZ_7$.\fi % \iflong
 
 \iflong
 %
@@ -350,8 +349,8 @@ precisely, to each formula~$\phi$ we assign an underlying type
 $\typeOf{\phi}$ of realizers, but unlike the propositions-as-types
 translation, not all terms of type $\typeOf{\phi}$ are necessarily
 valid realizers for~$\phi$, and some terms that are realizers may not
-correspond to any proofs, for example, if they denote partial
-functions or use computational effects.
+correspond to any proofs (for example, if they denote partial
+functions or use computational effects).
 
 It is customary to write $t \rz \phi$ when $t \in
 \values{\typeOf{\phi}}$ is a realizer for~$\phi$. The underlying types
@@ -470,7 +469,7 @@ a realizer for this proposition is a value~$r$ of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\oprod{\mathtt{real}}{\mathtt{unit}}}}$
 such that, if $t$ realizes $a \in \RR$ and $u$ realizes $b \in
 \RR$, then $\oapp{\oapp{r}{t}}{u} = (v, w)$ with $v$ realizing a real
-number~$x$ such that $x^3 + a x + b = 0$, and $w$ is trivial. (This
+number~$x$ such that $x^3 + a x + b = 0$, and with $w$ being trivial. (This
 can be ``thinned'' to a realizer of type
 $\oarrow{\mathtt{real}}{\oarrow{\mathtt{real}}{\mathtt{real}}}$ that
 does not bother to compute~$w$.) In essence, the realizer~$r$
