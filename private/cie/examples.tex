@@ -1,13 +1,13 @@
 \section{Examples}
 \label{sec:examples}
 
-In this section we look at several examples which demonstrate various
-points of RZ. Unfortunately, serious examples from computable
-mathematics take too much space\footnote{The most basic structure
-  in analysis (the real numbers) alone 
-  requires several operations and a dozen or more axioms.} and will have to
-be presented separately. The main theme is that constructively
-reasonable axioms yield computationally reasonable operations.
+In this section we look at several small examples which demonstrate
+various points of RZ. For a serious case study from computable
+mathematics see the implementation of real numbers with
+RZ by Bauer and Kavkler~\cite{bauer07:_implem_rz}.
+
+The main theme is that constructively reasonable axioms yield
+computationally reasonable operations.
 
 \subsection{Decidable sets}
 \label{sec:decidable-sets}
@@ -87,7 +87,7 @@ inv (assure u:unit, \iNot (x \iPer{real} zero) in (x, u))
 \end{source}
 %
 If this were the final output, the programmer would have to verify
-that~$x$ is not zero, and provide a trivial realizer for it. However,
+that~$\f{x}$ is not zero, and provide a trivial realizer for it. However,
 in this case the thinning phase first removes the trivial realizer,
 %
 \iflong
@@ -97,7 +97,7 @@ inv (assure \iNot (x \iPer{real} zero) in x)
 \fi % \iflong
 %
 and then the optimizer determines that the obligation is not needed
-because the whole expression appears under the hypothesis that~$x$ is
+because the whole expression appears under the hypothesis that~$\f{x}$ is
 not zero. So in the end the programmer sees
 %
 \begin{source}
@@ -142,7 +142,7 @@ $x^2 = x + 1$,
 the x : real, (zero < x \iAnd x*x = x + one)
 \end{source}
 %
-Not surprisingly, RZ cannot determine that there is a unique such~$x$,
+Not surprisingly, RZ cannot determine that there is a unique such~$\f{x}$,
 so it outputs an obligation:
 %
 \begin{source}
@@ -444,9 +444,9 @@ the fact that $\f{r\;x\;p}$ holds. The output functions $\f{g}$ and $\f{h}$ taki
 $\ototal{\f{x}}{\f{a}}$ as input must be such that $\f{h\;x}$ realizes
 $\f{r\;x\;(g\;x)}$. Crucially, the requirement $\ototal{\f{g}}{\oarrow{\f{a}}{\f{b}}}$
 says that $\f{g}$ must be extensional, i.e., map equivalent realizers to
-equivalent realizers. We could define~$\f{h}$ as the first component
+equivalent realizers. We could define~$\f{h}$ as the second component
 of~$\f{f}$, but we cannot hope to implement~$\f{g}$ in general because the
-second component of~$\f{f}$ is not assumed to be extensional.
+first component of~$\f{f}$ is not assumed to be extensional.
 
 The \emph{Intensional} Axiom of Choice allows the choice function to
 depend on the realizers:

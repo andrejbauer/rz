@@ -471,7 +471,7 @@ and output_annots ppf = function
 
 
 and output_assertion ppf asn =
-  fprintf ppf "@[<hov 2>{v assertion %a%s%a%s%s %a: @ %av}@]"  
+  fprintf ppf "@[<hov 2>{v assertion %a%s%a%s%s %a: @ %a v}@]"  
     output_tyvars asn.atyvars 
     (if asn.atyvars = [] then "" else " ")
     output_pbnds asn.apbnds
@@ -508,7 +508,7 @@ and output_spec ppf = function
 	 (We could show them in a comment, I suppose)
        *)
       fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
-      (Name.string_of_name nm)  output_ty ty  output_assertions assertions
+	(Name.string_of_name nm)  output_ty ty  output_assertions assertions
   | Spec(tynm, TySpec None, assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
 	(Name.string_of_name tynm)   output_assertions assertions
@@ -522,7 +522,7 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
 	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, PropSpec pt, assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>(** predicate %a : %a *)@]%a@]" 
+      fprintf ppf "@[<v>@[<hov 2>(**{v predicate %a : %a v}*)@]%a@]" 
 	output_name nm   output_proptype pt
 	output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]

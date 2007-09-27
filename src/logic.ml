@@ -804,7 +804,7 @@ let checkNoCapture sbst nm =
     (* XXX:  Because removing names from a substitution does not update
        capturablenames, we could do a double-check here to make sure that
        the name really is going to be captured at this particular moment. *)
-    failwith ("Cannote remove shadowing of " ^ string_of_name nm)
+    failwith ("Cannot remove shadowing of " ^ string_of_name nm)
   else
     ()
 
