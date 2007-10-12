@@ -104,7 +104,7 @@ and renLN ctx = function
       end
 
 and renTerm ctx = function
-  | (EmptyTuple | BTrue | BFalse | Dagger | Inj (_, None)) as t -> t
+  | (EmptyTuple | BConst _ | Dagger | Inj (_, None)) as t -> t
       
   | Id ln -> Id (renLN ctx ln)
 

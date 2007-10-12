@@ -68,8 +68,7 @@ and pattern =
 
 and term =
   | EmptyTuple
-  | BTrue
-  | BFalse
+  | BConst of bool
   | Dagger
   | Id         of longname
   | App        of term * term
@@ -138,7 +137,7 @@ and signat =
 
 and signatkind =
     | ModulSignatKind    (* Kind of theories that classify modules,
-		            including classifiers for functors *)
+                            including classifiers for functors *)
     | SignatKindArrow of modul_binding * signatkind (* Classifies SignatFunctors *)
 
 and modul_binding = modul_name * signat
@@ -282,8 +281,7 @@ let rec fvTerm' flt acc = function
       if List.mem nm flt then acc else nm :: acc
   | Id (LN(Some _, _)) -> acc
   | EmptyTuple -> acc
-  | BTrue -> acc
-  | BFalse -> acc
+  | BConst _ -> acc
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
   | Lambda ((n, s), t) -> fvTerm' (n::flt) (fvTy' flt acc s) t
@@ -420,8 +418,8 @@ types, or predicates) that is discovered match a predicate.
 
 type countPred = {termPred: term -> bool;
                   tyPred  : ty -> bool;
-		  styPred : simple_ty -> bool;
-		  propPred: proposition -> bool}
+                  styPred : simple_ty -> bool;
+                  propPred: proposition -> bool}
 
 (* occurrencesOfTermName : nm -> countPred
 
@@ -473,8 +471,7 @@ let rec countTerm (cp: countPred) trm =
     | Id (LN(None,nm)) -> 0
     | Id (LN(Some mdl, _)) -> countModul cp mdl
     | EmptyTuple -> 0
-    | BTrue -> 0
-    | BFalse -> 0
+    | BConst _ -> 0
     | Dagger -> 0
     | App (u, v) -> countTerm cp u + countTerm cp v
     | Lambda ((n, s), t) -> countTerm cp t
@@ -484,12 +481,12 @@ let rec countTerm (cp: countPred) trm =
     | Inj (_, None) -> 0
     | Case (t, lst) -> List.fold_left (fun a arm -> a + countCaseArm cp arm) (countTerm cp t) lst
     | Let (_, t1, t2) -> 
-	(* XXX : Ignores types in patterns *)
-	countTerm cp t1 + countTerm cp t2
+        (* XXX : Ignores types in patterns *)
+        countTerm cp t1 + countTerm cp t2
     | Obligation (bnds, p, t) ->
-	countProp cp p + countTerm cp t
+        countProp cp p + countTerm cp t
     | PolyInst (trm, tys) ->
-	List.fold_left (fun a ty -> a + countTy cp ty) (countTerm cp trm) tys
+        List.fold_left (fun a ty -> a + countTy cp ty) (countTerm cp trm) tys
 
 and countTermList cp lst = countList countTerm cp lst
 
@@ -498,10 +495,10 @@ and countCaseArm cp = function
 
 and countProp cp prp =
     if cp.propPred prp then
-	1
+        1
     else
       match prp with
-	True -> 0
+        True -> 0
       | False -> 0
       | BasicProp _ -> 0
       | SimpleSupport sty -> countSimpleTy cp sty
@@ -516,7 +513,7 @@ and countProp cp prp =
       | PApp (p, t) -> countProp cp p + countTerm cp t
       | PLambda ((n, _), p) -> countProp cp p
       | PObligation (bnds, p, q) -> 
-	  countProp cp p + countProp cp q
+          countProp cp p + countProp cp q
 
   | PCase (t, lst) ->
       (countTerm cp t) + (countList countPCaseArm cp lst)
@@ -540,7 +537,7 @@ and countTy cp ty =
     match ty with
       NamedTy(LN(None,_)) -> 0
     | NamedTy(LN(Some mdl, _)) ->
-	countModul cp mdl
+        countModul cp mdl
     | UnitTy
     | VoidTy
     | TopTy
@@ -610,13 +607,13 @@ module ModulMap = Map.Make(ModulOrder)
 
 type subst = {terms : term     LNMap.t;
               tys   : ty       LNMap.t;
-	      props : longname LNMap.t;
+              props : longname LNMap.t;
               moduls: modul ModulMap.t}
 
 let emptysubst = {terms  = LNMap.empty;
-		  tys    = LNMap.empty;
-		  props  = LNMap.empty;
-		  moduls = ModulMap.empty}
+                  tys    = LNMap.empty;
+                  props  = LNMap.empty;
+                  moduls = ModulMap.empty}
 
 (** see also display_subst below *)
 
@@ -707,12 +704,12 @@ and substModul ?occ sbst orig_mdl =
   match (getModul sbst orig_mdl) with
       Some mdl' -> mdl'
     | None -> 
-	match orig_mdl with
-	    ModulName nm -> ModulName nm
-	  | ModulProj (mdl, nm)   -> ModulProj (substModul ?occ sbst mdl, nm)
-	  | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, 
-					       substModul ?occ sbst mdl2)
-	  | ModulStruct mdldfs -> ModulStruct (substDefs ?occ sbst mdldfs)
+        match orig_mdl with
+            ModulName nm -> ModulName nm
+          | ModulProj (mdl, nm)   -> ModulProj (substModul ?occ sbst mdl, nm)
+          | ModulApp (mdl1, mdl2) -> ModulApp (substModul ?occ sbst mdl1, 
+                                               substModul ?occ sbst mdl2)
+          | ModulStruct mdldfs -> ModulStruct (substDefs ?occ sbst mdldfs)
 
 (* XXX: Actually, the first two "failwiths" are too pessimistic.  It's
    actually OK in ML to have a term and a type with the same name. *)
@@ -720,34 +717,34 @@ and substDefs ?occ sbst = function
     [] -> []
   | DefType(nm, ty) :: rest ->
       if (List.mem nm (fvSubst sbst)) then
-	failwith "Outsyn.substDefs:  Can't avoid shadowing a type name"
+        failwith "Outsyn.substDefs:  Can't avoid shadowing a type name"
       else
-	DefType(nm, substTy ?occ sbst ty) ::
-	  substDefs ?occ (insertTyvar sbst nm (namedty nm)) rest
+        DefType(nm, substTy ?occ sbst ty) ::
+          substDefs ?occ (insertTyvar sbst nm (namedty nm)) rest
   | DefTerm(nm, ty, trm) :: rest ->
       if (List.mem nm (fvSubst sbst)) then
-	failwith "Outsyn.substDefs:  Can't avoid shadowing a term name"
+        failwith "Outsyn.substDefs:  Can't avoid shadowing a term name"
       else
-	DefTerm(nm, substTy ?occ sbst ty, substTerm ?occ sbst trm) ::
-	  substDefs ?occ (insertTermvar sbst nm (id nm)) rest
+        DefTerm(nm, substTy ?occ sbst ty, substTerm ?occ sbst trm) ::
+          substDefs ?occ (insertTermvar sbst nm (id nm)) rest
   | DefModul(nm, signat, mdl) :: rest ->
       if (List.mem nm (fvSubst sbst)) then
-	failwith "Outsyn.substDefs:  Can't avoid shadowing a modul name"
+        failwith "Outsyn.substDefs:  Can't avoid shadowing a modul name"
       else
-	DefModul(nm, substSignat ?occ sbst signat, substModul ?occ sbst mdl) ::
-	  substDefs ?occ (insertModulvar sbst nm (ModulName nm)) rest
+        DefModul(nm, substSignat ?occ sbst signat, substModul ?occ sbst mdl) ::
+          substDefs ?occ (insertModulvar sbst nm (ModulName nm)) rest
   | DefSignat(nm, signat) :: rest ->
       if (List.mem nm (fvSubst sbst)) then
-	failwith "Outsyn.substDefs:  Can't avoid shadowing a signature name"
+        failwith "Outsyn.substDefs:  Can't avoid shadowing a signature name"
       else
 (* No signature renaming, as signatures always have fixed labels
-	DefSignat(nm, substSignat ?occ sbst signat) ::
-	  substDefs ?occ (insertSignatvar sbst nm (SignatName nm)) rest
+        DefSignat(nm, substSignat ?occ sbst signat) ::
+          substDefs ?occ (insertSignatvar sbst nm (SignatName nm)) rest
 *)
-	DefSignat(nm, substSignat ?occ sbst signat) ::
-	  substDefs ?occ sbst rest
+        DefSignat(nm, substSignat ?occ sbst signat) ::
+          substDefs ?occ sbst rest
 
-	  
+          
 
 and substProp ?occ sbst = function
     True -> True
@@ -756,8 +753,8 @@ and substProp ?occ sbst = function
   | SimplePer sty -> SimplePer (substSimpleTy ?occ sbst sty)
   | BasicProp ln ->
       BasicProp (match getPropLN sbst ln with
-		   | None -> substLN ?occ sbst ln
-		   | Some ln -> ln)
+                   | None -> substLN ?occ sbst ln
+                   | Some ln -> ln)
   | Equal (u, v) -> Equal (substTerm ?occ sbst u, substTerm ?occ sbst v)
   | And lst -> And (substPropList ?occ sbst lst)
   | Imply (p, q) -> Imply (substProp ?occ sbst p, substProp ?occ sbst q)
@@ -765,28 +762,28 @@ and substProp ?occ sbst = function
   | Not p -> Not (substProp ?occ sbst p)
   | Forall ((n, ty), q) ->
       let n' = refresh n in
-	Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
+        Forall ((n', substTy ?occ sbst ty), substProp ?occ (insertTermvar sbst n (id n')) q)
   | ForallSupport ((n, sty), q) ->
       let n' = refresh n in
-	ForallSupport ((n', substSimpleTy ?occ sbst sty),
-		       substProp ?occ (insertTermvar sbst n (id n')) q)
+        ForallSupport ((n', substSimpleTy ?occ sbst sty),
+                       substProp ?occ (insertTermvar sbst n (id n')) q)
   | PApp (p, t) -> PApp (substProp ?occ sbst p, substTerm ?occ sbst t)
   | PLambda ((n, s), p) ->
       let n' = refresh n in
-	PLambda ((n', s), substProp ?occ (insertTermvar sbst n (id n')) p)
+        PLambda ((n', s), substProp ?occ (insertTermvar sbst n (id n')) p)
   | PObligation (bnds, p, q) ->
       let (sbst', bnds') = renameBnds ?occ sbst bnds
       in 
-	PObligation (bnds', substProp ?occ sbst' p, substProp ?occ sbst' q)
+        PObligation (bnds', substProp ?occ sbst' p, substProp ?occ sbst' q)
 
   | PCase (trm, lst) -> 
-	PCase (substTerm ?occ sbst trm,
-	       substPCaseArms ?occ sbst lst)
+        PCase (substTerm ?occ sbst trm,
+               substPCaseArms ?occ sbst lst)
   | PLet (pat, t, p) ->
       let (pat', sbst') = substPat ?occ sbst pat
       in
-	PLet (pat', substTerm ?occ sbst t, 
-	     substProp ?occ sbst' p)
+        PLet (pat', substTerm ?occ sbst t, 
+             substProp ?occ sbst' p)
 
 and substPat' ?occ (sbst : subst) (pat:pattern) : pattern * (name*name) list = 
   match pat with
@@ -815,7 +812,7 @@ and substPat ?occ (sbst : subst) (pat : pattern) : pattern * subst =
   in let (ns,ns') = List.split pairs
   in let sbst' = renamingList' sbst ns ns'
   in (pat', sbst')
-	  
+          
 
 and substPCaseArm ?occ sbst (pat, p) =
   let (pat', sbst') = substPat ?occ sbst pat
@@ -835,46 +832,45 @@ and renameBnds ?occ ?bad sbst = function
       in (sbst'', bnd'::bnds')
 
 and substTerm ?occ sbst orig_term = 
-	match orig_term with
-	    Id ln ->
-	      begin
-		match getTermLN sbst (substLN ?occ sbst ln) with
-		  None -> Id(substLN ?occ sbst ln)
-		| Some trm' -> trm'
-	      end 
-	  | EmptyTuple -> EmptyTuple
-	  | BTrue      -> BTrue
-	  | BFalse     -> BFalse
-	  | Dagger     -> Dagger
-	  | App (t,u)  -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
-	  | Lambda ((n, ty), t) ->
-	      let n' = refresh n in
-		Lambda ((n', substTy ?occ sbst ty), 
-		        substTerm ?occ (insertTermvar sbst n (id n')) t)
-	  | Let (pat, t, u) ->
-	      let (pat', sbst') = substPat ?occ sbst pat
-	      in
-	      Let (pat', substTerm ?occ sbst t, 
-		   substTerm ?occ sbst' u)
-	  | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
-	  | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
-	  | Inj (k, None) -> Inj (k, None)
-	  | Inj (k, Some t) -> Inj (k, Some (substTerm ?occ sbst t))
-	  | Case (t, lst) -> 
-	      Case (substTerm ?occ sbst t,
-		   substCaseArms ?occ sbst lst)
-	  | Obligation (bnds, p, trm) ->
-	      let (sbst', bnds') = renameBnds ?occ sbst bnds
-	      in
-		Obligation (bnds', substProp ?occ sbst' p, substTerm ?occ sbst' trm)
-	  | PolyInst(trm, tys) ->
-	      PolyInst(substTerm ?occ sbst trm,
-		      List.map (substTy ?occ sbst) tys)
-		
+        match orig_term with
+            Id ln ->
+              begin
+                match getTermLN sbst (substLN ?occ sbst ln) with
+                  None -> Id(substLN ?occ sbst ln)
+                | Some trm' -> trm'
+              end 
+          | EmptyTuple -> EmptyTuple
+          | BConst b  -> BConst b
+          | Dagger     -> Dagger
+          | App (t,u)  -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
+          | Lambda ((n, ty), t) ->
+              let n' = refresh n in
+                Lambda ((n', substTy ?occ sbst ty), 
+                        substTerm ?occ (insertTermvar sbst n (id n')) t)
+          | Let (pat, t, u) ->
+              let (pat', sbst') = substPat ?occ sbst pat
+              in
+              Let (pat', substTerm ?occ sbst t, 
+                   substTerm ?occ sbst' u)
+          | Tuple lst -> Tuple (List.map (substTerm ?occ sbst) lst)
+          | Proj (k, t) -> Proj (k, substTerm ?occ sbst t)
+          | Inj (k, None) -> Inj (k, None)
+          | Inj (k, Some t) -> Inj (k, Some (substTerm ?occ sbst t))
+          | Case (t, lst) -> 
+              Case (substTerm ?occ sbst t,
+                   substCaseArms ?occ sbst lst)
+          | Obligation (bnds, p, trm) ->
+              let (sbst', bnds') = renameBnds ?occ sbst bnds
+              in
+                Obligation (bnds', substProp ?occ sbst' p, substTerm ?occ sbst' trm)
+          | PolyInst(trm, tys) ->
+              PolyInst(substTerm ?occ sbst trm,
+                      List.map (substTy ?occ sbst) tys)
+                
 and substCaseArm ?occ sbst (pat, t) =
   let (pat', sbst') = substPat ?occ sbst pat
   in  (pat', substTerm ?occ sbst' t)
-	  
+          
 and substCaseArms ?occ sbst arms = 
    List.map (substCaseArm ?occ sbst) arms
 
@@ -890,9 +886,9 @@ and substModestList ?occ sbst =
 and substTy ?occ sbst = function
   | NamedTy ln ->
       begin
-	match getTyLN sbst (substLN ?occ sbst ln) with
-	  None -> NamedTy (substLN ?occ sbst ln)
-	| Some ty' -> ty'
+        match getTyLN sbst (substLN ?occ sbst ln) with
+          None -> NamedTy (substLN ?occ sbst ln)
+        | Some ty' -> ty'
       end 
   | UnitTy -> UnitTy
   | VoidTy -> VoidTy
@@ -900,26 +896,26 @@ and substTy ?occ sbst = function
   | BoolTy -> BoolTy
   | SumTy lst -> 
       SumTy (List.map (fun (lbl, tyopt) -> 
-	                 (lbl, substTyOption ?occ sbst tyopt)) 
-	       lst)
+                         (lbl, substTyOption ?occ sbst tyopt)) 
+               lst)
   | TupleTy lst -> 
       TupleTy (List.map (substTy ?occ sbst) lst)
   | ArrowTy (ty1, ty2) -> 
       ArrowTy (substTy ?occ sbst ty1, substTy ?occ sbst ty2)
   | PolyTy (nms,ty) ->
       PolyTy (nms, substTy ?occ (addTyvarsToSubst sbst nms) ty)  
-	
+        
 and substTyOption ?occ sbst = function
     None    -> None
   | Some ty -> Some ( substTy ?occ sbst ty )
 
 and substSimpleTy ?occ sbst = function
   | SNamedTy ln -> 
-	begin
-		match getTyLN sbst ln with
-	  	  None -> SNamedTy (substLN ?occ sbst ln)
+        begin
+                match getTyLN sbst ln with
+                  None -> SNamedTy (substLN ?occ sbst ln)
         | Some ty' -> simple_ty_of_ty ty'
-    end	
+    end 
   | (SUnitTy | SVoidTy | STopTy | SBoolTy) as sty -> sty
   | STupleTy lst -> STupleTy (List.map (substSimpleTy ?occ sbst) lst)
   | SArrowTy (sty1, sty2) ->
@@ -936,11 +932,11 @@ and substSignat ?occ sbst = function
   | Signat     lst -> Signat (substSignatElements ?occ sbst lst)
   | SignatFunctor ((m,sgnt1), sgnt2) ->
       let sbst' = insertModulvar sbst m (ModulName m) in
-	SignatFunctor ((m, substSignat ?occ sbst sgnt1), 
-		       substSignat ?occ sbst' sgnt2)
+        SignatFunctor ((m, substSignat ?occ sbst sgnt1), 
+                       substSignat ?occ sbst' sgnt2)
   | SignatApp (sgnt1, mdl) ->
       SignatApp (substSignat ?occ sbst sgnt1,
-		substModul ?occ sbst mdl)
+                substModul ?occ sbst mdl)
   | SignatProj (mdl, nm) ->
       SignatProj(substModul ?occ sbst mdl, nm)
 
@@ -962,14 +958,14 @@ and substSignatElements ?occ sbst =
   let rec subst sbst = function
       [] -> []
     | Spec(nm, spec, lst) :: rest ->
-	Spec (nm, substSpec ?occ sbst spec, 
-	     List.map (substAssertion ?occ sbst) lst) ::
-	  (subst (insertTermvar sbst nm (id nm)) rest)
+        Spec (nm, substSpec ?occ sbst spec, 
+             List.map (substAssertion ?occ sbst) lst) ::
+          (subst (insertTermvar sbst nm (id nm)) rest)
     | Assertion assr :: rest ->
-	Assertion (substAssertion ?occ sbst assr) ::
-	  (subst sbst rest)
+        Assertion (substAssertion ?occ sbst assr) ::
+          (subst sbst rest)
     | (Comment _ as cmnt) :: rest ->
-	cmnt :: (subst sbst rest)
+        cmnt :: (subst sbst rest)
   in
     subst sbst
 
@@ -1024,7 +1020,7 @@ and substBinding ?occ sbst (nm, ty) =
 let rec collectSignatApps = function
     SignatApp (s, m) ->
       let hd, args = collectSignatApps s in
-	hd, args @ [m]
+        hd, args @ [m]
   | s -> s, []
 
 let rec string_of_modul = function
@@ -1042,7 +1038,7 @@ and string_of_def = function
       string_of_ty ty ^ " = " ^ string_of_term trm
   | DefModul(nm,signat,mdl) ->
       "module " ^ string_of_name nm ^ " = " ^
-	string_of_modul mdl ^ " : " ^ string_of_signat signat
+        string_of_modul mdl ^ " : " ^ string_of_signat signat
   | DefSignat(nm,signat) ->
       "module type " ^ string_of_name nm ^ " = " ^ string_of_signat signat
 
@@ -1059,24 +1055,24 @@ and string_of_ty' level t =
   in let rec makeSumTy = function
       [] -> "void"
     | ts -> 
-	"[" ^ (String.concat " | "
-		 (List.map (function
-				(lb, None) -> "`" ^ lb
-			      | (lb, Some t) ->
-				  "`" ^ lb ^ " of " ^ (string_of_ty' 1 t))
-			   ts)) ^ "]"
-		
+        "[" ^ (String.concat " | "
+                 (List.map (function
+                                (lb, None) -> "`" ^ lb
+                              | (lb, Some t) ->
+                                  "`" ^ lb ^ " of " ^ (string_of_ty' 1 t))
+                           ts)) ^ "]"
+                
   in let (level', str ) = 
        (match t with
             NamedTy lname  -> (0, string_of_ln lname)
-	  | UnitTy         -> (0, "unit")
-	  | TopTy          -> (0, "top")
-	  | VoidTy         -> (0, "void")
-	  | BoolTy         -> (0, "bool")
-	  | SumTy ts       -> (1, makeSumTy ts)
+          | UnitTy         -> (0, "unit")
+          | TopTy          -> (0, "top")
+          | VoidTy         -> (0, "void")
+          | BoolTy         -> (0, "bool")
+          | SumTy ts       -> (1, makeSumTy ts)
           | TupleTy ts     -> (2, makeTupleTy ts)
           | ArrowTy(t1,t2) -> (3, (string_of_ty' 2 t1) ^ " -> " ^ (string_of_ty' 3 t2))
-	  | PolyTy(t1,t2) -> (0, "POLYTY")
+          | PolyTy(t1,t2) -> (0, "POLYTY")
        )
   in
     if (level' > level) then 
@@ -1097,24 +1093,24 @@ and string_of_term' level t =
   let (level', str) = match t with
       Id ln -> (0, string_of_ln ln)
     | EmptyTuple -> (0, "()")
-    | BTrue -> (0, "true")
-    | BFalse -> (0, "false")
+    | BConst true -> (0, "true")
+    | BConst false -> (0, "false")
     | Dagger -> (0, "DAGGER")
     | App (App (Id (LN(_,N(_, Infix0)) as ln), t), u) -> 
-	(9, string_of_infix (string_of_term' 9 t) ln (string_of_term' 8 u))
+        (9, string_of_infix (string_of_term' 9 t) ln (string_of_term' 8 u))
     | App (App (Id (LN(_,N(_, Infix1)) as ln), t), u) -> 
-	(8, string_of_infix (string_of_term' 8 t) ln (string_of_term' 7 u))
+        (8, string_of_infix (string_of_term' 8 t) ln (string_of_term' 7 u))
     | App (App (Id (LN(_,N(_, Infix2)) as ln), t), u) -> 
-	(7, string_of_infix (string_of_term' 7 t) ln (string_of_term' 6 u))
+        (7, string_of_infix (string_of_term' 7 t) ln (string_of_term' 6 u))
     | App (App (Id (LN(_,N(_, Infix3)) as ln), t), u) -> 
-	(6, string_of_infix (string_of_term' 6 t) ln (string_of_term' 5 u))
+        (6, string_of_infix (string_of_term' 6 t) ln (string_of_term' 5 u))
     | App (App (Id (LN(_,N(_, Infix4)) as  ln), t), u) -> 
-	(5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
+        (5, string_of_infix (string_of_term' 5 t) ln (string_of_term' 4 u))
     | App (t, u) -> 
-	(4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
+        (4, (string_of_term' 4 t) ^ " " ^ (string_of_term' 3 u))
     | Lambda ((n, ty), t) ->
-	(12, "fun (" ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
-	   (string_of_term' 12 t))
+        (12, "fun (" ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ ") -> " ^
+           (string_of_term' 12 t))
     | Tuple [] -> (0, "()")
     | Tuple [t] -> (0, "Tuple " ^ string_of_term' 0 t)
     | Tuple lst -> (0, "(" ^ (String.concat ", " (List.map (string_of_term' 11) lst)) ^ ")")
@@ -1122,24 +1118,24 @@ and string_of_term' level t =
     | Inj (lb, None) -> (4, ("`" ^ lb))
     | Inj (lb, Some t) -> (4, ("`" ^ lb ^ " " ^ (string_of_term' 3 t)))
     | Case (t, lst) ->
-	(13, "match " ^ (string_of_term' 13 t) ^ " with " ^
-	   (String.concat " | "
-	      (List.map (fun (pat, u) -> (string_of_pat pat) ^ " -> " ^
-		           (string_of_term' 11 u))
-		 lst)))
+        (13, "match " ^ (string_of_term' 13 t) ^ " with " ^
+           (String.concat " | "
+              (List.map (fun (pat, u) -> (string_of_pat pat) ^ " -> " ^
+                           (string_of_term' 11 u))
+                 lst)))
     | Let (pat, t, u) ->
-	(13, "let " ^ (string_of_pat pat) ^ " = " ^
-	   (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u) ^ " end")
+        (13, "let " ^ (string_of_pat pat) ^ " = " ^
+           (string_of_term' 13 t) ^ " in " ^ (string_of_term' 13 u) ^ " end")
     | Obligation (bnds, p, trm) ->
-	(12,
-	 "assure " ^ (string_of_bnds bnds) ^ " . " ^
-	 (string_of_proposition p) ^ " in " ^ (string_of_term trm) ^ " end")
+        (12,
+         "assure " ^ (string_of_bnds bnds) ^ " . " ^
+         (string_of_proposition p) ^ " in " ^ (string_of_term trm) ^ " end")
     | PolyInst(trm,tys) ->
-	(4,
-	 string_of_term trm ^ 
-	 "(*[" ^
-	 (String.concat "," (List.map string_of_ty tys)) ^
-	 "]*)")
+        (4,
+         string_of_term trm ^ 
+         "(*[" ^
+         (String.concat "," (List.map string_of_ty tys)) ^
+         "]*)")
   in
     if level' > level then "(" ^ str ^ ")" else str
 
@@ -1169,38 +1165,38 @@ and string_of_prop level p =
     | Iff (p, q) -> (13, (string_of_prop 12 p) ^ " <=> " ^ (string_of_prop 12 q))
     | Not p -> (9, "not " ^ (string_of_prop 9 p))
     | Forall ((n, ty), p) -> (14, "all (" ^ (string_of_name n) ^ " : " ^
-			      (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
+                              (string_of_ty ty) ^ ") . " ^ (string_of_prop 14 p))
     | ForallSupport ((n, sty), p) -> (14, "all (" ^ (string_of_name n) ^ " : ||" ^
-			      (string_of_sty sty) ^ "||) . " ^ (string_of_prop 14 p))
+                              (string_of_sty sty) ^ "||) . " ^ (string_of_prop 14 p))
     | PLambda ((n, ty), p) ->
-	(14, "Pfun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
+        (14, "Pfun " ^ string_of_name n ^ " : " ^ string_of_ty ty ^ " => " ^ string_of_prop 14 p)
     | PApp (SimpleSupport sty, t) -> (0, (string_of_term t) ^ " : ||" ^ string_of_sty sty ^ "||")
     | PApp (PApp (SimplePer sty, t), u) -> (0, (string_of_term t) ^ "=(" ^ string_of_sty sty ^ ")=" ^ string_of_term u)
     | PApp (PApp (BasicProp (LN(_,N(_,(Per|Infix0|Infix1|Infix2|Infix3|Infix4))) as op), t), u) ->
-	(8, (string_of_infix (string_of_term u) op (string_of_term t)))
+        (8, (string_of_infix (string_of_term u) op (string_of_term t)))
     | PApp (BasicProp (LN(_,N(_,Support)) as op), u) ->
-	(9, string_of_term u ^ " : " ^ (string_of_ln op))
+        (9, string_of_term u ^ " : " ^ (string_of_ln op))
     | PApp (p, t) -> (0, string_of_prop 9 p ^ " " ^ string_of_term' 9 t)
     | PObligation (bnds, p, q) ->
-	(14,
-	 "assure " ^ (string_of_bnds bnds) ^ " . " ^
-	 (string_of_proposition p) ^ " in " ^ (string_of_proposition q) ^ " end")
+        (14,
+         "assure " ^ (string_of_bnds bnds) ^ " . " ^
+         (string_of_proposition p) ^ " in " ^ (string_of_proposition q) ^ " end")
 (*
     | PObligation ((_, TopTy), p, q) -> (14, "assure " ^ string_of_prop 14 p ^ " in " ^ string_of_prop 14 q)
     | PObligation ((n, ty), p, q) ->
-	(14,
-	"assure " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
-	  (string_of_prop 14 p) ^ " in " ^ string_of_prop 14 q ^ " end")
+        (14,
+        "assure " ^ (string_of_name n) ^ " : " ^ (string_of_ty ty) ^ " . " ^
+          (string_of_prop 14 p) ^ " in " ^ string_of_prop 14 q ^ " end")
 *)
 
     | PCase (t, lst) ->
-	(14, "match " ^ (string_of_term' 13 t) ^ " with " ^
-	    (String.concat " | "
-	      (List.map (fun (pat, p) ->
-		string_of_pat pat  ^ " => " ^ (string_of_prop 14 p)) lst)))
+        (14, "match " ^ (string_of_term' 13 t) ^ " with " ^
+            (String.concat " | "
+              (List.map (fun (pat, p) ->
+                string_of_pat pat  ^ " => " ^ (string_of_prop 14 p)) lst)))
     | PLet (pat, t, p) ->
-	(14, "let " ^ (string_of_pat pat) ^ " = " ^
-	   (string_of_term' 13 t) ^ " in " ^ (string_of_prop 14 p) ^ " end")
+        (14, "let " ^ (string_of_pat pat) ^ " = " ^
+           (string_of_term' 13 t) ^ " in " ^ (string_of_prop 14 p) ^ " end")
 
   in
     if level' > level then "(" ^ str ^ ")" else str
@@ -1221,7 +1217,7 @@ and string_of_proptype' level pt =
   let (level', str) = match pt with
       Prop -> (0, "Prop")
     | PropArrow(t, pt) ->
-	(12, string_of_ty t ^ " -> " ^ string_of_proptype' 12 pt)
+        (12, string_of_ty t ^ " -> " ^ string_of_proptype' 12 pt)
   in
     if level' > level then "(" ^ str ^ ")" else str
 
@@ -1273,13 +1269,13 @@ and string_of_spec = function
       "type " ^ string_of_name nm ^ "\n" ^ string_of_assertions assertions
   | Spec(nm, TySpec (Some ty), assertions) -> 
       "type " ^ string_of_name nm ^ " = " ^ (string_of_ty ty) ^ "\n" ^ 
-	string_of_assertions assertions
+        string_of_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
       "module " ^ string_of_name nm ^ " : " ^ (string_of_signat sgntr) ^
-	string_of_assertions assertions
+        string_of_assertions assertions
   | Spec(nm, SignatSpec signat, assertions) ->
       "signature " ^ string_of_name nm ^ " = " ^ (string_of_signat signat) ^
-	string_of_assertions assertions
+        string_of_assertions assertions
   | Spec(nm, PropSpec pt, assertions) ->
       "(* proposition " ^ string_of_name nm ^ " : " ^ (string_of_proptype pt) ^
       " *)" ^ string_of_assertions assertions
@@ -1295,10 +1291,10 @@ and string_of_signat = function
       (string_of_signat body) ^ "\n"
   | (SignatApp _) as s ->
       let hd, args = collectSignatApps s in
-	"(** " ^ (string_of_signat hd) ^
-	(String.concat " " (List.map (fun m -> "(" ^ (string_of_modul m) ^ ")") args)) ^
-	" *) " ^
-	"XXX: SHOULD COMPUTE SIGNATURE APPLICATION HERE"
+        "(** " ^ (string_of_signat hd) ^
+        (String.concat " " (List.map (fun m -> "(" ^ (string_of_modul m) ^ ")") args)) ^
+        " *) " ^
+        "XXX: SHOULD COMPUTE SIGNATURE APPLICATION HERE"
   | SignatProj(mdl,nm) -> 
       string_of_modul mdl ^ "." ^ string_of_name nm
 
@@ -1309,7 +1305,7 @@ let display_subst sbst =
   let doOne stringizeFn ln x =
     print_string ("[" ^ string_of_ln ln ^ "~>" ^ stringizeFn x ^ "]")
   in let do_modul mdl mdl' = print_string ("[" ^ string_of_modul mdl ^ "~>" ^ 
-					    string_of_modul mdl' ^ "]")
+                                            string_of_modul mdl' ^ "]")
   in  (print_string "Terms: ";
        LNMap.iter (doOne string_of_term) sbst.terms;
        print_string "\nTypes: ";
@@ -1336,10 +1332,10 @@ let rec listminus lst1 lst2 =
   match lst1 with
       [] -> []
     | x::xs ->
-	if (List.mem x lst2) || (List.mem x xs) then 
-	  listminus xs lst2
-	else 
-	  x :: (listminus xs lst2)
+        if (List.mem x lst2) || (List.mem x xs) then 
+          listminus xs lst2
+        else 
+          x :: (listminus xs lst2)
 
 (* The next two functions are used in reduce, but we need to pull them
    out of the (very large) mutually-recursive nest so that they can be
@@ -1368,10 +1364,10 @@ and pmatches fLet matchees pats trm =
     [], [] -> Yes trm
   | m::ms, p::ps ->
       begin
-	match pmatches fLet ms ps trm with
-	  No       -> No
-	| Maybe    -> Maybe
-	| Yes trm' -> pmatch fLet m p trm' 
+        match pmatches fLet ms ps trm with
+          No       -> No
+        | Maybe    -> Maybe
+        | Yes trm' -> pmatch fLet m p trm' 
       end
   | _, _ -> failwith "Outsyn.pmatches"
 
@@ -1508,7 +1504,7 @@ let rec renameObs bad subst = function
       in let prp' = substProp subst' prp
       in let (rest', subst'') = renameObs bad subst' rest
       in ( (bnds',prp') :: rest', subst'')
-	
+        
 let rec printObs = function
     [] -> ()
   | (bnd,p)::rest -> print_endline (string_of_term (Obligation(bnd,p,EmptyTuple))); printObs rest
@@ -1525,11 +1521,11 @@ let rec obsListminus obs1 obs2 =
   match obs1 with
       [] -> ([], [])
     | ((bnds,_) as ob)::obs ->
-	let (ns, obs') = obsListminus obs obs2
-	in if (List.mem ob obs2) then
-	    ((List.map fst bnds) @ ns, obs')
-	  else 
-	    (ns, ob::obs')
+        let (ns, obs') = obsListminus obs obs2
+        in if (List.mem ob obs2) then
+            ((List.map fst bnds) @ ns, obs')
+          else 
+            (ns, ob::obs')
 
 
 let merge2Obs' ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 = 
@@ -1550,7 +1546,7 @@ let merge2Obs' ?bad fvFun1 fvFun2 substFn1 substFn2 obs1 obs2 x1 x2 =
 
   in let (obs1', subst1) = 
     renameObs ((listminus (fvFun2 x2) deletedNames2) @ 
-		  (fvObs obs2) @ nms2 @ bad') 
+                  (fvObs obs2) @ nms2 @ bad') 
       emptysubst obs1
   in let x1' = substFn1 subst1 x1
   
@@ -1606,7 +1602,7 @@ let hoistList hoistFn fvFn substFn =
    let rec nodups = function
        [] -> []
      | x::xs -> 
-	 let z = nodups xs
+         let z = nodups xs
          in if (List.mem x z) then z else x::z
    in let fvsFn xs = nodups (List.flatten (List.map fvFn xs))
    in let substsFn sbst xs = List.map (substFn sbst) xs
@@ -1623,166 +1619,165 @@ let hoistList hoistFn fvFn substFn =
 let rec hoistArm trm (lbl, bndopt, x) =
   match bndopt with
       None -> 
-	let addPremise (bnds, p) = 
-	  (* Alpha-vary so that bnds don't capture any variables in trm *)
-	  let (subst', bnds') = renameBnds ~bad:(fvTerm trm) emptysubst bnds
-	  in let p' = substProp subst' p
-	  in (bnds', Imply(Equal(trm,Inj(lbl,None)), p'))
-	in let (obs, x') = hoist x
-	in let obs' = List.map addPremise obs
-	in (obs', (lbl, None, x'))
+        let addPremise (bnds, p) = 
+          (* Alpha-vary so that bnds don't capture any variables in trm *)
+          let (subst', bnds') = renameBnds ~bad:(fvTerm trm) emptysubst bnds
+          in let p' = substProp subst' p
+          in (bnds', Imply(Equal(trm,Inj(lbl,None)), p'))
+        in let (obs, x') = hoist x
+        in let obs' = List.map addPremise obs
+        in (obs', (lbl, None, x'))
 
     | Some (nm,ty) ->
-	(* BEFORE:
+        (* BEFORE:
 
-	     match trm with
-	       ...
-	       | lbl(nm:ty) => assure n:t.p(n) in x
+             match trm with
+               ...
+               | lbl(nm:ty) => assure n:t.p(n) in x
 
            AFTER:
 
              assure n':t . (forall nm:ty, trm = lbl(nm) -> p(n'))
            &
-	     match trm with
+             match trm with
                ...
                | lbl(nm) => x
         *)
-	let addPremise (bnds, p) = 
-	  (* Alpha-vary so that n doesn't capture any variables in trm
+        let addPremise (bnds, p) = 
+          (* Alpha-vary so that n doesn't capture any variables in trm
              or get shadowed by nm *)
-	  (* Alpha-vary so that bnds don't capture any variables in trm *)
-	  let (subst', bnds') = renameBnds ~bad:(fvTerm trm) emptysubst bnds
-	  in let p' = substProp subst' p
-	  in ( bnds',
-	       Forall( (nm,ty), 
-		     Imply( Equal(trm, Inj(lbl,Some(Id(LN(None,nm))))), p' ) ) )
-	in let (obs, x') = hoist x
-	in let obs' = List.map addPremise obs
-	in (obs', (lbl, Some(nm,ty), x'))
+          (* Alpha-vary so that bnds don't capture any variables in trm *)
+          let (subst', bnds') = renameBnds ~bad:(fvTerm trm) emptysubst bnds
+          in let p' = substProp subst' p
+          in ( bnds',
+               Forall( (nm,ty), 
+                     Imply( Equal(trm, Inj(lbl,Some(Id(LN(None,nm))))), p' ) ) )
+        in let (obs, x') = hoist x
+        in let obs' = List.map addPremise obs
+        in (obs', (lbl, Some(nm,ty), x'))
 
 and hoistPropArm trm1 trm2 (lbl, bndopt1, bndopt2, prp) =
   let fvtrms = fvTerm trm1 @ fvTerm trm2
   in
   match (bndopt1, bndopt2) with
       (None, None) -> 
-	let addPremise (bnds, p) = 
-	  (* Alpha-vary so that bnds don't capture any variables in trm1/trm2 *)
-	  let (subst', bnds') = renameBnds ~bad:fvtrms emptysubst bnds
-	  in let p' = substProp subst' p
-	  in (bnds', Imply(And[Equal(trm1,Inj(lbl,None));
-				 Equal(trm2,Inj(lbl,None))], p'))
-	in let (obs, prp') = hoistProp prp
-	in let obs' = List.map addPremise obs
-	in (obs', (lbl, bndopt1, bndopt2, prp'))
+        let addPremise (bnds, p) = 
+          (* Alpha-vary so that bnds don't capture any variables in trm1/trm2 *)
+          let (subst', bnds') = renameBnds ~bad:fvtrms emptysubst bnds
+          in let p' = substProp subst' p
+          in (bnds', Imply(And[Equal(trm1,Inj(lbl,None));
+                                 Equal(trm2,Inj(lbl,None))], p'))
+        in let (obs, prp') = hoistProp prp
+        in let obs' = List.map addPremise obs
+        in (obs', (lbl, bndopt1, bndopt2, prp'))
 
     | (Some (nm1,ty1), None) ->
-	let addPremise (bnds, p) = 
-	  (* Alpha-vary so that bnds don't capture any variables in trm1/trm2
+        let addPremise (bnds, p) = 
+          (* Alpha-vary so that bnds don't capture any variables in trm1/trm2
              or get shadowed by nm1 *)
-	  let (subst', bnds') = renameBnds ~bad:(nm1 :: fvtrms) emptysubst bnds
-	  in let p' = substProp subst' p
-	  in ( bnds',
-	       Forall( (nm1,ty1), 
-		     Imply( And[Equal(trm1, Inj(lbl,Some(Id(LN(None,nm1)))));
-			        Equal(trm2, Inj(lbl,None))], p' ) ) )
-	in let (obs, prp') = hoistProp prp
-	in let obs' = List.map addPremise obs
-	in (obs', (lbl, bndopt1, bndopt2, prp'))
+          let (subst', bnds') = renameBnds ~bad:(nm1 :: fvtrms) emptysubst bnds
+          in let p' = substProp subst' p
+          in ( bnds',
+               Forall( (nm1,ty1), 
+                     Imply( And[Equal(trm1, Inj(lbl,Some(Id(LN(None,nm1)))));
+                                Equal(trm2, Inj(lbl,None))], p' ) ) )
+        in let (obs, prp') = hoistProp prp
+        in let obs' = List.map addPremise obs
+        in (obs', (lbl, bndopt1, bndopt2, prp'))
 
     | (None, Some (nm2,ty2)) ->
-	let addPremise (bnds, p) = 
-	  (* Alpha-vary so that bnds don't capture any variables in trm1/trm2
+        let addPremise (bnds, p) = 
+          (* Alpha-vary so that bnds don't capture any variables in trm1/trm2
              or get shadowed by nm2 *)
-	  let (subst', bnds') = renameBnds ~bad:(nm2 :: fvtrms) emptysubst bnds
-	  in let p' = substProp subst' p
-	  in ( bnds', 
-	       Forall( (nm2,ty2), 
-		     Imply( And[Equal(trm1, Inj(lbl,None));
-			        Equal(trm2, Inj(lbl,Some(Id(LN(None,nm2)))))], 
-			    p' ) ) )
-	in let (obs, prp') = hoistProp prp
-	in let obs' = List.map addPremise obs
-	in (obs', (lbl, bndopt1, bndopt2, prp'))
+          let (subst', bnds') = renameBnds ~bad:(nm2 :: fvtrms) emptysubst bnds
+          in let p' = substProp subst' p
+          in ( bnds', 
+               Forall( (nm2,ty2), 
+                     Imply( And[Equal(trm1, Inj(lbl,None));
+                                Equal(trm2, Inj(lbl,Some(Id(LN(None,nm2)))))], 
+                            p' ) ) )
+        in let (obs, prp') = hoistProp prp
+        in let obs' = List.map addPremise obs
+        in (obs', (lbl, bndopt1, bndopt2, prp'))
 
     | (Some(nm1,ty1), Some(nm2,ty2)) ->
-	let addPremise (bnds, p) = 
-	  (* Alpha-vary so that bnds don't capture any variables in trm1/trm2
+        let addPremise (bnds, p) = 
+          (* Alpha-vary so that bnds don't capture any variables in trm1/trm2
              or get shadowed by nm1 or nm2 *)
-	  let (subst', bnds') = 
-	    renameBnds ~bad:(nm1 :: nm2 :: fvtrms) emptysubst bnds
-	  in let p' = substProp subst' p
-	  in ( bnds',
-	       Forall( (nm1,ty1), 
-		 Forall( (nm2,ty2), 
-		     Imply( And[Equal(trm1, Inj(lbl,Some(Id(LN(None,nm1)))));
-			        Equal(trm2, Inj(lbl,Some(Id(LN(None,nm2)))))], 
-			    p' ) ) ))
-	in let (obs, prp') = hoistProp prp
-	in let obs' = List.map addPremise obs
-	in (obs', (lbl, bndopt1, bndopt2, prp'))
+          let (subst', bnds') = 
+            renameBnds ~bad:(nm1 :: nm2 :: fvtrms) emptysubst bnds
+          in let p' = substProp subst' p
+          in ( bnds',
+               Forall( (nm1,ty1), 
+                 Forall( (nm2,ty2), 
+                     Imply( And[Equal(trm1, Inj(lbl,Some(Id(LN(None,nm1)))));
+                                Equal(trm2, Inj(lbl,Some(Id(LN(None,nm2)))))], 
+                            p' ) ) ))
+        in let (obs, prp') = hoistProp prp
+        in let obs' = List.map addPremise obs
+        in (obs', (lbl, bndopt1, bndopt2, prp'))
 
 
 and hoist trm =
   match trm with
       Id _ 
     | EmptyTuple 
-    | BTrue
-    | BFalse
+    | BConst _
     | Dagger 
     | Inj(_, None) -> ([], trm)
 
     | App(trm1, trm2) ->
-	let    (obs1,trm1') = hoist trm1
-	in let (obs2, trm2') = hoist trm2
-	in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
-	in (obs', reduce (App(trm1'',trm2'')) )
+        let    (obs1,trm1') = hoist trm1
+        in let (obs2, trm2') = hoist trm2
+        in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
+        in (obs', reduce (App(trm1'',trm2'')) )
 
     | Lambda((nm,ty),trm) ->
-	let (obs1, trm1') = hoist trm
-	in let obs1' = List.map (quantifyOb nm ty) obs1
-	in (obs1', Lambda((nm,ty), trm1'))
+        let (obs1, trm1') = hoist trm
+        in let obs1' = List.map (quantifyOb nm ty) obs1
+        in (obs1', Lambda((nm,ty), trm1'))
 
     | Tuple trms ->
-	let (obs, trms') = hoistTerms trms
-	in (obs, Tuple trms')
+        let (obs, trms') = hoistTerms trms
+        in (obs, Tuple trms')
 
     | Proj(n, trm) ->
-	let (obs, trm') = hoist trm
-	in (obs, reduce (Proj(n,trm')))
+        let (obs, trm') = hoist trm
+        in (obs, reduce (Proj(n,trm')))
 
     | Inj(lbl, Some trm) ->
-	let (obs, trm') = hoist trm
-	in (obs, Inj(lbl, Some trm'))
+        let (obs, trm') = hoist trm
+        in (obs, Inj(lbl, Some trm'))
 
     | PolyInst(trm, tys) ->
-	let (obs, trm') = hoist trm
-	in (obs, PolyInst(trm', tys))
+        let (obs, trm') = hoist trm
+        in (obs, PolyInst(trm', tys))
 
     | Case(trm,arms) ->
-	let (obs1, trm') = hoist trm
-	in let (obs2, arms') = hoistCaseArms arms
+        let (obs1, trm') = hoist trm
+        in let (obs2, arms') = hoistCaseArms arms
         in let (obs', trm'', arms'') = 
            merge2Obs fvTerm fvCaseArms substTerm substCaseArms
              obs1 obs2 trm' arms'
         in (obs', Case(trm'', arms''))
 
     | Let(pat, trm1, trm2) ->
-	(* See comments for PLet *)
+        (* See comments for PLet *)
 
-	let (obs1, trm1') = hoist trm1
-	in let (preobs2, trm2') = hoist trm2
+        let (obs1, trm1') = hoist trm1
+        in let (preobs2, trm2') = hoist trm2
 
-	in let (obs1', preobs2', trm1'', trm2'') = 
-	  merge2Obs' ~bad:(bvPat pat) fvTerm fvTerm substTerm substTerm
+        in let (obs1', preobs2', trm1'', trm2'') = 
+          merge2Obs' ~bad:(bvPat pat) fvTerm fvTerm substTerm substTerm
              obs1 preobs2 trm1' trm2'
 
-	in let addPremise (bnds,prp) =
-	  (bnds, reduceProp (PLet(pat, trm1'', prp)))
-	in let obs2' = List.map addPremise preobs2'
+        in let addPremise (bnds,prp) =
+          (bnds, reduceProp (PLet(pat, trm1'', prp)))
+        in let obs2' = List.map addPremise preobs2'
 
-	in let obs' = obs1' @ obs2'
+        in let obs' = obs1' @ obs2'
 
-	in (obs', reduce (Let(pat, trm1'', trm2'')))
+        in (obs', reduce (Let(pat, trm1'', trm2'')))
 
 (*
 
@@ -1790,16 +1785,16 @@ and hoist trm =
   which leads to more renaming without any obviously-big gains
 
     | Obligation([], prp, trm) ->
-	let (obs1a, prp') = hoistProp prp
-	in let obs1b = [([], prp')] 
-	in let obs1 = obs1a @ obs1b
-	in let (obs2, trm') = hoist trm
-	in let (obs', _, trm'') = 
-	  (* We need to merge the obligations, and rename obs1 propositions
-	     so that they don't capture any free variables of trm' *)
-	  (* EmptyTuple stands for anything without free variables *)
-	  merge2ObsTerm obs1 obs2 EmptyTuple trm'
-	in (obs', trm'')
+        let (obs1a, prp') = hoistProp prp
+        in let obs1b = [([], prp')] 
+        in let obs1 = obs1a @ obs1b
+        in let (obs2, trm') = hoist trm
+        in let (obs', _, trm'') = 
+          (* We need to merge the obligations, and rename obs1 propositions
+             so that they don't capture any free variables of trm' *)
+          (* EmptyTuple stands for anything without free variables *)
+          merge2ObsTerm obs1 obs2 EmptyTuple trm'
+        in (obs', trm'')
 *)
 
     | Obligation(bnds, prp, trm) ->
@@ -1818,13 +1813,13 @@ and hoist trm =
            idea, and in case we can do some duplicate-assurance elimination,
            we'll at least move assurances to the top of prp.
          *)
-	let (obsp, prp') = hoistProp prp
-	in let obs1 = [(bnds, foldPObligation obsp prp')]
-	in let (obs2, trm') = hoist trm
+        let (obsp, prp') = hoistProp prp
+        in let obs1 = [(bnds, foldPObligation obsp prp')]
+        in let (obs2, trm') = hoist trm
         (* It's ok to use @ rather than a merge function here;
         obs2 was already in the scope of obs1, and trm' was
         already in the scope of both. *)
-	in (obs1 @ obs2, trm') 
+        in (obs1 @ obs2, trm') 
 
 and hoistTerms trms = hoistList hoist fvTerm substTerm trms
 
@@ -1867,102 +1862,102 @@ and quantifyObPats pats ob =
 and hoistProp orig_prp =
   let ans = 
     match orig_prp with
-	True
+        True
       | False -> ([], orig_prp)
-	  
+          
       | SimpleSupport _ | SimplePer _ -> ([], orig_prp)
-	  (* XXX this ain't gonna work if simple types contain variables. *)
+          (* XXX this ain't gonna work if simple types contain variables. *)
 
       | BasicProp _ -> ([], orig_prp)
-	    
+            
       | Equal(trm1, trm2) ->
-	  let (obs1, trm1') = hoist trm1
-	  in let (obs2, trm2') = hoist trm2
-	  in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
-	  in (obs', Equal(trm1'', trm2''))
-	    
+          let (obs1, trm1') = hoist trm1
+          in let (obs2, trm2') = hoist trm2
+          in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
+          in (obs', Equal(trm1'', trm2''))
+            
       | And prps ->
-	  let (obs, prps') = hoistProps prps
-	  in (obs, And prps')
-	    
+          let (obs, prps') = hoistProps prps
+          in (obs, And prps')
+            
       | Imply(prp1, prp2) ->
-	  let (obs1, prp1') = hoistProp prp1
-	  in let (obs2, prp2') = hoistProp prp2
+          let (obs1, prp1') = hoistProp prp1
+          in let (obs2, prp2') = hoistProp prp2
       in let obs2' = List.map (premiseOb prp1') obs2
-	  in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2' prp1' prp2'
-	  in (obs', Imply(prp1'', prp2''))
-	    
+          in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2' prp1' prp2'
+          in (obs', Imply(prp1'', prp2''))
+            
       | Iff(prp1, prp2) ->
-	  let (obs1, prp1') = hoistProp prp1
-	  in let (obs2, prp2') = hoistProp prp2
-	  in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
-	  in (obs', Iff(prp1'', prp2''))
-	    
+          let (obs1, prp1') = hoistProp prp1
+          in let (obs2, prp2') = hoistProp prp2
+          in let (obs', prp1'', prp2'') = merge2ObsProp obs1 obs2 prp1' prp2'
+          in (obs', Iff(prp1'', prp2''))
+            
       | Not prp ->
-	  let (obs, prp') = hoistProp prp
-	  in (obs, Not prp')
-	    
+          let (obs, prp') = hoistProp prp
+          in (obs, Not prp')
+            
       | Forall((nm,ty),prp) ->
-	  let (obs, prp') = hoistProp prp
-	  in let obs' = List.map (quantifyOb nm ty) obs
-	  in (obs', Forall((nm,ty), prp') )
-	    
+          let (obs, prp') = hoistProp prp
+          in let obs' = List.map (quantifyOb nm ty) obs
+          in (obs', Forall((nm,ty), prp') )
+            
       | ForallSupport((nm,sty),prp) ->
-	  let (obs, prp') = hoistProp prp
-	  in let obs' = List.map (quantifyObTotal nm sty) obs
-	  in (obs', ForallSupport((nm,sty), prp') )
-	    
+          let (obs, prp') = hoistProp prp
+          in let obs' = List.map (quantifyObTotal nm sty) obs
+          in (obs', ForallSupport((nm,sty), prp') )
+            
       | PLambda((nm,ty), prp) ->
-	  let (obs, prp') = hoistProp prp
-	  in let obs' = List.map (quantifyOb nm ty) obs
-	  in (obs', PLambda((nm,ty), prp') )
-	    
+          let (obs, prp') = hoistProp prp
+          in let obs' = List.map (quantifyOb nm ty) obs
+          in (obs', PLambda((nm,ty), prp') )
+            
       | PApp(prp, trm) ->
-	  let (obs1, prp') = hoistProp prp
-	  in let (obs2, trm') = hoist trm
-	  in let (obs', prp'', trm'') = 
-	    merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
-	  in (obs', PApp(prp'', trm''))
-	    
+          let (obs1, prp') = hoistProp prp
+          in let (obs2, trm') = hoist trm
+          in let (obs', prp'', trm'') = 
+            merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
+          in (obs', PApp(prp'', trm''))
+            
       | PCase(trm, arms) -> 
-	  let (obs1, trm') = hoist trm
-	  in let (obs2, arms') = hoistPCaseArms arms
-	  in let (obs', trm'', arms'') =
-	    merge2Obs fvTerm fvPCaseArms substTerm substPCaseArms
+          let (obs1, trm') = hoist trm
+          in let (obs2, arms') = hoistPCaseArms arms
+          in let (obs', trm'', arms'') =
+            merge2Obs fvTerm fvPCaseArms substTerm substPCaseArms
               obs1 obs2 trm' arms'
-	  in (obs', PCase(trm'', arms''))
-	    
+          in (obs', PCase(trm'', arms''))
+            
       | PObligation(bnd, prp1, prp2) ->
           (* For justification of this code, see the comments for 
              the Obligation case of the hoist function. *)
-	  let (obsp, prp1') = hoistProp prp1
-	  in let obs1 = [(bnd, foldPObligation obsp prp1')]
-	in let (obs2, prp2') = hoistProp prp2
-	in (obs1 @ obs2, prp2') 
-	  
+          let (obsp, prp1') = hoistProp prp1
+          in let obs1 = [(bnd, foldPObligation obsp prp1')]
+        in let (obs2, prp2') = hoistProp prp2
+        in (obs1 @ obs2, prp2') 
+          
     | PLet(pat, trm, prp) ->
-	(* BEFORE (assuming only assure is in body):
-	   let nm = (assure m:t.q(m) in trm(m)) 
+        (* BEFORE (assuming only assure is in body):
+           let nm = (assure m:t.q(m) in trm(m)) 
                 in (assure n:t.p(n,nm) in prp(n,nm))
-	   
+           
            AFTER:
            assure m':t. q(m')
            assure n':t. let nm = trm'(m'[!]) in p(n',nm)
            &
            let nm = trm'(m') in prp(n',nm)
-	   
+           
         *)
-	
-	let (obs1, trm') = hoist trm
-	in let (preobs2, prp') = hoistProp prp
-	  
-	in let (obs1', preobs2', trm'', prp'') = 
-	  merge2Obs' ~bad:(bvPat pat) fvTerm fvProp substTerm substProp
+        
+        let (obs1, trm') = hoist trm
+        in let (preobs2, prp') = hoistProp prp
+          
+        in let (obs1', preobs2', trm'', prp'') = 
+          merge2Obs' ~bad:(bvPat pat) fvTerm fvProp substTerm substProp
              obs1 preobs2 trm' prp'
 
-	(* Normally we'd call addPremise before merging the
-	   obligations, but there's a glitch.  
-	    (1) We'd rather wrap the obligations in preobs2 with
+        (* Normally we'd call addPremise before merging the
+           obligations, but there's a glitch.  
+            (1) We'd rather wrap the obligations in preobs2 with
                   the definition nm = trm' instead of nm = trm
                   (i.e., not duplicate the obligations in trm)
 
@@ -1980,20 +1975,20 @@ and hoistProp orig_prp =
             (3) So, we first merge the bindings, get trm''
                   (which reflects any renamings in obs1) and 
                   only then wrap preobs2.
-	*)
-	in let addPremise (bnds,p) =
-	  (bnds, reduceProp (PLet(pat, trm'', p)))
-	in let obs2' = List.map addPremise preobs2'
+        *)
+        in let addPremise (bnds,p) =
+          (bnds, reduceProp (PLet(pat, trm'', p)))
+        in let obs2' = List.map addPremise preobs2'
 
-	in let obs' = obs1' @ obs2'
+        in let obs' = obs1' @ obs2'
 
-	in (obs', reduceProp (PLet(pat, trm'', prp'')))
+        in (obs', reduceProp (PLet(pat, trm'', prp'')))
 
   in
     (
       (*  print_endline "hoistProp";
-	  print_endline (string_of_proposition prp);
-	  print_endline ((string_of_proposition (snd ans)));	 *)
+          print_endline (string_of_proposition prp);
+          print_endline ((string_of_proposition (snd ans)));     *)
    ans)
 
 and hoistModest {ty=ty; tot=tot; per=per} =
@@ -2033,7 +2028,7 @@ and reduce trm =
 
   | App(Obligation(bnds,prp,trm1), trm2) ->
       (* Complicated but short method of renaming bnds to
-	 avoid the free variables of trm2 *)
+         avoid the free variables of trm2 *)
       let nm = wildName() 
       in let trm' = Obligation(bnds,prp,App(trm1,id nm))
       in let trm'' = substTerm (termSubst nm trm2) trm'
@@ -2054,9 +2049,9 @@ and reduce trm =
   | Lambda((nm1,_), App(trm1, Id(LN(None,nm2)))) when nm1 = nm2 ->
       (** Eta-reduction ! *)
       if (List.mem nm1 (fvTerm trm1)) then
-	trm
+        trm
       else
-	reduce trm1
+        reduce trm1
 
   | Let (pat1, Let (pat2, trm2a, trm2b), trm3) ->
       (* Side-effect of refreshing *)
@@ -2068,9 +2063,9 @@ and reduce trm =
       (* XXX May lose obligations *)
       if (simpleTerm trm2) ||
          (countTerm (occurrencesOfTermName nm1) trm3 < 2) then 
-	reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
+        reduce (substTerm (insertTermvar emptysubst nm1 trm2) trm3)
       else
-	trm
+        trm
 
   | Let (WildPat, trm2, trm3) ->
       (* XXX May lose obligations *)
@@ -2078,27 +2073,27 @@ and reduce trm =
 
   | Proj(n, trm) ->
       begin
-	match reduce trm with
-	    Tuple trms -> 
-(*	      let (obs, trms') = hoistTerms trms
-	      in foldObligation obs (reduce (List.nth trms' n)) *)
-	      List.nth trms n
-	  | Let (pat1, trm2, trm3) -> 
-	      Let (pat1, trm2, reduce (Proj (n, trm3)))
-	  | Obligation (bnd1, prp2, trm3) ->
-	      Obligation (bnd1, prp2, reduce (Proj (n, trm3)))
+        match reduce trm with
+            Tuple trms -> 
+(*            let (obs, trms') = hoistTerms trms
+              in foldObligation obs (reduce (List.nth trms' n)) *)
+              List.nth trms n
+          | Let (pat1, trm2, trm3) -> 
+              Let (pat1, trm2, reduce (Proj (n, trm3)))
+          | Obligation (bnd1, prp2, trm3) ->
+              Obligation (bnd1, prp2, reduce (Proj (n, trm3)))
           | trm' -> Proj(n, trm')
       end
 
   | Case(trm1, arms) as orig_term ->
       let trm1' = reduce trm1
       in let rec armLoop = function
-	  [] -> failwith "Outsyn.reduce Case: ran out of arms"
-	| (pat,trm)::rest ->
-	    match pmatch fLet trm1' pat trm with
-	      Yes trm' -> reduce trm'
-	    | No       -> armLoop rest
-	    | Maybe    -> orig_term
+          [] -> failwith "Outsyn.reduce Case: ran out of arms"
+        | (pat,trm)::rest ->
+            match pmatch fLet trm1' pat trm with
+              Yes trm' -> reduce trm'
+            | No       -> armLoop rest
+            | Maybe    -> orig_term
       in armLoop arms
 
   | trm -> trm
@@ -2106,36 +2101,36 @@ and reduce trm =
 and reduceProp prp = 
   match prp with
       PApp(PLambda ((nm, _), prp1), trm2) ->
-	reduceProp (PLet(VarPat nm, trm2, prp1))
+        reduceProp (PLet(VarPat nm, trm2, prp1))
 
     | PApp(PLet(pat,trm1,prp2),trm3) ->
-	let (pat',sbst) = 
-	  substPat emptysubst pat (* Side-effect of refreshing *)
-	in let prp2' = substProp sbst prp2
-	in let body' = reduceProp (PApp(prp2',trm3))
-	in reduceProp (PLet(pat',trm1,body'))
+        let (pat',sbst) = 
+          substPat emptysubst pat (* Side-effect of refreshing *)
+        in let prp2' = substProp sbst prp2
+        in let body' = reduceProp (PApp(prp2',trm3))
+        in reduceProp (PLet(pat',trm1,body'))
 
     | PLet (pat1, Let (pat2, trm2a, trm2b), prp3) ->
-	let (pat2',sbst) = 
-	  substPat emptysubst pat2 (* Side-effect of refreshing *)
-	in let trm2b' = substTerm sbst trm2b
-	in reduceProp (PLet(pat2', trm2a, PLet(pat1, trm2b', prp3)))
-	  
+        let (pat2',sbst) = 
+          substPat emptysubst pat2 (* Side-effect of refreshing *)
+        in let trm2b' = substTerm sbst trm2b
+        in reduceProp (PLet(pat2', trm2a, PLet(pat1, trm2b', prp3)))
+          
     | PLet(VarPat nm, trm1, prp2) ->
-	(* XXX: May lose obligations *)
-	if (simpleTerm trm1) || 
-	(countProp (occurrencesOfTermName nm) prp2 < 2) then
+        (* XXX: May lose obligations *)
+        if (simpleTerm trm1) || 
+        (countProp (occurrencesOfTermName nm) prp2 < 2) then
           reduceProp (substProp (termSubst nm trm1) prp2)
-	else
+        else
           prp
 
     | PLet(WildPat, trm1, prp2) -> 
-	(* XXX: May lose obligations *)
+        (* XXX: May lose obligations *)
           prp2
 
     | PApp(PObligation(bnds,prp1,prp2), trm3) ->
       (* Complicated but short method of renaming bnds to
-	 avoid the free variables of trm3 *)
+         avoid the free variables of trm3 *)
       let nm = wildName() 
       in let prp' = PObligation(bnds,prp1,PApp(prp2,id nm))
       in let prp'' = substProp (termSubst nm trm3) prp'
@@ -2148,36 +2143,36 @@ and reduceProp prp =
       ((* print_endline (Name.string_of_name nm1);
        print_endline (Name.string_of_name nm2); *)
        if (List.mem nm1 (fvProp prp1)) then
-	 prp
+         prp
        else
-	 reduceProp prp1)
-	
+         reduceProp prp1)
+        
 (* We don't eta-reduce NamedProp's because
    they are supposed to be fully-applied.
 
   | PMLambda((nm1,_), NamedProp(n, Dagger, lst))
   | PLambda((nm1,_), NamedProp(n, Dagger, lst)) ->
       begin
-	match List.rev lst with
-	    (Id(LN(None,nm2))::es) -> 
-	      let p' = NamedProp(n, Dagger, List.rev es)
-	      in if (nm1 = nm2) && not (List.mem nm1 (fvProp p')) then
-		  reduceProp p'
-		else
-		  prp
-	  | _ -> prp
+        match List.rev lst with
+            (Id(LN(None,nm2))::es) -> 
+              let p' = NamedProp(n, Dagger, List.rev es)
+              in if (nm1 = nm2) && not (List.mem nm1 (fvProp p')) then
+                  reduceProp p'
+                else
+                  prp
+          | _ -> prp
       end
 *)
 
   | PCase(trm1, arms) as orig_prop ->
       let trm1' = reduce trm1
       in let rec armLoop = function
-	  [] -> False (* Ran out of possible arms *)
-	| (pat,trm)::rest ->
-	    match pmatch fPLet trm1' pat trm with
-	      Yes trm' -> reduceProp trm'
-	    | No       -> armLoop rest
-	    | Maybe    -> orig_prop
+          [] -> False (* Ran out of possible arms *)
+        | (pat,trm)::rest ->
+            match pmatch fPLet trm1' pat trm with
+              Yes trm' -> reduceProp trm'
+            | No       -> armLoop rest
+            | Maybe    -> orig_prop
       in armLoop arms
 
   | prp -> prp
@@ -2187,9 +2182,9 @@ and reduceProp prp =
 let worthFlatteningInProp nm prp =
   let nUses = countProp (occurrencesOfTermName nm) prp  in
   let nProjs = countProp (occurrencesOfNameInProj nm) prp  in
-	nProjs >= max 1 (nUses - 2)
-	
+        nProjs >= max 1 (nUses - 2)
+        
 let worthFlatteningInTerm nm prp =
   let nUses = countTerm (occurrencesOfTermName nm) prp  in
   let nProjs = countTerm (occurrencesOfNameInProj nm) prp  in
-	nProjs >= max 1 (nUses - 2)
+        nProjs >= max 1 (nUses - 2)

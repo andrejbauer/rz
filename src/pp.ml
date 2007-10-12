@@ -216,8 +216,8 @@ and output_totalbinds ppf lst =
 and output_term_0 ppf = function
   | Id ln -> output_ln ppf ln
   | EmptyTuple -> fprintf ppf "()"
-  | BTrue -> fprintf ppf "true"
-  | BFalse -> fprintf ppf "false"
+  | BConst true -> fprintf ppf "true"
+  | BConst false -> fprintf ppf "false"
   | Dagger -> fprintf ppf "DAGGER"
   | Tuple [] -> fprintf ppf "()"
   | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t

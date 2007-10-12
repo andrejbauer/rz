@@ -379,9 +379,7 @@ and translateTerm = function
 
   | L.EmptyTuple -> EmptyTuple
 
-  | L.BTrue -> BTrue
-
-  | L.BFalse -> BFalse
+  | L.BConst b -> BConst b
 
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
 

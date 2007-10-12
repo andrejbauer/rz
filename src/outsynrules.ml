@@ -484,7 +484,7 @@ let rec typeOf ctx = function
 	   | _ -> failwith "Outsynrules.typeOf: Id"
        end
   | EmptyTuple -> UnitTy
-  | BTrue | BFalse -> BoolTy
+  | BConst _ -> BoolTy
   | Dagger     -> TopTy
   | App(trm1, _) ->
       begin

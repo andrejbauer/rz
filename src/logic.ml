@@ -73,8 +73,9 @@ and proposition =
     | IsEquiv of proposition * set                (* [IsEquiv(p,s)] means [p] is an equivalence relation on [s] *)
     | PCase   of term * set * (label * binding option * proposition) list
     | PAssure of binding option * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
-    | PLet of binding * term * proposition (* Propositional let-term *)
-	
+    | PLet    of binding * term * proposition (* Propositional let-term *)
+    | PBool   of term   (* Embedding of boolean terms *)
+  
 and set =
     | Empty
     | Unit  (* Unit is the singleton containing EmptyTuple *)
@@ -101,8 +102,9 @@ and setkind =
 
 and term =
     | EmptyTuple
-    | BTrue
-    | BFalse
+    | BConst   of bool
+    | BNot     of term
+    | BOp      of bop * term list
     | Var      of longname
     | Tuple    of term list
     | Proj     of int * term
@@ -119,6 +121,8 @@ and term =
     | Subin    of term * binding * proposition (* [Subin(a,(x,t),p)] coerces [a] to [{x:t|p}] *)
     | Subout   of term * set
     | Assure   of binding option * proposition * term * set
+
+and bop = AndOp | OrOp | ImplyOp | IffOp
 
 and declaration =
     DeclProp     of proposition option * proptype
@@ -139,10 +143,10 @@ and theory =
     | TheoryArrow of model_binding * theory    (* Theory of a family of models *)
     | TheoryApp of theory * model
     | TheoryProj of model * name
-	
+  
 and theorykind =
     | ModelTheoryKind    (* Kind of theories that classify models,
-		          including classifiersfor families of models. *)
+              including classifiersfor families of models. *)
     | TheoryKindArrow of model_binding * theorykind (* Classifies TheoryLambdas *)
 
 and toplevel =
@@ -266,84 +270,93 @@ and string_of_set = function
   | Basic (lname, _) -> string_of_sln lname
   | Product lst ->
       "(" ^ (String.concat " * "
-	       (List.map (
-		  function
-		      (N(_, Wild), s) -> string_of_set s
-		    | (nm, s) -> string_of_name nm ^ " : " ^ string_of_set s) lst)) ^ ")"
+         (List.map (
+      function
+          (N(_, Wild), s) -> string_of_set s
+        | (nm, s) -> string_of_name nm ^ " : " ^ string_of_set s) lst)) ^ ")"
   | Exp (nm, s, t) ->
       if isWild nm then
-	"(" ^ string_of_set s ^ " -> " ^ string_of_set t ^ ")"
+  "(" ^ string_of_set s ^ " -> " ^ string_of_set t ^ ")"
       else
       "((" ^ string_of_name nm ^ " : " ^ (string_of_set s) ^ ") -> " ^ (string_of_set t) ^ ")"
   | Sum lst ->
       "[" ^ (
-	String.concat " + " (
-	  List.map (function
-			lb, None -> lb
-		      | lb, Some s -> lb ^ " of " ^ (string_of_set s)
-	  ) lst)
+  String.concat " + " (
+    List.map (function
+      lb, None -> lb
+          | lb, Some s -> lb ^ " of " ^ (string_of_set s)
+    ) lst)
       ) ^ "]"
 
   | Subset ((n,s), p) -> 
       "{" ^ string_of_name n ^ " : " ^ string_of_set s ^ " with " ^ 
-	string_of_prop p ^ "}"
+  string_of_prop p ^ "}"
   | Rz s -> "rz " ^ (string_of_set s)
   | Quotient (s, p) -> (string_of_set s) ^ " % " ^ string_of_prop p
   | SApp (s, t) -> (string_of_set s) ^ " " ^ (string_of_term t)
   | SLambda ((n,s), t) -> "lam " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^ string_of_set t
+
+and string_of_bop = function
+      AndOp -> " && "
+    | OrOp -> " || "
+    | ImplyOp -> " -> "
+    | IffOp -> " <-> "
 
 and string_of_term trm =
   (let rec toStr = function
       Var(LN(None, nm))  -> string_of_name nm
     | Var(LN(Some mdl, nm)) -> string_of_model mdl ^ "." ^ string_of_name nm
     | EmptyTuple -> "()"
-    | BTrue -> "true"
-    | BFalse -> "false"
+    | BConst true -> "true"
+    | BConst false -> "false"
+    | BNot trm -> "not " ^ toStr trm
+    | BOp (bop, trms) -> 
+          "(" ^ String.concat (string_of_bop bop) (List.map toStr trms) ^ ")"
     | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
     | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
     | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
     | Inj (lbl, None) -> "`" ^ lbl 
     | Case (trm,ty',arms,ty'') -> 
-	let rec doArm = function
-	    (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
-	  | (lbl, Some (n,ty), trm) -> 
-	      lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
-		") => " ^ toStr trm
-	in 
-	  "case " ^ toStr trm ^ " : " ^ string_of_set ty' ^ " of " ^
-	    (String.concat "\n| " (List.map doArm arms)) ^ " end" ^
-	   ": " ^ string_of_set ty''
+  let rec doArm = function
+      (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
+    | (lbl, Some (n,ty), trm) -> 
+        lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
+    ") => " ^ toStr trm
+  in 
+    "case " ^ toStr trm ^ " : " ^ string_of_set ty' ^ " of " ^
+      (String.concat "\n| " (List.map doArm arms)) ^ " end" ^
+     ": " ^ string_of_set ty''
 
 
 
     | Quot (trm1,prp2) -> "(" ^ toStr trm1 ^ " % " ^ string_of_prop prp2 ^ ")"
     | RzQuot t -> "[" ^ (toStr t) ^ "]"
     | RzChoose (bnd, trm1, trm2, st) -> 
-	"let rz " ^ string_of_bnd bnd ^ " = " ^
-	string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ 
-	 ": " ^ string_of_set st ^ " end"
+  "let rz " ^ string_of_bnd bnd ^ " = " ^
+  string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ 
+   ": " ^ string_of_set st ^ " end"
 
     | Choose (bnd, prp1, trm2, trm3, st) -> 
-	"let [" ^ string_of_bnd bnd ^ "] % " ^ string_of_prop prp1 ^ " = " ^
-	string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ 
-	 ": " ^ string_of_set st ^ " end" 
+  "let [" ^ string_of_bnd bnd ^ "] % " ^ string_of_prop prp1 ^ " = " ^
+  string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ 
+   ": " ^ string_of_set st ^ " end" 
     | Subin(trm, bnd, prp) -> "(" ^ toStr trm ^ " :> {" ^ string_of_bnd bnd ^ " | " ^ string_of_prop prp ^ "})"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | Let(bnd,trm1,trm2,st) ->
-	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
-	" in " ^ toStr trm2 ^ " : " ^ string_of_set st  ^ ")"
+  "(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
+  " in " ^ toStr trm2 ^ " : " ^ string_of_set st  ^ ")"
     | Lambda(bnd,trm) ->
-	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+  "(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | The(bnd,prp) ->
-	"(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
+  "(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
     | Assure(None, p, t, ty) ->
       "assure " ^ string_of_prop p ^ " in " ^ string_of_term t ^ 
-	" : " ^ string_of_set ty
+  " : " ^ string_of_set ty
     | Assure(Some (n,s), p, t, ty) ->
       "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-	string_of_prop p ^ " in " ^ string_of_term t ^ 
-	" : " ^ string_of_set ty
+  string_of_prop p ^ " in " ^ string_of_term t ^ 
+  " : " ^ string_of_set ty
 
   in
     toStr trm)
@@ -359,38 +372,40 @@ and string_of_prop prp =
     | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
     | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
     | Or trms ->
-	"(" ^ String.concat " \\/ " (List.map (fun (lbl, trm) -> lbl ^ ":" ^ toStr trm) trms) ^ ")"
+  "(" ^ String.concat " \\/ " (List.map (fun (lbl, trm) -> lbl ^ ":" ^ toStr trm) trms) ^ ")"
     | Not trm -> "(not " ^ toStr trm ^ ")"
     | Equal(st,trm1,trm2) -> "(" ^ string_of_term trm1 ^ " =" ^ string_of_set st ^ "= " ^ string_of_term trm2 ^ ")"
     | Forall(bnd,trm) ->
-	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+  "(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Exists(bnd,trm) ->
-	"(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+  "(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Unique(bnd,trm) ->
-	"(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+  "(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | PLambda(bnd,prp) ->
-	"(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
+  "(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
     | IsEquiv (prp, st) ->
-	"IsEquiv(" ^ toStr prp ^ " on " ^ string_of_set st ^ ")"
+  "IsEquiv(" ^ toStr prp ^ " on " ^ string_of_set st ^ ")"
     | PCase (trm, ty', arms) -> 
-	let rec doArm = function
-	    (lbl, None, prp) -> lbl ^ " => " ^ toStr prp
-	  | (lbl, Some (n,ty), prp) -> 
-	      lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
-		") => " ^ toStr prp
-	in 
-	  "case " ^ string_of_term trm ^ " : " ^ string_of_set ty' ^ " of " ^
-	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
+  let rec doArm = function
+      (lbl, None, prp) -> lbl ^ " => " ^ toStr prp
+    | (lbl, Some (n,ty), prp) -> 
+        lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
+    ") => " ^ toStr prp
+  in 
+    "case " ^ string_of_term trm ^ " : " ^ string_of_set ty' ^ " of " ^
+      (String.concat "\n| " (List.map doArm arms)) ^ " end"
     | PAssure (None, p, q) ->
-	"assure " ^ string_of_prop p ^ " in " ^ string_of_prop q
+  "assure " ^ string_of_prop p ^ " in " ^ string_of_prop q
     | PAssure (Some (n,s), p, q) ->
-	"assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-	  string_of_prop p ^ " in " ^ string_of_prop q
+  "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
+    string_of_prop p ^ " in " ^ string_of_prop q
     | PLet ((n,s), t, p) ->
-	"let " ^ string_of_name n ^ ":" ^ string_of_set s ^ " = " ^ 
-	  string_of_term t ^ " in " ^ string_of_prop p ^ " end"
+    "let " ^ string_of_name n ^ ":" ^ string_of_set s ^ " = " ^ 
+    string_of_term t ^ " in " ^ string_of_prop p ^ " end"
+    | PBool trm -> "PBOOL(" ^ string_of_term trm ^ ")" 
     in
-     toStr prp)
+   toStr prp)
+    
 
 and string_of_proptype = function
     Prop -> "Prop"
@@ -398,20 +413,20 @@ and string_of_proptype = function
   | EquivProp st -> "EquivProp(" ^ string_of_set st ^ ")"
   | PropArrow(nm, st, pt) -> 
       if isWild nm then
-	string_of_set st ^ " -> " ^ string_of_proptype pt
+  string_of_set st ^ " -> " ^ string_of_proptype pt
       else 
-	"(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") -> " ^
-	  string_of_proptype pt
+  "(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") -> " ^
+    string_of_proptype pt
 
 
 and string_of_kind = function
     KindSet -> "KindSet"
   | KindArrow (nm, st, knd) -> 
       if isWild nm then
-	string_of_set st ^ " => " ^ string_of_kind knd
+  string_of_set st ^ " => " ^ string_of_kind knd
       else 
-	"(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") => " ^
-	  string_of_kind knd
+  "(" ^ string_of_name nm ^ " : " ^ string_of_set st ^ ") => " ^
+    string_of_kind knd
 
 and string_of_theory = function
     Theory elts -> "thy\n" ^ string_of_theory_elements elts ^ "end"
@@ -429,7 +444,7 @@ and string_of_theory_element = function
     Declaration(stnm, DeclSet(None, knd)) ->
       "set " ^ string_of_name stnm ^ " : " ^ (string_of_kind knd)
   | Declaration(stnm, DeclSet(Some st, knd)) -> 
-	  "set " ^ string_of_name stnm ^ " : " ^ string_of_kind knd ^ " = " ^ string_of_set st
+    "set " ^ string_of_name stnm ^ " : " ^ string_of_kind knd ^ " = " ^ string_of_set st
   | Declaration(nm, DeclProp(None, pt)) ->
       "predicate " ^ string_of_name nm ^ " : " ^ string_of_proptype pt
   | Declaration(nm, DeclProp(Some prp, pt)) ->
@@ -482,20 +497,20 @@ let typename_of_name = function
   | N (str, _) -> N (makeTypename str, Word)
   | G (k, lst) -> 
       Name.gensym (List.map
-		    (function
-			(_, Word) as nm -> nm
-		      | (str, _) -> (makeTypename str, Word))
-		    lst)
+        (function
+      (_, Word) as nm -> nm
+          | (str, _) -> (makeTypename str, Word))
+        lst)
 
 let prop_typename_of_name = function
     N (p, Word) -> N ("ty_" ^ p, Word)
   | N (str, _) -> N (makeTypename str, Word)
   | G (k, lst) -> 
       Name.gensym (List.map
-		    (function
-			(p, Word) -> ("ty_" ^ p, Word)
-		      | (str, _) -> (makeTypename str, Word))
-		    lst)
+        (function
+      (p, Word) -> ("ty_" ^ p, Word)
+          | (str, _) -> (makeTypename str, Word))
+        lst)
 
 let typename_of_ln (LN (mdl, nm)) = LN (mdl, typename_of_name nm)
 
@@ -540,17 +555,17 @@ let rec fnSet = function
   | Quotient(st, prp) ->
       NameSet.union (fnSet st) (fnProp prp)
   | SApp(st, trm) -> NameSet.union (fnSet st) (fnTerm trm)
-  | Rz st -> fnSet st	
+  | Rz st -> fnSet st 
       
 and fnSetOpt = function
-	  None -> NameSet.empty
-	| Some st -> fnSet st
-	
+    None -> NameSet.empty
+  | Some st -> fnSet st
+  
 and fnProduct = function
     [] -> NameSet.empty
   | (nm, st)::rest -> NameSet.union (fnSet st) (NameSet.remove nm (fnProduct rest))
-	
-and fnSum = function	 
+  
+and fnSum = function   
     [] -> NameSet.empty
   | (_, stOpt)::rest -> NameSet.union (fnSetOpt stOpt) (fnSum rest)
 
@@ -559,13 +574,15 @@ and fnSetkind = function
   | KindArrow(nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnSetkind knd))
       
 and fnTerm = function
-  | EmptyTuple | BTrue | BFalse | Inj(_, None)-> NameSet.empty
+  | EmptyTuple | BConst _ | Inj(_, None)-> NameSet.empty
+  | BNot trm -> fnTerm trm
   | Var(LN(None, nm)) -> NameSet.singleton nm
   | Var(LN(Some mdl, nm)) -> NameSet.add nm (fnModel mdl)
   | Subin(trm, (nm,st), prp) ->
       NameSet.union (fnTerm trm) 
          (NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp)))
   | Subout(trm, st) -> NameSet.union (fnTerm trm) (fnSet st) 
+  | BOp(_,trms)
   | Tuple trms -> unionNameSetList (List.map fnTerm trms)
   | Proj(_, trm) 
   | Inj(_, Some trm)
@@ -574,24 +591,24 @@ and fnTerm = function
   | Quot(trm1, prp2) -> NameSet.union (fnTerm trm1) (fnProp prp2)
   | Choose((nm, st1), prp1, trm2, trm3, st2) ->
       unionNameSetList [fnSet st1; fnProp prp1; fnTerm trm2;
-		        NameSet.remove nm (fnTerm trm3); fnSet st2]
+            NameSet.remove nm (fnTerm trm3); fnSet st2]
   | RzChoose ((nm, st1), trm1, trm2, st2) 
   | Let ((nm, st1), trm1, trm2, st2) -> 
       unionNameSetList [fnSet st1; fnTerm trm1; 
-		        NameSet.remove nm (fnTerm trm2); fnSet st2]
+            NameSet.remove nm (fnTerm trm2); fnSet st2]
   | Lambda((nm, st), trm) ->
       NameSet.union (fnSet st) (NameSet.remove nm (fnTerm trm))
   | The((nm, st), prp) ->
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp))
   | Case (trm, ty, arms, ty') ->
       unionNameSetList ( fnTerm trm :: fnSet ty :: fnSet ty' ::
-			   List.map fnCaseArm arms )
+         List.map fnCaseArm arms )
   | Assure(None,prp,trm,ty) -> 
       unionNameSetList [fnProp prp; fnTerm trm; fnSet ty]
   | Assure(Some(nm,st),prp,trm,ty) ->
       NameSet.union (fnSet st) 
-	(NameSet.union (fnSet ty)
-	    (NameSet.remove nm (NameSet.union (fnProp prp) (fnTerm trm))))
+  (NameSet.union (fnSet ty)
+      (NameSet.remove nm (NameSet.union (fnProp prp) (fnTerm trm))))
 
 and fnProp = function
     False | True -> NameSet.empty
@@ -613,16 +630,17 @@ and fnProp = function
   | IsEquiv (prp, st) -> NameSet.union (fnProp prp) (fnSet st) 
   | PCase (trm, ty, arms) ->
       NameSet.union (fnTerm trm) 
-	(NameSet.union (fnSet ty)
-	    (unionNameSetList (List.map fnPCaseArm arms)))
+  (NameSet.union (fnSet ty)
+      (unionNameSetList (List.map fnPCaseArm arms)))
   | PAssure(None,prp1,prp2) -> NameSet.union (fnProp prp1) (fnProp prp2)
   | PAssure(Some(nm,st),prp1,prp2) ->
       NameSet.union (fnSet st) 
-	(NameSet.remove nm (NameSet.union (fnProp prp1) (fnProp prp2)))
+  (NameSet.remove nm (NameSet.union (fnProp prp1) (fnProp prp2)))
   | PLet((nm,st),trm,prp) ->
       NameSet.union (fnSet st)
-	(NameSet.union (fnTerm trm)
-	    (NameSet.remove nm (fnProp prp)))
+  (NameSet.union (fnTerm trm)
+      (NameSet.remove nm (fnProp prp)))
+  | PBool trm -> fnTerm trm
 
 and fnCaseArm = function
     (_, None, trm) -> fnTerm trm
@@ -638,7 +656,7 @@ and fnPCaseArm = function
     (_, None, trm) -> fnProp trm
   | (_, Some (nm, st), trm) -> 
       NameSet.union (fnSet st) (NameSet.remove nm (fnProp trm))
-	
+  
 and fnModel = function
     ModelName nm -> NameSet.singleton nm
   | ModelProj (mdl, _) -> fnModel mdl
@@ -669,7 +687,7 @@ and fnDecl = function
   | DeclSentence([], prp) -> fnProp prp
   | DeclSentence((nm,thy)::mbnds, prp) ->
       NameSet.union (fnTheory thy) 
-	(NameSet.remove nm (fnDecl(DeclSentence(mbnds,prp))))
+  (NameSet.remove nm (fnDecl(DeclSentence(mbnds,prp))))
 
 and fnTheoryKind = function
     ModelTheoryKind -> NameSet.empty
@@ -692,7 +710,7 @@ let rec isSimple s =
       | Product [] -> true
       | Product [(_, s)] -> isSimple s
       | Product ((x,s)::lst) ->
-	  isSimple s && isFree x (Product lst) && isSimple (Product lst)
+    isSimple s && isFree x (Product lst) && isSimple (Product lst)
       | Exp (x, s1, s2) -> isFree x s2 && isSimple s1 && isSimple s2
       | Sum _ | Subset _ | Rz _ | Quotient _ | SApp _ | SLambda _ -> false
       
@@ -703,17 +721,17 @@ let rec isSimple s =
 
 type subst = {terms: term NameMap.t;
               sets: set NameMap.t;
-	      props : proposition NameMap.t;
+        props : proposition NameMap.t;
               models: model NameMap.t;
-	      theories : theory NameMap.t;
+        theories : theory NameMap.t;
               capturablenames: NameSet.t}
 
 let emptysubst = {terms = NameMap.empty;
-		  props = NameMap.empty;
-		  sets = NameMap.empty;
-		  models = NameMap.empty;
-		  theories = NameMap.empty;
-		  capturablenames = NameSet.empty}
+      props = NameMap.empty;
+      sets = NameMap.empty;
+      models = NameMap.empty;
+      theories = NameMap.empty;
+      capturablenames = NameSet.empty}
 
 let insertTermvar sbst nm trm =
   {sbst with terms = NameMap.add nm trm sbst.terms;
@@ -725,15 +743,15 @@ let insertPropvar sbst nm prp =
 
 let insertSetvar sbst nm st =
   {sbst with sets = NameMap.add nm st sbst.sets;
-	 capturablenames = NameSet.union sbst.capturablenames (fnSet st)}
-	
+   capturablenames = NameSet.union sbst.capturablenames (fnSet st)}
+  
 let insertModelvar sbst strng mdl =
   {sbst with models = NameMap.add strng mdl sbst.models;
-	 capturablenames = NameSet.union sbst.capturablenames (fnModel mdl)}
+   capturablenames = NameSet.union sbst.capturablenames (fnModel mdl)}
 
 let insertTheoryvar sbst strng mdl =
   {sbst with theories = NameMap.add strng mdl sbst.theories;
-	 capturablenames = NameSet.union sbst.capturablenames (fnTheory mdl)}
+   capturablenames = NameSet.union sbst.capturablenames (fnTheory mdl)}
 
 let removeName sbst nm =
   {terms  = NameMap.remove nm sbst.terms;
@@ -766,11 +784,11 @@ let getTheoryvar sbst thrynm =
 
 let display_subst sbst =
   let do_term nm trm = print_string ("[" ^ string_of_name nm ^ "~>" ^ 
-					string_of_term trm ^ "]")
+          string_of_term trm ^ "]")
   in let do_set stnm st = print_string ("[" ^ string_of_name stnm ^ "~>" ^ 
-					   string_of_set st ^ "]")
+             string_of_set st ^ "]")
   in let do_model mdlnm mdl = print_string ("[" ^ string_of_name mdlnm ^ "~>" ^ 
-					       string_of_model mdl ^ "]")
+                 string_of_model mdl ^ "]")
   in  (print_string "Terms: ";
        NameMap.iter do_term sbst.terms;
        print_string "\nSets: ";
@@ -779,22 +797,22 @@ let display_subst sbst =
        NameMap.iter do_model sbst.models)
    
 (** updateboundName: subst -> name -> subst * name 
-	
-	Renames the given bound variable so that it can't capture anything being
-	substituted in by the substitution.  Returns a substitution updated
-	to rename the bound variable, and the new name.
-		
-	Attempts to avoid renaming if possible. *)
+  
+  Renames the given bound variable so that it can't capture anything being
+  substituted in by the substitution.  Returns a substitution updated
+  to rename the bound variable, and the new name.
+    
+  Attempts to avoid renaming if possible. *)
 let updateBoundName sbst nm =
-	if (NameSet.mem nm sbst.capturablenames) then
-	  let rec search nm' =
-		   if (NameSet.mem nm' sbst.capturablenames) then
-		      search (nextName nm')
-		   else 
-		      (insertTermvar sbst nm (Var (LN (None,nm'))), nm')
-	  in search (nextName nm)
-	else 
-	  (sbst, nm)
+  if (NameSet.mem nm sbst.capturablenames) then
+    let rec search nm' =
+       if (NameSet.mem nm' sbst.capturablenames) then
+          search (nextName nm')
+       else 
+          (insertTermvar sbst nm (Var (LN (None,nm'))), nm')
+    in search (nextName nm)
+  else 
+    (sbst, nm)
 
 (* Verify that the given name will not incur variable capture.  (I.e.,
    that we'd have to alpha-vary it if we wanted to push the
@@ -812,71 +830,72 @@ let rec subst sbst =
   
   let rec sub = function
     | EmptyTuple -> EmptyTuple
-    | BTrue -> BTrue
-    | BFalse -> BFalse
+    | BConst b -> BConst b
+    | BNot trm -> sub trm
+    | BOp (bop, trms) -> BOp(bop, List.map sub trms)
     | Var (LN (None, nm)) -> getTermvar sbst nm
     | Var (LN (Some mdl, nm)) -> 
-	Var( LN(Some(substModel sbst mdl), nm) )
+  Var( LN(Some(substModel sbst mdl), nm) )
     | Tuple ts      -> Tuple(List.map sub ts)
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
     | Inj(l,termopt) -> Inj(l, doOpt (subst sbst) termopt)
     | Case(t1,ty,arms,ty2) -> Case(sub t1, substSet sbst ty, 
-				   subarms arms, substSet sbst ty2)
+           subarms arms, substSet sbst ty2)
     | RzQuot t -> RzQuot (sub t)
     | RzChoose ((y,sopt),t1,t2,ty) ->
-	let (sbst', y') = updateBoundName sbst y in
-	  RzChoose ((y', substSet sbst sopt),
-		   sub t1,
-		   subst sbst' t2,
-		   substSet sbst ty)
+  let (sbst', y') = updateBoundName sbst y in
+    RzChoose ((y', substSet sbst sopt),
+       sub t1,
+       subst sbst' t2,
+       substSet sbst ty)
     | Quot(trm1,prp2) -> Quot(sub trm1, substProp sbst prp2)
     | Choose((y,sopt),p,t1,t2,stopt2) ->
-	let (sbst', y') = updateBoundName sbst y in
+  let (sbst', y') = updateBoundName sbst y in
           Choose((y',substSet sbst sopt),
                 substProp sbst p,
                 sub t1, 
                 subst sbst' t2,
-		substSet sbst stopt2)
+    substSet sbst stopt2)
     | Subin(trm,(y,st),prp) -> 
-	let (sbst', y') = updateBoundName sbst y in 
-	  Subin(sub trm,
+  let (sbst', y') = updateBoundName sbst y in 
+    Subin(sub trm,
                (y',substSet sbst st),
-  	       substProp sbst' prp)
+           substProp sbst' prp)
     | Subout(trm,st) -> Subout(sub trm, substSet sbst st)
     | Let((y,st1),t1,t2,st2) ->
-	let (sbst', y') = updateBoundName sbst y in
+  let (sbst', y') = updateBoundName sbst y in
           Let((y',substSet sbst st1),
              sub t1, 
-	     subst sbst' t2,
-	     substSet sbst st2)
-	    
+       subst sbst' t2,
+       substSet sbst st2)
+      
     | Lambda((y,st),t1) ->
-	let (sbst', y') = updateBoundName sbst y in 
-	  Lambda((y',substSet sbst st),
-		subst sbst' t1)
+  let (sbst', y') = updateBoundName sbst y in 
+    Lambda((y',substSet sbst st),
+    subst sbst' t1)
 
     | The((y,st), prp) ->
-	let (sbst', y') = updateBoundName sbst y in 
-	  The((y',substSet sbst st),
-	     substProp sbst' prp)
+  let (sbst', y') = updateBoundName sbst y in 
+    The((y',substSet sbst st),
+       substProp sbst' prp)
 
     | Assure(None, prp, trm, ty) ->
-	Assure(None, substProp sbst prp, sub trm, substSet sbst ty)
+  Assure(None, substProp sbst prp, sub trm, substSet sbst ty)
 
     | Assure(Some (y, st), prp, trm, ty) ->
-	let (sbst', y') = updateBoundName sbst y in
-	  Assure(Some (y, substSet sbst st), 
-		substProp sbst' prp, subst sbst' trm,
-		substSet sbst ty)
+  let (sbst', y') = updateBoundName sbst y in
+    Assure(Some (y, substSet sbst st), 
+    substProp sbst' prp, subst sbst' trm,
+    substSet sbst ty)
 
   and subarms = function
       [] -> []
     | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
     | (l,Some(y,sopt),u)::rest ->
-	let (sbst',y') = updateBoundName sbst y in
+  let (sbst',y') = updateBoundName sbst y in
           (l, Some(y', substSet sbst sopt), subst sbst' u) ::
-	    (subarms rest)
+      (subarms rest)
   in sub
 
 and substProp sbst = 
@@ -885,51 +904,52 @@ and substProp sbst =
     | False -> False
     | Atomic (LN (None, nm), pt) -> getPropvar sbst nm (substProptype sbst pt)
     | Atomic (LN (Some mdl, nm), pt) -> 
-	Atomic( LN(Some(substModel sbst mdl), nm), substProptype sbst pt)
+  Atomic( LN(Some(substModel sbst mdl), nm), substProptype sbst pt)
     | And ts         -> And(List.map sub ts)
     | Imply (t1,t2)  -> Imply (sub t1, sub t2)
     | Iff (t1,t2)    -> Iff (sub t1, sub t2)
     | Or ts          -> Or (List.map (fun (lbl, p) -> (lbl, sub p)) ts)
     | Not t          -> Not (sub t)
     | Equal (ty,t1,t2) -> Equal (substSet sbst ty,
-				 subst sbst t1,
-				 subst sbst t2)
+         subst sbst t1,
+         subst sbst t2)
     | Forall((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName sbst y in 
+  let (sbst', y') = updateBoundName sbst y in 
           Forall((y',substSet sbst sopt),
-		substProp sbst' t1)
+    substProp sbst' t1)
     | Exists((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName sbst y in 
-	  Exists((y',substSet sbst sopt),
-		substProp sbst' t1)
+  let (sbst', y') = updateBoundName sbst y in 
+    Exists((y',substSet sbst sopt),
+    substProp sbst' t1)
     | Unique((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName sbst y in 
-	  Unique((y',substSet sbst sopt),
-		substProp sbst' t1)
+  let (sbst', y') = updateBoundName sbst y in 
+    Unique((y',substSet sbst sopt),
+    substProp sbst' t1)
     | PLambda((y,sopt),t1) ->
-	let (sbst', y') = updateBoundName sbst y in 
-	  PLambda((y',substSet sbst sopt),
-		 substProp sbst' t1)
+  let (sbst', y') = updateBoundName sbst y in 
+    PLambda((y',substSet sbst sopt),
+     substProp sbst' t1)
     | PApp(prp1,trm2) -> PApp(sub prp1, subst sbst trm2)
     | IsEquiv (prp, st) -> IsEquiv(sub prp, substSet sbst st)
     | PCase(t1,ty,arms) -> PCase(t1, substSet sbst ty, psubarms arms)
     | PAssure(None, prp1, prp2) -> PAssure(None, substProp sbst prp1, substProp sbst prp2)
     | PAssure(Some(y, st), prp1, prp2) ->
-	let (sbst', y') = updateBoundName sbst y in
-	  PAssure(Some (y, substSet sbst st), 
-		 substProp sbst' prp1, substProp sbst' prp2)
+  let (sbst', y') = updateBoundName sbst y in
+    PAssure(Some (y, substSet sbst st), 
+     substProp sbst' prp1, substProp sbst' prp2)
     | PLet((y,st), trm, prp) ->
-	let (sbst', y') = updateBoundName sbst y in
-	  PLet((y',substSet sbst st), 
-	      subst sbst trm, substProp sbst' prp)
+  let (sbst', y') = updateBoundName sbst y in
+    PLet((y',substSet sbst st), 
+        subst sbst trm, substProp sbst' prp)
+    | PBool trm -> PBool(subst sbst trm)
 
   and psubarms = function
       [] -> []
     | (l,None,p)::rest -> (l,None, sub p)::(psubarms rest)
     | (l,Some(y,sopt),p)::rest ->
-	let (sbst',y') = updateBoundName sbst y in
+  let (sbst',y') = updateBoundName sbst y in
           (l, Some(y', substSet sbst sopt), substProp sbst' p) ::
-	    (psubarms rest)
+      (psubarms rest)
   in sub
 
 and substSet sbst =
@@ -938,34 +958,34 @@ and substSet sbst =
     | Empty -> Empty
     | Bool -> Bool
     | Basic (SLN (None, stnm), knd) ->
-	getSetvar sbst stnm (substSetkind sbst knd)
+  getSetvar sbst stnm (substSetkind sbst knd)
     | Basic (SLN (Some mdl, stnm), knd) -> 
-	Basic (SLN (Some (substModel sbst mdl), stnm), substSetkind sbst knd)
+  Basic (SLN (Some (substModel sbst mdl), stnm), substSetkind sbst knd)
     | Product ss -> Product (substProd sbst ss)
     | Exp(y, s1, s2) ->
-	let (sbst', y') = updateBoundName sbst y in 
+  let (sbst', y') = updateBoundName sbst y in 
           Exp(y', sub s1, substSet sbst' s2)
     | Subset((y,sopt),u) ->
-	let (sbst', y') = updateBoundName sbst y in 
+  let (sbst', y') = updateBoundName sbst y in 
           Subset((y',substSet sbst sopt),
-  	        substProp sbst' u)
+            substProp sbst' u)
     | Quotient(st,prp)   -> 
         Quotient(sub st, substProp sbst prp)
     | Rz st -> Rz (sub st)
     | SApp(st1,trm2) -> SApp(sub st1, subst sbst trm2)
     | Sum lsos ->
-	let f (l, so) = (l, doOpt (substSet sbst) so)
-	in Sum (List.map f lsos)
+  let f (l, so) = (l, doOpt (substSet sbst) so)
+  in Sum (List.map f lsos)
     | SLambda((y,st),u) ->
-	let (sbst', y') = updateBoundName sbst y in 
+  let (sbst', y') = updateBoundName sbst y in 
           SLambda((y',substSet sbst st),
-  	         substSet sbst' u)
+             substSet sbst' u)
 
   and substProd sbst = function
       [] -> []
     | (y,st)::rest -> 
-	let (sbst', y') = updateBoundName sbst y in 
-	  (y', substSet sbst st) :: (substProd sbst' rest)
+  let (sbst', y') = updateBoundName sbst y in 
+    (y', substSet sbst st) :: (substProd sbst' rest)
 
 
   in sub
@@ -974,12 +994,12 @@ and substModel sbst = function
     ModelName strng -> getModelvar sbst strng
   | ModelProj (mdl, lbl) -> ModelProj(substModel sbst mdl, lbl)
   | ModelApp (mdl1, mdl2) -> ModelApp(substModel sbst mdl1,
-				     substModel sbst mdl2)
+             substModel sbst mdl2)
 
 and substSetkind sbst = function
     KindArrow(y, st, k) -> 
       let (sbst', y') = updateBoundName sbst y in
-	KindArrow(y', substSet sbst st, substSetkind sbst' k)
+  KindArrow(y', substSet sbst st, substSetkind sbst' k)
   | KindSet -> KindSet
 
 and substProptype sbst = function
@@ -988,22 +1008,22 @@ and substProptype sbst = function
   | EquivProp ty -> EquivProp (substSet sbst ty)
   | PropArrow(y,st,prpty) ->
       let (sbst', y') = updateBoundName sbst y in
-	PropArrow(y', substSet sbst st, substProptype sbst' prpty)
-	  
+  PropArrow(y', substSet sbst st, substProptype sbst' prpty)
+    
 and substTheory sbst = function 
     Theory elts       -> Theory (substTheoryElts sbst elts)
   | TheoryName thrynm -> getTheoryvar sbst thrynm
   | TheoryArrow ((y, thry1), thry2) ->
       let (sbst',y') = updateBoundName sbst y in
-	TheoryArrow((y, substTheory sbst thry1),
-		   substTheory sbst' thry2)
+  TheoryArrow((y, substTheory sbst thry1),
+       substTheory sbst' thry2)
   | TheoryLambda ((y, thry1), thry2) ->
       let (sbst',y') = updateBoundName sbst y in
-	TheoryLambda((y, substTheory sbst thry1),
-		    substTheory sbst' thry2)
+  TheoryLambda((y, substTheory sbst thry1),
+        substTheory sbst' thry2)
   | TheoryApp (thry, mdl) ->
       TheoryApp (substTheory sbst thry,  
-		substModel sbst mdl)
+    substModel sbst mdl)
   | TheoryProj(mdl,nm) ->
       TheoryProj(substModel sbst mdl, nm)
 
@@ -1011,9 +1031,9 @@ and substTheoryKind sub = function
     ModelTheoryKind               -> ModelTheoryKind
   | TheoryKindArrow((y,thry), tk) ->
       let(sub', y') = updateBoundName sub y in
-	TheoryKindArrow((y', substTheory sub thry), 
-		        substTheoryKind sub' tk)
-	
+  TheoryKindArrow((y', substTheory sub thry), 
+            substTheoryKind sub' tk)
+  
 
 (* Can't implement this fully without an outer label / inner variable
    distinction. !
@@ -1024,27 +1044,27 @@ and substTheoryElts sub = function
       let _ = checkNoCapture sub nm
       in let sub' = removeName sub nm
       in 
-	   Declaration(nm, DeclSet(doOpt (substSet sub) stopt, 
-				  substSetkind sub knd)) ::
-	     (substTheoryElts sub' rest)
+     Declaration(nm, DeclSet(doOpt (substSet sub) stopt, 
+          substSetkind sub knd)) ::
+       (substTheoryElts sub' rest)
   | Declaration(nm, DeclProp(prpopt, pt)) :: rest ->
       let _ = checkNoCapture sub nm
       in let this' = Declaration(nm, DeclProp(doOpt (substProp sub) prpopt,
-					     substProptype sub pt))
+               substProptype sub pt))
       in let sub'  = removeName sub nm
       in let rest' = substTheoryElts sub' rest
       in this' :: rest'
   | Declaration(nm, DeclTerm(trmopt, ty)) :: rest ->
       let _ = checkNoCapture sub nm
       in let this' = Declaration(nm, DeclTerm(doOpt (subst sub) trmopt,
-					       substSet sub ty))
+                 substSet sub ty))
       in let sub'  = removeName sub nm
       in let rest' = substTheoryElts sub' rest
       in this' :: rest'
   | Declaration(nm, DeclSentence(mbnds, prp)) :: rest ->
       (* Even though you can't refer to an axiom, it's really confusing
          to have an axiom a and a term a in the same scope.  Worse, 
-	 both would generate a module value "a" in the final output code.
+   both would generate a module value "a" in the final output code.
          So, we pretend that names of axioms are just like names of 
          propositions. *)
       let _ = checkNoCapture sub nm 

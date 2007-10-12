@@ -409,11 +409,8 @@ and optTerm ctx orig_term =
           (** The unit value is already as simple as possible. *)
           (UnitTy, EmptyTuple)
 
-      | BTrue ->
-          (BoolTy, BTrue)
-
-      | BFalse ->
-          (BoolTy, BFalse)
+      | BConst b ->
+          (BoolTy, BConst b)
 
       | Dagger -> 
           (TopTy, Dagger)
@@ -820,213 +817,213 @@ and optProp ctx orig_prp =
             | Not (Not p') -> p'
             | p'    -> Not p')
             
-	| Forall((n,ty), p) ->
-	    let (ctx, n) = renameBoundTermVar ctx n
+        | Forall((n,ty), p) ->
+            let (ctx, n) = renameBoundTermVar ctx n
       in let p' = optProp (insertTermVariable ctx n ty) p
-	    in let doForall(nm1,ty1,prp2) =
-	      begin
-		      match findEqPremise nm1 prp2 with
-		      | None ->
-		        begin
-		          match ty1 with 
-		          | TupleTy tys when worthFlatteningInProp nm1 prp2 ->
-		              let nms = refreshList (List.map (fun _ -> nm1) tys) in
+            in let doForall(nm1,ty1,prp2) =
+              begin
+                      match findEqPremise nm1 prp2 with
+                      | None ->
+                        begin
+                          match ty1 with 
+                          | TupleTy tys when worthFlatteningInProp nm1 prp2 ->
+                              let nms = refreshList (List.map (fun _ -> nm1) tys) in
                   let bindings = List.combine nms tys in
                   let sub = insertTermvar emptysubst nm1 (Tuple(List.map id nms)) in
                   let prp2' = substProp sub prp2 in
                   optProp ctx (nested_forall bindings prp2')
-		          | _ -> Forall((nm1,ty1),prp2)
-	          end
-		      | Some(trm,prp2') -> 
-		          optReduceProp ctx (PLet(VarPat n,trm,prp2'))
-	      end
-	    in (match (optTy ctx ty, p') with
-		(_, True) -> 
-		  (* forall x:t. True  ===  True *)
-		  True
-	      | (UnitTy, _) -> 
-		  (* forall x:Unit. p'  ===  let x=() in p' *)
-		  optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
-	      | (VoidTy, _) -> 
-		  (* forall x:Void. p'  ===   True *)
-		  True
-	      | (ty1, Imply (PApp (SimpleSupport sty2, Id n3), p'')) when (ty1 = ty_of_simple_ty sty2 && n3 = LN(None,n)) ->
-		  ForallSupport((n,sty2), p'')
-	      | (ty',_) -> 
-		  (* forall x:t. ((... /\ x=e /\ ...) -> p) 
-		      ===  let x=e in ((... /\ ...) -> p)
-		     when x is not free in e.  *)
-		  doForall(n, ty', p'))
-	      
-	| ForallSupport((n,sty),p) ->
-	    let (ctx, n) = renameBoundTermVar ctx n
-	    in let doForallSupport(nm1,sty1,prp2) =
-	      begin
-		match findEqPremise nm1 prp2 with
-		    None -> ForallSupport((nm1,sty1),prp2)
-		  | Some(trm,prp2') -> 
-		      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
-	      end
-	    in let ctx' = insertTermVariable ctx n (ty_of_simple_ty sty)
-	    in let ctx'' = ctx'  (* XXX Should insert fact that n is total! *)
-	    in let p' = optProp ctx'' p
-	    in (match (optSimpleTy ctx sty, p') with
-		(_, True) -> True
-	      | (SUnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
-	      | (SVoidTy, _) -> True
-	      | (sty',_) -> doForallSupport(n, sty', p'))
+                          | _ -> Forall((nm1,ty1),prp2)
+                  end
+                      | Some(trm,prp2') -> 
+                          optReduceProp ctx (PLet(VarPat n,trm,prp2'))
+              end
+            in (match (optTy ctx ty, p') with
+                (_, True) -> 
+                  (* forall x:t. True  ===  True *)
+                  True
+              | (UnitTy, _) -> 
+                  (* forall x:Unit. p'  ===  let x=() in p' *)
+                  optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
+              | (VoidTy, _) -> 
+                  (* forall x:Void. p'  ===   True *)
+                  True
+              | (ty1, Imply (PApp (SimpleSupport sty2, Id n3), p'')) when (ty1 = ty_of_simple_ty sty2 && n3 = LN(None,n)) ->
+                  ForallSupport((n,sty2), p'')
+              | (ty',_) -> 
+                  (* forall x:t. ((... /\ x=e /\ ...) -> p) 
+                      ===  let x=e in ((... /\ ...) -> p)
+                     when x is not free in e.  *)
+                  doForall(n, ty', p'))
+              
+        | ForallSupport((n,sty),p) ->
+            let (ctx, n) = renameBoundTermVar ctx n
+            in let doForallSupport(nm1,sty1,prp2) =
+              begin
+                match findEqPremise nm1 prp2 with
+                    None -> ForallSupport((nm1,sty1),prp2)
+                  | Some(trm,prp2') -> 
+                      optReduceProp ctx (PLet(VarPat n,trm,prp2'))
+              end
+            in let ctx' = insertTermVariable ctx n (ty_of_simple_ty sty)
+            in let ctx'' = ctx'  (* XXX Should insert fact that n is total! *)
+            in let p' = optProp ctx'' p
+            in (match (optSimpleTy ctx sty, p') with
+                (_, True) -> True
+              | (SUnitTy, _) -> optReduceProp ctx (PLet(VarPat n,EmptyTuple,p'))
+              | (SVoidTy, _) -> True
+              | (sty',_) -> doForallSupport(n, sty', p'))
 
-	| PObligation (bnds, p, q) ->
-	  let (names,tys) = List.split bnds
-	  in let tys'  = List.map (optTy ctx) tys
-	  in let bnds' = List.combine names tys'
-	  in let (ctx', bnds'') = optBnds ctx bnds'
-	  in let p' = optProp ctx' p
+        | PObligation (bnds, p, q) ->
+          let (names,tys) = List.split bnds
+          in let tys'  = List.map (optTy ctx) tys
+          in let bnds' = List.combine names tys'
+          in let (ctx', bnds'') = optBnds ctx bnds'
+          in let p' = optProp ctx' p
 
-	  in let ctx'' = if bnds = [] then insertFact ctx' p else ctx'
-	  in let q' = optProp ctx'' q
-	    in 
-		 begin
-		   match (bnds'', p') with
-		       ([], True) -> q'
-		     | _ -> PObligation(bnds'', p', q')
-		 end
+          in let ctx'' = if bnds = [] then insertFact ctx' p else ctx'
+          in let q' = optProp ctx'' q
+            in 
+                 begin
+                   match (bnds'', p') with
+                       ([], True) -> q'
+                     | _ -> PObligation(bnds'', p', q')
+                 end
 
-	| PLambda ((n,ty), p) ->
-	    let (ctx, n) = renameBoundTermVar ctx n
-	    in let p' = optProp (insertTermVariable ctx n ty) p
-	    in let ty' = optTy ctx ty
-	    in
-		 optReduceProp ctx (PLambda((n,ty'), p'))
-		   
-	| PApp (p, t) -> 
-	    let p' = optProp ctx p
-	    in let t' = optTerm' ctx t
-	    in
-		 optReduceProp ctx (PApp(p', t'))
-		   
-	| PCase (e, arms) ->
-	  let (ty, e') = optTerm ctx e in
-	  let doArm (pat, p3) =
-	    let (ctx',pat') = optPattern ctx pat in
-	    let ctx'' = insertPattern ctx' pat' in
-	    let p3' = optProp ctx'' p3 in
-	    (pat', p3')   in
-	  (* If all of the arms are equal, we'd like to eliminate the
-	     case altogether.  This isn't quite right, though, since
-	       "pcase ... of
+        | PLambda ((n,ty), p) ->
+            let (ctx, n) = renameBoundTermVar ctx n
+            in let p' = optProp (insertTermVariable ctx n ty) p
+            in let ty' = optTy ctx ty
+            in
+                 optReduceProp ctx (PLambda((n,ty'), p'))
+                   
+        | PApp (p, t) -> 
+            let p' = optProp ctx p
+            in let t' = optTerm' ctx t
+            in
+                 optReduceProp ctx (PApp(p', t'))
+                   
+        | PCase (e, arms) ->
+          let (ty, e') = optTerm ctx e in
+          let doArm (pat, p3) =
+            let (ctx',pat') = optPattern ctx pat in
+            let ctx'' = insertPattern ctx' pat' in
+            let p3' = optProp ctx'' p3 in
+            (pat', p3')   in
+          (* If all of the arms are equal, we'd like to eliminate the
+             case altogether.  This isn't quite right, though, since
+               "pcase ... of
             `inl x => x
           | `inr x => x"
        cannot be further simplified.  So, we check that the
        right-hand-sides are equal *and* that the right-hand-sides
        do not refer to any pattern variables. *)
-	  let constantArm (pat, prp) =
-	     let pat_vars = bvPat pat in
-	     let prp_vars = fvProp prp in
-	     disjointNameLists pat_vars prp_vars    in
-	  let arms' = List.map doArm arms in
+          let constantArm (pat, prp) =
+             let pat_vars = bvPat pat in
+             let prp_vars = fvProp prp in
+             disjointNameLists pat_vars prp_vars    in
+          let arms' = List.map doArm arms in
     let first_prp = snd (List.hd arms') in    (* PCase must be non-empty *)
     let rest_prps = List.map snd (List.tl arms') in
     if (List.for_all ((=) first_prp) rest_prps && 
         List.for_all constantArm arms') then
       first_prp
     else
-	    optReduceProp ctx (PCase(e',arms'))
+            optReduceProp ctx (PCase(e',arms'))
 
-	| PLet(pat, trm1, prp2) ->
+        | PLet(pat, trm1, prp2) ->
 
-	    let (ty1, trm1') = optTerm ctx trm1
-	    in let (ctx', pat') = optPattern ctx pat
-	    in let ctx' = insertTermVariableLet ctx' pat' ty1
-	    in let prp2' = optProp ctx' prp2
-	    in let prp' = optReduceProp ctx (PLet(pat', trm1', prp2'))
-	    in let prp'' = 
-	      match prp' with
+            let (ty1, trm1') = optTerm ctx trm1
+            in let (ctx', pat') = optPattern ctx pat
+            in let ctx' = insertTermVariableLet ctx' pat' ty1
+            in let prp2' = optProp ctx' prp2
+            in let prp' = optReduceProp ctx (PLet(pat', trm1', prp2'))
+            in let prp'' = 
+              match prp' with
 
-		PLet(TuplePat pats, Tuple trms, prp2) ->
-		  (** Turn a let of a tuple into a sequence of bindings
-		      of the components, if the tuple is never referred
-		      to as a whole *)
-		  let prp'' = nested_plet' pats trms prp2
-		  in optProp ctx prp'' 
-		| PLet(VarPat nm1, (Obligation([(nm2,ty2)], prp2, 
-				       Id(LN(None,nm2'))) as obprp), prp3) 
-		    when nm2 = nm2' ->
-	       		    (** Now that assures start out looking like indefinite
-			descriptions, one pattern that has cropped up 
-			occasionally is:
-		        let y = (assure x:s. phi(x) in x) in prp3.
-			When optimizing prp3, we should be able to use the
-			fact that phi(y) holds, so we do that here.
+                PLet(TuplePat pats, Tuple trms, prp2) ->
+                  (** Turn a let of a tuple into a sequence of bindings
+                      of the components, if the tuple is never referred
+                      to as a whole *)
+                  let prp'' = nested_plet' pats trms prp2
+                  in optProp ctx prp'' 
+                | PLet(VarPat nm1, (Obligation([(nm2,ty2)], prp2, 
+                                       Id(LN(None,nm2'))) as obprp), prp3) 
+                    when nm2 = nm2' ->
+                            (** Now that assures start out looking like indefinite
+                        descriptions, one pattern that has cropped up 
+                        occasionally is:
+                        let y = (assure x:s. phi(x) in x) in prp3.
+                        When optimizing prp3, we should be able to use the
+                        fact that phi(y) holds, so we do that here.
                     *)
-		    let (ctx',nm1) = renameBoundTermVar ctx nm1
+                    let (ctx',nm1) = renameBoundTermVar ctx nm1
         in let prp2' = substProp (renaming nm2 nm1) prp2
-		    in let ctx' = insertTermVariable ctx' nm1 ty2
-		    in let ctx' = insertFact ctx' prp2'
-		    in let prp3' = optProp ctx' prp3
-		    in 
-			 optReduceProp ctx (PLet(VarPat nm1, obprp, prp3'))
+                    in let ctx' = insertTermVariable ctx' nm1 ty2
+                    in let ctx' = insertFact ctx' prp2'
+                    in let prp3' = optProp ctx' prp3
+                    in 
+                         optReduceProp ctx (PLet(VarPat nm1, obprp, prp3'))
 
-		| PLet(VarPat nm1, (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
-				       (Tuple[Id(LN(None,nm2'));
-					      Id(LN(None,nm3'))])) as obprp), 
-		      prp3)
-		    when nm2 = nm2' && nm3 = nm3' && nm2 <> nm3 ->
-		    (** Now that assures start out looking like indefinite
-			descriptions, one pattern that has cropped up 
-			occasionally is:
-		        let y = (assure (x,r). phi(x,r) in (x,r) in trm.
-			When optimizing trm, we should be able to use the
-			fact that phi(pi0 y, pi1 y) holds, so we do that here.
+                | PLet(VarPat nm1, (Obligation([(nm2,ty2);(nm3,ty3)], prp2, 
+                                       (Tuple[Id(LN(None,nm2'));
+                                              Id(LN(None,nm3'))])) as obprp), 
+                      prp3)
+                    when nm2 = nm2' && nm3 = nm3' && nm2 <> nm3 ->
+                    (** Now that assures start out looking like indefinite
+                        descriptions, one pattern that has cropped up 
+                        occasionally is:
+                        let y = (assure (x,r). phi(x,r) in (x,r) in trm.
+                        When optimizing trm, we should be able to use the
+                        fact that phi(pi0 y, pi1 y) holds, so we do that here.
                     *)
-		    let subst = insertTermvar emptysubst nm2 (Proj(0,Id(LN(None,nm1))))
-		    in let subst = insertTermvar subst nm3 (Proj(1,Id(LN(None,nm1))))
+                    let subst = insertTermvar emptysubst nm2 (Proj(0,Id(LN(None,nm1))))
+                    in let subst = insertTermvar subst nm3 (Proj(1,Id(LN(None,nm1))))
                     in let prp2' = substProp subst prp2
-		    in let (ctx',nm1) = renameBoundTermVar ctx nm1
-		    in let ctx' = insertTermVariable ctx' nm1 (TupleTy[ty2;ty3])
-		    in let ctx' = insertFact ctx' prp2'
-		    in let prp3' = optProp ctx' prp3
-		    in 
-			 optReduceProp ctx (PLet(VarPat nm1, obprp, prp3'))
-		| PLet(VarPat nm1, trm2, prp3) ->
-		  begin
-		    match hnfTy ctx (typeOf ctx trm2) with
-		      TupleTy tys ->
-			  if worthFlatteningInProp nm1 prp3 then
-			    let nms = refreshList 
-				(List.map (fun _ -> nm1) tys)
-			    in let pat =
-			      TuplePat(List.map (fun n -> VarPat n) nms)
-			    in 
-			    optProp ctx
-			      (PLet(pat, trm2,
-				    substProp 
-				      (insertTermvar emptysubst nm1
-					 (Tuple(List.map id nms))) prp3))
-			  else
-			    prp'
-		    | _ -> prp'
-		  end
-		| _ -> prp'
-	    in 
-		 prp''   
+                    in let (ctx',nm1) = renameBoundTermVar ctx nm1
+                    in let ctx' = insertTermVariable ctx' nm1 (TupleTy[ty2;ty3])
+                    in let ctx' = insertFact ctx' prp2'
+                    in let prp3' = optProp ctx' prp3
+                    in 
+                         optReduceProp ctx (PLet(VarPat nm1, obprp, prp3'))
+                | PLet(VarPat nm1, trm2, prp3) ->
+                  begin
+                    match hnfTy ctx (typeOf ctx trm2) with
+                      TupleTy tys ->
+                          if worthFlatteningInProp nm1 prp3 then
+                            let nms = refreshList 
+                                (List.map (fun _ -> nm1) tys)
+                            in let pat =
+                              TuplePat(List.map (fun n -> VarPat n) nms)
+                            in 
+                            optProp ctx
+                              (PLet(pat, trm2,
+                                    substProp 
+                                      (insertTermvar emptysubst nm1
+                                         (Tuple(List.map id nms))) prp3))
+                          else
+                            prp'
+                    | _ -> prp'
+                  end
+                | _ -> prp'
+            in 
+                 prp''   
     in
       (*
-	print_string ">>> ";
-	print_endline (string_of_proposition orig_prp);
-	print_string "<<< ";
-	print_endline (string_of_proposition result_prop);
-      *)	
+        print_string ">>> ";
+        print_endline (string_of_proposition orig_prp);
+        print_string "<<< ";
+        print_endline (string_of_proposition result_prop);
+      *)        
       if (checkFact ctx result_prop) then
-	begin
-	  (*	  print_endline "--> True";  *)
-	  True
-	end
+        begin
+          (*      print_endline "--> True";  *)
+          True
+        end
       else
-	result_prop
+        result_prop
   with e ->
     (print_endline ("\n\n...in " ^
-		       string_of_proposition orig_prp);
+                       string_of_proposition orig_prp);
      raise e)
 
 and optAssertion ctx asn = 
@@ -1041,10 +1038,10 @@ and optAssertion ctx asn =
     in let aprop' = optProp ctx' asn.aprop
       
     in let aprop'' = if (!Flags.do_hoist) then
-	let (obs, prp') = hoistProp aprop' in
-	  optProp ctx' (foldPObligation obs prp') 
+        let (obs, prp') = hoistProp aprop' in
+          optProp ctx' (foldPObligation obs prp') 
       else
-	aprop'
+        aprop'
     in
     {alabel = asn.alabel;
      atyvars = atyvars';
@@ -1059,13 +1056,13 @@ and insertAssertionFacts ctx = function
     [] -> ctx
   | asn::rest -> 
       if (asn.atyvars = [] && asn.apbnds = []) then
-	insertAssertionFacts (insertFact ctx asn.aprop) rest
+        insertAssertionFacts (insertFact ctx asn.aprop) rest
       else
       (* We don't have syntax for forall-set quantified propositions,
-	 or for forall-proposition quantified propositions,
-	 so we can't "remember" such a proposition as one of our facts.
-	 We just forget about it. *)
-	insertAssertionFacts ctx rest
+         or for forall-proposition quantified propositions,
+         so we can't "remember" such a proposition as one of our facts.
+         We just forget about it. *)
+        insertAssertionFacts ctx rest
       
 and optModest ctx {ty=t; tot=p; per=q} =
   {ty = optTy ctx t;
@@ -1075,88 +1072,88 @@ and optModest ctx {ty=t; tot=p; per=q} =
 and optElems ctx orig_elems = 
 (*  try *)
     match orig_elems with
-	[] -> ([], ctx)
+        [] -> ([], ctx)
       |  Spec(name, ValSpec (tyvars,ty), assertions) :: rest ->
-	   let ty'  = optTy ctx ty in
-	   let ctx' = insertTermVariable ctx name ty' in
-	   let assertions' = optAssertions ctx' assertions
-	   in let ctx' = insertAssertionFacts ctx' assertions'
-	   in let (rest', ctx'') = optElems ctx' rest in
-		(Spec (name, ValSpec (tyvars,ty'), assertions') :: rest', 
-		ctx'')
-		  
+           let ty'  = optTy ctx ty in
+           let ctx' = insertTermVariable ctx name ty' in
+           let assertions' = optAssertions ctx' assertions
+           in let ctx' = insertAssertionFacts ctx' assertions'
+           in let (rest', ctx'') = optElems ctx' rest in
+                (Spec (name, ValSpec (tyvars,ty'), assertions') :: rest', 
+                ctx'')
+                  
       |  Assertion assertion  ::  rest ->
-	   let assertion' = optAssertion ctx assertion in
-	   let (rest', ctx') = optElems ctx rest in
-	     (if assertion'.aprop = True then rest' else Assertion assertion' :: rest'), ctx'
+           let assertion' = optAssertion ctx assertion in
+           let (rest', ctx') = optElems ctx rest in
+             (if assertion'.aprop = True then rest' else Assertion assertion' :: rest'), ctx'
 (*
       |  Spec(name, ModulSpec 
-	   (SignatFunctor((nm1,Signat[Spec(nm2,TySpec None,assns2)]),
-			  Signat[Spec(nm3,ValSpec([],ty3),assns3)])),
-	     assns1) ->
-	   (* XXX What to do with the assertions? *)
-	   Spec(name, 
-*)	        
+           (SignatFunctor((nm1,Signat[Spec(nm2,TySpec None,assns2)]),
+                          Signat[Spec(nm3,ValSpec([],ty3),assns3)])),
+             assns1) ->
+           (* XXX What to do with the assertions? *)
+           Spec(name, 
+*)              
 
       |  Spec(name, ModulSpec signat, assertions) :: rest -> 
-	   let signat' = optSignat ctx signat
-	   in let ctx' = insertModulVariable ctx name signat'
-	   in let assertions' = optAssertions ctx' assertions
-	   in let ctx'' = insertAssertionFacts ctx' assertions'
-	   in let (rest', ctx''') = optElems ctx'' rest 
-	   in let default_spec = Spec(name, ModulSpec signat', assertions')
-	   in let spec' = 
-	     if (!Flags.do_poly) then
-	       match tryPolymorph ctx name signat' with
-		 None       -> default_spec
-	       | Some spec' -> spec'
-	     else
-	       default_spec
-	   in
-	      (spec'::rest'), ctx''
+           let signat' = optSignat ctx signat
+           in let ctx' = insertModulVariable ctx name signat'
+           in let assertions' = optAssertions ctx' assertions
+           in let ctx'' = insertAssertionFacts ctx' assertions'
+           in let (rest', ctx''') = optElems ctx'' rest 
+           in let default_spec = Spec(name, ModulSpec signat', assertions')
+           in let spec' = 
+             if (!Flags.do_poly) then
+               match tryPolymorph ctx name signat' with
+                 None       -> default_spec
+               | Some spec' -> spec'
+             else
+               default_spec
+           in
+              (spec'::rest'), ctx''
 
       |  Spec(nm, TySpec None, assertions) :: rest -> 
-	   let ctx' = insertTypeVariable ctx nm None
-	   in let assertions' = List.filter (fun {aprop=a} -> a <> True) (List.map (optAssertion ctx') assertions )
-	   in let ctx'' = insertAssertionFacts ctx' assertions'
-	   in let rest', ctx''' = optElems ctx'' rest 
-	   in
-		(Spec (nm, TySpec None, assertions') :: rest'), ctx'''
+           let ctx' = insertTypeVariable ctx nm None
+           in let assertions' = List.filter (fun {aprop=a} -> a <> True) (List.map (optAssertion ctx') assertions )
+           in let ctx'' = insertAssertionFacts ctx' assertions'
+           in let rest', ctx''' = optElems ctx'' rest 
+           in
+                (Spec (nm, TySpec None, assertions') :: rest'), ctx'''
 
       |  Spec(nm, TySpec (Some ty), assertions) :: rest ->
-	   let ty' = optTy ctx ty 
-	   in let ctx' = insertTypeVariable ctx nm (Some ty') 
-	   in let assertions' = optAssertions ctx' assertions
-	   in let ctx'' = insertAssertionFacts ctx' assertions'
-	   in let rest', ctx''' = optElems ctx'' rest 
-	   in
-	     (Spec(nm, TySpec(Some ty'), assertions') :: rest', 
-	     ctx''')
+           let ty' = optTy ctx ty 
+           in let ctx' = insertTypeVariable ctx nm (Some ty') 
+           in let assertions' = optAssertions ctx' assertions
+           in let ctx'' = insertAssertionFacts ctx' assertions'
+           in let rest', ctx''' = optElems ctx'' rest 
+           in
+             (Spec(nm, TySpec(Some ty'), assertions') :: rest', 
+             ctx''')
 
       | Spec(nm, SignatSpec sg, assertions) :: rest ->
-	  let sg' = optSignat ctx sg
-	  in let ctx' = insertSignatVariable ctx nm sg'
-	  in let assertions' = optAssertions ctx' assertions
-	  in let ctx'' = insertAssertionFacts ctx' assertions'
-	  in let (rest', ctx''') = optElems ctx'' rest 
-	  in (Spec(nm, SignatSpec sg', assertions') :: rest',
-	     ctx''')
+          let sg' = optSignat ctx sg
+          in let ctx' = insertSignatVariable ctx nm sg'
+          in let assertions' = optAssertions ctx' assertions
+          in let ctx'' = insertAssertionFacts ctx' assertions'
+          in let (rest', ctx''') = optElems ctx'' rest 
+          in (Spec(nm, SignatSpec sg', assertions') :: rest',
+             ctx''')
 
       | Spec(nm, PropSpec pt, assertions) :: rest ->
-	  let pt' = optPt ctx pt
-	  in let ctx' = insertPropVariable ctx nm pt'
-	  in let assertions' = optAssertions ctx' assertions
-	  in let ctx'' = insertAssertionFacts ctx' assertions'
-	  in let (rest', ctx''') = optElems ctx'' rest 
-	  in (Spec(nm, PropSpec pt', assertions') :: rest',
-	     ctx''')
+          let pt' = optPt ctx pt
+          in let ctx' = insertPropVariable ctx nm pt'
+          in let assertions' = optAssertions ctx' assertions
+          in let ctx'' = insertAssertionFacts ctx' assertions'
+          in let (rest', ctx''') = optElems ctx'' rest 
+          in (Spec(nm, PropSpec pt', assertions') :: rest',
+             ctx''')
 
       |  Comment cmmnt :: rest -> 
-	   let rest', ctx' = optElems ctx rest in
-	     (Comment cmmnt :: rest', ctx')
+           let rest', ctx' = optElems ctx rest in
+             (Comment cmmnt :: rest', ctx')
 (*  with e ->
     (print_endline ("\n\n...in " ^
-		       (String.concat "\n" (List.map string_of_spec orig_elems)));
+                       (String.concat "\n" (List.map string_of_spec orig_elems)));
      raise e)
 *)
 
@@ -1164,7 +1161,7 @@ and optSignat ctx = function
     SignatName s -> SignatName s
   | Signat body -> 
       let body', ctx' = optElems ctx body in
-	Signat body'
+        Signat body'
   | SignatFunctor(arg, body) ->
       let    ( (mdlnm, _) as arg', ctx'  ) = optStructBinding ctx arg
       in let body' = optSignat ctx' body
@@ -1174,12 +1171,12 @@ and optSignat ctx = function
         let sg1' = optSignat ctx sg1
         in let mdl' = optModul' ctx mdl
         in SignatApp(sg1', mdl')
-      else	
-	optSignat ctx (hnfSignat ctx sg)
+      else      
+        optSignat ctx (hnfSignat ctx sg)
   | SignatProj(mdl, nm) ->
       let mdl' = optModul' ctx mdl
       in SignatProj(mdl',nm)
-	     
+             
 and optStructBinding ctx (m, signat) =
   let signat' = optSignat ctx signat in
     ( (m, signat'), insertModulVariable ctx m signat')
@@ -1189,16 +1186,16 @@ and optStructBindings ctx = function
   | (m, signat) :: bnd ->
       let signat' = optSignat ctx signat in
       let bnd', ctx'' = optStructBindings ctx bnd in
-	( (m, signat') :: bnd',
-	insertModulVariable ctx'' m signat')
+        ( (m, signat') :: bnd',
+        insertModulVariable ctx'' m signat')
 
 and optModul' ctx orig_mdl = 
   match orig_mdl with
       ModulName nm -> orig_mdl
     | ModulProj (mdl, nm) ->  
-	ModulProj(optModul' ctx mdl, nm)
+        ModulProj(optModul' ctx mdl, nm)
     | ModulApp (mdl1, mdl2) -> 
-	ModulApp(optModul' ctx mdl1, optModul' ctx mdl2)
+        ModulApp(optModul' ctx mdl1, optModul' ctx mdl2)
     | ModulStruct defs -> ModulStruct (optDefs ctx defs)
 
 and optDefs ctx = function
