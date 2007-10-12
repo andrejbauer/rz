@@ -249,10 +249,8 @@ and annotateEqual cntxt orig_expr expr1 expr2 =
 and annotateSubset cntxt orig_expr sbnd1 expr2 = 
   let (cntxt', lbnd1) = annotateSimpleBinding cntxt orig_expr sbnd1
   in
-    match annotateExpr cntxt' expr2 with
-      ResProp(prp2', (L.Prop | L.StableProp)) ->
-           ResSet( L.Subset(lbnd1, prp2'), L.KindSet )
-    | _ -> E.notWhatsExpectedInError expr2 "proposition" orig_expr
+    let (prp2', _) = annotateProperProp cntxt' orig_expr expr2 in
+    ResSet( L.Subset(lbnd1, prp2'), L.KindSet )
 
 (* Rz expr1 *)
 and annotateRz cntxt orig_expr expr1 =

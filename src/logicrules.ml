@@ -548,6 +548,26 @@ let rec hnfProp cntxt = function
         hnfProp cntxt (substProp sub prp2)
         
   | PAssure(_, _, prp) -> hnfProp cntxt prp
+  
+  | (PBool trm) as orig_prop ->
+      begin
+        match (hnfTerm cntxt trm) with
+           BConst true -> True
+         | BConst false -> False
+         | BNot trm' -> Not (PBool trm')
+         | BOp (AndOp, trms) -> And (List.map fPBool trms)
+         | BOp (OrOp, trms) -> 
+              let rec loop n = function
+                    [] -> []
+                  | t::ts ->  ("or" ^ string_of_int n, fPBool trm) ::
+                              loop (n+1) ts   in
+              Or (loop 0 trms)
+         | BOp (ImplyOp, [trm1;trm2]) ->
+              Imply(PBool trm1, PBool trm2)
+         | BOp (IffOp, [trm1;trm2]) ->
+              Iff(PBool trm1, PBool trm2)
+         | _ -> orig_prop
+      end
 
   | prp -> prp
 

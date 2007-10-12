@@ -181,6 +181,7 @@ let fSLambda x y = SLambda(x,y)
 let fLambda x y = Lambda(x,y)
 let fThe x y = The(x,y)
 let fImply x y = Imply(x,y)
+let fPBool x = PBool(x)
 
   (* Hack because Exp, PropArrow and KindArrow take a binding semantically,
      but not syntactically *)

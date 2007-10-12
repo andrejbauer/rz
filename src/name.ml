@@ -40,7 +40,7 @@ let uncapitalize = function
 let gensym =
   let k = ref 0 in
     function
-	[] ->  incr k; G (!k, [("gen", Word)])
+        [] ->  incr k; G (!k, [("gen", Word)])
       | lst -> incr k ; G (!k, lst)  
 
 let string_of_name =
@@ -53,10 +53,10 @@ let string_of_name =
     | (str,_) -> "(" ^ str ^ ")"
   in
     function
-	N nm -> string_of_bare_name nm
+        N nm -> string_of_bare_name nm
       | G (k, [nm]) -> string_of_bare_name nm ^ "<" ^ (string_of_int k) ^ ">"
       | G (k, lst) -> "gen" ^ string_of_int k ^
-	  "<" ^ (String.concat ";" (List.map string_of_bare_name lst)) ^ ">"
+          "<" ^ (String.concat ";" (List.map string_of_bare_name lst)) ^ ">"
 
 let perName n = N (string_of_name n, Per)
 
@@ -159,17 +159,17 @@ let splitString n =
 let nextString n =
   let r, s, p = splitString n in
     r ^ (match s, p with
-	     None, None -> "'"
-	   | None, Some "'" -> "''"
-	   | None, Some p -> "_1"
-	   | Some s, _ ->
-	       "_" ^ (
-		 try
-		   string_of_int (1 + int_of_string s)
-		 with
-		     Failure "int_of_string" -> "1"
-	       )
-	)
+             None, None -> "'"
+           | None, Some "'" -> "''"
+           | None, Some p -> "_1"
+           | Some s, _ ->
+               "_" ^ (
+                 try
+                   string_of_int (1 + int_of_string s)
+                 with
+                     Failure "int_of_string" -> "1"
+               )
+        )
 
 
 let freshNameString = gensym [("___1", Word)]
@@ -180,9 +180,9 @@ let freshLabel bad =
   let rec search k =
     let lbl = "or" ^ string_of_int k in
       if List.mem lbl bad then
-	search (k+1)
+        search (k+1)
       else
-	lbl
+        lbl
   in
     search 0
 
@@ -246,17 +246,17 @@ let makeTypename = function
   | "<>" -> "ty_neq"
   | str -> begin
       let names =
-	[('!',"_bang"); ('$',"_dollar"); ('%',"_percent");
-	 ('&',"_and"); ('*',"_star"); ('+',"_plus");
-	 ('-',"_minus"); ('.',"_dot"); ('/',"_slash");
-	 (':',"_colon"); ('<',"_less"); ('=',"_equal");
-	 ('>',"_greater"); ('?',"_question"); ('@',"_at");
-	 ('^',"_carat"); ('|',"_vert"); ('~',"_tilde")] in
+        [('!',"_bang"); ('$',"_dollar"); ('%',"_percent");
+         ('&',"_and"); ('*',"_star"); ('+',"_plus");
+         ('-',"_minus"); ('.',"_dot"); ('/',"_slash");
+         (':',"_colon"); ('<',"_less"); ('=',"_equal");
+         ('>',"_greater"); ('?',"_question"); ('@',"_at");
+         ('^',"_carat"); ('|',"_vert"); ('~',"_tilde")] in
       let n = String.length str in
       let rec map i =
-	if i < n then (List.assoc str.[i] names) ^ (map (i+1)) else ""
+        if i < n then (List.assoc str.[i] names) ^ (map (i+1)) else ""
       in
-	try "ty" ^ map 0 with Not_found -> failwith "Name.makeTypename: unexpected character"
+        try "ty" ^ map 0 with Not_found -> failwith "Name.makeTypename: unexpected character"
     end
 
 (*****************************)
@@ -308,21 +308,21 @@ let jointName nm1 nm2 =
   else
     begin
       (* nm1 and nm2 should be the same "sort", so if nm1 is a model name
-	 we know that nm2 is too.
+         we know that nm2 is too.
       *)
       let gensym' lst =
-	gensym (List.rev
-		  (List.fold_right
-		     (fun nm nms ->
-			match nm with
-			    N bn -> bn :: nms
-			  | G (_, ns) -> ns @ nms)
-		     lst
-		     []))
+        gensym (List.rev
+                  (List.fold_right
+                     (fun nm nms ->
+                        match nm with
+                            N bn -> bn :: nms
+                          | G (_, ns) -> ns @ nms)
+                     lst
+                     []))
       in
-	match validModelName nm1, validModelName nm2 with
-	    true, true   -> gensym' [nm1; nm2]
-	  | true, false  -> gensym' [nm1]
-	  | false, true  -> gensym' [nm2]
-	  | false, false -> freshModelNameString
+        match validModelName nm1, validModelName nm2 with
+            true, true   -> gensym' [nm1; nm2]
+          | true, false  -> gensym' [nm1]
+          | false, true  -> gensym' [nm2]
+          | false, false -> freshModelNameString
     end
