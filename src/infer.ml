@@ -629,33 +629,16 @@ and annotateLambda cntxt orig_expr binding1 expr2 =
 and annotateArrow cntxt orig_expr nm expr1 expr2 =
   let (cntxt, nm) = LR.renameBoundVar cntxt nm in
   match annotateExpr cntxt expr1 with
-  | ResPropType _ ->
-      E.noHigherOrderLogicError orig_expr
-  | ResKind _ ->
-      E.noPolymorphismError orig_expr
-  | ResSet (_, L.KindArrow _) 
-  | ResModel _ | ResTheory(_, L.TheoryKindArrow _)
-  | ResProp (_, (L.PropArrow _ | L.EquivProp _) )
-  | ResSentence _ ->
-    if (isWild nm) then
-      E.notWhatsExpectedInError expr1 "proper type, proposition, or boolean" orig_expr
-    else 
-      E.notWhatsExpectedInError expr1 "proper type" orig_expr 
-   
-  | ResTerm _ ->
-    if (isWild nm) then
-      let trm1 = try
-                    maybeAnnotateBoolTerm cntxt expr1 
-                 with NotBoolTerm ->
-                    E.notWhatsExpectedInError expr1 "boolean" orig_expr  in
-      let trm2 = try
-                    maybeAnnotateBoolTerm cntxt expr2 
-                 with NotBoolTerm ->
-                    E.notWhatsExpectedInError expr2 "boolean" orig_expr  in
-      ResTerm ( L.BOp(L.ImplyOp, [trm1;trm2]), L.Bool)
-    else
-      E.notWhatsExpectedInError expr1 "proper type" orig_expr 
-         
+  | ResTerm(trm1,ty1) when (isWild nm) && (LR.hnfSet cntxt ty1 = L.Bool) ->
+    begin
+      try
+        let trm2 = maybeAnnotateBoolTerm cntxt expr2 in 
+        ResTerm ( L.BOp(L.ImplyOp, [trm1;trm2]), L.Bool)
+      with NotBoolTerm ->
+        let (prp2, stab2) = annotateProperProp cntxt orig_expr expr2 in
+        ResProp (L.Imply(L.PBool trm1,prp2), stab2)
+    end
+
   | ResProp (prp1, (L.Prop | L.StableProp)) -> 
     if (isWild nm) then
       (* Typechecking an implication *)
@@ -699,6 +682,22 @@ and annotateArrow cntxt orig_expr nm expr1 expr2 =
       | _ -> 
           E.notWhatsExpectedInError expr2 "theory" orig_expr
     end
+
+  | ResPropType _ ->
+      E.noHigherOrderLogicError orig_expr
+
+  | ResKind _ ->
+      E.noPolymorphismError orig_expr
+   
+  | ResSet (_, L.KindArrow _) 
+  | ResModel _ | ResTheory(_, L.TheoryKindArrow _)
+  | ResProp (_, (L.PropArrow _ | L.EquivProp _) )
+  | ResTerm _
+  | ResSentence _ ->
+    if (isWild nm) then
+      E.notWhatsExpectedInError expr1 "proper type, proposition, or boolean" orig_expr
+    else 
+      E.notWhatsExpectedInError expr1 "proper type" orig_expr 
 
 and annotateLet cntxt orig_expr sbnd1 expr2 expr3 =
   (* Right now, let-bound variables can only be terms *)
@@ -1173,6 +1172,8 @@ and annotateValue cntxt orig_elem sentence_type values =
        | ResTheory (thry, L.ModelTheoryKind) -> nm, L.DeclModel(thry)
        | ResProp(prp, (L.Prop | L.StableProp)) -> 
            (* refresh *) nm, L.DeclSentence([], prp)
+       | ResTerm(trm, ty) when LR.hnfSet cntxt ty = L.Bool ->
+           nm, L.DeclSentence([], L.PBool trm)
        | ResSentence(mbnds, prp) ->  
            (* refresh *) nm, L.DeclSentence(mbnds, prp)
        | ResSet _ | ResTerm _ | ResProp _ | ResModel _ | ResTheory _ -> 
