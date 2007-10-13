@@ -381,6 +381,10 @@ and translateTerm = function
 
   | L.BConst b -> BConst b
 
+  | L.BNot p -> BNot (translateTerm p)
+
+  | L.BOp (bop, lst) -> BOp (translateBOp bop, List.map translateTerm lst)
+
   | L.Tuple lst -> Tuple (List.map translateTerm lst)
 
   | L.Proj (k, t) -> Proj (k, translateTerm t)
@@ -473,12 +477,19 @@ and translateTerm = function
 		   And [pApp q (id n); pApp p' (dagger_of_ty ty1)],
 		   translateTerm t)
 
+and translateBOp = function
+  | L.AndOp   -> AndOp
+  | L.OrOp    -> OrOp
+  | L.IffOp   -> IffOp
+  | L.ImplyOp -> ImplyOp
 			     
 (* (string * ty) list -> L.proposition -> Outsyn.ty * name * Outsyn.negative *)
 and translateProp = function
     L.False -> makeProp (any(), TopTy) False
 
   | L.True -> makeProp (any(), TopTy) True
+
+  | L.PBool p -> translateBoolProp p
 
   | L.Atomic (ln, pt) ->
       let ty =
@@ -627,6 +638,18 @@ and translateProp = function
   | L.PLet ((n,s), t, p) ->
       let ty, q = translateProp p in
 	ty, PLet (VarPat n, translateTerm t, q)
+
+and translateBoolProp = failwith "not implemented"
+(* function
+  | L.BConst false -> False
+  | L.BConst true  -> True
+  | L.BNot p -> Not (translateBoolProp p)
+  | L.BOp (L.AndOp, lst) -> And (List.map translateBoolProp lst)
+  | L.BOp (L.OrOp, lst) -> And (List.map translateBoolProp lst)
+  | L.BOp (L.ImplyOp, [p;q]) -> Imply (translateBoolProp p, translateBoolProp q)
+  | L.BOp (L.IffOp, [p;q]) -> Iff (translateBoolProp p, translateBoolProp q)
+  | t -> PBool (translateTerm t)
+*)
 
 and translateProptype rzty = function
   | L.Prop | L.StableProp -> PropArrow (rzty, Prop)

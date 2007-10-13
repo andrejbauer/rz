@@ -69,6 +69,8 @@ and pattern =
 and term =
   | EmptyTuple
   | BConst of bool
+  | BOp of bop * term list
+  | BNot of term
   | Dagger
   | Id         of longname
   | App        of term * term
@@ -80,6 +82,8 @@ and term =
   | Let        of pattern * term * term   
   | Obligation of binding list * proposition * term
   | PolyInst   of term * ty list  (* Not fully implemented yet *)
+
+and bop = AndOp | OrOp | ImplyOp | IffOp
 
 (** Propositional function *)
 and proposition =
@@ -100,6 +104,7 @@ and proposition =
   | PObligation of binding list * proposition * proposition   (* obligation *)
   | PCase       of term * (pattern * proposition) list (* propositional case *)
   | PLet        of pattern * term * proposition        (* Local term-binding *)
+  | PBool       of term                       (* coercion of a boolean to a prop *)
 
 and proptype = 
     | Prop
@@ -282,6 +287,8 @@ let rec fvTerm' flt acc = function
   | Id (LN(Some _, _)) -> acc
   | EmptyTuple -> acc
   | BConst _ -> acc
+  | BNot t -> fvTerm' flt acc t
+  | BOp (_, lst) -> fvList' fvTerm' flt acc lst
   | Dagger -> acc
   | App (u, v) -> fvTerm' flt (fvTerm' flt acc u) v
   | Lambda ((n, s), t) -> fvTerm' (n::flt) (fvTy' flt acc s) t
@@ -472,6 +479,8 @@ let rec countTerm (cp: countPred) trm =
     | Id (LN(Some mdl, _)) -> countModul cp mdl
     | EmptyTuple -> 0
     | BConst _ -> 0
+    | BNot t -> countTerm cp t
+    | BOp (_, lst) -> countTermList cp lst
     | Dagger -> 0
     | App (u, v) -> countTerm cp u + countTerm cp v
     | Lambda ((n, s), t) -> countTerm cp t
@@ -840,7 +849,9 @@ and substTerm ?occ sbst orig_term =
                 | Some trm' -> trm'
               end 
           | EmptyTuple -> EmptyTuple
-          | BConst b  -> BConst b
+          | BConst b   -> BConst b
+	  | BNot t     -> BNot (substTerm ?occ sbst t)
+	  | BOp (bop, lst) -> BOp (bop, List.map (substTerm ?occ sbst) lst)
           | Dagger     -> Dagger
           | App (t,u)  -> App (substTerm ?occ sbst t, substTerm ?occ sbst u)
           | Lambda ((n, ty), t) ->
@@ -1094,6 +1105,11 @@ and string_of_term' level t =
       Id ln -> (0, string_of_ln ln)
     | EmptyTuple -> (0, "()")
     | BConst true -> (0, "true")
+    | BNot t -> (4, "not " ^ string_of_term' 4 t)
+    | BOp (AndOp, lst) -> (9, string_of_term_list " && " 9 lst)
+    | BOp (OrOp, lst) -> (9, string_of_term_list " || " 9 lst)
+    | BOp (ImplyOp, lst) -> (9, string_of_term_list " <= " 9 lst)
+    | BOp (IffOp, lst) -> (9, string_of_term_list " = " 9 lst)
     | BConst false -> (0, "false")
     | Dagger -> (0, "DAGGER")
     | App (App (Id (LN(_,N(_, Infix0)) as ln), t), u) -> 
