@@ -187,6 +187,8 @@ let rec processOne (state : state) (doWrap,writeOutput) filename =
 	   Error.printAndResetWarnings())
 	else ()) 
 
+  in let _ = print_endline "XXXXXXX"
+  
     in let spec = 
 	Translate.translateToplevel lthys in
 
@@ -216,9 +218,11 @@ let rec processOne (state : state) (doWrap,writeOutput) filename =
 	    else
 	        spec2
       in
+ let _ = print_endline "YYYYYY" in
 
       let spec4 = fst (Rename.renSignatElementList Rename.emptyRen spec3) in
 
+ let _ = print_endline "ZZZZZ" in
 
       (** The output file replaces the .thr extension by .mli *)
       let outfile = (Filename.chop_extension filename) ^ ".mli" in

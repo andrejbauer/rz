@@ -348,6 +348,16 @@ and thinTerm (ctx : context) orig_term =
         | [e] -> e
         | _ -> Tuple es')
       in (TupleTy ts, e', toptyize ctx (TupleTy ts'))
+
+      | BNot e ->
+        let (_, e', _) = thinTerm ctx e in
+        (BoolTy, BNot e', BoolTy)
+      
+      | BOp(bop, es) ->
+        let (_, es', obs, _) = thinTerms ctx es in
+        let e' = foldObligation obs (BOp(bop, es')) in
+        (BoolTy, e', BoolTy)
+        
       | Proj (n,e) as proj_code ->
       begin
         let (ty, e', ty') = thinTerm ctx e
@@ -486,6 +496,7 @@ and thinProp (ctx: context) orig_prp =
       let (_,e1',ty1') = thinTerm ctx e1
       in let e2' = thinTerm' ctx e2
       in Equal(e1',e2')
+      | PBool e -> PBool (thinTerm' ctx e)
       | And ps -> And (List.map (thinProp ctx) ps)
       | Imply (p1, p2) -> Imply(thinProp ctx p1, thinProp ctx p2)
       | Iff (p1, p2) -> Iff(thinProp ctx p1, thinProp ctx p2)

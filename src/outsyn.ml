@@ -245,6 +245,7 @@ let rec dagger_of_ty = function
 
 let fLet(a,b,c) = Let(a,b,c)
 let fPLet(a,b,c) = PLet(a,b,c)
+let fPBool a = PBool a
 
 (*
    mapWithAccum:  
@@ -1747,6 +1748,14 @@ and hoist trm =
         in let (obs', trm1'', trm2'') = merge2ObsTerm obs1 obs2 trm1' trm2'
         in (obs', reduce (App(trm1'',trm2'')) )
 
+    | BNot trm ->
+        let (obs, trm') = hoist trm in
+        (obs, reduce (BNot trm'))
+        
+    | BOp(bop, trms) ->
+        let (obs, trms') = hoistTerms trms in
+        (obs, reduce (BOp(bop,trms')))
+
     | Lambda((nm,ty),trm) ->
         let (obs1, trm1') = hoist trm
         in let obs1' = List.map (quantifyOb nm ty) obs1
@@ -1884,6 +1893,10 @@ and hoistProp orig_prp =
           (* XXX this ain't gonna work if simple types contain variables. *)
 
       | BasicProp _ -> ([], orig_prp)
+      
+      | PBool trm ->
+          let (obs, trm') = hoist trm in
+          (obs, PBool trm')
             
       | Equal(trm1, trm2) ->
           let (obs1, trm1') = hoist trm1
@@ -2190,6 +2203,13 @@ and reduceProp prp =
             | Maybe    -> orig_prop
       in armLoop arms
 
+  | PBool (BConst true) -> True
+  | PBool (BConst false) -> False
+  | PBool (BNot e) -> Not (PBool e)
+  | PBool (BOp(AndOp, es)) -> And (List.map fPBool es)
+(*   | PBool (BOp(OrOp, es)) -> Or (List.map fPBool es) *)
+  | PBool (BOp(ImplyOp, [e1;e2])) -> Imply (PBool e1, PBool e2)
+  | PBool (BOp(IffOp, [e1;e2])) -> Iff (PBool e1, PBool e2)
   | prp -> prp
 
 

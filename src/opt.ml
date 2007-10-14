@@ -412,6 +412,20 @@ and optTerm ctx orig_term =
       | BConst b ->
           (BoolTy, BConst b)
 
+      | BNot e ->
+        begin
+          let (_, e') = optTerm ctx e in
+          match e' with
+             BConst b -> (BoolTy, BConst (not b))
+           | _ -> (BoolTy, optReduce ctx (BNot e'))
+        end
+
+      | BOp (bop, es) ->
+        begin
+          let (_, es') = optTerms ctx es in
+          (BoolTy, optReduce ctx (BOp (bop, es')))
+        end
+
       | Dagger -> 
           (TopTy, Dagger)
 
@@ -708,6 +722,10 @@ and optProp ctx orig_prp =
                 to   trm : ||set||. *)
             optProp ctx (PApp(support_of_per p, t1))
         | BasicProp ln -> BasicProp (applyPropRenamingLN ctx ln)
+        
+        | PBool e ->
+            let (_, e') = optTerm ctx e in
+            PBool e'
 (*
         | NamedProp (n, Dagger, lst) -> 
             let n' = applyPropRenamingLN ctx n

@@ -16,7 +16,7 @@ let output_components outputer separator ppf lst =
       [] -> ()
     | [trm] -> outputer ppf trm
     | trm::trms -> fprintf ppf "%a%s@,%a"
-	  outputer trm  separator  output_loop trms
+          outputer trm  separator  output_loop trms
   in
   output_loop ppf lst
 
@@ -25,7 +25,7 @@ let output_components_nobreak outputer separator ppf lst =
       [] -> ()
     | [trm] -> outputer ppf trm
     | trm::trms -> fprintf ppf "%a%s%a"
-	  outputer trm  separator  output_loop trms
+          outputer trm  separator  output_loop trms
   in
   output_loop ppf lst
 
@@ -52,21 +52,21 @@ and output_patterns ppf = function
 and output_term_13 ppf = function
      Case (t, lst) ->
        (let output_arm ppf (pat, u) =
-	 fprintf ppf "%a -> %a" output_pattern pat output_term_12 u
-	in let rec output_arms' ppf = function
-	      [] -> ()
+         fprintf ppf "%a -> %a" output_pattern pat output_term_12 u
+        in let rec output_arms' ppf = function
+              [] -> ()
           | arm::arms -> fprintf ppf "@[| %a @]@,%a" 
-	      output_arm arm  output_arms' arms
-	in let output_arms ppf = function
-	      [] -> raise Impossible
-	    | arm::arms -> fprintf ppf "@[  %a @]@,%a" 
-		output_arm arm  output_arms' arms
-	in  
-	  fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]]" 
-	    output_term_13 t  output_arms lst)
+              output_arm arm  output_arms' arms
+        in let output_arms ppf = function
+              [] -> raise Impossible
+            | arm::arms -> fprintf ppf "@[  %a @]@,%a" 
+                output_arm arm  output_arms' arms
+        in  
+          fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]]" 
+            output_term_13 t  output_arms lst)
 
     | Let (pat, t, u) ->
-	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
+        fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
             output_pattern pat  output_term_12 t  output_term_13 u
 
     | trm -> output_term_12 ppf trm
@@ -151,7 +151,7 @@ and output_term_3 ppf = function
        ordinary non-infix applications
      *)
     App (App (Id (LN(None, Name.N(_, (Name.Infix1 | Name.Infix2 |
-					    Name.Infix3 | Name.Infix4))   )), _), _) 
+                                            Name.Infix3 | Name.Infix4))   )), _), _) 
     as trm -> 
       output_term_0 ppf trm
          
@@ -192,39 +192,49 @@ and output_proptype ppf = function
 (* NOT USED
 and output_assertion_binds ppf lst =
       let outputer ppf (n,t) = 
-	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ty t
+        fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_ty t
       in let rec output_loop ppf = function
-	    [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s@,%a"
-	    outputer trm  ", "  output_loop trms
+            [] -> ()
+        | [trm] -> outputer ppf trm
+        | trm::trms -> fprintf ppf "%a%s@,%a"
+            outputer trm  ", "  output_loop trms
       in
-	output_loop ppf lst
+        output_loop ppf lst
 *)
 
 and output_totalbinds ppf lst =
       let outputer ppf (n,sty) = 
-	fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_simple_ty sty
+        fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_simple_ty sty
       in let rec output_loop ppf = function
-	    [] -> ()
-	| [trm] -> outputer ppf trm
-	| trm::trms -> fprintf ppf "%a%s@,%a"
-	    outputer trm  ", "  output_loop trms
+            [] -> ()
+        | [trm] -> outputer ppf trm
+        | trm::trms -> fprintf ppf "%a%s@,%a"
+            outputer trm  ", "  output_loop trms
       in
-	output_loop ppf lst
+        output_loop ppf lst
+
+and string_of_bop = function
+      AndOp -> "AND"
+    | OrOp -> "OR"
+    | ImplyOp -> "IMPLY"
+    | IffOp -> "IFF"
+
 
 and output_term_0 ppf = function
   | Id ln -> output_ln ppf ln
   | EmptyTuple -> fprintf ppf "()"
-  | BConst true -> fprintf ppf "true"
-  | BConst false -> fprintf ppf "false"
+  | BConst true -> fprintf ppf "TRUE"
+  | BConst false -> fprintf ppf "FALSE"
   | Dagger -> fprintf ppf "DAGGER"
   | Tuple [] -> fprintf ppf "()"
   | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t
   | Tuple lst -> 
-	fprintf ppf "@[(%a)@]"   (output_components output_term_9 ",") lst
+        fprintf ppf "@[(%a)@]"   (output_components output_term_9 ",") lst
+  | BNot t -> fprintf ppf "(BNOT %a)" output_term t
+  | BOp(bop, lst) ->
+        fprintf ppf "@[(%a)@]"   (output_components output_term (string_of_bop bop)) lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
-	    fprintf ppf "@[(%a)@]"   output_term trm)
+            fprintf ppf "@[(%a)@]"   output_term trm)
 
 and output_term_apps ppf lst = 
   output_components_nobreak output_term_0 " " ppf lst
@@ -250,45 +260,46 @@ and output_prop ppf = function
 and output_prop_15 ppf = function
     PCase (t, lst) ->
       begin
-	let output_arm ppf (pat, u) =
-	  fprintf ppf "%a =>@ @[<hv>%a@]"
-	    output_pattern pat   output_prop_14 u
-	in let rec output_arms' ppf = function
-	    [] -> ()
+        let output_arm ppf (pat, u) =
+          fprintf ppf "%a =>@ @[<hv>%a@]"
+            output_pattern pat   output_prop_14 u
+        in let rec output_arms' ppf = function
+            [] -> ()
           | arm::arms ->
-	      fprintf ppf "@[| %a @]@,%a" 
-		output_arm arm  output_arms' arms
-	in let output_arms ppf = function
-	    [] -> raise Impossible
-	  | arm::arms -> fprintf ppf "@[<hov 5>  %a @]@,%a" 
-	      output_arm arm  output_arms' arms
-	in  
-	     fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]@]" 
-	       output_term_13 t   output_arms lst
+              fprintf ppf "@[| %a @]@,%a" 
+                output_arm arm  output_arms' arms
+        in let output_arms ppf = function
+            [] -> raise Impossible
+          | arm::arms -> fprintf ppf "@[<hov 5>  %a @]@,%a" 
+              output_arm arm  output_arms' arms
+        in  
+             fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]@]" 
+               output_term_13 t   output_arms lst
       end
   | prp -> output_prop_14 ppf prp
 
 and output_prop_14 ppf = function
-    Forall ((n, ty), p) as all_ty -> 
+ 
+  | Forall ((n, ty), p) as all_ty -> 
       let rec extract_foralls = function
-	  (Forall((nm,typ),prp)) ->
-	    let (alls,prp') = extract_foralls prp
-	    in ((nm,typ) ::alls,prp')
-	| prp -> ([],prp)
+          (Forall((nm,typ),prp)) ->
+            let (alls,prp') = extract_foralls prp
+            in ((nm,typ) ::alls,prp')
+        | prp -> ([],prp)
       in let (alls, prp') = extract_foralls all_ty
       in
-	fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
-	  output_bnds alls   output_prop_14 prp'
+        fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
+          output_bnds alls   output_prop_14 prp'
   | ForallSupport ((n, _), p) as all_sty -> 
       let rec extract_foralls = function
-	  (ForallSupport((nm,sty),prp)) ->
-	    let (alls,prp') = extract_foralls prp
-	    in ((nm,sty) ::alls,prp')
-	| prp -> ([],prp)
+          (ForallSupport((nm,sty),prp)) ->
+            let (alls,prp') = extract_foralls prp
+            in ((nm,sty) ::alls,prp')
+        | prp -> ([],prp)
       in let (alls, prp') = extract_foralls all_sty
       in
-	fprintf ppf "@[<hov 2>forall (%a), @ %a@]" 
-	  output_totalbinds alls   output_prop_14 prp'
+        fprintf ppf "@[<hov 2>forall (%a), @ %a@]" 
+          output_totalbinds alls   output_prop_14 prp'
   | Imply (p, q) -> 
       fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
@@ -308,14 +319,14 @@ and output_prop_14 ppf = function
 
   | PObligation ([], p, q) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a@]@ in %a@]" 
-	output_prop_13 p   output_prop_14 q
+        output_prop_13 p   output_prop_14 q
 
   | PObligation (bnds, p, q) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a,@ @[%a@]@]@ in %a@]" 
         output_bnds bnds   output_prop_13 p   output_prop_14 q
 
   | PLet (pat, t, u) ->
-	fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
+        fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
             output_pattern pat  output_term_12 t  output_prop_14 u
 
   | prp -> output_prop_13 ppf prp
@@ -340,16 +351,16 @@ and output_prop_9 ppf = function
         output_term_4 t   output_per p   output_term_4 u
   | PApp (p, t) when isSupportProp p ->
       fprintf ppf "%a : %a"
-	output_term_9 t   output_support p
+        output_term_9 t   output_support p
 (* XXX the commented lines below do not work when something like "(<) x y z" appears because
    it would print "x < y z" when probably it should print "(<) x y z" or "(x < y) z":
   | PApp (PApp (BasicProp (LN(None, Name.N(op, Name.Infix0))), t), u) ->
       fprintf ppf "%a %s %a"
-	output_term_8 u   op   output_term_8 u
+        output_term_8 u   op   output_term_8 u
 *)
   | PApp (p, t) ->
       fprintf ppf "%a %a"
-	output_prop_9 p   output_term_0 t
+        output_prop_9 p   output_term_0 t
   | Equal (t, u) -> 
       fprintf ppf "%a = %a"  output_term_8 t   output_term_8 u
   | prp -> output_prop_8 ppf prp
@@ -364,14 +375,15 @@ and output_prop_0 ppf = function
   | False -> fprintf ppf "false"
   | BasicProp (LN (_, Name.N(_, Name.Per)) as ln) ->
       fprintf ppf "=%a="
-	output_ln ln
+        output_ln ln
   | BasicProp (LN (_, Name.N(_, Name.Support)) as ln) ->
       fprintf ppf "||%a||"
-	output_ln ln
+        output_ln ln
   | BasicProp ln -> output_ln ppf ln
   | SimpleSupport sty -> fprintf ppf "||%a||" output_simple_ty sty
   | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_per sty
   | And [] -> fprintf ppf "true"
+  | PBool t -> fprintf ppf "(%a)" output_term t
   | prp ->
 (*      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp)); *)
       fprintf ppf "(@[<hov>%a@])"   output_prop prp
@@ -380,42 +392,42 @@ and output_per ppf p =
   let rec output_per' ppf = function
     | BasicProp ln -> output_ln ppf ln
     | PApp (p, t) ->
-	fprintf ppf "%a %a"
-	  output_per' p   output_term_0 t
+        fprintf ppf "%a %a"
+          output_per' p   output_term_0 t
     | _ -> failwith "pp.ml: invalid call to output_per"
   in
     match p with
       | BasicProp ((LN (_, Name.N(_, Name.Per))) as ln) ->
-	  fprintf ppf "=%a="
-	    output_ln ln
+          fprintf ppf "=%a="
+            output_ln ln
       | SimplePer sty ->
-	  fprintf ppf "=%a="
-	    output_simple_per sty
+          fprintf ppf "=%a="
+            output_simple_per sty
       | _ ->
-	  fprintf ppf "=(%a)="
-	    output_per' p
+          fprintf ppf "=(%a)="
+            output_per' p
 
 and output_support ppf p =
   let rec output_support' ppf = function
     | BasicProp ln -> output_ln ppf ln
     | SimpleSupport sty ->
-	fprintf ppf "%a"
-	  output_simple_ty sty
+        fprintf ppf "%a"
+          output_simple_ty sty
     | PApp (p, t) ->
-	fprintf ppf "%a %a"
-	  output_support' p   output_term_0 t
+        fprintf ppf "%a %a"
+          output_support' p   output_term_0 t
     | _ -> failwith "pp.ml: invalid call to output_support"
   in
     match p with
       | BasicProp ((LN (_, Name.N(_, Name.Support))) as ln) ->
-	  fprintf ppf "||%a||"
-	    output_ln ln
+          fprintf ppf "||%a||"
+            output_ln ln
       | SimpleSupport sty ->
-	  fprintf ppf "||%a||"
-	    output_simple_ty sty
+          fprintf ppf "||%a||"
+            output_simple_ty sty
       | _ ->
-	  fprintf ppf "||%a||"
-	    output_support' p
+          fprintf ppf "||%a||"
+            output_support' p
 
 (** Outputs a type to the pretty-printing formatter ppf.
       The various output_ty_n functions each will display a type of 
@@ -437,10 +449,10 @@ and output_ty_2 ppf = function
 and output_ty_1 ppf = function
     SumTy (_::_ as ts) -> 
       let doOne ppf = function 
-	  (lb, None) -> fprintf ppf "`%s" lb
-	| (lb, Some t) -> fprintf ppf "`%s of %a" lb   output_ty_1 t
+          (lb, None) -> fprintf ppf "`%s" lb
+        | (lb, Some t) -> fprintf ppf "`%s of %a" lb   output_ty_1 t
       in
-	fprintf ppf "[%a]" (output_components doOne " | ") ts
+        fprintf ppf "[%a]" (output_components doOne " | ") ts
 
   | typ -> output_ty_0 ppf typ
 
@@ -453,16 +465,16 @@ and output_ty_0 ppf = function
   | TupleTy [] -> fprintf ppf "top"
   | SumTy []   -> fprintf ppf "void"
   | typ        -> ((* print_string (string_of_ty typ); *)
-		   fprintf ppf "(%a)"  output_ty typ)
+                   fprintf ppf "(%a)"  output_ty typ)
 
 and output_simple_ty ppf sty = output_ty ppf (ty_of_simple_ty sty)
 
 and output_simple_per ppf sty =
   match sty with
     | SNamedTy _ | SUnitTy | SVoidTy | STopTy | SBoolTy ->
-	output_simple_ty ppf sty
+        output_simple_ty ppf sty
     | STupleTy _ | SArrowTy _ ->
-	fprintf ppf "(%a)"  output_simple_ty sty
+        fprintf ppf "(%a)"  output_simple_ty sty
 
 and output_annots ppf = function
     [] -> ()
@@ -484,14 +496,14 @@ and output_assertions ppf = function
     [] -> ()
   | assertions ->
       let rec loop ppf = function
-	  [] -> ()
-	| [assertion] ->
-	      output_assertion ppf assertion
-	| assertion::assertions -> 
-	    fprintf ppf "%a@, @,%a" 
-	      output_assertion assertion   loop assertions
+          [] -> ()
+        | [assertion] ->
+              output_assertion ppf assertion
+        | assertion::assertions -> 
+            fprintf ppf "%a@, @,%a" 
+              output_assertion assertion   loop assertions
       in
-	fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
+        fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
 
 and output_tyvars ppf = function
     [] -> ()
@@ -504,27 +516,27 @@ and output_names ppf nms =
 and output_spec ppf = function
     Spec(nm, ValSpec (_,ty), assertions) ->
       (* Unlike Revised SML, ocaml doesn't let you explicitly quantify
-	 with type variables, so we ignore them when pretty-printing.
-	 (We could show them in a comment, I suppose)
+         with type variables, so we ignore them when pretty-printing.
+         (We could show them in a comment, I suppose)
        *)
       fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
-	(Name.string_of_name nm)  output_ty ty  output_assertions assertions
+        (Name.string_of_name nm)  output_ty ty  output_assertions assertions
   | Spec(tynm, TySpec None, assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
-	(Name.string_of_name tynm)   output_assertions assertions
+        (Name.string_of_name tynm)   output_assertions assertions
   | Spec(tynm, TySpec (Some ty), assertions) -> 
       fprintf ppf "@[<v>@[<hov 2>type %s =@ %a@]%a@]"  
-	(Name.string_of_name tynm)   output_ty ty   output_assertions assertions
+        (Name.string_of_name tynm)   output_ty ty   output_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
       fprintf ppf "@[<hov 2>@[module %s : %a@]%a@]"
-	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
+        (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, SignatSpec sgntr, assertions) ->
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
-	(Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
+        (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, PropSpec pt, assertions) ->
       fprintf ppf "@[<v>@[<hov 2>(**{v predicate %a : %a v}*)@]%a@]" 
-	output_name nm   output_proptype pt
-	output_assertions assertions
+        output_name nm   output_proptype pt
+        output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
       fprintf ppf "(*%s*)" cmmnt
@@ -567,7 +579,7 @@ and output_signat ppf = function
       fprintf ppf "@[<v>functor (%s : %a) ->@ %a@]"
          (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl)  ->
-	    fprintf ppf "@[%a(%a)@]"    output_signat sgnt1    output_modul mdl
+            fprintf ppf "@[%a(%a)@]"    output_signat sgnt1    output_modul mdl
   | SignatProj (mdl, nm) -> 
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
 
@@ -591,13 +603,13 @@ and output_def ppf = function
       fprintf ppf "type %a = %a"  output_name nm  output_ty ty
   | DefTerm(nm,ty,trm) ->
       fprintf ppf "let %a : %a = %a"  
-	output_name nm   output_ty ty   output_term trm
+        output_name nm   output_ty ty   output_term trm
   | DefModul(nm,signat,mdl) ->
       fprintf ppf "module %a = %a : %a"
-	output_name nm   output_modul mdl   output_signat signat
+        output_name nm   output_modul mdl   output_signat signat
   | DefSignat(nm,signat) ->
       fprintf ppf "@[<hov 2>module type %a =@ %a@]@.@." 
-	output_name nm   output_signat signat
+        output_name nm   output_signat signat
 
 and output_toplevel ppf body =
   fprintf ppf "@[<v>%a@]@.@."  output_specs body
