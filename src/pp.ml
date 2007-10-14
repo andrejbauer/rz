@@ -214,10 +214,10 @@ and output_totalbinds ppf lst =
         output_loop ppf lst
 
 and string_of_bop = function
-      AndOp -> "AND"
-    | OrOp -> "OR"
-    | ImplyOp -> "IMPLY"
-    | IffOp -> "IFF"
+      AndOp -> " AND "
+    | OrOp -> " OR "
+    | ImplyOp -> " IMPLY "
+    | IffOp -> " IFF "
 
 
 and output_term_0 ppf = function
