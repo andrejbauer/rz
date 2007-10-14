@@ -108,6 +108,10 @@ and renTerm ctx = function
       
   | Id ln -> Id (renLN ctx ln)
 
+  | BNot t -> BNot (renTerm ctx t)
+
+  | BOp (bop, lst) -> BOp (bop, renTermList ctx lst)
+
   | App (t1, t2) -> App (renTerm ctx t1, renTerm ctx t2)
 
   | Lambda (bnd, t) ->
@@ -227,6 +231,8 @@ and renProp ctx = function
       let t = renTerm ctx t in
       let pat, ctx = renPat ctx pat in
 	PLet (pat, t, renProp ctx p)
+
+  | PBool t -> PBool (renTerm ctx t)
 
 and renPropList ctx lst = renList' renProp ctx lst
 

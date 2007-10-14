@@ -57,7 +57,7 @@ let pApp p t = match p with
     PLambda ((n, _), q) -> sbp n t q
   | SimpleSupport _ | SimplePer _ | BasicProp _ | PApp _ | PObligation _ | PLet _ -> PApp (p, t)
   | True | False | Equal _ | And _
-  | Imply _ | Iff _ | Not _ | Forall _ | ForallSupport _ | PCase _ ->
+  | Imply _ | Iff _ | Not _ | Forall _ | ForallSupport _ | PCase _ | PBool _ ->
       failwith ("bad propositional application 1 on "  ^ string_of_proposition p ^ " :: " ^ string_of_term t)
 
 let forall_tot (x, s) p = Forall ((x, s.ty), Imply (pApp s.tot (id x), p))
@@ -639,17 +639,19 @@ and translateProp = function
       let ty, q = translateProp p in
 	ty, PLet (VarPat n, translateTerm t, q)
 
-and translateBoolProp = failwith "not implemented"
-(* function
-  | L.BConst false -> False
-  | L.BConst true  -> True
-  | L.BNot p -> Not (translateBoolProp p)
-  | L.BOp (L.AndOp, lst) -> And (List.map translateBoolProp lst)
-  | L.BOp (L.OrOp, lst) -> And (List.map translateBoolProp lst)
-  | L.BOp (L.ImplyOp, [p;q]) -> Imply (translateBoolProp p, translateBoolProp q)
-  | L.BOp (L.IffOp, [p;q]) -> Iff (translateBoolProp p, translateBoolProp q)
-  | t -> PBool (translateTerm t)
-*)
+(** We convert as much as possible to Prop and coerce the rest. *)
+
+and translateBoolProp = function
+  | L.BConst false           -> translateProp L.False
+  | L.BConst true            -> translateProp L.True
+  | L.BNot p                 -> translateProp (L.Not (L.PBool p))
+  | L.BOp (L.AndOp, lst)     -> translateProp (L.And (List.map (fun p -> L.PBool p) lst))
+  | L.BOp (L.ImplyOp, [p;q]) -> translateProp (L.Imply (L.PBool p, L.PBool q))
+  | L.BOp (L.IffOp, [p;q])   -> translateProp (L.Iff (L.PBool p, L.PBool q))
+  | L.BOp (L.OrOp, lst)      ->
+      makeProp (any(), TopTy) (PBool (BOp (OrOp, (List.map translateTerm lst))))
+  | t                        ->
+      makeProp (any(), TopTy) (PBool (translateTerm t))
 
 and translateProptype rzty = function
   | L.Prop | L.StableProp -> PropArrow (rzty, Prop)

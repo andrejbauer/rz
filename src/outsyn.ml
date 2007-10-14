@@ -348,10 +348,9 @@ and fvProp' flt acc = function
   | PObligation (bnds, p, q) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvProp' flt' (fvProp' flt' acc p) q
-  | PCase (t, lst) ->
-      fvPCaseArms' flt (fvTerm' flt acc t) lst
-  | PLet (pat, t, p) -> 
-      fvPat' flt (fvProp' ((bvPat pat)@flt) (fvTerm' flt acc t) p) pat
+  | PCase (t, lst) -> fvPCaseArms' flt (fvTerm' flt acc t) lst
+  | PLet (pat, t, p) -> fvPat' flt (fvProp' ((bvPat pat)@flt) (fvTerm' flt acc t) p) pat
+  | PBool t -> fvTerm' flt acc t
 
 and fvPCaseArm' flt acc (pat,prp) = 
   fvProp' ((bvPat pat)@flt) (fvPat' flt acc pat) prp  
@@ -521,8 +520,8 @@ and countProp cp prp =
       | Iff (p, q) -> countProp cp p + countProp cp q
       | PApp (p, t) -> countProp cp p + countTerm cp t
       | PLambda ((n, _), p) -> countProp cp p
-      | PObligation (bnds, p, q) -> 
-          countProp cp p + countProp cp q
+      | PObligation (bnds, p, q) -> countProp cp p + countProp cp q
+      | PBool t -> countTerm cp t
 
   | PCase (t, lst) ->
       (countTerm cp t) + (countList countPCaseArm cp lst)
@@ -753,8 +752,6 @@ and substDefs ?occ sbst = function
         DefSignat(nm, substSignat ?occ sbst signat) ::
           substDefs ?occ sbst rest
 
-          
-
 and substProp ?occ sbst = function
     True -> True
   | False -> False
@@ -793,6 +790,7 @@ and substProp ?occ sbst = function
       in
         PLet (pat', substTerm ?occ sbst t, 
              substProp ?occ sbst' p)
+  | PBool t -> PBool (substTerm ?occ sbst t)
 
 and substPat' ?occ (sbst : subst) (pat:pattern) : pattern * (name*name) list = 
   match pat with
@@ -1174,6 +1172,7 @@ and string_of_prop level p =
     | SimpleSupport sty -> (0, "||" ^ string_of_sty sty ^ "||")
     | SimplePer sty -> (0, "=(" ^ string_of_sty sty ^ ")=")
     | BasicProp n -> (0, string_of_ln n)
+    | PBool t -> (0, string_of_term t)
     | Equal (t, u) -> (9, (string_of_term' 9 t) ^ " = " ^ (string_of_term' 9 u))
     | And [] -> (0, "true")
     | And lst -> (10, string_of_prop_list " and " 10 lst)
