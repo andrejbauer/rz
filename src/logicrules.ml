@@ -1280,7 +1280,14 @@ and joinType cntxt s1 s2 =
             in
               (s1, reqs)
 
- 
+(* Checks whether members of a given set are coercable to type Bool *)
+let rec isABool cntxt ty =
+  let rec dropSubsets = function
+      Subset( ( _, ty1 ), _ ) -> dropSubsets ty1
+    | ty1 -> ty1   in
+  try
+     [] = subSet cntxt (dropSubsets ty) Bool
+  with E.TypeError _ -> false
 
 let rec joinTypes cntxt = function
       [] -> (Unit, [])
@@ -1704,13 +1711,11 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
       ("...in comparing theories " ^ string_of_theory thry1 ^
           "\nand " ^ string_of_theory thry2)
     )  
-(* coerce: cntxt -> term -> set -> set -> trm option *)
+(* coerce: cntxt -> term -> set -> set -> trm *)
 (**
      coerce trm st1 st2 coerces trm from the set st1 to the set st2
        using subin and subout.
      Preconditions: trm is in st1 and all arguments are fully-annotated.
-     Returns:  None       if trm cannot be turned into a value in set st2.
-               Some trm'  if we can obtain the term trm'
 *)
 let rec coerce cntxt trm st1 st2 = 
   try
@@ -1784,6 +1789,8 @@ let rec coerce cntxt trm st1 st2 =
                      string_of_set st2 ^ 
                      (if st2 = st2' then "" else
                                      "=" ^ string_of_set st2'))
+
+
 
 (* XXX Should this be accumulating and returning assurances? *)
 let rec coerceFromSubset cntxt trm st = 

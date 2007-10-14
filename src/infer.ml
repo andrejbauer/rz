@@ -629,14 +629,15 @@ and annotateLambda cntxt orig_expr binding1 expr2 =
 and annotateArrow cntxt orig_expr nm expr1 expr2 =
   let (cntxt, nm) = LR.renameBoundVar cntxt nm in
   match annotateExpr cntxt expr1 with
-  | ResTerm(trm1,ty1) when (isWild nm) && (LR.hnfSet cntxt ty1 = L.Bool) ->
+  | ResTerm(trm1,ty1) when (isWild nm) && (LR.isABool cntxt ty1) ->
     begin
+      let trm1' = LR.coerce cntxt trm1 ty1 L.Bool in
       try
         let trm2 = maybeAnnotateBoolTerm cntxt expr2 in 
-        ResTerm ( L.BOp(L.ImplyOp, [trm1;trm2]), L.Bool)
+        ResTerm ( L.BOp(L.ImplyOp, [trm1'; trm2]), L.Bool)
       with NotBoolTerm ->
         let (prp2, stab2) = annotateProperProp cntxt orig_expr expr2 in
-        ResProp (L.Imply(L.PBool trm1,prp2), stab2)
+        ResProp (L.Imply(L.PBool trm1', prp2), stab2)
     end
 
   | ResProp (prp1, (L.Prop | L.StableProp)) -> 
@@ -943,12 +944,8 @@ and annotateTerm cntxt surrounding_expr expr =
 
 and maybeAnnotateBoolTerm cntxt expr =
   match annotateExpr cntxt expr with
-  | ResTerm(trm, ty) ->
-      (try 
-         let reqs = LR.eqSet cntxt ty L.Bool 
-         in L.maybeAssure reqs trm L.Bool 
-       with 
-         E.TypeError _ -> raise NotBoolTerm)
+  | ResTerm(trm, ty) when LR.isABool cntxt ty -> 
+      LR.coerce cntxt trm ty L.Bool
   | _ -> raise NotBoolTerm
     
 and annotateSet cntxt surrounding_expr expr = 
@@ -964,12 +961,9 @@ and annotateType cntxt surrounding_expr expr =
 and annotateProp cntxt surrounding_expr expr = 
   match annotateExpr cntxt expr with
   | ResProp(prp, pt) -> (prp, pt)
-  | ResTerm(trm, ty) ->
-      (try 
-         let reqs = LR.eqSet cntxt ty L.Bool 
-         in (L.PBool (L.maybeAssure reqs trm L.Bool), L.StableProp) 
-       with NotBoolTerm ->
-          E.notWhatsExpectedInError expr "proposition" surrounding_expr)
+  | ResTerm(trm, ty) when LR.isABool cntxt ty ->
+      let trm' = LR.coerce cntxt trm ty L.Bool in
+      (L.PBool trm', L.StableProp) 
   | _ -> E.notWhatsExpectedInError expr "proposition" surrounding_expr
     
 and annotateProperProp cntxt surrounding_expr expr = 
@@ -977,12 +971,9 @@ and annotateProperProp cntxt surrounding_expr expr =
   | ResProp(prp, ((L.Prop | L.StableProp) as pt)) -> (prp, pt)
   | ResProp _ -> 
       E.notWhatsExpectedInError expr "proper proposition" surrounding_expr
-  | ResTerm(trm, ty) ->
-      (try 
-         let reqs = LR.eqSet cntxt ty L.Bool 
-         in (L.PBool (L.maybeAssure reqs trm L.Bool), L.StableProp) 
-       with NotBoolTerm ->
-          E.notWhatsExpectedInError expr "proper proposition" surrounding_expr)
+  | ResTerm(trm, ty) when LR.isABool cntxt ty ->
+      let trm' = LR.coerce cntxt trm ty L.Bool in
+      (L.PBool trm', L.StableProp) 
   | _ -> E.notWhatsExpectedInError expr "proper proposition" surrounding_expr
 
 and annotateKind cntxt surrounding_expr expr = 
@@ -1172,8 +1163,9 @@ and annotateValue cntxt orig_elem sentence_type values =
        | ResTheory (thry, L.ModelTheoryKind) -> nm, L.DeclModel(thry)
        | ResProp(prp, (L.Prop | L.StableProp)) -> 
            (* refresh *) nm, L.DeclSentence([], prp)
-       | ResTerm(trm, ty) when LR.hnfSet cntxt ty = L.Bool ->
-           nm, L.DeclSentence([], L.PBool trm)
+       | ResTerm(trm, ty) when LR.isABool cntxt ty ->
+           let trm' = LR.coerce cntxt trm ty L.Bool in
+           nm, L.DeclSentence([], L.PBool trm')
        | ResSentence(mbnds, prp) ->  
            (* refresh *) nm, L.DeclSentence(mbnds, prp)
        | ResSet _ | ResTerm _ | ResProp _ | ResModel _ | ResTheory _ -> 
