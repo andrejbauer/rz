@@ -135,7 +135,8 @@ where $(u_1,v_1) \per_{\set{x : A \such \phi}} (u_2,v_2)$ when $u_1
 \per_A u_2$, $v_1 \rz \phi(u_1)$ and $v_2 \rz \phi(u_2)$. The point is
 that a realizer for an element of $\set{x : A
   \such \phi}$ carries information about \emph{why} the element
-belongs to the subset.
+belongs to the subset, just like a predicate $\phi$ carries
+information of type $\typeOf{\phi}$ about why a particular instance of~$\phi$ holds.
 
 A type coercion $\icoerce{e}{t}$ can convert an element of the subset $s =
 \set{x : t \such \phi(x)}$ to an element of~$t$. At the level of
@@ -173,16 +174,16 @@ expected.\footnote{The trouble is that from equality of equivalence
 \fi
 A stable equivalence relation on a per~$A$ is the same thing as a
 partial equivalence relation~$\rho$ on~$\typeOf{A}$ which satisfies
-$\rho(x,y) \implies x \per_A y$. Then the quotient $A/\rho$ is the per
+$x \per_A y \implies \rho(x,y)$. Then the quotient $A/\rho$ is the per
 with $\typeOf{A/\rho} = \typeOf{A}$ and $x \per_{A/\rho} y \iff
 \rho(x,y)$.
 
 Luckily, it seems that many equivalence relations occurring in
 computable mathematics are stable, or can be made stable.
 %
-\iflong
-For example, Cauchy sequences $(a_n)_{n\in\NN}$
-and $(b_n)_{n\in\NN}$ represent the same real number when
+\iflong For example, Cauchy sequences (of rational numbers)
+$(a_n)_{n\in\NN}$ and $(b_n)_{n\in\NN}$ represent the same real number
+when
 %
 \begin{equation}
   \label{eq:cauchy}%
