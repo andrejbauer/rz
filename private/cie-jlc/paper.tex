@@ -1,20 +1,21 @@
-\documentclass{llncs}
+% See the enclosed file README.tex for technical info about this
+% LaTeX file.
+
+\documentclass{article}
+
+% The conference proceedings version of the paper was shorter.
+% The following switch selects either the short or the long version.
+% For publication in the journal, the long version should be used.
+% Therefore DO NOT change the following two lines.
 \newif\iflong
 \longtrue
-\pagestyle{plain}
 
 \usepackage{amsmath}
 \usepackage{amssymb}
-%\usepackage{theorem}
+\usepackage{theorem}
 \usepackage{graphicx}
-%\usepackage{mathpartir}
 \usepackage{fancyvrb}
 \usepackage{url}
-%\usepackage{ifpdf}
-%\ifpdf
-%\usepackage{pdfsync}
-%\fi
-
 
 \input{macros.tex}
 
@@ -22,28 +23,27 @@
 %
 % Slightly better macros for displaying source code.
 % We can fiddle with the style later, I just stole this.
-% (Use number=left to get source line numbers.)
 
 % To include a source file
 \iflong
 \newcommand{\sourcefile}[1]{%
-\VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
+\VerbatimInput[xleftmargin=1em]{#1}}
 \else % \iflong
 \newcommand{\sourcefile}[1]{%
-\VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
+\VerbatimInput[xleftmargin=1em]{#1}}
 \fi % \iflong
 
 % To include lots of source
 \newcommand{\sourcefilex}[1]{%
-\VerbatimInput[xleftmargin=1.5em,fontsize=\scriptsize]{#1}}
+\VerbatimInput[fontsize=\small]{#1}}
 
 % To show source
 \iflong
 \DefineVerbatimEnvironment{source}{Verbatim}%
-{xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
+{xleftmargin=\parindent,fontsize=\small,commandchars=\\\{\}}
 \else
 \DefineVerbatimEnvironment{source}{Verbatim}%
-{xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
+{xleftmargin=1em,fontsize=\footnotesize,commandchars=\\\{\}}
 \fi
 
 
@@ -54,17 +54,18 @@
   Constructive and Computable Mathematics\\
   Closer to Programming Practice}
 \author{
-  Andrej Bauer\inst{1} \and
-  Christopher A. Stone\inst{2}}
-
-\institute{
-  Faculty of Mathematics and Physics, University of Ljubljana, Slovenia\\
-  \email{Andrej.Bauer@fmf.uni-lj.si}
-  \and
-  Computer Science Department, 
+  Andrej Bauer\\
+  Faculty of Mathematics and Physics\\
+  University of Ljubljana, Slovenia\\
+  \texttt{Andrej.Bauer@fmf.uni-lj.si}
+  %
+\and
+  Christopher A. Stone\\
+  Computer Science Department\\
   Harvey Mudd College, USA\\
-  \email{stone@cs.hmc.edu}
+  \texttt{stone@cs.hmc.edu}
 }
+
 \maketitle
 
 \begin{abstract}
@@ -118,12 +119,8 @@ By using the realizability
 \input{comparison.tex}
 
 %% Bibliography
-% AB: It's weird that references are ordered by first appearance, but if
-% that's what they want, that's what they get.
-\bibliographystyle{splncs}
-{
+\bibliographystyle{plain}
 \bibliography{rzbib}
-}
 
 \iflong
 \appendix
@@ -134,5 +131,5 @@ By using the realizability
 
 %%% Local Variables: 
 %%% mode: latex
-%%% TeX-master: "cie-long.tex"
+%%% TeX-master: "paper"
 %%% End: 

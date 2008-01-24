@@ -1,5 +1,6 @@
-TEXFILES = cie.tex \
-	macros.tex \
+# See README.txt for details.
+
+TEXFILES = macros.tex \
 	introduction.tex \
 	modest_sets.tex \
 	specifications.tex \
