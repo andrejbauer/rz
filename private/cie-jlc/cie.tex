@@ -1,0 +1,131 @@
+\usepackage{amsmath}
+\usepackage{amssymb}
+%\usepackage{theorem}
+\usepackage{graphicx}
+%\usepackage{mathpartir}
+\usepackage{fancyvrb}
+\usepackage{url}
+%\usepackage{ifpdf}
+%\ifpdf
+%\usepackage{pdfsync}
+%\fi
+
+
+\input{macros.tex}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% Slightly better macros for displaying source code.
+% We can fiddle with the style later, I just stole this.
+% (Use number=left to get source line numbers.)
+
+% To include a source file
+\iflong
+\newcommand{\sourcefile}[1]{%
+\VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
+\else % \iflong
+\newcommand{\sourcefile}[1]{%
+\VerbatimInput[xleftmargin=1.5em,fontsize=\footnotesize]{#1}}
+\fi % \iflong
+
+% To include lots of source
+\newcommand{\sourcefilex}[1]{%
+\VerbatimInput[xleftmargin=1.5em,fontsize=\scriptsize]{#1}}
+
+% To show source
+\iflong
+\DefineVerbatimEnvironment{source}{Verbatim}%
+{xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
+\else
+\DefineVerbatimEnvironment{source}{Verbatim}%
+{xleftmargin=1.5em,fontsize=\footnotesize,commandchars=\\\{\}}
+\fi
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\title{RZ: a Tool for Bringing\\
+  Constructive and Computable Mathematics\\
+  Closer to Programming Practice}
+\author{
+  Andrej Bauer\inst{1} \and
+  Christopher A. Stone\inst{2}}
+
+\institute{
+  Faculty of Mathematics and Physics, University of Ljubljana, Slovenia\\
+  \email{Andrej.Bauer@fmf.uni-lj.si}
+  \and
+  Computer Science Department, 
+  Harvey Mudd College, USA\\
+  \email{stone@cs.hmc.edu}
+}
+\maketitle
+
+\begin{abstract}
+  Realizability theory 
+\iflong 
+  is not just a fundamental tool in logic
+  and computability.  It also 
+  has direct application to the design and
+  implementation of programs, since it
+\fi % \iflong
+  can produce code interfaces for the data
+  structure corresponding to a
+  mathematical theory.
+%
+  Our tool, called RZ,
+  serves as a bridge between
+\iflong the worlds of \fi
+  constructive
+  mathematics and programming% 
+\iflong 
+.
+By using the realizability
+  interpretation of constructive mathematics, RZ 
+  translates
+\else
+\ by translating
+\fi % \iflong 
+  specifications in constructive logic into annotated
+  interface code in Objective Caml.
+%
+  The system supports
+  a rich input language allowing descriptions of
+  complex mathematical structures. RZ does not extract code from
+  proofs, but allows any implementation method, from handwritten code to code extracted from
+  proofs by other tools.
+\end{abstract}
+
+\iffalse
+\begin{center}
+  Version of \today.
+\end{center}
+\fi
+
+\input{introduction.tex}
+\input{modest_sets.tex}
+\input{specifications.tex}
+\input{logic.tex}
+\input{translation.tex}
+\input{implementation.tex}
+\input{examples.tex}
+\input{comparison.tex}
+
+%% Bibliography
+% AB: It's weird that references are ordered by first appearance, but if
+% that's what they want, that's what they get.
+\bibliographystyle{splncs}
+{
+\bibliography{rzbib}
+}
+
+\iflong
+\appendix
+\input{wtype.tex}
+\fi % iflong
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "cie-long.tex"
+%%% End: 
