@@ -21,4 +21,5 @@ paper.pdf: paper.tex $(TEXFILES) rzbib.bib wtype.mli
 	pdflatex paper.tex
 
 clean:
-	/bin/rm -f *.{aux,log} paper.{ps,pdf,bbl,blg,pdfsync,dvi}
+	/bin/rm -f paper.aux
+	/bin/rm -f paper.{aux,ps,pdf,bbl,blg,pdfsync,dvi}
