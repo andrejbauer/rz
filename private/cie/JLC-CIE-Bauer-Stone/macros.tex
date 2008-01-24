@@ -1,0 +1,283 @@
+%%%% MACROS %%%%%
+
+% Private comments, should be left in the source when the paper is finished.
+% Use this version for visible comments:
+\newcommand{\comment}[1]{\paragraph{Comment:} #1}
+% For invisible comments:
+%\newcommand{\comment}[1]{}
+
+% Internal notes, used during writing the paper. The first argument is
+% the author of the note. When the paper is finished, these should
+% all be gone. Delete an internal note as soon as you resolve it.
+\newcommand{\internal}[2]{\par\fbox{\parbox{0.9\textwidth}{{Note by #1:} #2}}\par}
+
+% Types and terms in ocaml
+\newcommand{\ctype}{\mathtt{type}\;}
+\newcommand{\cint}{\mathtt{int}}
+\newcommand{\clist}[1]{#1\;\mathtt{list}}
+\newcommand{\ctrue}{\mathtt{true}}
+\newcommand{\cbool}{\mathtt{bool}}
+\newcommand{\cwhile}[2]{\mathtt{while}\;#1\;\mathtt{do}\;#2\;\mathtt{done}}
+\newcommand{\cstring}[1]{\mathtt{"#1"}}
+\newcommand{\cprint}[1]{\mathtt{print\_string}\;#1}
+\newcommand{\cfun}[2]{\mathtt{fun}\;#1 \to #2}
+\newcommand{\clet}[2]{\mathtt{let}\;#1 = #2}
+\newcommand{\cletrec}[2]{\mathtt{let}\;\mathtt{rec}\;#1 = #2}
+\newcommand{\cfst}[1]{\mathtt{fst}\;#1}
+\newcommand{\csnd}[1]{\mathtt{snd}\;#1}
+\newcommand{\cmod}{\mathbin{\mathtt{mod}}}
+\newcommand{\poly}[1]{\text{\texttt{\char39}}#1}
+
+% Realizaiblity
+\newcommand{\per}{\approx}
+\newcommand{\perty}[1]{\per_{\mathtt{#1}}}
+\newcommand{\rz}{\Vdash}
+\newcommand{\Type}{\mathsf{Type}}
+\newcommand{\values}[1]{[\![#1]\!]}
+\newcommand{\typeOf}[1]{|#1|}
+\newcommand{\setOf}[1]{\langle #1 \rangle}
+\newcommand{\support}[1]{\|#1\|}
+
+% Sets
+\newcommand{\set}[1]{\{#1\}}
+\newcommand{\such}{\mid}
+\newcommand{\pair}[1]{\langle #1 \rangle}
+\newcommand{\epito}{\twoheadrightarrow}
+\newcommand{\family}[2]{\set{#1}_{#2}}
+\newcommand{\depsum}[2]{{\Sigma_{#1} #2}}
+\newcommand{\depprod}[2]{{\Pi_{#1} #2}}
+
+% Common sets
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\ZZ}{\mathbb{Z}}
+\newcommand{\RR}{\mathbb{R}}
+
+% Theorem-like environments
+\iffalse
+{
+  \theorembodyfont{\itshape}
+  \newtheorem{theorem}{Theorem}[section]
+  \newtheorem{lemma}[theorem]{Lemma}
+  \newtheorem{proposition}[theorem]{Proposition}
+  \newtheorem{corollary}[theorem]{Corollary}
+}
+{
+  \theorembodyfont{\rmfamily}
+  \newtheorem{definition}[theorem]{Definition}
+  \newtheorem{example}[theorem]{Example}
+}
+\fi
+
+% Quantifiers. I am really used to these...
+\newcommand{\all}[3]{\forall\, #1 \,{\in}\, #2\,.\left(#3\right)}
+\newcommand{\some}[3]{\exists\, #1 \,{\in}\, #2\,.\left(#3\right)}
+\newcommand{\exactlyone}[3]{\exists!\, #1 \,{\in}\, #2\,.\left(#3\right)}
+\newcommand{\xall}[3]{\forall\, #1 \,{\in}\, #2\,.\,#3}
+\newcommand{\xsome}[3]{\exists\, #1 \,{\in}\, #2\,.\,#3}
+\newcommand{\xexactlyone}[3]{\exists!\, #1 \,{\in}\, #2\,.\,#3}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Macros for input & output language
+
+\newcommand{\f}[1]{\mathtt{#1}}
+
+% ASCII syntax
+\iffalse
+\newcommand{\ip}{p}
+\newcommand{\ix}{x}
+\newcommand{\is}{s}
+\newcommand{\ie}{e}
+\newcommand{\iP}{P}
+\newcommand{\iS}{S}
+\newcommand{\iprop}{\mathtt{prop}}
+\newcommand{\itrue}{\mathtt{true}}
+\newcommand{\ifalse}{\mathtt{false}}
+\newcommand{\inot}[1]{\mathtt{not}\,#1}
+\newcommand{\iimply}[2]{#1\,\mbox{\texttt{->}}\,#2}
+\newcommand{\iiff}[2]{#1\,\mbox{\texttt{<->}}\,#2}
+\newcommand{\iequal}[2]{#1\,\mathtt{=}\,#2}
+\newcommand{\iands}[2]{#1\,\mathtt{/\backslash}\, #2}
+\newcommand{\iors}[2]{#1\,\mathtt{\backslash/}\,#2}
+\newcommand{\iforall}[3]{\texttt{forall}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\iexists}[3]{\texttt{exists}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\iunique}[3]{\texttt{unique}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\ilambda}[3]{\texttt{lambda}\,#1\,\texttt{:}\,#2\texttt{,}\ #3}
+\newcommand{\iapps}[3]{#1\ #2\,\cdots\,#3}
+
+\newcommand{\ituples}[2]{\texttt{(}#1\texttt{,}\ldots\texttt{,}#2\texttt{)}}
+\newcommand{\iproj}[2]{#1\texttt{.}#2}
+\newcommand{\isubin}[2]{#1\,\texttt{:>}\,#2}
+\newcommand{\isubout}[2]{#1\,\texttt{:<}\,#2}
+\newcommand{\ithe}[3]{\texttt{the}\,#1\,\texttt{:}\,#2\texttt{,}\, #3}
+\newcommand{\ilet}[3]{\texttt{let}\,#1\,\texttt{=}\,#2\,\texttt{in}\, #3}
+\newcommand{\iquot}[2]{#1\,\texttt{\%}\,#2}
+\newcommand{\iletquot}[4]{\texttt{let}\ #1\texttt{\%}\,#2\,\texttt{=}\,#3\ \texttt{in}\ #4}
+\newcommand{\irz}[1]{\texttt{rz}\;#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\;#1\;\texttt{=}\;#2\ \texttt{in}\ #3}
+
+\newcommand{\iprods}[2]{#1\,\texttt{*}\cdots\texttt{*}\,#2}
+\newcommand{\isums}[2]{#1\,\texttt{+}\cdots\texttt{+}\,#2}
+
+\fi
+
+% Spiffed up syntax using mathematical symbols
+\newcommand{\ip}{\varphi}
+\newcommand{\ipp}{\rho}
+\newcommand{\ix}{x}
+\newcommand{\is}{s}
+\newcommand{\ie}{e}
+\newcommand{\iP}{p}
+\newcommand{\iS}{\alpha}
+\newcommand{\itrue}{\top}
+\newcommand{\ifalse}{\bot}
+\newcommand{\inot}[1]{\lnot #1}
+\newcommand{\iimply}[2]{#1\Rightarrow #2}
+\newcommand{\iiff}[2]{#1 \Leftrightarrow #2}
+\newcommand{\iequal}[2]{#1 = #2}
+\newcommand{\iand}[2]{#1\land #2}
+\newcommand{\ior}[2]{#1\lor #2}
+\newcommand{\iforall}[3]{\forall #1{:}#2.\ #3}
+\newcommand{\iexists}[3]{\exists #1{:}#2.\ #3}
+\newcommand{\iunique}[3]{\exists! #1{:}#2.\ #3}
+\newcommand{\ilambda}[3]{\lambda #1{:}#2.\ #3}
+\newcommand{\iapp}[2]{#1\ #2}
+\newcommand{\ipcases}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\ipcase}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
+
+\newcommand{\ituple}[2]{(#1,\ldots,#2)}
+\newcommand{\iproj}[2]{\mathop{\pi_{#2}} #1}
+\newcommand{\isubin}[2]{#1\,{{:}{>}}\,#2}
+\newcommand{\isubout}[2]{#1\,{{:}{<}}\,#2}
+\newcommand{\icoerce}[2]{#1\,{:}\,#2}
+\newcommand{\ithe}[3]{\iota\,#1{:}#2{.}\, #3}
+\newcommand{\ilet}[3]{\texttt{let}\,#1{=}#2\,\texttt{in}\, #3}
+\newcommand{\ieclass}[2]{[#1]_{#2}}
+\newcommand{\ileteclass}[4]{\texttt{let}\ [#1]_{#2}\,{=}#3\ \texttt{in}\ #4}
+\newcommand{\irz}[1]{\texttt{rz}\;#1}
+\newcommand{\iletrz}[3]{\texttt{let}\ \texttt{rz}\;#1\;{=}\;#2\ \texttt{in}\ #3}
+\newcommand{\iinj}[2]{{#1}\,#2}
+\newcommand{\imatches}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\cdots|\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\imatch}[7]{\texttt{match}\,#1\,\texttt{with}\,\iinj{#2}{#3}{\Rightarrow}{#4}\,|\,\iinj{#5}{#6}{\Rightarrow}{#7}}
+\newcommand{\iselect}[2]{#1{.}#2}
+
+\newcommand{\itag}{\mathit{tag}}
+\newcommand{\iprod}[3]{[#1{:}#2]\times#3}
+\newcommand{\isum}[4]{#1{:}#2+#3{:}#4}
+\newcommand{\iquot}[2]{#1{\bigm/} #2}
+\newcommand{\isubset}[3]{\{#1{:}#2\ |\ #3\}}
+\newcommand{\isunit}{1}
+\newcommand{\isvoid}{0}
+
+% I removed periods because I use these in the middle of text.
+\newcommand{\iDefinition}[2]{\ensuremath{\mathtt{Definition}\ #1 \mathbin{{:}{=}} #2}}
+\newcommand{\iParameter}[2]{\ensuremath{\mathtt{Parameter}\ #1 : #2}}
+\newcommand{\iAxiom}[2]{\ensuremath{\mathtt{Axiom}\ #1 : #2}}
+\newcommand{\iInclude}[1]{\ensuremath{\mathtt{Include}\ #1}}
+\newcommand{\ipt}{\Pi}
+\newcommand{\ik}{\kappa}
+\newcommand{\iarrow}[2]{#1{\to}#2}
+\newcommand{\idarrow}[3]{[#1{:}#2]{\to}#3}
+\newcommand{\ite}{\theta}
+\newcommand{\ith}{\Theta}
+\newcommand{\iTH}{T}
+\newcommand{\ithy}[1]{\mathtt{thy}\ #1\ \mathtt{end}}
+\newcommand{\im}{M}
+\newcommand{\iM}{m}
+\newcommand{\il}{l}
+\newcommand{\iSet}{\mathtt{Set}}
+\newcommand{\iStable}{\mathtt{Stable}}
+\newcommand{\iProp}{\mathtt{Prop}}
+\newcommand{\iEquiv}[1]{\mathtt{Equiv}(#1)}
+\newcommand{\ibar}{\ |\ }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%  Output-specific syntax (did not bother to produce ASCII version yet)
+\newcommand{\obar}{\ |\ }
+%%%% types
+\newcommand{\oty}{\tau} % type
+\newcommand{\opty}{\alpha} % polymorphic type
+\newcommand{\oTY}{T} % type name
+\newcommand{\oprod}[2]{#1 \times #2} % product
+\newcommand{\oarrow}[2]{#1 \to #2} % arrow
+\newcommand{\ounit}{\mathtt{unit}} % unit type
+\newcommand{\oselect}[2]{#1{.}#2}  % projection from a module
+\newcommand{\osumty}[4]{`#1\,\mathtt{of}\,#2 + \cdots + `#3\,\mathtt{of}\,#4}
+\newcommand{\osumtyx}[4]{`#1\,\mathtt{of}\,#2 + `#3\,\mathtt{of}\,#4}
+\newcommand{\ol}{l} % label
+%%%% terms
+\renewcommand{\oe}{e} % expression
+\newcommand{\ox}{x} % variable
+\newcommand{\olambda}[3]{\mathtt{fun}\,#1{:}#2 \to #3} % abstraction
+\newcommand{\oapp}[2]{#1\,#2} % application
+\newcommand{\otuple}[2]{(#1,\ldots,#2)} % tuple
+\newcommand{\oproj}[2]{\mathtt{p}_{#2}\,#1} % projection
+\newcommand{\oinj}[2]{`#1\,#2} % sum injection
+\newcommand{\oinjx}[1]{`#1} % sum injection
+\newcommand{\omatch}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}\to{#4}\obar\oinj{#5}{#6}\to{#7}}
+\newcommand{\omatchx}[5]{\mathtt{match}\;#1\;\mathtt{with}\,\oinjx{#2}\to{#3}\obar\oinjx{#4}\to{#5}}
+\newcommand{\omatches}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}\to{#4}\,|\cdots\,|\oinj{#5}{#6}\to{#7}}
+\newcommand{\ooblig}[4]{\mathtt{assure}\,#1{:}#2,\,#3\,\mathtt{in}\,#4}
+\newcommand{\oobligx}[2]{\mathtt{assure}\,#1\,\mathtt{in}\,#2}
+\newcommand{\olet}[3]{\mathtt{let}\,#1{=}#2\,\mathtt{in}\,#3}
+%%%% propositions
+\newcommand{\op}{p} % proposition
+\newcommand{\oP}{P} % atomic proposition
+\newcommand{\otrue}{\top} % true
+\newcommand{\ofalse}{\bot} % false
+\newcommand{\onot}[1]{\lnot #1} % not
+\newcommand{\oand}[2]{#1 \land #2} % and
+\newcommand{\oimply}[2]{#1 \rightarrow #2} % imply
+\newcommand{\oiff}[2]{#1 \leftrightarrow #2} % iff
+\newcommand{\opcase}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}{\Rightarrow}{#4}\,|\,\oinj{#5}{#6}\Rightarrow{#7}}
+\newcommand{\opcasex}[5]{\mathtt{match}\;#1\;\mathtt{with}\,\oinjx{#2}{\Rightarrow}{#3}\,|\,\oinjx{#4}\Rightarrow{#5}}
+\newcommand{\opcases}[7]{\mathtt{match}\;#1\;\mathtt{with}\,\oinj{#2}{#3}\Rightarrow{#4}\,|\cdots\,|\oinj{#5}{#6}\Rightarrow{#7}}
+\newcommand{\ototal}[2]{#1{:}\support{#2}} % support membership
+\newcommand{\oper}[3]{#2\,{\approx_{#1}}\,#3} % per
+\newcommand{\oequal}[2]{#1{=}#2} % observational equality
+\newcommand{\oforall}[3]{\forall #1{:}#2.\,#3}
+\newcommand{\oforallt}[3]{\forall #1{:}\support{#2}.\,#3}
+%%% Modest sets
+\newcommand{\oS}{S}
+\newcommand{\os}{s}
+%%% Modules
+\newcommand{\om}{m} % module
+\newcommand{\oM}{M} % module name
+%%% Proposition kinds
+\newcommand{\opt}{\Pi}
+\newcommand{\oProp}{\mathtt{bool}}
+%%% Module type elements
+\newcommand{\ote}{\theta}
+\newcommand{\ovalspec}[2]{\mathtt{val}\;#1:#2}
+\newcommand{\otyspec}[1]{\mathtt{type}\;#1}
+\newcommand{\otydef}[2]{\mathtt{type}\;#1=#2}
+\newcommand{\omodulespec}[2]{\mathtt{module}\;#1:#2}
+\newcommand{\osignatdef}[2]{\mathtt{module}\;\mathtt{type}\,#1=#2}
+\newcommand{\opropspec}[2]{\mathtt{predicate}\; #1:#2}
+\newcommand{\oassertion}[2]{\mathtt{assertion}\; #1 : #2}
+\newcommand{\oA}{A} % Assertion name
+%%% Module type
+\newcommand{\omt}{\Sigma}
+\newcommand{\oMT}{S}
+\newcommand{\osig}[1]{\mathtt{sig}\,#1\,\mathtt{end}}
+\newcommand{\ofunctor}[3]{\mathtt{functor}\, (#1{:}#2) \to #3}
+
+% macros within source
+\newcommand{\iTo}{$\to$}
+\newcommand{\iForall}{$\forall$}
+\newcommand{\iOr}{$\lor$}
+\newcommand{\iAnd}{$\land$}
+\newcommand{\iImply}{$\Rightarrow$}
+\newcommand{\iNot}{$\lnot$}
+\newcommand{\iExists}{$\exists$}
+\newcommand{\iExistsOne}{$\exists!$}
+\newcommand{\iT}[1]{$\|$#1$\|$}
+\newcommand{\iPer}[1]{$\approx_{\mathtt{#1}}$}
+\newcommand{\iIff}{$\leftrightarrow$}
+\newcommand{\iLeq}{$\leq$}
+\newcommand{\iRz}{$\rz$}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: "cie-long"
+%%% End: 
