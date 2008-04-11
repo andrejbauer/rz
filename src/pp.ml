@@ -95,11 +95,15 @@ and output_term_12 ppf = function
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
-    App (App (Id (LN(None, Name.N(op, Name.Infix0))), t), u) -> 
+  | App (App (Id (LN(None, Name.N(op, Name.Infix0))), t), u) -> 
       fprintf ppf "%a %s %a"
 (* DISABLED the default left-associativity of infix operators *)
 (*        output_term_9 t  output_ln ln  output_term_8 u *)
         output_term_8 t   op   output_term_8 u
+  | BOp (bop, lst) ->
+      assert (if bop = ImplyOp || bop = IffOp then List.length lst = 2 else List.length lst >= 1) ;
+      output_components output_term_8 (string_of_bop bop) ppf lst
+  | BNot t -> fprintf ppf "not %a" output_term_8 t
   | trm -> output_term_8 ppf trm
       
 and output_term_8 ppf = function
@@ -214,25 +218,21 @@ and output_totalbinds ppf lst =
         output_loop ppf lst
 
 and string_of_bop = function
-      AndOp -> " AND "
-    | OrOp -> " OR "
-    | ImplyOp -> " IMPLY "
-    | IffOp -> " IFF "
-
+      AndOp -> " && "
+    | OrOp -> " || "
+    | ImplyOp -> " <= "
+    | IffOp -> " = "
 
 and output_term_0 ppf = function
   | Id ln -> output_ln ppf ln
   | EmptyTuple -> fprintf ppf "()"
-  | BConst true -> fprintf ppf "TRUE"
-  | BConst false -> fprintf ppf "FALSE"
+  | BConst true -> fprintf ppf "true"
+  | BConst false -> fprintf ppf "false"
   | Dagger -> fprintf ppf "DAGGER"
   | Tuple [] -> fprintf ppf "()"
   | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t
   | Tuple lst -> 
         fprintf ppf "@[(%a)@]"   (output_components output_term_9 ",") lst
-  | BNot t -> fprintf ppf "(BNOT %a)" output_term t
-  | BOp(bop, lst) ->
-        fprintf ppf "@[(%a)@]"   (output_components output_term (string_of_bop bop)) lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
             fprintf ppf "@[(%a)@]"   output_term trm)
 
@@ -383,7 +383,7 @@ and output_prop_0 ppf = function
   | SimpleSupport sty -> fprintf ppf "||%a||" output_simple_ty sty
   | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_per sty
   | And [] -> fprintf ppf "true"
-  | PBool t -> fprintf ppf "(%a)" output_term t
+  | PBool t -> fprintf ppf "%a" output_term_8 t
   | prp ->
 (*      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp)); *)
       fprintf ppf "(@[<hov>%a@])"   output_prop prp

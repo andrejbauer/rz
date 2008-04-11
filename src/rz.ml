@@ -224,14 +224,16 @@ let rec processOne (state : state) (doWrap,writeOutput) filename =
 
       (** Write the output file 
       *)
-      let _ = if (!Flags.do_save) then
- 	        let outb = Buffer.create 1024 in
-		let formatter = Format.formatter_of_buffer outb in
- 		let outchan = open_out outfile in
-		let _ = send_to_formatter formatter spec4 in
-		let _ = Buffer.output_buffer outchan outb in
-		close_out outchan
-              else () in
+      let _ =
+	if (!Flags.do_save) then
+ 	  let outb = Buffer.create 1024 in
+	  let formatter = Format.formatter_of_buffer outb in
+	    Format.pp_set_margin formatter (Format.get_margin ()) ;
+	    let outchan = open_out outfile in
+	    let _ = send_to_formatter formatter spec4 in
+	    let _ = Buffer.output_buffer outchan outb in
+	      close_out outchan
+	else () in
 	
       (** Optionally display to stdout as well.
       *)
