@@ -9,6 +9,9 @@ let do_thin = ref true
 (* Preamble file to load *)
 let preamble = ref (None : string option)
 
+(* List of directories to search *)
+let include_dir = ref ([] : string list)
+
 (* Should output be sent to stdout too? *)
 let do_print = ref true
 

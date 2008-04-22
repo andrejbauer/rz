@@ -45,7 +45,8 @@ let command_line_options =
      ]
   in let extraFlags =
       [
-	("--preamble", Arg.String (fun s -> Flags.preamble := Some s), "<file> Preload the given file")
+	("--preamble", Arg.String (fun s -> Flags.preamble := Some s), "<file> Preload the given file");
+	("-I", Arg.String (fun s -> Flags.include_dir := List.append !Flags.include_dir [s]), "<dir> Add <dir> to the list of include directories")
       ]
   in let processBooleanFlag (flag, (action,result) , boolref, description) =
     (flag, action boolref, 
@@ -70,8 +71,6 @@ let filenames : string list ref = ref []
     of files to process *)
 let addFile strng = 
   filenames := strng :: !filenames
-
-
 
 type state = {infer_state    : Logicrules.context;
                thin_state     : Thin.context;
@@ -119,6 +118,21 @@ let parse str = Parser.toplevels Lexer.token (Lexing.from_string str);;
 let send_to_formatter ppf toplevels =
    Pp.output_toplevel ppf toplevels
 
+(* Helper function:  find the file with given basename in directory,
+   if present, or search also in directories from Flags.include_dir. *)
+let find_file directory basename =
+  let fn = Filename.concat directory basename in
+    if Sys.file_exists fn then
+      Some fn
+    else begin
+	try
+	  let candidates =
+	    List.map (fun d -> Filename.concat d basename) !Flags.include_dir
+	  in
+	    Some (List.find Sys.file_exists candidates)
+	with Not_found -> None
+      end
+
 let rec processOne (state : state) (doWrap,writeOutput) filename =
   (* Normalize the filename; otherwise foo.thy and ./foo.thy
      get treated as different files.  
@@ -149,9 +163,12 @@ let rec processOne (state : state) (doWrap,writeOutput) filename =
       | r::rs -> 
 	  let directory = Filename.dirname filename
 	  in let basename' = String.uncapitalize r ^ ".thy"
-	  in let filename = Filename.concat directory basename'
-	  in let state = processOne state (doWrap,false) filename
-	  in processRequires state rs
+	  in
+	    (match find_file directory basename' with
+	      | None -> failwith ("Could not find " ^ basename')
+	      | Some filename ->
+		  let state = processOne state (doWrap,false) filename
+		  in processRequires state rs)
 
     in let state = processRequires state requires
 
