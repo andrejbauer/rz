@@ -1,0 +1,111 @@
+\documentclass{article}
+
+\begin{document}
+
+\title{Automatic derivation of data structures \\
+  from computable mathematics}
+\author{Andrej Bauer\\
+Faculty of Mathematics and Physics\\
+University of Ljubljana, Slovenia\\
+\emph{and}\\
+Institute of Mathematics, Physics, and Mechanics\\
+Ljubljana, Slovenia
+}
+
+\maketitle
+
+We report on how to use the realizability interpretation of
+constructive logic to automatically derive specifications from
+axiomatizations of mathematical theories. For example, the
+interpretation of the axioms of real numbers, when suitably
+interpreted, gives a specification for exact real arithmetic.
+
+There are tools which use this idea (or the related idea of
+propositions-as-types) to automatically extract programs from formal
+proofs, such as Coq~\cite{Coq} and Minlog~\cite{Minlog}. However, more
+often than not the extracted programs are orders of magnitude slower
+than hand-written versions, especially when complex mathematical
+structures are involved.
+%
+It therefore makes sense to separate extraction of programs into two levels:
+%
+\begin{enumerate}
+\item Extract \emph{specifications} for data structures and programs from
+  definitions of structures and statements of theorems.
+\item Extract \emph{implementations} of data structures and programs from
+  constructions of structures and formal proofs of theorems.
+\end{enumerate}
+%
+In joint work with Christopher Stone we developed a tool RZ~\cite{RZ,RZWeb}
+which performs the first level of extraction automatically. It outputs
+specifications as signatures in Objective Caml language~\cite{Ocaml}.
+The extraction works on ``small scale'' (specification of data types
+and values) as well as ``large scale'' (specification of whole program
+modules). It uses Objective Caml module system to express a hierachy
+of mathematical structures and connections between them. RZ performs a
+number of optimizations and simplifications in order to output
+readable and useful specifications.
+
+In joint work with Iztok Kavkler~\cite{Era} we showed that the
+extracted specifications are actually useful in practice. We
+implemented exact real numbers Era following a specification produced
+by RZ. Our implementation approaches the performance of the
+state-of-the-art implementations of exact real numbers such as
+RealLib~\cite{RealLib} and iRRAM~\cite{iRRAM}.
+
+\begin{thebibliography}{10}\label{bibliography}
+
+\bibitem{Era}
+Bauer, A. and Kavkler, I.
+\newblock Implementing real numbers with {RZ}.
+\newblock In Weihrauch, K. and Zhong, N., editors, {\em Fourth International
+  Conference on Computability and Complexity in Analysis}, Electronic Notes in
+  Theoretical Computer Science, 2007.
+
+\bibitem{RZ}
+Bauer, A. and Stone, C.
+\newblock {RZ}: a tool for bringing constructive and computable mathematics
+  closer to programming practice.
+\newblock In {\em Computability in Europe 2007}, June 2007.
+\newblock To apear in a special issue of Journal of Logic and Computation.
+
+\bibitem{RZWeb}
+Bauer, A. and Stone, C., \emph{{RZ}}, \texttt{http://math.andrej.com/rz/}.
+
+\bibitem{Minlog}
+Benl, H., Berger, U., Schwichtenberg, H., Seisenberger, M., Zuber, W.:
+\newblock Proof theory at work: Program development in the {M}inlog system.
+\newblock In Bibel, W., Schmidt, P.H., eds.: Automated Deduction: A Basis for
+  Applications. Volume {II}, Systems and Implementation Techniques.
+\newblock Kluwer Academic Publishers, Dordrecht (1998)
+
+\bibitem{Coq}
+Bertot, Y., Cast\'eran, P.:
+\newblock Interactive Theorem Proving and Program Development.
+\newblock Springer (2004)
+
+\bibitem{RealLib}
+Lambov B.
+\newblock {RealLib}: An efficient implementation of exact real arithmetic.
+\newblock {\em Mathematical Structures in Computer Science}, 17:81--98, 2007.
+
+\bibitem{Ocaml}
+Leroy, X., Doligez, D., Garrigue, J., R\'emy, D., Vouillon, J.:
+\newblock The {Objective Caml} system, documentation and user's manual -
+  release 3.08.
+\newblock Technical report, INRIA (July 2004)
+
+\bibitem{iRRAM}
+M\"{u}ller N.
+\newblock The {iRRAM}: Exact arithmetic in {C}++.
+\newblock In Jens Blanck, Vasco Brattka, and Peter Hertling, editors, {\em
+  Computability and Complexity in Analysis: 4th International Workshop, CCA
+  2000 Swansea, UK, September 17, 2000, Selected Papers}, number 2064 in
+  Lecture Notes in Computer Science, pages 222--252. Springer, 2001.
+
+\end{thebibliography}
+
+
+
+
+\end{document}
