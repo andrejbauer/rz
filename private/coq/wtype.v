@@ -16,18 +16,6 @@ Definition eq (A : ModestSet) (u v : ty A) :=
 Definition trackers (A B : ModestSet) (g : st A -> st B) :=
   { f : ty A -> ty B | forall u : ty A, forall x : st A, rz A u x -> rz B (f u) (g x) }.
 
-Definition Hom (A B : ModestSet) :=
-  { g : st A -> st B & trackers A B g }.
-
-Definition app (A B : ModestSet) (h : Hom A B) (x : st A) :=
-  let (g, _) := h in g x.
-
-Record Signature : Type := 
-    mkSignature 
-      { s : ModestSet;
-        t : st s -> ModestSet
-      }.
-
 Definition Nats : ModestSet.
 Proof.
   Check mkModest.
@@ -38,6 +26,22 @@ Proof.
   rewrite <- H0.
   auto.
 Qed.
+
+
+(**** UNFINISHED BELOW *)
+
+(*********
+
+Definition Hom (A B : ModestSet) : ModestSet.
+
+Definition app (A B : ModestSet) (h : Hom A B) (x : st A) :=
+  let (g, _) := h in g x.
+
+Record Signature : Type := 
+    mkSignature 
+      { s : ModestSet;
+        t : st s -> ModestSet
+      }.
 
 Record W(B : Signature) : Type :=
    mkW
@@ -50,7 +54,7 @@ st (s B), (st (t B a) -> st w) -> st w;
          (forall a : s B, forall f : t B a -> w, (forall x : t B a, p (f x)) -> p (tree a f)) -> forall t : w, p t
     }.
 
-
+***)
 (*
 Module Type SIGNATURE.
 
