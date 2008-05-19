@@ -4,43 +4,80 @@ Require Export EqNat.
 Record ModestSet : Type :=
   mkModest {
     ty : Set; (* the type *)
-    st : Set; (* the set *)
-    rz : ty -> st -> Prop; (* the realizability relation *)
-    rz_total : forall x : st, exists u : ty, rz u x; (* everybody is realized *)
-    rz_modest : forall u : ty, forall x y : st, rz u x -> rz u y -> x = y
+    total : ty -> Prop;
+    supp := { x : ty | total x };
+    equ : supp -> supp -> Prop;
+    refl : forall x : supp, equ x x;
+    symm : forall x y : supp, equ x y -> equ y x;
+    tran : forall x y z : supp, equ x y -> equ y z -> equ x z
   }.
 
-Definition eq (A : ModestSet) (u v : ty A) :=
-  exists x : st A, rz A u x /\ rz A v x.
+Definition incl_supp (A : ModestSet) (x : supp A) :=
+  let (y, _) := x in y.
 
-Definition trackers (A B : ModestSet) (g : st A -> st B) :=
-  { f : ty A -> ty B | forall u : ty A, forall x : st A, rz A u x -> rz B (f u) (g x) }.
+Coercion incl_supp : supp >-> ty.
 
-Definition Nats : ModestSet.
+Definition extensional (A B : ModestSet) (f : ty A -> supp B) :=
+  forall x y : supp A, equ A x y -> equ B (f x) (f y).
+
+Definition Ext (A B : ModestSet) :=
+  { f : ty A -> supp B | extensional A B f }.
+
+Definition func_of_ext (A B : ModestSet) (f : Ext A B) :=
+  let (g, _) := f in g.
+
+Coercion func_of_ext : Ext >-> Funclass.
+
+Definition Hom : ModestSet -> ModestSet -> ModestSet.
 Proof.
-  Check mkModest.
-  eapply mkModest with (ty := nat) (st := nat) (rz := fun (x :nat) (y :nat) => x = y).
-  intros; exists x; auto.
-  intros.
-  rewrite <- H.
-  rewrite <- H0.
-  auto.
+  intros A B.
+  eapply mkModest with
+    (ty := ty A -> supp B)
+    (total := extensional A B)
+    (equ := fun (f g : Ext A B) =>
+      forall x y : supp A, equ A x y -> equ B (f x) (g y)).
+  intros f u v H.
+  case f.
+  intros g e.
+  unfold extensional in e.
+  firstorder.
+  intros f g H u v G.
+  apply symm.
+  apply H.
+  apply symm.
+  assumption.
+  intros f g h H G u v K.
+  eapply (tran B).
+  apply H.
+  apply K.
+  apply G.
+  apply (refl A).
 Qed.
 
+Definition Projective (A : Set) : ModestSet.
+Proof.
+  intro A.
+  eapply mkModest with
+    (ty := A)
+    (total := (fun (_ : A) => True))
+    (equ := (fun (x y : {z : A | True}) => x = y)).
+  auto.
+  intuition.
+  intuition.
+  rewrite H; auto.
+Qed.
 
-(**** UNFINISHED BELOW *)
+Definition Nats := Projective nat.
 
-(*********
+(*** UNFINISHED BELOW *)
 
-Definition Hom (A B : ModestSet) : ModestSet.
 
-Definition app (A B : ModestSet) (h : Hom A B) (x : st A) :=
-  let (g, _) := h in g x.
+(** W-types
 
-Record Signature : Type := 
+Record BranchingType : Type := 
     mkSignature 
-      { s : ModestSet;
-        t : st s -> ModestSet
+      { index : ModestSet;
+        branch :  -> ModestSet
       }.
 
 Record W(B : Signature) : Type :=
