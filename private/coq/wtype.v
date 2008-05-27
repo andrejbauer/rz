@@ -1,58 +1,127 @@
 Require Export Setoid.
 Require Export EqNat.
 
-Record ModestSet : Type :=
-  mkModest {
-    ty : Set; (* the type *)
-    total : ty -> Prop;
-    supp := { x : ty | total x };
-    equ : supp -> supp -> Prop;
-    refl : forall x : supp, equ x x;
-    symm : forall x y : supp, equ x y -> equ y x;
-    tran : forall x y z : supp, equ x y -> equ y z -> equ x z
+
+Record ModestSet_Theory (ty : Set) : Type :=
+  mkModest_Theory {
+    equ : ty -> ty -> Prop;
+    symm : forall x y : ty, equ x y -> equ y x;
+    tran : forall x y z : ty, equ x y -> equ y z -> equ x z
   }.
 
-Definition incl_supp (A : ModestSet) (x : supp A) :=
-  let (y, _) := x in y.
+Record ModestSet : Type :=
+  mkModest {
+    ty :> Set;
+    modesty : ModestSet_Theory ty
+  }.
 
-Coercion incl_supp : supp >-> ty.
+Definition total (A : ModestSet) (x : A) := equ A (modesty A) x x.
 
-Definition extensional (A B : ModestSet) (f : ty A -> supp B) :=
-  forall x y : supp A, equ A x y -> equ B (f x) (f y).
+
+Record ModestFamily (A : ModestSet) : Type :=
+  mkModestFamily {
+    fam : A -> ModestSet;
+    strict :
+      forall (x : A) (u v : fam x), equ (fam x) u v -> equ A x x;
+    uniform :
+      forall (x y : A), equ A x y -> fam x = fam y
+  }.
+
+
+Definition ext_eq (A B : ModestSet) (f g : A -> B) :=
+  forall x y : A, equ A x y -> equ B (f x) (g y).
+
+Definition extensional (A B : ModestSet) (f : A -> B) :=
+  ext_eq A B f f.
 
 Definition Ext (A B : ModestSet) :=
-  { f : ty A -> supp B | extensional A B f }.
+  { f : A -> B | extensional A B f }.
 
 Definition func_of_ext (A B : ModestSet) (f : Ext A B) :=
   let (g, _) := f in g.
 
 Coercion func_of_ext : Ext >-> Funclass.
 
+
+Definition Product : ModestSet -> ModestSet -> ModestSet.
+Proof.
+  intros A B.
+  apply mkModest with
+    (ty := (A * B)%type)
+    (equ := fun (p q : A * B) =>
+      equ A (fst p) (fst q) /\ equ B (snd p) (snd q)).
+  intros p q.
+  intuition.
+  apply symm; assumption.
+  apply symm; assumption.
+  intros p q r.
+  intuition.
+  eauto using tran.
+  eauto using tran.
+Defined.
+
+Definition proj1 : forall (A B : ModestSet), Ext (Product A B) A.
+Proof.
+  intros A B.
+  exists (fun p : (Product A B) => fst p).
+  red.
+  intros p q H.
+  simpl in H.
+  intuition.
+Defined.
+  
+Definition proj2 : forall (A B : ModestSet), Ext (Product A B) B.
+Proof.
+  intros A B.
+  exists (fun p : (Product A B) => snd p).
+  red.
+  intros p q H.
+  simpl in H.
+  intuition.
+Defined.
+  
+Lemma prod_eta :
+  forall (A B : ModestSet) (p : Product A B),
+    total (Product A B) p -> equ (Product A B) p (fst p, snd p).
+Proof.
+  intros.
+  red.
+  simpl.
+  red in H.
+  simpl in H.
+  assumption.
+Qed.
+
+
 Definition Hom : ModestSet -> ModestSet -> ModestSet.
 Proof.
   intros A B.
-  eapply mkModest with
-    (ty := ty A -> supp B)
-    (total := extensional A B)
-    (equ := fun (f g : Ext A B) =>
-      forall x y : supp A, equ A x y -> equ B (f x) (g y)).
-  intros f u v H.
-  case f.
-  intros g e.
-  unfold extensional in e.
-  firstorder.
-  intros f g H u v G.
+  apply mkModest with
+    (ty := A -> B)
+    (equ := fun (f g : A -> B) =>
+      extensional A B f /\ extensional A B g /\ ext_eq A B f g).
+  intros f g.
+  unfold ext_eq.
+  intuition.
   apply symm.
-  apply H.
+  apply H2.
   apply symm.
   assumption.
-  intros f g h H G u v K.
-  eapply (tran B).
-  apply H.
-  apply K.
-  apply G.
-  apply (refl A).
+  intros f g h.
+  unfold ext_eq.
+  intuition.
+  apply tran with (h x).
+  apply tran with (g y).
+  auto.
+  apply symm in H3.
+  auto.
+  apply H2.
+  assumption.
 Qed.
+
+
+
+
 
 Definition Projective (A : Set) : ModestSet.
 Proof.
