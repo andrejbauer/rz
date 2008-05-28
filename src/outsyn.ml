@@ -1884,7 +1884,7 @@ and quantifyObPats pats ob =
   List.fold_right quantifyObPat pats ob
 
 and hoistProp orig_prp =
-  let ans = 
+  let (obs, prp') = 
     match orig_prp with
         True
       | False -> ([], orig_prp)
@@ -2010,13 +2010,20 @@ and hoistProp orig_prp =
 
         in let obs' = obs1' @ obs2'
 
-        in (obs', reduceProp (PLet(pat, trm'', prp'')))
+        in (obs', reduceProp (PLet(pat, trm'', prp'')))   in
 
+  let ans =
+    if (!(Flags.do_fullhoist)) then
+      (obs, prp')
+    else
+      ([], foldPObligation obs prp')
+	
   in
     (
       (*  print_endline "hoistProp";
           print_endline (string_of_proposition prp);
           print_endline ((string_of_proposition (snd ans)));     *)
+      
    ans)
 
 and hoistModest {ty=ty; tot=tot; per=per} =

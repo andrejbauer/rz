@@ -20,8 +20,9 @@ let command_line_options =
   in let fClear = ((fun x -> Arg.Clear x), false)
   in let booleanFlags = 
     [
-     ("--hoist",      fSet,   Flags.do_hoist,     "Hoist all assurances");
-     ("--nohoist",    fClear, Flags.do_hoist,     "Don't hoist assurances");
+     ("--hoist",      fSet,   Flags.do_hoist,     "Enable hoisting");
+     ("--nohoist",    fClear, Flags.do_hoist,     "No hoisting");
+     ("--fullhoist",  fSet,   Flags.do_fullhoist, "When hoisting, go further");
      ("--opt",        fSet,   Flags.do_opt,       "Optimize translation");
      ("--noopt",      fClear, Flags.do_opt,       "Don't optimize translation");
      ("--poly",       fSet,   Flags.do_poly,      "Convert functors to polymorphism");
