@@ -466,6 +466,7 @@ and translateTerm = function
 
   | L.Subout (t, _) -> Proj (0, translateTerm t)
 
+(*
   | L.Assure (None, p, t, _) ->
       let (ty, p') = translateProp p in
 	Obligation ([], pApp p' (dagger_of_ty ty), translateTerm t)
@@ -476,6 +477,7 @@ and translateTerm = function
 	Obligation ([(n, ty2)],
 		   And [pApp q (id n); pApp p' (dagger_of_ty ty1)],
 		   translateTerm t)
+*)
 
 and translateBOp = function
   | L.AndOp   -> AndOp
@@ -624,6 +626,7 @@ and translateProp = function
       let r = fresh (SumTy tys) in
 	makeProp (r, SumTy tys) (PCase (Tuple[id r; translateTerm t], arms))
 
+(*
   | L.PAssure (None, p, q) ->
       let (ty1, p') = translateProp p in
       let (ty2, q') = translateProp q in
@@ -634,6 +637,7 @@ and translateProp = function
       let (ty1, p') = translateProp p in
       let (ty3, q') = translateProp q in
 	ty3, PObligation ([(n, ty2)], And [pApp r (id n); pApp p' (dagger_of_ty ty1)], q')
+*)
 
   | L.PLet ((n,s), t, p) ->
       let ty, q = translateProp p in

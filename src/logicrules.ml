@@ -482,8 +482,6 @@ let rec hnfTerm cntxt = function
       in
         hnfTerm cntxt (subst sub trm2)
 
-  | Assure(_,_,trm,_) -> hnfTerm cntxt trm
-
   | trm -> trm
 
 (** Expand out any top-level definitions or function
@@ -547,8 +545,6 @@ let rec hnfProp cntxt = function
           in
         hnfProp cntxt (substProp sub prp2)
         
-  | PAssure(_, _, prp) -> hnfProp cntxt prp
-  
   | (PBool trm) as orig_prop ->
       begin
         match (hnfTerm cntxt trm) with
@@ -671,8 +667,6 @@ let rec typeOf cntxt trm =
     | Choose (_, _, _, _, ty) -> ty
     | Let (_, _, _, ty) -> ty
     | Subout(_, ty) -> ty
-    | Assure(_, _, _, ty) -> ty
-
 
 (**********************************************)
 (** {2 Equivalence, Subtyping, and Coercions} *)
@@ -1118,6 +1112,7 @@ and eqTerm cntxt trm1 trm2 =
 (* hnfTerm removes lets
       | (Let     ((nm1, ty1a), trm1a, trm1b, ty1b), 
          Let     ((nm2, ty2a), trm2a, trm2b, ty2b))  *)
+
       | (RzChoose((nm1, ty1a), trm1a, trm1b, ty1b), 
          RzChoose((nm2, ty2a), trm2a, trm2b, ty2b)) ->
           let reqs1 = eqSet cntxt ty1a ty2a 
@@ -1723,7 +1718,7 @@ let rec coerce cntxt trm st1 st2 =
         the common case *)
     let reqs = subSet cntxt st1 st2 
     in 
-      maybeAssure reqs trm st2
+      maybeIdentityCoerce trm st1 st2 reqs
   with E.TypeError _ ->
     (** Just because the identity coercion won't work doesn't
         mean it's time to give up! *)
@@ -1740,6 +1735,7 @@ let rec coerce cntxt trm st1 st2 =
         with E.TypeError _ -> 
           (** That didn't work, so try an implicit 
               into-subset conversion *)
+
           (* XXX Eventually we may add an assure here for the subin *)
           let trm' = coerce cntxt trm st1 st2'1
           in  Subin ( trm', bnd2', prp2'2 )
@@ -1798,6 +1794,17 @@ let rec coerceFromSubset cntxt trm st =
       Subset( ( _, st1 ), _ ) -> 
          coerceFromSubset cntxt (Subout(trm, st)) st1
     | st' -> (trm, st')
+
+let rec coerceProp cntxt prp pt1 pt2 =
+  try
+    let reqs = subPropType cntxt pt1 pt2 in
+      maybePIdentityCoerce prp pt1 pt2 reqs
+  with
+      E.TypeError _ -> 
+	E.tyGenericError ("No implicit coercion from proptype " ^ 
+                 string_of_proptype pt1 ^ 
+                     " to proptype " ^ 
+                 string_of_proptype pt2)
 
 (*
  Never mind.  We're not doing automatic EquivCoerce insertion...yet.

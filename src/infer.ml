@@ -240,8 +240,10 @@ and annotateEqual cntxt orig_expr expr1 expr2 =
       we do it ourselves here. *)
   let (trm1',ty1') = LR.coerceFromSubset cntxt trm1 ty1 in
   let (trm2',ty2') = LR.coerceFromSubset cntxt trm2 ty2 in
-  let (ty, reqs) = LR.joinTypes cntxt [ty1'; ty2'] in
-  ResProp( L.maybePAssure reqs (L.Equal(ty, trm1', trm2')),
+  let (ty, _) = LR.joinTypes cntxt [ty1'; ty2'] in
+  let trm1'' = LR.coerce cntxt trm1' ty1 ty  in
+  let trm2'' = LR.coerce cntxt trm2' ty2 ty  in
+  ResProp( L.Equal(ty, trm1'', trm2''),
            L.StableProp )
 
 
@@ -759,7 +761,7 @@ and annotateConstraint cntxt orig_expr expr1 expr2 =
           let reqs = (LR.subSet cntxt st2 st1a) @ 
                      (LR.subSet cntxt' st2 st1b) @ 
                      [L.IsEquiv(prp1, st2)] in
-          ResProp(L.maybePAssure reqs prp1,  L.EquivProp(st2))
+          ResProp(L.maybePIdentityCoerce prp1 pt1 pt2 reqs,  L.EquivProp(st2))
         with
           E.TypeError msgs -> (* LR.subSet must have failed *)
             E.specificateError msgs (E.propTypeMismatchMsg expr1 pt2 pt1)
@@ -770,7 +772,7 @@ and annotateConstraint cntxt orig_expr expr1 expr2 =
       begin
         try
           let reqs = LR.subPropType cntxt pt1 pt2 in
-          ResProp( L.maybePAssure reqs prp1, pt2 )
+            ResProp( L.maybePIdentityCoerce prp1 pt1 pt2 reqs, pt2 )
         with
           E.TypeError msgs -> (* LR.subPropType must have failed *)
             E.specificateError msgs (E.propTypeMismatchMsg expr1 pt2 pt1)
@@ -823,7 +825,9 @@ and annotateQuotient cntxt orig_expr expr1 expr2 =
       begin
         try 
           let reqs = LR.subSet cntxt ty1 domty2 in
-          ResSet( L.Quotient (ty1, L.maybePAssure reqs prp2),
+	  let prp2' = L.maybePIdentityCoerce 
+	                 prp2 (L.EquivProp domty2) (L.EquivProp ty1) reqs  in
+          ResSet( L.Quotient (ty1, prp2'),
                   L.KindSet )
         with
           E.TypeError msgs -> (* LR.subSet must have failed *)
@@ -879,9 +883,9 @@ and annotateCase cntxt orig_expr expr1 arms2 =
     | (lbl, None,_,_)::rest -> (lbl,None) :: createSumtype rest
     | (lbl, Some(_,ty),_,_)::rest -> (lbl, Some ty) :: createSumtype rest  in
   let armty = L.Sum (createSumtype arms2')  in
-  let reqs1 = 
+  let trm1' = 
     try 
-      LR.subSet cntxt ty1 armty
+      LR.coerce cntxt trm1 ty1 armty 
     with 
       E.TypeError msgs -> 
         E.specificateError msgs (E.tyMismatchMsg expr1 armty ty1)  in
@@ -905,9 +909,15 @@ and annotateCase cntxt orig_expr expr1 arms2 =
                                " in " ^ string_of_expr orig_expr)  in
      let (arms, tys) = process arms2' in
      let (ty,reqs2) = LR.joinTypes cntxt tys in
-     let trm = L.Case (trm1, armty, arms, ty) in
-     let trm' = L.maybeAssure (reqs1@reqs2) trm ty in
-     ResTerm(trm', ty)
+
+      let arms' =
+	(* Coerce each arm to the common proptype *)
+	List.map2 (fun (lbl, bndopt, trm) ty1 ->
+		    (lbl, bndopt, LR.coerce cntxt trm ty1 ty)) arms tys  in
+
+     let trm = L.Case (trm1', armty, arms', ty) in
+
+     ResTerm(trm, ty)
 
   | (_,_,ResProp _, _)::_ ->
       (* Prop-level Case *)
@@ -926,10 +936,15 @@ and annotateCase cntxt orig_expr expr1 arms2 =
             E.tyGenericError ("Bad case arm " ^ string_of_label lbl ^
                               " in " ^ string_of_expr orig_expr)   in
       let (arms, pts) = process arms2' in
-      let (pt,reqs2) = LR.joinPropTypes cntxt pts in
-      let prp = L.PCase (trm1, armty, arms) in
-      let prp' = L.maybePAssure (reqs1@reqs2) prp in
-      ResProp(prp', pt)
+      let (pt,_) = LR.joinPropTypes cntxt pts in
+
+      let arms' =
+	(* Coerce each arm to the common proptype *)
+	List.map2 (fun (lbl, bndopt, prp) pt1 ->
+		    (lbl, bndopt, LR.coerceProp cntxt prp pt1 pt)) arms pts  in
+
+      let prp = L.PCase (trm1', armty, arms') in
+	ResProp(prp, pt)
 
    | _::_ ->
       E.tyGenericError ("Invalid first case in " ^ string_of_expr orig_expr)
@@ -1226,11 +1241,10 @@ and annotateDefinition cntxt orig_elem nm1 expropt2 expr3 =
       | Some expr2 ->
           let pt2 = annotateProptype cntxt (Ident nm1) expr2  in
           try
-            let reqs = LR.subPropType cntxt pt3 pt2 in
-            let prp3' = L.maybePAssure reqs prp3 in
+            let prp3' = LR.coerceProp cntxt prp3 pt3 pt2  in
             [ L.Declaration(nm1, L.DeclProp(Some prp3', pt2)) ]
           with
-            E.TypeError _ -> (* LR.subPropType must have failed *)
+            E.TypeError _ -> (* LR.coerce must have failed *)
               E.propTypeMismatchError expr3 pt2 pt3 (Ident nm1)
     end
 

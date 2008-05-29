@@ -72,9 +72,9 @@ and proposition =
     | PLambda of binding * proposition
     | IsEquiv of proposition * set                (* [IsEquiv(p,s)] means [p] is an equivalence relation on [s] *)
     | PCase   of term * set * (label * binding option * proposition) list
-    | PAssure of binding option * proposition * proposition (* [PAssure((x,s),p,q)] is "assure x:s . p in q" *)
     | PLet    of binding * term * proposition (* Propositional let-term *)
     | PBool   of term   (* Embedding of boolean terms *)
+    | PIdentityCoerce of proposition * proptype * proptype * proposition list 
   
 and set =
     | Empty
@@ -120,7 +120,7 @@ and term =
     | Let      of binding * term * term * set  (* set is type of the whole let *)
     | Subin    of term * binding * proposition (* [Subin(a,(x,t),p)] coerces [a] to [{x:t|p}] *)
     | Subout   of term * set
-    | Assure   of binding option * proposition * term * set
+    | IdentityCoerce of term * set * set * proposition list (* from first set to second set, which are supposed to be equal except we can't check it.l *)
 
 and bop = AndOp | OrOp | ImplyOp | IffOp
 
@@ -207,11 +207,6 @@ let doOpt funct = function
     None -> None
   | Some v -> Some (funct v)
 
-let foldAssure reqs bdy ty =
-  List.fold_right (fun req trm -> Assure(None, req, trm, ty)) reqs bdy
-
-let foldPAssure reqs bdy =
-  List.fold_right (fun req prp -> PAssure(None, req, prp)) reqs bdy
 
 (* Oops...this optimization isn't meaning preserving unless we can
    guarantee that ty is inhabited.  Too bad.
@@ -228,15 +223,15 @@ let foldForall =
 let foldImply = 
   List.fold_right fImply
 
-let maybeAssure reqs trm ty = 
+let maybeIdentityCoerce trm ty1 ty2 reqs = 
   match reqs with
       [] -> trm
-    | reqs -> Assure(None, And reqs, trm, ty)
+    | reqs -> IdentityCoerce(trm, ty1, ty2, reqs)
 
-let maybePAssure reqs prp = 
-  match reqs with 
+let maybePIdentityCoerce prp pt1 pt2 reqs = 
+  match reqs with
       [] -> prp
-    | reqs -> PAssure(None, And reqs, prp)
+    | reqs -> PIdentityCoerce(prp, pt1, pt2, reqs)
 
 let set_of_name nm knd = Basic(SLN(None, nm), knd)
 let term_of_name nm = Var(LN(None, nm))
@@ -351,13 +346,6 @@ and string_of_term trm =
   "(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | The(bnd,prp) ->
   "(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
-    | Assure(None, p, t, ty) ->
-      "assure " ^ string_of_prop p ^ " in " ^ string_of_term t ^ 
-  " : " ^ string_of_set ty
-    | Assure(Some (n,s), p, t, ty) ->
-      "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-  string_of_prop p ^ " in " ^ string_of_term t ^ 
-  " : " ^ string_of_set ty
 
   in
     toStr trm)
@@ -395,11 +383,6 @@ and string_of_prop prp =
   in 
     "case " ^ string_of_term trm ^ " : " ^ string_of_set ty' ^ " of " ^
       (String.concat "\n| " (List.map doArm arms)) ^ " end"
-    | PAssure (None, p, q) ->
-  "assure " ^ string_of_prop p ^ " in " ^ string_of_prop q
-    | PAssure (Some (n,s), p, q) ->
-  "assure " ^ string_of_name n ^ " : " ^ string_of_set s ^ " . " ^
-    string_of_prop p ^ " in " ^ string_of_prop q
     | PLet ((n,s), t, p) ->
     "let " ^ string_of_name n ^ ":" ^ string_of_set s ^ " = " ^ 
     string_of_term t ^ " in " ^ string_of_prop p ^ " end"
@@ -604,12 +587,6 @@ and fnTerm = function
   | Case (trm, ty, arms, ty') ->
       unionNameSetList ( fnTerm trm :: fnSet ty :: fnSet ty' ::
          List.map fnCaseArm arms )
-  | Assure(None,prp,trm,ty) -> 
-      unionNameSetList [fnProp prp; fnTerm trm; fnSet ty]
-  | Assure(Some(nm,st),prp,trm,ty) ->
-      NameSet.union (fnSet st) 
-  (NameSet.union (fnSet ty)
-      (NameSet.remove nm (NameSet.union (fnProp prp) (fnTerm trm))))
 
 and fnProp = function
     False | True -> NameSet.empty
@@ -633,10 +610,6 @@ and fnProp = function
       NameSet.union (fnTerm trm) 
   (NameSet.union (fnSet ty)
       (unionNameSetList (List.map fnPCaseArm arms)))
-  | PAssure(None,prp1,prp2) -> NameSet.union (fnProp prp1) (fnProp prp2)
-  | PAssure(Some(nm,st),prp1,prp2) ->
-      NameSet.union (fnSet st) 
-  (NameSet.remove nm (NameSet.union (fnProp prp1) (fnProp prp2)))
   | PLet((nm,st),trm,prp) ->
       NameSet.union (fnSet st)
   (NameSet.union (fnTerm trm)
@@ -881,15 +854,6 @@ let rec subst sbst =
     The((y',substSet sbst st),
        substProp sbst' prp)
 
-    | Assure(None, prp, trm, ty) ->
-  Assure(None, substProp sbst prp, sub trm, substSet sbst ty)
-
-    | Assure(Some (y, st), prp, trm, ty) ->
-  let (sbst', y') = updateBoundName sbst y in
-    Assure(Some (y, substSet sbst st), 
-    substProp sbst' prp, subst sbst' trm,
-    substSet sbst ty)
-
   and subarms = function
       [] -> []
     | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
@@ -933,11 +897,6 @@ and substProp sbst =
     | PApp(prp1,trm2) -> PApp(sub prp1, subst sbst trm2)
     | IsEquiv (prp, st) -> IsEquiv(sub prp, substSet sbst st)
     | PCase(t1,ty,arms) -> PCase(t1, substSet sbst ty, psubarms arms)
-    | PAssure(None, prp1, prp2) -> PAssure(None, substProp sbst prp1, substProp sbst prp2)
-    | PAssure(Some(y, st), prp1, prp2) ->
-  let (sbst', y') = updateBoundName sbst y in
-    PAssure(Some (y, substSet sbst st), 
-     substProp sbst' prp1, substProp sbst' prp2)
     | PLet((y,st), trm, prp) ->
   let (sbst', y') = updateBoundName sbst y in
     PLet((y',substSet sbst st), 
