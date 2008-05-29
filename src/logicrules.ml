@@ -482,6 +482,9 @@ let rec hnfTerm cntxt = function
       in
         hnfTerm cntxt (subst sub trm2)
 
+  | IdentityCoerce(trm, _, _, _) ->
+      hnfTerm cntxt trm
+
   | trm -> trm
 
 (** Expand out any top-level definitions or function
@@ -564,6 +567,9 @@ let rec hnfProp cntxt = function
               Iff(PBool trm1, PBool trm2)
          | _ -> orig_prop
       end
+
+  | PIdentityCoerce(prp, _, _, _) ->
+      hnfProp cntxt prp
 
   | prp -> prp
 
@@ -667,6 +673,7 @@ let rec typeOf cntxt trm =
     | Choose (_, _, _, _, ty) -> ty
     | Let (_, _, _, ty) -> ty
     | Subout(_, ty) -> ty
+    | IdentityCoerce(_, _, ty, _) -> ty
 
 (**********************************************)
 (** {2 Equivalence, Subtyping, and Coercions} *)
@@ -998,7 +1005,7 @@ and eqProp cntxt prp1 prp2 =
             eqTerm cntxt trm1 trm2 @
               eqSet cntxt ty1 ty2 @
               eqArms cntxt substProp eqProp eqSet arms1 arms2
-              
+
         (* 
            hnfProp removes PAssures
            

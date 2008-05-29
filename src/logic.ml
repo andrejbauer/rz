@@ -314,39 +314,39 @@ and string_of_term trm =
     | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
     | Inj (lbl, None) -> "`" ^ lbl 
     | Case (trm,ty',arms,ty'') -> 
-  let rec doArm = function
-      (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
-    | (lbl, Some (n,ty), trm) -> 
-        lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
-    ") => " ^ toStr trm
-  in 
-    "case " ^ toStr trm ^ " : " ^ string_of_set ty' ^ " of " ^
-      (String.concat "\n| " (List.map doArm arms)) ^ " end" ^
-     ": " ^ string_of_set ty''
-
-
+	let rec doArm = function
+	    (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
+	  | (lbl, Some (n,ty), trm) -> 
+              lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
+		") => " ^ toStr trm
+	in 
+	  "case " ^ toStr trm ^ " : " ^ string_of_set ty' ^ " of " ^
+	    (String.concat "\n| " (List.map doArm arms)) ^ " end" ^
+	    ": " ^ string_of_set ty''
 
     | Quot (trm1,prp2) -> "(" ^ toStr trm1 ^ " % " ^ string_of_prop prp2 ^ ")"
     | RzQuot t -> "[" ^ (toStr t) ^ "]"
     | RzChoose (bnd, trm1, trm2, st) -> 
-  "let rz " ^ string_of_bnd bnd ^ " = " ^
-  string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ 
-   ": " ^ string_of_set st ^ " end"
-
+	"let rz " ^ string_of_bnd bnd ^ " = " ^
+	  string_of_term trm1 ^ " in " ^ string_of_term trm2 ^ 
+	  ": " ^ string_of_set st ^ " end"
+	  
     | Choose (bnd, prp1, trm2, trm3, st) -> 
-  "let [" ^ string_of_bnd bnd ^ "] % " ^ string_of_prop prp1 ^ " = " ^
-  string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ 
-   ": " ^ string_of_set st ^ " end" 
+	"let [" ^ string_of_bnd bnd ^ "] % " ^ string_of_prop prp1 ^ " = " ^
+	  string_of_term trm2 ^ " in " ^ string_of_term trm3 ^ 
+	  ": " ^ string_of_set st ^ " end" 
     | Subin(trm, bnd, prp) -> "(" ^ toStr trm ^ " :> {" ^ string_of_bnd bnd ^ " | " ^ string_of_prop prp ^ "})"
     | Subout(trm, set) -> "(" ^ toStr trm ^ " :< " ^ string_of_set set ^ ")"
     | Let(bnd,trm1,trm2,st) ->
-  "(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
-  " in " ^ toStr trm2 ^ " : " ^ string_of_set st  ^ ")"
+	"(let " ^ string_of_bnd bnd ^ " = " ^ toStr trm1 ^
+	  " in " ^ toStr trm2 ^ " : " ^ string_of_set st  ^ ")"
     | Lambda(bnd,trm) ->
-  "(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+	"(lam " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | The(bnd,prp) ->
-  "(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
-
+	"(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
+    | IdentityCoerce(trm, ty1, ty2, _) ->
+	"(" ^ toStr trm ^ " : " ^ string_of_set ty1 ^ " :> " ^
+	  string_of_set ty2 ^ ")"
   in
     toStr trm)
 
@@ -357,38 +357,42 @@ and string_of_prop prp =
     | False -> "False"
     | True -> "True"
     | PApp (prp1, trm2) -> "(" ^ toStr prp1 ^ " " ^ string_of_term trm2 ^ ")"
-    | And trms -> "(" ^ String.concat " && " (List.map toStr trms) ^ ")"
-    | Imply (trm1, trm2) -> "(" ^ toStr trm1 ^ " => " ^ toStr trm2 ^ ")"
-    | Iff (trm1, trm2) -> "(" ^ toStr trm1 ^ " <=> " ^ toStr trm2 ^ ")"
+    | And prps -> "(" ^ String.concat " && " (List.map toStr prps) ^ ")"
+    | Imply (prp1, prp2) -> "(" ^ toStr prp1 ^ " => " ^ toStr prp2 ^ ")"
+    | Iff (prp1, prp2) -> "(" ^ toStr prp1 ^ " <=> " ^ toStr prp2 ^ ")"
     | Or trms ->
   "(" ^ String.concat " \\/ " (List.map (fun (lbl, trm) -> lbl ^ ":" ^ toStr trm) trms) ^ ")"
     | Not trm -> "(not " ^ toStr trm ^ ")"
     | Equal(st,trm1,trm2) -> "(" ^ string_of_term trm1 ^ " =" ^ string_of_set st ^ "= " ^ string_of_term trm2 ^ ")"
     | Forall(bnd,trm) ->
-  "(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+	"(all " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Exists(bnd,trm) ->
-  "(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+	"(some " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | Unique(bnd,trm) ->
-  "(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
+	"(some1 " ^ string_of_bnd bnd ^ " . " ^ toStr trm ^ ")"
     | PLambda(bnd,prp) ->
-  "(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
+	"(plambda " ^ string_of_bnd bnd ^ " . " ^ toStr prp ^ ")"
     | IsEquiv (prp, st) ->
-  "IsEquiv(" ^ toStr prp ^ " on " ^ string_of_set st ^ ")"
+	"IsEquiv(" ^ toStr prp ^ " on " ^ string_of_set st ^ ")"
     | PCase (trm, ty', arms) -> 
-  let rec doArm = function
-      (lbl, None, prp) -> lbl ^ " => " ^ toStr prp
-    | (lbl, Some (n,ty), prp) -> 
-        lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
-    ") => " ^ toStr prp
-  in 
-    "case " ^ string_of_term trm ^ " : " ^ string_of_set ty' ^ " of " ^
-      (String.concat "\n| " (List.map doArm arms)) ^ " end"
+	let rec doArm = function
+	    (lbl, None, prp) -> lbl ^ " => " ^ toStr prp
+	  | (lbl, Some (n,ty), prp) -> 
+              lbl ^ "(" ^ string_of_name n ^ " : " ^ string_of_set ty ^
+		") => " ^ toStr prp
+	in 
+	  "case " ^ string_of_term trm ^ " : " ^ string_of_set ty' ^ " of " ^
+	    (String.concat "\n| " (List.map doArm arms)) ^ " end"
     | PLet ((n,s), t, p) ->
-    "let " ^ string_of_name n ^ ":" ^ string_of_set s ^ " = " ^ 
-    string_of_term t ^ " in " ^ string_of_prop p ^ " end"
+	"let " ^ string_of_name n ^ ":" ^ string_of_set s ^ " = " ^ 
+	  string_of_term t ^ " in " ^ toStr p ^ " end"
     | PBool trm -> "PBOOL(" ^ string_of_term trm ^ ")" 
-    in
-   toStr prp)
+    | PIdentityCoerce(prp, pt1, pt2, _) ->
+	"(" ^ toStr prp ^ " : " ^ string_of_proptype pt1 ^ " :> " ^
+	  string_of_proptype pt2 ^ ")"
+
+   in
+     toStr prp)
     
 
 and string_of_proptype = function
@@ -587,6 +591,9 @@ and fnTerm = function
   | Case (trm, ty, arms, ty') ->
       unionNameSetList ( fnTerm trm :: fnSet ty :: fnSet ty' ::
          List.map fnCaseArm arms )
+  | IdentityCoerce(trm, ty1, ty2, prps) ->
+      unionNameSetList 
+	(fnTerm trm :: fnSet ty1 :: fnSet ty2 :: List.map fnProp prps)
 
 and fnProp = function
     False | True -> NameSet.empty
@@ -615,6 +622,9 @@ and fnProp = function
   (NameSet.union (fnTerm trm)
       (NameSet.remove nm (fnProp prp)))
   | PBool trm -> fnTerm trm
+  | PIdentityCoerce(prp, pt1, pt2, prps) ->
+      unionNameSetList 
+	(fnProp prp :: fnProptype pt1 :: fnProptype pt2 :: List.map fnProp prps)
 
 and fnCaseArm = function
     (_, None, trm) -> fnTerm trm
@@ -825,35 +835,41 @@ let rec subst sbst =
        substSet sbst ty)
     | Quot(trm1,prp2) -> Quot(sub trm1, substProp sbst prp2)
     | Choose((y,sopt),p,t1,t2,stopt2) ->
-  let (sbst', y') = updateBoundName sbst y in
+	let (sbst', y') = updateBoundName sbst y in
           Choose((y',substSet sbst sopt),
-                substProp sbst p,
-                sub t1, 
-                subst sbst' t2,
-    substSet sbst stopt2)
+                 substProp sbst p,
+                 sub t1, 
+                 subst sbst' t2,
+		 substSet sbst stopt2)
     | Subin(trm,(y,st),prp) -> 
-  let (sbst', y') = updateBoundName sbst y in 
-    Subin(sub trm,
-               (y',substSet sbst st),
-           substProp sbst' prp)
+	let (sbst', y') = updateBoundName sbst y in 
+	  Subin(sub trm,
+		(y',substSet sbst st),
+		substProp sbst' prp)
     | Subout(trm,st) -> Subout(sub trm, substSet sbst st)
     | Let((y,st1),t1,t2,st2) ->
-  let (sbst', y') = updateBoundName sbst y in
+	let (sbst', y') = updateBoundName sbst y in
           Let((y',substSet sbst st1),
-             sub t1, 
-       subst sbst' t2,
-       substSet sbst st2)
-      
+              sub t1, 
+	      subst sbst' t2,
+	      substSet sbst st2)
+	    
     | Lambda((y,st),t1) ->
-  let (sbst', y') = updateBoundName sbst y in 
-    Lambda((y',substSet sbst st),
-    subst sbst' t1)
-
+	let (sbst', y') = updateBoundName sbst y in 
+	  Lambda((y',substSet sbst st),
+		 subst sbst' t1)
+	    
     | The((y,st), prp) ->
-  let (sbst', y') = updateBoundName sbst y in 
-    The((y',substSet sbst st),
-       substProp sbst' prp)
+	let (sbst', y') = updateBoundName sbst y in 
+	  The((y',substSet sbst st),
+	      substProp sbst' prp)
 
+    | IdentityCoerce(trm, ty1, ty2, prps) ->
+	IdentityCoerce(sub trm,
+		       substSet sbst ty1,
+		       substSet sbst ty2,
+		       List.map (substProp sbst) prps)
+	    
   and subarms = function
       [] -> []
     | (l,None,t)::rest -> (l,None, sub t)::(subarms rest)
@@ -869,7 +885,7 @@ and substProp sbst =
     | False -> False
     | Atomic (LN (None, nm), pt) -> getPropvar sbst nm (substProptype sbst pt)
     | Atomic (LN (Some mdl, nm), pt) -> 
-  Atomic( LN(Some(substModel sbst mdl), nm), substProptype sbst pt)
+	Atomic( LN(Some(substModel sbst mdl), nm), substProptype sbst pt)
     | And ts         -> And(List.map sub ts)
     | Imply (t1,t2)  -> Imply (sub t1, sub t2)
     | Iff (t1,t2)    -> Iff (sub t1, sub t2)
@@ -879,30 +895,37 @@ and substProp sbst =
          subst sbst t1,
          subst sbst t2)
     | Forall((y,sopt),t1) ->
-  let (sbst', y') = updateBoundName sbst y in 
+	let (sbst', y') = updateBoundName sbst y in 
           Forall((y',substSet sbst sopt),
-    substProp sbst' t1)
+		 substProp sbst' t1)
     | Exists((y,sopt),t1) ->
-  let (sbst', y') = updateBoundName sbst y in 
+	let (sbst', y') = updateBoundName sbst y in 
     Exists((y',substSet sbst sopt),
-    substProp sbst' t1)
+	   substProp sbst' t1)
     | Unique((y,sopt),t1) ->
-  let (sbst', y') = updateBoundName sbst y in 
-    Unique((y',substSet sbst sopt),
-    substProp sbst' t1)
+	let (sbst', y') = updateBoundName sbst y in 
+	  Unique((y',substSet sbst sopt),
+		 substProp sbst' t1)
     | PLambda((y,sopt),t1) ->
-  let (sbst', y') = updateBoundName sbst y in 
-    PLambda((y',substSet sbst sopt),
-     substProp sbst' t1)
+	let (sbst', y') = updateBoundName sbst y in 
+	  PLambda((y',substSet sbst sopt),
+		  substProp sbst' t1)
     | PApp(prp1,trm2) -> PApp(sub prp1, subst sbst trm2)
     | IsEquiv (prp, st) -> IsEquiv(sub prp, substSet sbst st)
     | PCase(t1,ty,arms) -> PCase(t1, substSet sbst ty, psubarms arms)
     | PLet((y,st), trm, prp) ->
-  let (sbst', y') = updateBoundName sbst y in
-    PLet((y',substSet sbst st), 
-        subst sbst trm, substProp sbst' prp)
+	let (sbst', y') = updateBoundName sbst y in
+	  PLet((y',substSet sbst st), 
+               subst sbst trm, substProp sbst' prp)
     | PBool trm -> PBool(subst sbst trm)
+    | PIdentityCoerce(prp, pt1, pt2, prps) ->
+	PIdentityCoerce(sub prp,
+			substProptype sbst pt1,
+			substProptype sbst pt2,
+			List.map sub prps)
+	    
 
+	
   and psubarms = function
       [] -> []
     | (l,None,p)::rest -> (l,None, sub p)::(psubarms rest)
