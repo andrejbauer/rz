@@ -1375,14 +1375,24 @@ and coerce cntxt trm st1 st2 =
                                      "=" ^ string_of_set st2'))
 
 
-
-(* XXX Should this be accumulating and returning assurances? *)
+(* coerceFromSubset : cntxt -> term -> set
+      Apply Subout enough times to the given term until it
+      is no longer a member of a subset type.
+*)
 let rec coerceFromSubset cntxt trm st = 
    match (hnfSet cntxt st) with
       Subset( ( _, st1 ), _ ) -> 
          coerceFromSubset cntxt (Subout(trm, st)) st1
     | st' -> (trm, st')
 
+(* coerceProp: cntxt -> proposition -> proptype -> proptype -> proposition
+       Coerce the given proposition from the first proptype to the second.
+       Raise a type error if not possible.  If the system cannot determine
+       whether or not it's possible, wrap with a PIdentityCoerce.
+
+       Note: this currently does *not* automatically coerce from
+         t->t->StableProp  to Equiv(t)
+*)
 let rec coerceProp cntxt prp pt1 pt2 =
   try
     let reqs = subPropType cntxt pt1 pt2 in
@@ -1394,20 +1404,12 @@ let rec coerceProp cntxt prp pt1 pt2 =
                      " to proptype " ^ 
                  string_of_proptype pt2)
 
-(*
- Never mind.  We're not doing automatic EquivCoerce insertion...yet.
-
-let rec coerceProp cntxt prp pt1 pt2 =
-   if (subPropType cntxt pt1 pt2) then
-      (** Short circuting, since the identity coercion is (we hope)
-          the common case *)
-      Some trm
-   else
-     match (prp, pt1, pt2) with
-	 (_, PropArrow(s1a, PropArrow(s1b, StableProp), EquivProp s2))
+(* joinTypes : cntxt -> set list -> set * proposition list
+     Find the least common super-type of the given sets.
+     Raise a type error if not possible.  If the system cannot determine
+     whether or not it's possible, return a list of requirements that
+     would make it possible.  [Currently never used, I think]
 *)
-
-
 let rec joinTypes cntxt = function
       [] -> (Unit, [])
     | [s] -> (s, [])
@@ -1416,16 +1418,17 @@ let rec joinTypes cntxt = function
         in let (ty2, reqs2) = joinType cntxt s ty1
         in (ty2, reqs1 @ reqs2)
 
-let joinProperPropType p1 p2 = 
+
+let joinProperPropType pt1 pt2 = 
   begin
-    match (p1,p2) with
+    match (pt1,pt2) with
         (StableProp, StableProp) -> StableProp
       | ((Prop | StableProp), (Prop | StableProp)) -> Prop
       | _ -> failwith "joinProperPropType only allows Prop and StableProp!"
   end
 
-let joinProperPropTypes lst = List.fold_left joinProperPropType StableProp lst
-
+let joinProperPropTypes lst = 
+  List.fold_left joinProperPropType StableProp lst
 
 
 let rec joinPropType cntxt pt1 pt2 = 
