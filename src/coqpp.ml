@@ -166,30 +166,30 @@ and output_term_3 ppf = function
 
 (** Specifically for comma-separated variable/type pairs *)
 and output_bnd ppf (n,t) = 
-  fprintf ppf "%s:%a" (Name.string_of_name n)  output_ty t
+  fprintf ppf "(%s:%a)" (Name.string_of_name n)  output_ty t
 
 and output_bnds ppf lst =
-  output_components output_bnd ", " ppf lst
+  output_components output_bnd " " ppf lst
 
 and output_mbnd ppf (n,mset) =
-  fprintf ppf "%s:%a" (Name.string_of_name n)  output_modest mset
+  fprintf ppf "(%s:%a)" (Name.string_of_name n)  output_modest mset
     
 and output_mbnds ppf lst =
-  output_components output_mbnd ", " ppf lst
+  output_components output_mbnd " " ppf lst
 
 and output_pbnd ppf (n,pt) = 
-  fprintf ppf "%a:%a" output_name n  output_proptype pt
+  fprintf ppf "(%a:%a)" output_name n  output_proptype pt
 
 and output_pbnds ppf = function
     [] -> ()
-  | lst -> fprintf ppf "[%a]"   (output_components output_pbnd ", ") lst
+  | lst -> fprintf ppf "[%a]"   (output_components output_pbnd " ") lst
 
 and output_modest ppf {ty=ty;tot=p} =
   fprintf ppf "%a(%a)"  output_ty ty  output_prop p
   
 
 and output_proptype ppf = function
-    Prop -> fprintf ppf "bool"
+    Prop -> fprintf ppf "Prop"
   | PropArrow(ty, pt) ->
       fprintf ppf "%a -> %a"  output_ty_2 ty   output_proptype pt
 
@@ -225,12 +225,12 @@ and string_of_bop = function
 
 and output_term_0 ppf = function
   | Id ln -> output_ln ppf ln
-  | EmptyTuple -> fprintf ppf "tt"
+  | EmptyTuple -> fprintf ppf "tt" (* Coq's unit value *)
   | BConst true -> fprintf ppf "true"
   | BConst false -> fprintf ppf "false"
-  | Dagger -> fprintf ppf "DAGGER"
-  | Tuple [] -> fprintf ppf "()"
-  | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t
+  | Dagger -> fprintf ppf "DAGGER" (* Should never happen *)
+  | Tuple [] -> fprintf ppf "tt" (* Coq's unit value *)
+  | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t (* Should never happen *)
   | Tuple lst -> 
         fprintf ppf "@[(%a)@]"   (output_components output_term_9 ",") lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
@@ -462,7 +462,7 @@ and output_ty_0 ppf = function
   | VoidTy     -> fprintf ppf "Empty_set"
   | BoolTy     -> fprintf ppf "bool"
   | TopTy      -> fprintf ppf "top"
-  | TupleTy [] -> fprintf ppf "top"
+  | TupleTy [] -> fprintf ppf "unit"
   | SumTy []   -> fprintf ppf "Empty_set"
   | typ        -> ((* print_string (string_of_ty typ); *)
                    fprintf ppf "(%a)"  output_ty typ)
@@ -483,12 +483,12 @@ and output_annots ppf = function
 
 
 and output_assertion ppf asn =
-  fprintf ppf "@[<hov 2>{v assertion %a%s%a%s%s %a: @ %a v}@]"  
+  fprintf ppf "@[<hov 2>{v assertion %s : %a%s%a%s %a: @ %a v}@]"  
+    asn.alabel  
     output_tyvars asn.atyvars 
     (if asn.atyvars = [] then "" else " ")
     output_pbnds asn.apbnds
     (if asn.apbnds = [] then "" else " ")
-    asn.alabel  
     output_annots asn.aannots   
     output_prop asn.aprop
 
@@ -519,13 +519,13 @@ and output_spec ppf = function
          with type variables, so we ignore them when pretty-printing.
          (We could show them in a comment, I suppose)
        *)
-      fprintf ppf "@[<v>@[<hov 2>val %s : %a@]%a@]" 
+      fprintf ppf "@[<v>@[<hov 2>Parameter %s : %a.@]%a@]" 
         (Name.string_of_name nm)  output_ty ty  output_assertions assertions
   | Spec(tynm, TySpec None, assertions) -> 
-      fprintf ppf "@[<v>@[<hov 2>type %s@]%a@]"  
+      fprintf ppf "@[<v>@[<hov 2>Parameter %s : Set.@]%a@]"  
         (Name.string_of_name tynm)   output_assertions assertions
   | Spec(tynm, TySpec (Some ty), assertions) -> 
-      fprintf ppf "@[<v>@[<hov 2>type %s =@ %a@]%a@]"  
+      fprintf ppf "@[<v>@[<hov 2>Definition %s : Set :=@ %a@]%a@]"  
         (Name.string_of_name tynm)   output_ty ty   output_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
       fprintf ppf "@[<hov 2>@[module %s : %a@]%a@]"
@@ -534,7 +534,7 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
         (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, PropSpec pt, assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>(**{v predicate %a : %a v}*)@]%a@]" 
+      fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.)@]%a@]" 
         output_name nm   output_proptype pt
         output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]
