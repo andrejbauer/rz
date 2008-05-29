@@ -908,7 +908,7 @@ and annotateCase cntxt orig_expr expr1 arms2 =
             E.tyGenericError ( "Bad case arm " ^ string_of_label lbl ^
                                " in " ^ string_of_expr orig_expr)  in
      let (arms, tys) = process arms2' in
-     let (ty,reqs2) = LR.joinTypes cntxt tys in
+     let (ty,_) = LR.joinTypes cntxt tys in
 
       let arms' =
 	(* Coerce each arm to the common proptype *)

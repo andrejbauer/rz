@@ -1188,8 +1188,10 @@ and eqTerm cntxt trm1 trm2 =
       | _ -> 
           let ty1 = typeOf cntxt trm1
           in let ty2 = typeOf cntxt trm2
-          in let (ty,reqs) = joinType cntxt ty1 ty2
-          in reqs @ [Equal(ty, trm1, trm2)]
+          in let (ty,_) = joinType cntxt ty1 ty2
+	  in let trm1' = coerce cntxt trm1 ty1 ty 
+	  in let trm2' = coerce cntxt trm1 ty2 ty 
+          in [Equal(ty, trm1', trm2')]
          
 and eqTerms cntxt trms1 trms2 = 
   try  
@@ -1282,14 +1284,129 @@ and joinType cntxt s1 s2 =
             in
               (s1, reqs)
 
+
 (* Checks whether members of a given set are coercable to type Bool *)
-let rec isABool cntxt ty =
+and isABool cntxt ty =
   let rec dropSubsets = function
       Subset( ( _, ty1 ), _ ) -> dropSubsets ty1
     | ty1 -> ty1   in
   try
      [] = subSet cntxt (dropSubsets ty) Bool
   with E.TypeError _ -> false
+
+(* coerce: cntxt -> term -> set -> set -> trm *)
+(**
+     coerce trm st1 st2 coerces trm from the set st1 to the set st2
+       using subin and subout.
+     Preconditions: trm is in st1 and all arguments are fully-annotated.
+*)
+and coerce cntxt trm st1 st2 = 
+  try
+    (** Short circuting, since the identity coercion is (we hope)
+        the common case *)
+    let reqs = subSet cntxt st1 st2 
+    in 
+      maybeIdentityCoerce trm st1 st2 reqs
+  with E.TypeError _ ->
+    (** Just because the identity coercion won't work doesn't
+        mean it's time to give up! *)
+    let    st1' = hnfSet cntxt st1
+    in let st2' = hnfSet cntxt st2
+    in try       
+    match (trm, st1', st2') with
+      | ( _, Subset ( ( _, st1'1 ) , _ ),
+            Subset ( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
+          begin
+        (** Try an implicit out-of-subset conversion *)
+        try
+          coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
+        with E.TypeError _ -> 
+          (** That didn't work, so try an implicit 
+              into-subset conversion *)
+
+          (* XXX Eventually we may add an assure here for the subin *)
+          let trm' = coerce cntxt trm st1 st2'1
+          in  Subin ( trm', bnd2', prp2'2 )
+          end
+        
+      | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
+          (** Try an implicit out-of-subset conversion *)
+          (* XXX Eventually we may add an assure here for the subin *)
+          coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
+        
+      | ( _, _, Subset( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
+          (** Try an implicit into-subset conversion *)
+          let trm' = coerce cntxt trm st1 st2'1
+          in  Subin ( trm', bnd2', prp2'2 )
+        
+      | ( Tuple trms, Product sts1, Product sts2 ) ->
+          let rec loop subst2 = function 
+          ([], [], []) -> []
+        | ([], _, _)   -> failwith "Impossible: coerce 1" 
+        | (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
+            if (isWild nm1) then
+              let st2' = substSet subst2 st2
+              in let subst2' = insertTermvar subst2 nm2 trm
+              in (coerce cntxt trm st1 st2') ::
+                 (loop subst2' (trms,sts1,sts2))
+            else
+              (* This case shouldn't ever arise; tuples naturally
+             yield non-dependent product types.  
+             But just in case, ...*)
+              (failwith
+              ("coerce: dependent->? case for products arose. " ^
+                  "Maybe it should be implemented after all"))
+        | _ -> raise Impossible
+              in let trms' = loop emptysubst (trms, sts1, sts2)
+          in Tuple trms'
+
+          | _ -> E.tyGenericErrors []
+      with
+      E.TypeError _ -> 
+        (* Provide a less confusing error message, since some of
+           the things we tried may have made no sense. *)
+        E.tyGenericError ("No implicit coercion from  type " ^ 
+                 string_of_set st1 ^ 
+                     (if st1 = st1' then "" else
+                                     "=" ^ string_of_set st1') ^
+                     " to type " ^ 
+                     string_of_set st2 ^ 
+                     (if st2 = st2' then "" else
+                                     "=" ^ string_of_set st2'))
+
+
+
+(* XXX Should this be accumulating and returning assurances? *)
+let rec coerceFromSubset cntxt trm st = 
+   match (hnfSet cntxt st) with
+      Subset( ( _, st1 ), _ ) -> 
+         coerceFromSubset cntxt (Subout(trm, st)) st1
+    | st' -> (trm, st')
+
+let rec coerceProp cntxt prp pt1 pt2 =
+  try
+    let reqs = subPropType cntxt pt1 pt2 in
+      maybePIdentityCoerce prp pt1 pt2 reqs
+  with
+      E.TypeError _ -> 
+	E.tyGenericError ("No implicit coercion from proptype " ^ 
+                 string_of_proptype pt1 ^ 
+                     " to proptype " ^ 
+                 string_of_proptype pt2)
+
+(*
+ Never mind.  We're not doing automatic EquivCoerce insertion...yet.
+
+let rec coerceProp cntxt prp pt1 pt2 =
+   if (subPropType cntxt pt1 pt2) then
+      (** Short circuting, since the identity coercion is (we hope)
+          the common case *)
+      Some trm
+   else
+     match (prp, pt1, pt2) with
+	 (_, PropArrow(s1a, PropArrow(s1b, StableProp), EquivProp s2))
+*)
+
 
 let rec joinTypes cntxt = function
       [] -> (Unit, [])
@@ -1713,118 +1830,6 @@ and checkModelConstraint cntxt mdl1 thry1 thry2 =
       ("...in comparing theories " ^ string_of_theory thry1 ^
           "\nand " ^ string_of_theory thry2)
     )  
-(* coerce: cntxt -> term -> set -> set -> trm *)
-(**
-     coerce trm st1 st2 coerces trm from the set st1 to the set st2
-       using subin and subout.
-     Preconditions: trm is in st1 and all arguments are fully-annotated.
-*)
-let rec coerce cntxt trm st1 st2 = 
-  try
-    (** Short circuting, since the identity coercion is (we hope)
-        the common case *)
-    let reqs = subSet cntxt st1 st2 
-    in 
-      maybeIdentityCoerce trm st1 st2 reqs
-  with E.TypeError _ ->
-    (** Just because the identity coercion won't work doesn't
-        mean it's time to give up! *)
-    let    st1' = hnfSet cntxt st1
-    in let st2' = hnfSet cntxt st2
-    in try       
-    match (trm, st1', st2') with
-      | ( _, Subset ( ( _, st1'1 ) , _ ),
-            Subset ( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
-          begin
-        (** Try an implicit out-of-subset conversion *)
-        try
-          coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
-        with E.TypeError _ -> 
-          (** That didn't work, so try an implicit 
-              into-subset conversion *)
-
-          (* XXX Eventually we may add an assure here for the subin *)
-          let trm' = coerce cntxt trm st1 st2'1
-          in  Subin ( trm', bnd2', prp2'2 )
-          end
-        
-      | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
-          (** Try an implicit out-of-subset conversion *)
-          (* XXX Eventually we may add an assure here for the subin *)
-          coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
-        
-      | ( _, _, Subset( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
-          (** Try an implicit into-subset conversion *)
-          let trm' = coerce cntxt trm st1 st2'1
-          in  Subin ( trm', bnd2', prp2'2 )
-        
-      | ( Tuple trms, Product sts1, Product sts2 ) ->
-          let rec loop subst2 = function 
-          ([], [], []) -> []
-        | ([], _, _)   -> failwith "Impossible: coerce 1" 
-        | (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
-            if (isWild nm1) then
-              let st2' = substSet subst2 st2
-              in let subst2' = insertTermvar subst2 nm2 trm
-              in (coerce cntxt trm st1 st2') ::
-                 (loop subst2' (trms,sts1,sts2))
-            else
-              (* This case shouldn't ever arise; tuples naturally
-             yield non-dependent product types.  
-             But just in case, ...*)
-              (failwith
-              ("coerce: dependent->? case for products arose. " ^
-                  "Maybe it should be implemented after all"))
-        | _ -> raise Impossible
-              in let trms' = loop emptysubst (trms, sts1, sts2)
-          in Tuple trms'
-
-          | _ -> E.tyGenericErrors []
-      with
-      E.TypeError _ -> 
-        (* Provide a less confusing error message, since some of
-           the things we tried may have made no sense. *)
-        E.tyGenericError ("No implicit coercion from  type " ^ 
-                 string_of_set st1 ^ 
-                     (if st1 = st1' then "" else
-                                     "=" ^ string_of_set st1') ^
-                     " to type " ^ 
-                     string_of_set st2 ^ 
-                     (if st2 = st2' then "" else
-                                     "=" ^ string_of_set st2'))
-
-
-
-(* XXX Should this be accumulating and returning assurances? *)
-let rec coerceFromSubset cntxt trm st = 
-   match (hnfSet cntxt st) with
-      Subset( ( _, st1 ), _ ) -> 
-         coerceFromSubset cntxt (Subout(trm, st)) st1
-    | st' -> (trm, st')
-
-let rec coerceProp cntxt prp pt1 pt2 =
-  try
-    let reqs = subPropType cntxt pt1 pt2 in
-      maybePIdentityCoerce prp pt1 pt2 reqs
-  with
-      E.TypeError _ -> 
-	E.tyGenericError ("No implicit coercion from proptype " ^ 
-                 string_of_proptype pt1 ^ 
-                     " to proptype " ^ 
-                 string_of_proptype pt2)
-
-(*
- Never mind.  We're not doing automatic EquivCoerce insertion...yet.
-
-let rec coerceProp cntxt prp pt1 pt2 =
-   if (subPropType cntxt pt1 pt2) then
-      (** Short circuting, since the identity coercion is (we hope)
-          the common case *)
-      Some trm
-   else
-     match (prp, pt1, pt2) with
-	 (_, PropArrow(s1a, PropArrow(s1b, StableProp), EquivProp s2))
-*)
 
 (* Wrapper for equality-testing functions: returns a bool, rather than
      a list or an exception.
