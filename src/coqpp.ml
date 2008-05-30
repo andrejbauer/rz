@@ -528,7 +528,7 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[<hov 2>Definition %s : Set :=@ %a@]%a@]"  
         (Name.string_of_name tynm)   output_ty ty   output_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
-      fprintf ppf "@[<hov 2>@[module %s : %a@]%a@]"
+      fprintf ppf "@[<hov 2>@[Declare Module %s : %a.@]%a@]"
         (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
   | Spec(nm, SignatSpec sgntr, assertions) ->
       fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
