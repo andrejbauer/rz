@@ -102,7 +102,7 @@ and output_term_9 ppf = function
         output_term_8 t   op   output_term_8 u
   | BOp (bop, lst) ->
       assert (if bop = ImplyOp || bop = IffOp then List.length lst = 2 else List.length lst >= 1) ;
-      fprintf ppf "%s a" (string_of_bop bop) (output_components output_term_8 " ") lst
+      fprintf ppf "%s %a" (string_of_bop bop) (output_components output_term_8 " ") lst
   | BNot t -> fprintf ppf "negb %a" output_term_8 t
   | trm -> output_term_8 ppf trm
       
@@ -182,7 +182,11 @@ and output_pbnd ppf (n,pt) =
 
 and output_pbnds ppf = function
     [] -> ()
-  | lst -> fprintf ppf "[%a]"   (output_components output_pbnd " ") lst
+  | lst -> fprintf ppf "%a"   (output_components output_pbnd " ") lst
+
+and output_quant_pbnds ppf = function
+    [] -> () 
+  | lst -> fprintf ppf "forall %a,@ "  output_pbnds lst
 
 and output_modest ppf {ty=ty;tot=p} =
   fprintf ppf "%a(%a)"  output_ty ty  output_prop p
@@ -241,9 +245,9 @@ and output_term_apps ppf lst =
 
 and output_name ppf = function
   | Name.N (_, Name.Per) as nm ->
-      fprintf ppf "(=%s=)" (Name.string_of_name nm)
+      fprintf ppf "eq_%s" (Name.string_of_name nm)
   | Name.N (_, Name.Support) as nm ->
-      fprintf ppf "||%s||" (Name.string_of_name nm)
+      fprintf ppf "total_%s" (Name.string_of_name nm)
   | nm ->
       fprintf ppf "%s" (Name.string_of_name nm)
       
@@ -346,12 +350,17 @@ and output_prop_10 ppf = function
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
-    PApp (PApp (p, t), u) when isPerProp p -> 
+(*
+  No special syntax in coq output
+
+   PApp (PApp (p, t), u) when isPerProp p -> 
       fprintf ppf "%a %a %a" 
         output_term_4 t   output_per p   output_term_4 u
-  | PApp (p, t) when isSupportProp p ->
+
+| PApp (p, t) when isSupportProp p ->
       fprintf ppf "%a : %a"
         output_term_9 t   output_support p
+*)
 (* XXX the commented lines below do not work when something like "(<) x y z" appears because
    it would print "x < y z" when probably it should print "(<) x y z" or "(x < y) z":
   | PApp (PApp (BasicProp (LN(None, Name.N(op, Name.Infix0))), t), u) ->
@@ -374,11 +383,10 @@ and output_prop_0 ppf = function
   | True -> fprintf ppf "True"
   | False -> fprintf ppf "False"
   | BasicProp (LN (_, Name.N(_, Name.Per)) as ln) ->
-      fprintf ppf "=%a="
+      fprintf ppf "eq_%a"
         output_ln ln
   | BasicProp (LN (_, Name.N(_, Name.Support)) as ln) ->
-      fprintf ppf "||%a||"
-        output_ln ln
+      fprintf ppf "total_%a" output_ln ln
   | BasicProp ln -> output_ln ppf ln
   | SimpleSupport sty -> fprintf ppf "||%a||" output_simple_ty sty
   | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_per sty
@@ -398,7 +406,7 @@ and output_per ppf p =
   in
     match p with
       | BasicProp ((LN (_, Name.N(_, Name.Per))) as ln) ->
-          fprintf ppf "=%a="
+          fprintf ppf "eq_%a"
             output_ln ln
       | SimplePer sty ->
           fprintf ppf "=%a="
@@ -420,8 +428,7 @@ and output_support ppf p =
   in
     match p with
       | BasicProp ((LN (_, Name.N(_, Name.Support))) as ln) ->
-          fprintf ppf "||%a||"
-            output_ln ln
+          fprintf ppf "total_%a" output_ln ln
       | SimpleSupport sty ->
           fprintf ppf "||%a||"
             output_simple_ty sty
@@ -483,35 +490,22 @@ and output_annots ppf = function
 
 
 and output_assertion ppf asn =
-  fprintf ppf "@[<hov 2>{v assertion %s : %a%s%a%s %a: @ %a v}@]"  
-    asn.alabel  
-    output_tyvars asn.atyvars 
-    (if asn.atyvars = [] then "" else " ")
-    output_pbnds asn.apbnds
-    (if asn.apbnds = [] then "" else " ")
-    output_annots asn.aannots   
-    output_prop asn.aprop
+    fprintf ppf "@,@,@[<hov 2>Axiom %s : %a%a%a.@]"  
+      asn.alabel  
+      output_quant_tyvars asn.atyvars 
+      output_quant_pbnds asn.apbnds
+(*      output_annots asn.aannots    *)
+      output_prop asn.aprop
 
-and output_assertions ppf = function
-    [] -> ()
-  | assertions ->
-      let rec loop ppf = function
-          [] -> ()
-        | [assertion] ->
-              output_assertion ppf assertion
-        | assertion::assertions -> 
-            fprintf ppf "%a@, @,%a" 
-              output_assertion assertion   loop assertions
-      in
-        fprintf ppf "@,@[<v>(**  @[<v>%a@]@,*)@]"  loop assertions
+and output_assertions ppf assertions = 
+  output_components_nobreak output_assertion "" ppf assertions
 
-and output_tyvars ppf = function
+and output_quant_tyvars ppf = function
     [] -> ()
-  | [nm] -> fprintf ppf "%a"  output_name nm
-  | nms -> fprintf ppf "(%a)"  output_names nms
+  | nms -> fprintf ppf "forall (%a : Set),@ "  output_names nms
 
 and output_names ppf nms =
-  output_components_nobreak output_name "," ppf nms
+  output_components_nobreak output_name " " ppf nms
 
 and output_spec ppf = function
     Spec(nm, ValSpec (_,ty), assertions) ->
@@ -525,16 +519,25 @@ and output_spec ppf = function
       fprintf ppf "@[<v>@[<hov 2>Parameter %s : Set.@]%a@]"  
         (Name.string_of_name tynm)   output_assertions assertions
   | Spec(tynm, TySpec (Some ty), assertions) -> 
-      fprintf ppf "@[<v>@[<hov 2>Definition %s : Set :=@ %a@]%a@]"  
+      fprintf ppf "@[<v>@[<hov 2>Definition %s : Set :=@ %a.@]%a@]"  
         (Name.string_of_name tynm)   output_ty ty   output_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
       fprintf ppf "@[<hov 2>@[Declare Module %s : %a.@]%a@]"
         (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
-  | Spec(nm, SignatSpec sgntr, assertions) ->
-      fprintf ppf "@[<v>@[module type %s =@, @[<v>%a@]@]%a@]"   
-        (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
+
+  | Spec(nm, SignatSpec (SignatName sn), assertions) ->
+      fprintf ppf "@[<v>@[Module Type %a := %a.@]%a@]"   
+        output_name nm  output_name sn  output_assertions assertions
+  | Spec(nm, SignatSpec (Signat specs), assertions) ->
+      fprintf ppf "@[<v>@[Module Type %a.@, @[<v>%a@]@,End %a.@]%a@]"   
+        output_name nm   output_specs specs    output_name nm
+	output_assertions assertions 
+
+  | Spec(nm, SignatSpec _, assertions) ->
+      failwith "coqpp/outputSpec"
+
   | Spec(nm, PropSpec pt, assertions) ->
-      fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.)@]%a@]" 
+      fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.@]%a@]" 
         output_name nm   output_proptype pt
         output_assertions assertions
   | Assertion assertion -> output_assertions ppf [assertion]
@@ -588,9 +591,8 @@ and output_modul ppf = function
   | ModulProj (mdl, s) -> 
       fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name s)
   | ModulApp (mdl1, mdl2) -> 
-      fprintf ppf "%a(%a)" output_modul mdl1   output_modul mdl2
-  | ModulStruct defs -> 
-      fprintf ppf "@[<v>struct@ %a@ end]"  output_defs defs
+      fprintf ppf "%a %a" output_modul mdl1   output_modul mdl2
+  | ModulStruct _ -> failwith "coqpp/output_modul"
 
 and output_defs ppf = function
     [] -> ()
@@ -604,12 +606,16 @@ and output_def ppf = function
   | DefTerm(nm,ty,trm) ->
       fprintf ppf "let %a : %a = %a"  
         output_name nm   output_ty ty   output_term trm
-  | DefModul(nm,signat,mdl) ->
-      fprintf ppf "module %a = %a : %a"
-        output_name nm   output_modul mdl   output_signat signat
-  | DefSignat(nm,signat) ->
-      fprintf ppf "@[<hov 2>module type %a =@ %a@]@.@." 
-        output_name nm   output_signat signat
+  | DefModul(nm,SignatName sn,modul) ->
+      fprintf ppf "Module %a : %a := %a."
+        output_name nm   output_name sn  output_modul modul
+  | DefSignat(nm,SignatName sn) ->
+      fprintf ppf "Module Type %a := %a."
+        output_name nm   output_name sn
+  | DefSignat(nm,Signat elts) ->
+      fprintf ppf "@[<v>Module Type %a.@   @[<v>%a@]End %a.@]"
+	output_name nm   output_specs elts  output_name nm
+  | _ -> failwith "coqpp/output_def"
 
 and output_toplevel ppf body =
-  fprintf ppf "@[<v>Require Export Coq.Bool.Bool@ %a@]@.@."  output_specs body
+  fprintf ppf "@[<v>Require Export Coq.Bool.Bool.@ %a@]@.@."  output_specs body

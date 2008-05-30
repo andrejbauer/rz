@@ -20,6 +20,7 @@ let command_line_options =
   in let fClear = ((fun x -> Arg.Clear x), false)
   in let booleanFlags = 
     [
+     ("--coq",        fSet,   Flags.do_coq,       "Coq output");
      ("--hoist",      fSet,   Flags.do_hoist,     "Enable hoisting");
      ("--nohoist",    fClear, Flags.do_hoist,     "No hoisting");
      ("--fullhoist",  fSet,   Flags.do_fullhoist, "When hoisting, go further");
@@ -117,7 +118,10 @@ let parse str = Parser.toplevels Lexer.token (Lexing.from_string str);;
 (* Helper function:  write the final output to a pretty-printing
    formatter. *)
 let send_to_formatter ppf toplevels =
-   Pp.output_toplevel ppf toplevels
+  if !(Flags.do_coq) then
+    Coqpp.output_toplevel ppf toplevels
+  else
+    Pp.output_toplevel ppf toplevels
 
 (* Helper function:  find the file with given basename in directory,
    if present, or search also in directories from Flags.include_dir. *)
@@ -237,8 +241,9 @@ let rec processOne (state : state) (doWrap,writeOutput) filename =
 
       let spec4 = fst (Rename.renSignatElementList Rename.emptyRen spec3) in
 
-      (** The output file replaces the .thr extension by .mli *)
-      let outfile = (Filename.chop_extension filename) ^ ".mli" in
+      (** The output file replaces the .thr extension by .mli or .v *)
+      let suffix = (if !(Flags.do_coq) then ".v" else ".mli")  in
+      let outfile = (Filename.chop_extension filename) ^ suffix  in
 
       (** Write the output file 
       *)

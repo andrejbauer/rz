@@ -23,6 +23,7 @@ SOURCES = \
 	outsynrules.ml \
 	rename.ml \
 	pp.ml \
+	coqpp.ml \
 	thin.ml \
         opt.ml \
         translate.ml \

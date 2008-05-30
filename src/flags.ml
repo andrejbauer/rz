@@ -29,3 +29,5 @@ let do_fullhoist = ref false (* When doing hoisting,
                                 Should we do full, or partial, hoisting? *)
 
 let do_poly  = ref true  (* Should we try to replace functors by polymorphism? *)
+
+let do_coq = ref false
