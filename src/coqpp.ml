@@ -50,7 +50,12 @@ and output_patterns ppf = function
   | pat::pats -> fprintf ppf "%a,%a"  output_pattern pat   output_patterns pats
 
 and output_term_13 ppf = function
-     Case (t, lst) ->
+  | Case (t, [(ConstrPat(_, Some(nm1,ty1)), trm1);
+	      (ConstrPat(_, Some(nm2,ty2)), trm2)]) ->
+          fprintf ppf "@[<v>match @[<hov>%a@ with@]@,@[<v>| inl %a => %a@]@,@[<v>| inr %a => %a@]@,end@]"
+	    output_term_13 t  output_name nm1  output_term_12 trm1
+	                      output_name nm2  output_term_12 trm2
+  | Case (t, lst) ->
        (let output_arm ppf (pat, u) =
          fprintf ppf "%a -> %a" output_pattern pat output_term_12 u
         in let rec output_arms' ppf = function
@@ -262,7 +267,12 @@ and output_prop ppf = function
     prp -> output_prop_15 ppf prp
 
 and output_prop_15 ppf = function
-    PCase (t, lst) ->
+  | PCase (t, [(ConstrPat(_, Some(nm1,_)), prp1);
+	      (ConstrPat(_, Some(nm2,_)), prp2)]) ->
+          fprintf ppf "@[<v>match @[<hov>%a@ with@]@,@[<v>| inl %a => %a@]@,@[<v>| inr %a => %a@]@,end@]"
+	    output_term_13 t  output_name nm1  output_prop_14 prp1
+	                      output_name nm2  output_prop_14 prp2
+  | PCase (t, lst) ->
       begin
         let output_arm ppf (pat, u) =
           fprintf ppf "%a =>@ @[<hv>%a@]"
@@ -294,16 +304,11 @@ and output_prop_14 ppf = function
       in
         fprintf ppf "@[<hov 2>forall %a, @ %a@]" 
           output_bnds alls   output_prop_14 prp'
-  | ForallSupport ((n, _), p) as all_sty -> 
-      let rec extract_foralls = function
-          (ForallSupport((nm,sty),prp)) ->
-            let (alls,prp') = extract_foralls prp
-            in ((nm,sty) ::alls,prp')
-        | prp -> ([],prp)
-      in let (alls, prp') = extract_foralls all_sty
-      in
-        fprintf ppf "@[<hov 2>forall (%a), @ %a@]" 
-          output_totalbinds alls   output_prop_14 prp'
+  | ForallSupport ((nm, sty), p) ->
+      output_prop_14 ppf
+	(Forall ((nm, ty_of_simple_ty sty),
+		 Imply (PApp (SimpleSupport sty, Id (LN(None,nm))),
+			p)))
   | Imply (p, q) -> 
       fprintf ppf "%a ->@ %a"  output_prop_11 p   output_prop_14 q
 
@@ -388,13 +393,32 @@ and output_prop_0 ppf = function
   | BasicProp (LN (_, Name.N(_, Name.Support)) as ln) ->
       fprintf ppf "total_%a" output_ln ln
   | BasicProp ln -> output_ln ppf ln
-  | SimpleSupport sty -> fprintf ppf "||%a||" output_simple_ty sty
-  | SimplePer sty -> fprintf ppf "(=%a=)" output_simple_per sty
+  | SimpleSupport sty -> output_simplesupport ppf sty
+  | SimplePer sty -> fprintf ppf "%a" output_simpleper sty
   | And [] -> fprintf ppf "True"
   | PBool t -> fprintf ppf "Is_true %a" output_term_8 t
   | prp ->
 (*      prerr_endline ("Will parenthesise " ^ (string_of_proposition prp)); *)
       fprintf ppf "(@[<hov>%a@])"   output_prop prp
+
+and output_simplesupport ppf = function
+  | SNamedTy(LN(None, nm)) -> 
+      fprintf ppf "total_%a"  output_name nm
+  | SNamedTy(LN(Some mdl, nm)) -> 
+      fprintf ppf "%a.total_%a"  output_modul mdl  output_name nm
+  | SUnitTy ->
+      fprintf ppf "total_unit(?)"
+  | SVoidTy ->
+      fprintf ppf "total_void(?)"
+  | SBoolTy ->
+      fprintf ppf "total_bool(?)"
+  | STopTy ->
+      fprintf ppf "total_top(?)"
+  | STupleTy stys ->
+      fprintf ppf "total_tuple(?)"
+  | SArrowTy (sty1, sty2) ->
+      fprintf ppf "(total_arrow %a %a)" 
+	output_simplesupport sty1  output_simplesupport sty2 
     
 and output_per ppf p =
   let rec output_per' ppf = function
@@ -409,11 +433,31 @@ and output_per ppf p =
           fprintf ppf "eq_%a"
             output_ln ln
       | SimplePer sty ->
-          fprintf ppf "=%a="
-            output_simple_per sty
+          fprintf ppf "%a"
+            output_simpleper sty
       | _ ->
           fprintf ppf "=(%a)="
             output_per' p
+
+and output_simpleper ppf = function
+  | SNamedTy(LN(None, nm)) -> 
+      fprintf ppf "eq_%a"  output_name nm
+  | SNamedTy(LN(Some mdl, nm)) -> 
+      fprintf ppf "%a.eq_%a"  output_modul mdl  output_name nm
+  | SUnitTy ->
+      fprintf ppf "eq_unit(?)"
+  | SVoidTy ->
+      fprintf ppf "eq_void(?)"
+  | SBoolTy ->
+      fprintf ppf "eq_bool(?)"
+  | STopTy ->
+      fprintf ppf "eq_top(?)"
+  | STupleTy stys ->
+      fprintf ppf "eq_tuple(?)"
+  | SArrowTy (sty1, sty2) ->
+      fprintf ppf "(eq_arrow %a %a)" 
+	output_simpleper sty1  output_simpleper sty2 
+
 
 and output_support ppf p =
   let rec output_support' ppf = function
@@ -441,11 +485,16 @@ and output_support ppf p =
       level <=n without enclosing parentheses, or a type of level
       >n with parens. *)
 and output_ty ppf = function
-    typ -> output_ty_3 ppf typ
+    typ -> output_ty_4 ppf typ
+
+and output_ty_4 ppf = function
+    ArrowTy(t1,t2) -> 
+      fprintf ppf "%a -> %a"   output_ty_3 t1   output_ty_4  t2
+  | typ -> output_ty_3 ppf typ
 
 and output_ty_3 ppf = function
-    ArrowTy(t1,t2) -> 
-      fprintf ppf "%a -> %a"   output_ty_2 t1   output_ty_3  t2
+  | SumTy [(_, Some t1); (_, Some t2)] ->
+      fprintf ppf "%a + %a"   output_ty_2 t1  output_ty_2 t2
   | typ -> output_ty_2 ppf typ
 
 and output_ty_2 ppf = function
@@ -454,13 +503,13 @@ and output_ty_2 ppf = function
   | typ -> output_ty_1 ppf typ
 
 and output_ty_1 ppf = function
-    SumTy (_::_ as ts) -> 
+(*  | SumTy (_::_ as ts) -> 
       let doOne ppf = function 
           (lb, None) -> fprintf ppf "`%s" lb
         | (lb, Some t) -> fprintf ppf "`%s of %a" lb   output_ty_1 t
       in
         fprintf ppf "[%a]" (output_components doOne " | ") ts
-
+*)
   | typ -> output_ty_0 ppf typ
 
 and output_ty_0 ppf = function
@@ -476,12 +525,6 @@ and output_ty_0 ppf = function
 
 and output_simple_ty ppf sty = output_ty ppf (ty_of_simple_ty sty)
 
-and output_simple_per ppf sty =
-  match sty with
-    | SNamedTy _ | SUnitTy | SVoidTy | STopTy | SBoolTy ->
-        output_simple_ty ppf sty
-    | STupleTy _ | SArrowTy _ ->
-        fprintf ppf "(%a)"  output_simple_ty sty
 
 and output_annots ppf = function
     [] -> ()
@@ -490,7 +533,7 @@ and output_annots ppf = function
 
 
 and output_assertion ppf asn =
-    fprintf ppf "@,@,@[<hov 2>Axiom %s : %a%a%a.@]"  
+    fprintf ppf "@,@,@[<hov 2>Axiom %s_ax : %a%a%a.@]"  
       asn.alabel  
       output_quant_tyvars asn.atyvars 
       output_quant_pbnds asn.apbnds
@@ -617,5 +660,23 @@ and output_def ppf = function
 	output_name nm   output_specs elts  output_name nm
   | _ -> failwith "coqpp/output_def"
 
+and output_string ppf string =
+   fprintf ppf "%s" string    
+
 and output_toplevel ppf body =
-  fprintf ppf "@[<v>Require Export Coq.Bool.Bool.@ %a@]@.@."  output_specs body
+  let headers = 
+    ["Require Export Coq.Bool.Bool.";
+     "Definition total_prod (s t : Set) (total_s : s -> Prop) (total_t : t -> Prop) (x : s * t) := total_s (fst x) /\\ total_t (snd x).";
+     "Definition total_arrow (s t : Set) (total_s : s -> Prop) (total_t : t -> Prop) (f : s -> t) := forall x : s, total_s x -> total_t (f x).";
+     "Definition eq_prod (s t : Set) (eq_s : s -> s -> Prop) (eq_t : t -> t -> Prop) (x y : s * t) :=  eq_s (fst x) (fst y) /\\ eq_t (snd x) (snd y).";
+     "Definition eq_arrow (s t : Set) (eq_s : s -> s -> Prop) (eq_t : t -> t -> Prop) (f g : s -> t) := forall x y : s, eq_s x y -> eq_t (f x) (g y).";
+     "Implicit Arguments total_prod [s t].";
+     "Implicit Arguments total_arrow [s t].";
+     "Implicit Arguments eq_prod [s t].";
+     "Implicit Arguments eq_arrow [s t].";
+    ]
+  in
+    fprintf ppf "@[<v>%a@ %a@]@.@."  
+      (output_components output_string "") headers
+      output_specs body
+      
