@@ -490,6 +490,8 @@ and output_ty_4 ppf = function
 and output_ty_3 ppf = function
   | SumTy [(_, Some t1); (_, Some t2)] ->
       fprintf ppf "%a + %a"   output_ty_2 t1  output_ty_2 t2
+  | SumTy _ ->
+      failwith "coqpp: output_ty_3: SumTy"
   | typ -> output_ty_2 ppf typ
 
 and output_ty_2 ppf = function
@@ -578,14 +580,14 @@ and output_spec ppf = function
 	output_assertions assertions 
 
 
-
-  | Spec(nm, SignatSpec _, assertions) ->
-      failwith ("coqpp/outputSpec: " ^ Name.string_of_name nm)
-
   | Spec(nm, PropSpec pt, assertions) ->
       fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.@]%a@]" 
         output_name nm   output_proptype pt
         output_assertions assertions
+
+  | Spec(nm, _, assertions) ->
+      failwith ("coqpp/outputSpec: " ^ Name.string_of_name nm)
+
   | Assertion assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
       fprintf ppf "(*%s*)" cmmnt
