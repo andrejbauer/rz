@@ -1055,7 +1055,7 @@ and optAssertion ctx asn =
 
     in let aprop' = optProp ctx' asn.aprop
       
-    in let aprop'' = if (!Flags.do_hoist) then
+    in let aprop'' = if (!Flags.do_hoist) || (!Flags.do_coq) then
         let (obs, prp') = hoistProp aprop' in
           optProp ctx' (foldPObligation obs prp') 
       else

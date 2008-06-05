@@ -91,12 +91,17 @@ and output_term_12 ppf = function
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a : %a .@ @[%a@]@]@ in %a@]" 
         output_name n  output_ty ty  output_prop p  output_term_12 trm
 *)
+
+(*
   | Obligation ([], p, trm) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a@]@ in %a@]" 
         output_prop_0 p   output_term_12 trm
   | Obligation (bnds, p, trm) ->
       fprintf ppf "@[<hov 2>@[<hov 4>assure %a,@ @[%a@]@]@ in %a@]" 
         output_bnds bnds   output_prop_0 p   output_term_12 trm
+*)
+  | Obligation _ ->
+      failwith "Leftover (unhoisted) term obligation in coqpp"
   | trm -> output_term_9 ppf trm
       
 and output_term_9 ppf = function
@@ -316,23 +321,13 @@ and output_prop_14 ppf = function
       fprintf ppf "@[<hov 2>(pfun %a : %a =>@ @[%a@])@]" 
         output_name n  output_ty ty  output_prop_14 p
 
-(*
-  | PObligation ((_, TopTy), p, q) ->
-      fprintf ppf "@[<hov2>assure %a in@ %a@]" 
-        output_prop_13 p  output_prop_14 q
-
-  | PObligation ((n, ty), p, q) ->
-      fprintf ppf "@[<hov 2>assure %a : %a . %a in@ %a@]" 
-        output_name n  output_ty ty  output_prop_13 p  output_prop_14 q
-*)
-
   | PObligation ([], p, q) ->
-      fprintf ppf "@[<hov 2>@[<hov 4>assure %a@]@ in %a@]" 
+      fprintf ppf "@[<hov 2>%a@ /\\@ %a@]" 
         output_prop_13 p   output_prop_14 q
 
-  | PObligation (bnds, p, q) ->
-      fprintf ppf "@[<hov 2>@[<hov 4>assure %a,@ @[%a@]@]@ in %a@]" 
-        output_bnds bnds   output_prop_13 p   output_prop_14 q
+  | PObligation ((nm,ty)::bnds, p, q) ->
+      fprintf ppf "@[<hov 2>exists %a:%a,@ %a@]" 
+        output_name nm  output_ty ty  output_prop_13 (PObligation(bnds, p, q))
 
   | PLet (pat, t, u) ->
         fprintf ppf "@[let %a := @[<hov>%a@]@ in %a@]"
@@ -426,7 +421,7 @@ and output_per ppf p =
     | PApp (p, t) ->
         fprintf ppf "%a %a"
           output_per' p   output_term_0 t
-    | _ -> failwith "pp.ml: invalid call to output_per"
+    | _ -> failwith "coqpp.ml: invalid call to output_per"
   in
     match p with
       | BasicProp ((LN (_, Name.N(_, Name.Per))) as ln) ->
@@ -468,7 +463,7 @@ and output_support ppf p =
     | PApp (p, t) ->
         fprintf ppf "%a %a"
           output_support' p   output_term_0 t
-    | _ -> failwith "pp.ml: invalid call to output_support"
+    | _ -> failwith "coqpp.ml: invalid call to output_support"
   in
     match p with
       | BasicProp ((LN (_, Name.N(_, Name.Support))) as ln) ->
@@ -576,8 +571,16 @@ and output_spec ppf = function
         output_name nm   output_specs specs    output_name nm
 	output_assertions assertions 
 
+  | Spec(nm, SignatSpec (SignatFunctor((mdnm, sg1), Signat specs)), assertions) ->
+      fprintf ppf "@[<v>@[Module Type %a (%a:%a).@, @[<v>%a@]@,End %a.@]%a@]"
+        output_name nm   output_name mdnm  output_signat sg1
+	output_specs specs    output_name nm
+	output_assertions assertions 
+
+
+
   | Spec(nm, SignatSpec _, assertions) ->
-      failwith "coqpp/outputSpec"
+      failwith ("coqpp/outputSpec: " ^ Name.string_of_name nm)
 
   | Spec(nm, PropSpec pt, assertions) ->
       fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.@]%a@]" 
@@ -666,14 +669,17 @@ and output_string ppf string =
 and output_toplevel ppf body =
   let headers = 
     ["Require Export Coq.Bool.Bool.";
+     "";
      "Definition total_prod (s t : Set) (total_s : s -> Prop) (total_t : t -> Prop) (x : s * t) := total_s (fst x) /\\ total_t (snd x).";
      "Definition total_arrow (s t : Set) (total_s : s -> Prop) (total_t : t -> Prop) (f : s -> t) := forall x : s, total_s x -> total_t (f x).";
      "Definition eq_prod (s t : Set) (eq_s : s -> s -> Prop) (eq_t : t -> t -> Prop) (x y : s * t) :=  eq_s (fst x) (fst y) /\\ eq_t (snd x) (snd y).";
      "Definition eq_arrow (s t : Set) (eq_s : s -> s -> Prop) (eq_t : t -> t -> Prop) (f g : s -> t) := forall x y : s, eq_s x y -> eq_t (f x) (g y).";
+     "";
      "Implicit Arguments total_prod [s t].";
      "Implicit Arguments total_arrow [s t].";
      "Implicit Arguments eq_prod [s t].";
      "Implicit Arguments eq_arrow [s t].";
+     ""; "";
     ]
   in
     fprintf ppf "@[<v>%a@ %a@]@.@."  
