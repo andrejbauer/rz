@@ -20,9 +20,9 @@ SOURCES = \
 	logicrules.ml \
         infer.ml \
         outsyn.ml \
-	outsynrules.ml \
-	rename.ml \
 	pp.ml \
+	rename.ml \
+	outsynrules.ml \
 	coqpp.ml \
 	thin.ml \
         opt.ml \

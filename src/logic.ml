@@ -111,7 +111,7 @@ and term =
     | App      of term * term
     | Lambda   of binding  * term
     | The      of binding  * proposition (* description operator *)
-    | Inj      of label * term option
+    | Inj      of label * term option * set  (* Annotated with the sum type *)
     | Case     of term * set * (label * binding option * term) list * set
     | RzQuot   of term
     | RzChoose of binding * term * term * set
@@ -311,8 +311,9 @@ and string_of_term trm =
     | Tuple trms -> "(" ^ String.concat ", " (List.map toStr trms) ^ ")"
     | Proj (n, trm) -> toStr trm ^ "." ^ string_of_int n
     | App (trm1, trm2) -> "(" ^ toStr trm1 ^ " " ^ toStr trm2 ^ ")"
-    | Inj (lbl, Some trm) -> "(`" ^ lbl ^ " " ^ toStr trm ^ ")"
-    | Inj (lbl, None) -> "`" ^ lbl 
+    | Inj (lbl, Some trm, ty) -> "(`" ^ lbl ^ " " ^ toStr trm ^ " : " ^ 
+	string_of_set ty ^ ")"
+    | Inj (lbl, None, ty) -> "(" ^ "`" ^ lbl ^ " : " ^ string_of_set ty ^ ")"
     | Case (trm,ty',arms,ty'') -> 
 	let rec doArm = function
 	    (lbl, None, trm) -> lbl ^ " => " ^ toStr trm
@@ -562,7 +563,7 @@ and fnSetkind = function
   | KindArrow(nm, st, knd) -> NameSet.union (fnSet st) (NameSet.remove nm (fnSetkind knd))
       
 and fnTerm = function
-  | EmptyTuple | BConst _ | Inj(_, None)-> NameSet.empty
+  | EmptyTuple | BConst _ -> NameSet.empty
   | BNot trm -> fnTerm trm
   | Var(LN(None, nm)) -> NameSet.singleton nm
   | Var(LN(Some mdl, nm)) -> NameSet.add nm (fnModel mdl)
@@ -570,11 +571,12 @@ and fnTerm = function
       NameSet.union (fnTerm trm) 
          (NameSet.union (fnSet st) (NameSet.remove nm (fnProp prp)))
   | Subout(trm, st) -> NameSet.union (fnTerm trm) (fnSet st) 
+  | Inj(_, None, st) -> fnSet st
   | BOp(_,trms)
   | Tuple trms -> unionNameSetList (List.map fnTerm trms)
   | Proj(_, trm) 
-  | Inj(_, Some trm)
   | RzQuot trm -> fnTerm trm
+  | Inj(_, Some trm, st) -> NameSet.union (fnTerm trm) (fnSet st)
   | App(trm1, trm2) -> NameSet.union (fnTerm trm1) (fnTerm trm2)
   | Quot(trm1, prp2) -> NameSet.union (fnTerm trm1) (fnProp prp2)
   | Choose((nm, st1), prp1, trm2, trm3, st2) ->
@@ -823,7 +825,7 @@ let rec subst sbst =
     | Tuple ts      -> Tuple(List.map sub ts)
     | Proj(n,t1)    -> Proj(n, sub t1)
     | App(t1,t2)    -> App(sub t1, sub t2)
-    | Inj(l,termopt) -> Inj(l, doOpt (subst sbst) termopt)
+    | Inj(l,termopt,st) -> Inj(l, doOpt (subst sbst) termopt, substSet sbst st)
     | Case(t1,ty,arms,ty2) -> Case(sub t1, substSet sbst ty, 
            subarms arms, substSet sbst ty2)
     | RzQuot t -> RzQuot (sub t)

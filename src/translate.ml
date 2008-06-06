@@ -409,9 +409,9 @@ and translateTerm = function
 		   Tuple [id m; id z]
 		   )
 
-  | L.Inj (lb, None) -> Inj (lb, None)
+  | L.Inj (lb, None, s) -> Inj (lb, None, (translateSet s).ty)
 
-  | L.Inj (lb, Some t) -> Inj (lb, Some (translateTerm t))
+  | L.Inj (lb, Some t, s) -> Inj (lb, Some (translateTerm t), (translateSet s).ty)
 
   | L.Case (t1, _, lst, _) ->
       Case (translateTerm t1, List.map

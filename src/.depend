@@ -10,10 +10,12 @@ logicrules.cmo: name.cmo logic.cmo error.cmo
 logicrules.cmx: name.cmx logic.cmx error.cmx 
 opt.cmo: outsynrules.cmo outsyn.cmo name.cmo flags.cmo 
 opt.cmx: outsynrules.cmx outsyn.cmx name.cmx flags.cmx 
-outsyn.cmo: name.cmo logic.cmo flags.cmo 
-outsyn.cmx: name.cmx logic.cmx flags.cmx 
-outsynrules.cmo: outsyn.cmo name.cmo 
-outsynrules.cmx: outsyn.cmx name.cmx 
+outsyn-bad.cmo: name.cmo logic.cmo flags.cmo 
+outsyn-bad.cmx: name.cmx logic.cmx flags.cmx 
+outsyn.cmo: name.cmo logic.cmo 
+outsyn.cmx: name.cmx logic.cmx 
+outsynrules.cmo: pp.cmo outsyn.cmo name.cmo flags.cmo 
+outsynrules.cmx: pp.cmx outsyn.cmx name.cmx flags.cmx 
 pp.cmo: outsyn.cmo name.cmo 
 pp.cmx: outsyn.cmx name.cmx 
 rename.cmo: outsyn.cmo name.cmo 

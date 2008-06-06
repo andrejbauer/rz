@@ -104,7 +104,7 @@ and renLN ctx = function
       end
 
 and renTerm ctx = function
-  | (EmptyTuple | BConst _ | Dagger | Inj (_, None)) as t -> t
+  | (EmptyTuple | BConst _ | Dagger) as t -> t
       
   | Id ln -> Id (renLN ctx ln)
 
@@ -122,7 +122,9 @@ and renTerm ctx = function
 
   | Proj (k, t) -> Proj (k, renTerm ctx t)
 
-  | Inj (lb, Some t) -> Inj (lb, Some (renTerm ctx t))
+  | Inj (lb, None, ty) -> Inj(lb, None, renTy ctx ty)
+
+  | Inj (lb, Some t, ty) -> Inj (lb, Some (renTerm ctx t), renTy ctx ty)
       
   | Case (t, lst) ->
       let renArm ct (pat, t) =

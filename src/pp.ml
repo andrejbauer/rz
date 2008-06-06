@@ -143,9 +143,9 @@ and output_term_4 ppf = function
       fprintf ppf "pi%d %a" k   output_term_0 t  (* skip applications! *) 
 (*  | Proj (k, t) -> 
       fprintf ppf "%a.%d"   output_term_4 t  k  (* skip applications! *) *)
-  | Inj (lb, None) -> 
+  | Inj (lb, None, _) -> 
       fprintf ppf "`%s" lb
-  | Inj (lb, Some t) -> 
+  | Inj (lb, Some t, _) -> 
       fprintf ppf "`%s %a" lb   output_term_0 t  (* skip applications! *)
   | trm -> output_term_3 ppf trm
 
@@ -613,3 +613,22 @@ and output_def ppf = function
 
 and output_toplevel ppf body =
   fprintf ppf "@[<v>%a@]@.@."  output_specs body
+
+(*************)
+
+let formattedPrint outputFn valueToOutput =
+  let outb = Buffer.create 128  in
+  let formatter = Format.formatter_of_buffer outb  in
+  let _ = Format.fprintf formatter "%a@."  outputFn valueToOutput in
+    Buffer.output_buffer stderr outb
+
+
+let formattedString outputFn valueToOutput =
+    let outb = Buffer.create 128  in
+    let formatter = Format.formatter_of_buffer outb  in
+    let _ = Format.fprintf formatter "%a@?"  outputFn valueToOutput in
+      Buffer.contents outb
+
+let string_of_ty = formattedString output_ty 
+let string_of_term = formattedString output_term
+let string_of_pattern = formattedString output_pattern

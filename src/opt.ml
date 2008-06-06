@@ -475,14 +475,14 @@ and optTerm ctx orig_term =
           in 
                (List.nth tys n, reduce (Proj(n,e')))
 
-      | Inj (lbl, None) -> 
+      | Inj (lbl, None, sumTy) -> 
           (** Non-value-carrying injections are as simple as possible. *)
-          (SumTy [(lbl,None)], Inj(lbl, None))
+          (sumTy, Inj(lbl, None, sumTy))
 
-      | Inj (lbl, Some e) ->
+      | Inj (lbl, Some e, sumTy) ->
           (** Optimize the subexpression *)
           let (ty, e') = optTerm ctx e in
-            (SumTy [(lbl,Some ty)], Inj(lbl, Some e'))
+            (sumTy, Inj(lbl, Some e', sumTy))
 
       | Case (e, arms) ->
           (** Optimize the subexpressions, and see if the case can
@@ -758,15 +758,15 @@ and optProp ctx orig_prp =
                                  can be reduced to equality of the
                                  carried values. *)
                              match e1', e2' with
-                                 Inj (lbl1, None), Inj (lbl2, None) ->
+                                 Inj (lbl1, None, _), Inj (lbl2, None, _) ->
                                    if lbl1 = lbl2 then True else False
-                               | Inj (lbl1, Some t1), Inj (lbl2, Some t2) ->
+                               | Inj (lbl1, Some t1, _), Inj (lbl2, Some t2, _) ->
                                    if lbl1 = lbl2 then
                                      optProp ctx (Equal (t1, t2))
                                    else
                                      False
-                               | Inj (_, None), Inj (_, Some _)
-                               | Inj (_, Some _), Inj (_, None) -> False
+                               | Inj (_, None, _), Inj (_, Some _, _)
+                               | Inj (_, Some _, _), Inj (_, None, _) -> False
                                | _ -> Equal (e1', e2')
                            end
                        | _ -> Equal(e1',e2') 
@@ -927,6 +927,11 @@ and optProp ctx orig_prp =
             let ctx'' = insertPattern ctx' pat' in
             let p3' = optProp ctx'' p3 in
             (pat', p3')   in
+
+          let arms' = List.map doArm arms in
+
+(* Bogus: the problem is "Translate" tends to generate non-exhaustive
+   matches 
           (* If all of the arms are equal, we'd like to eliminate the
              case altogether.  This isn't quite right, though, since
                "pcase ... of
@@ -939,13 +944,13 @@ and optProp ctx orig_prp =
              let pat_vars = bvPat pat in
              let prp_vars = fvProp prp in
              disjointNameLists pat_vars prp_vars    in
-          let arms' = List.map doArm arms in
     let first_prp = snd (List.hd arms') in    (* PCase must be non-empty *)
     let rest_prps = List.map snd (List.tl arms') in
     if (List.for_all ((=) first_prp) rest_prps && 
         List.for_all constantArm arms') then
       first_prp
     else
+*)
             optReduceProp ctx (PCase(e',arms'))
 
         | PLet(pat, trm1, prp2) ->

@@ -392,21 +392,23 @@ and thinTerm (ctx : context) orig_term =
                print_endline (Outsyn.string_of_term proj_code);
                raise (Impossible "Proj"))
       end
-      | Inj (lbl, None) -> 
-      (SumTy [(lbl,None)], Inj(lbl, None), SumTy [(lbl,None)])
-      | Inj (lbl, Some e) ->
-      begin
-        let (ty, e', ty') = thinTerm ctx e
-        in match ty' with
-          TopTy -> 
-        (SumTy [(lbl,Some ty)], 
-         wrapObsTerm e' (Inj (lbl, None)), 
-         SumTy[(lbl, None)])
-        | _ -> 
-        (SumTy [(lbl,Some ty)], 
-         Inj(lbl, Some e'), 
-         SumTy[(lbl, Some ty')])
-      end
+      | Inj (lbl, None, sumTy) -> 
+	  let sumTy' = thinTy ctx sumTy in
+	  (sumTy, Inj(lbl, None, sumTy'), sumTy')
+      | Inj (lbl, Some e, sumTy) ->
+	  begin
+            let (_, e', ty') = thinTerm ctx e in
+	    let sumTy' = thinTy ctx sumTy in
+              match ty' with
+		TopTy -> 
+		  (sumTy, 
+		   wrapObsTerm e' (Inj (lbl, None, sumTy')), 
+		   sumTy')
+              | _ -> 
+		  (sumTy,
+		   Inj(lbl, Some e', sumTy'), 
+		   sumTy')
+	  end
       | Case (e, arms) ->
       let (ty, e', ty') = thinTerm ctx e
       in let doArm (pat, e3) = 

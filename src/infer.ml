@@ -59,7 +59,10 @@ let rec annotateExpr cntxt orig_expr =
     | EmptyTuple       -> ResTerm ( L.EmptyTuple, L.Unit )
     | BFalse           -> ResTerm ( L.BConst false, L.Bool )
     | BTrue            -> ResTerm ( L.BConst true, L.Bool )
-    | Label label      -> ResTerm ( L.Inj(label, None), L.Sum[(label, None)] )
+
+    | Label label      -> 
+	let ty = L.Sum[(label, None)] 
+	in ResTerm ( L.Inj(label, None, ty), ty )
 
     | Tuple exprs      -> annotateTuple cntxt orig_expr exprs
     | Proj(n1, expr2)  -> annotateProj cntxt orig_expr n1 expr2
@@ -168,10 +171,10 @@ and annotateMProj cntxt orig_expr expr1 nm2 =
 and annotateAppLabel cntxt orig_expr label expr2 =
   (** Special case:  a label applied to an expression is the parser's
       way of writing an injection into a sum *)
-  let (trm2', ty2') = annotateTerm cntxt orig_expr expr2
-  in 
-    ResTerm ( L.Inj(label, Some trm2'),
-              L.Sum[ (label, Some ty2') ] )
+  let (trm2', ty2') = annotateTerm cntxt orig_expr expr2 in
+  let sumTy = L.Sum[ (label, Some ty2') ]  in
+    ResTerm ( L.Inj(label, Some trm2', sumTy),
+              sumTy )
 
 (* Proj(n1, expr2) *)
 and annotateProj cntxt orig_expr n1 expr2 = 

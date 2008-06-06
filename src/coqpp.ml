@@ -153,9 +153,9 @@ and output_term_4 ppf = function
       fprintf ppf "pi%d %a" k   output_term_0 t  (* skip applications! *) 
 (*  | Proj (k, t) -> 
       fprintf ppf "%a.%d"   output_term_4 t  k  (* skip applications! *) *)
-  | Inj (lb, None) -> 
+  | Inj (lb, None, _) -> 
       fprintf ppf "`%s" lb
-  | Inj (lb, Some t) -> 
+  | Inj (lb, Some t, _) -> 
       fprintf ppf "`%s %a" lb   output_term_0 t  (* skip applications! *)
   | trm -> output_term_3 ppf trm
 

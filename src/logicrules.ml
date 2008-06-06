@@ -452,13 +452,13 @@ let rec hnfTerm cntxt = function
   | Case(trm1, ty, arms, ty2) ->
       begin
         match (hnfTerm cntxt trm1) with
-            Inj(lbl, None) ->
+            Inj(lbl, None, _) ->
               begin
                 match (List.find (fun (l,_,_) -> l = lbl) arms) with
                     (_, None, trm2) -> hnfTerm cntxt trm2
                   | _ -> failwith "hnfTerm 4"
               end
-          | Inj(lbl, Some trm1') ->
+          | Inj(lbl, Some trm1', _) ->
               begin
                 match (List.find (fun (l,_,_) -> l = lbl) arms) with
                     (_, Some (nm,_), trm2) -> 
@@ -525,13 +525,13 @@ let rec hnfProp cntxt = function
   | PCase(trm1, ty, arms) ->
       begin
         match (hnfTerm cntxt trm1) with
-            Inj(lbl, None) ->
+            Inj(lbl, None, _) ->
               begin
                 match (List.find (fun (l,_,_) -> l = lbl) arms) with
                     (_, None, prp1') -> hnfProp cntxt prp1'
                   | _ -> failwith "hnfProp 4"
               end
-          | Inj(lbl, Some trm1') ->
+          | Inj(lbl, Some trm1', _) ->
               begin
                 match (List.find (fun (l,_,_) -> l = lbl) arms) with
                     (_, Some (nm,_), prp2) -> 
@@ -652,10 +652,7 @@ let rec typeOf cntxt trm =
 
     | The((_,ty),_) -> ty
 
-    | Inj(lbl, None) -> Sum [(lbl,None)]
-
-    | Inj(lbl, Some trm) -> Sum [(lbl, Some (typeOf cntxt trm))]
-
+    | Inj(lbl, _, ty) -> ty
 
     | RzQuot trm -> 
         begin
@@ -758,9 +755,9 @@ let rec eqSet' do_subset cntxt =
                    cmpProducts cntxt (ss1,ss2)
                    
              | ( Sum lsos1, Sum lsos2 )     -> 
-                 let reqs1 = subSum do_subset cntxt (lsos1, lsos2) 
-                 in let reqs2 = 
-                   if do_subset then [] else subSum false cntxt (lsos2, lsos1)
+		 (* No implicit subtyping on sums *)
+                 let reqs1 = subSum false cntxt (lsos1, lsos2) 
+                 in let reqs2 =  subSum false cntxt (lsos2, lsos1)
                  in reqs1 @ reqs2
                    
              | ( Exp( nm1, st3, st4 ), Exp ( nm2, st5, st6 ) ) ->
@@ -836,38 +833,39 @@ let rec eqSet' do_subset cntxt =
          
    and cmpProducts cntxt lst = cmpProducts' cntxt emptysubst emptysubst lst
      
-   and subSum do_subset cntxt = function
-       ( [], _ ) -> []
-     | ((l1,None   )::s1s, s2s) ->
-         begin
-           try
-             match (List.assoc l1 s2s) with
-                 None -> subSum do_subset cntxt (s1s, s2s)
-               | _ -> raise (E.TypeError ["Disagreement whether " ^ 
-                                           string_of_label l1 ^ 
-                                           "carries a value."])
-                                           
-           with 
-               Not_found ->
-                 raise (E.TypeError ["Missing " ^ string_of_label l1 ^
-                                      " component of sum"]) 
-         end
-     | ((l1,Some s1)::s1s, s2s) -> 
-         begin
-           try
-             match (List.assoc l1 s2s) with
-                 Some s2 -> 
-                   ( eqSet' do_subset cntxt s1 s2 ) 
-                   @ ( subSum do_subset cntxt (s1s,s2s) )
-               |  _ -> raise (E.TypeError ["Disagreement whether " ^ 
-                                            string_of_label l1 ^ 
-                                            "carries a value."])
-           with
-               Not_found ->
-                 raise (E.TypeError ["Missing " ^ string_of_label l1 ^
-                                      " component of sum"]) 
-         end
    in cmp
+
+and subSum do_subset cntxt = function
+    ( [], _ ) -> []
+  | ((l1,None   )::s1s, s2s) ->
+      begin
+        try
+          match (List.assoc l1 s2s) with
+              None -> subSum do_subset cntxt (s1s, s2s)
+            | _ -> raise (E.TypeError ["Disagreement whether " ^ 
+                                         string_of_label l1 ^ 
+                                         "carries a value."])
+                
+        with 
+            Not_found ->
+              raise (E.TypeError ["Missing " ^ string_of_label l1 ^
+                                    " component of sum"]) 
+      end
+  | ((l1,Some s1)::s1s, s2s) -> 
+      begin
+        try
+          match (List.assoc l1 s2s) with
+              Some s2 -> 
+                ( eqSet' do_subset cntxt s1 s2 ) 
+                @ ( subSum do_subset cntxt (s1s,s2s) )
+            |  _ -> raise (E.TypeError ["Disagreement whether " ^ 
+                                          string_of_label l1 ^ 
+                                          "carries a value."])
+        with
+            Not_found ->
+                 raise (E.TypeError ["Missing " ^ string_of_label l1 ^
+                                       " component of sum"]) 
+      end
 
 and equivToArrow ty =
   PropArrow(wildName(), ty, PropArrow(wildName(), ty, StableProp))
@@ -1070,7 +1068,8 @@ and eqTerm cntxt trm1 trm2 =
     match (hnfTerm cntxt trm1, hnfTerm cntxt trm2) with
         (EmptyTuple, EmptyTuple) -> []
       | (Var(LN(None, nm1)), Var(LN(None, nm2))) when nm1 = nm2 -> []
-      | (Inj(lbl1, None), Inj(lbl2, None)) when lbl1 = lbl2  -> []
+      | (Inj(lbl1, None, ty1), Inj(lbl2, None, ty2)) when lbl1 = lbl2  -> 
+	  eqSet cntxt ty1 ty2
       | (Var(LN(Some mdl1, nm1)), Var(LN(Some mdl2, nm2)))  when nm1 = nm2 ->
           eqModel cntxt mdl1 mdl2
             
@@ -1104,8 +1103,8 @@ and eqTerm cntxt trm1 trm2 =
           in let reqs2 = List.map (fForall (nm,ty1)) prereqs2
           in reqs1 @ reqs2
 
-      | (Inj(lbl1, Some trm1), Inj(lbl2, Some trm2)) when lbl1 = lbl2 ->
-          eqTerm cntxt trm1 trm2
+      | (Inj(lbl1, Some trm1, ty1), Inj(lbl2, Some trm2, ty2)) when lbl1=lbl2 ->
+          eqTerm cntxt trm1 trm2 @ eqSet cntxt ty1 ty2
 
       | (Case(trm1, ty1, arms1, ty3), Case(trm2, ty2, arms2, ty4)) ->
           eqTerm cntxt trm1 trm2 @
@@ -1285,11 +1284,12 @@ and joinType cntxt s1 s2 =
               (s1, reqs)
 
 
+and dropSubsets = function
+    Subset( ( _, ty1 ), _ ) -> dropSubsets ty1
+  | ty1 -> ty1  
+
 (* Checks whether members of a given set are coercable to type Bool *)
 and isABool cntxt ty =
-  let rec dropSubsets = function
-      Subset( ( _, ty1 ), _ ) -> dropSubsets ty1
-    | ty1 -> ty1   in
   try
      [] = subSet cntxt (dropSubsets ty) Bool
   with E.TypeError _ -> false
@@ -1310,57 +1310,61 @@ and coerce cntxt trm st1 st2 =
   with E.TypeError _ ->
     (** Just because the identity coercion won't work doesn't
         mean it's time to give up! *)
-    let    st1' = hnfSet cntxt st1
-    in let st2' = hnfSet cntxt st2
-    in try       
-    match (trm, st1', st2') with
-      | ( _, Subset ( ( _, st1'1 ) , _ ),
-            Subset ( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
-          begin
-        (** Try an implicit out-of-subset conversion *)
-        try
-          coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
-        with E.TypeError _ -> 
-          (** That didn't work, so try an implicit 
-              into-subset conversion *)
+    let st1' = hnfSet cntxt st1 in
+    let st2' = hnfSet cntxt st2 in
+      try       
+	match (trm, st1', st2') with
+	  | ( _, Subset ( ( _, st1'1 ) , _ ),
+              Subset ( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
+              begin
+		(** Try an implicit out-of-subset conversion *)
+		try
+		  coerce cntxt ( Subout(trm,st1) ) st1'1 st2 
+		with E.TypeError _ -> 
+		  (** That didn't work, so try an implicit 
+		      into-subset conversion *)
+		  
+		  (* XXX Eventually we may add an assure here for the subin *)
+		  let trm' = coerce cntxt trm st1 st2'1  in
+		    Subin ( trm', bnd2', prp2'2 )
+              end
+		
+	  | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
+              (** Try an implicit out-of-subset conversion *)
+              (* XXX Eventually we may add an assure here for the subin *)
+              coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
+		
+	  | ( _, _, Subset( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
+              (** Try an implicit into-subset conversion *)
+              let trm' = coerce cntxt trm st1 st2'1  in
+              Subin ( trm', bnd2', prp2'2 )
+		    
+	  | ( Tuple trms, Product sts1, Product sts2 ) ->
+              let rec loop subst2 = function 
+		  ([], [], []) -> []
+		| ([], _, _)   -> failwith "Impossible: coerce 1" 
+		| (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
+		    if (isWild nm1) then
+		      let st2' = substSet subst2 st2
+		      in let subst2' = insertTermvar subst2 nm2 trm
+		      in (coerce cntxt trm st1 st2') ::
+			   (loop subst2' (trms,sts1,sts2))
+		    else
+		      (* This case shouldn't ever arise; tuples naturally
+			 yield non-dependent product types.  
+			 But just in case, ...*)
+		      (failwith
+			 ("coerce: dependent->? case for products arose. " ^
+			    "Maybe it should be implemented after all"))
+		| _ -> raise Impossible   in
+	      let trms' = loop emptysubst (trms, sts1, sts2)  in
+		Tuple trms'
 
-          (* XXX Eventually we may add an assure here for the subin *)
-          let trm' = coerce cntxt trm st1 st2'1
-          in  Subin ( trm', bnd2', prp2'2 )
-          end
-        
-      | ( _, Subset( ( _, st1'1 ), _ ), _ ) -> 
-          (** Try an implicit out-of-subset conversion *)
-          (* XXX Eventually we may add an assure here for the subin *)
-          coerce cntxt ( Subout(trm,st2) ) st1'1 st2 
-        
-      | ( _, _, Subset( ( _, st2'1 ) as bnd2', prp2'2 ) ) -> 
-          (** Try an implicit into-subset conversion *)
-          let trm' = coerce cntxt trm st1 st2'1
-          in  Subin ( trm', bnd2', prp2'2 )
-        
-      | ( Tuple trms, Product sts1, Product sts2 ) ->
-          let rec loop subst2 = function 
-          ([], [], []) -> []
-        | ([], _, _)   -> failwith "Impossible: coerce 1" 
-        | (trm::trms, (nm1, st1)::sts1, (nm2, st2)::sts2) ->
-            if (isWild nm1) then
-              let st2' = substSet subst2 st2
-              in let subst2' = insertTermvar subst2 nm2 trm
-              in (coerce cntxt trm st1 st2') ::
-                 (loop subst2' (trms,sts1,sts2))
-            else
-              (* This case shouldn't ever arise; tuples naturally
-             yield non-dependent product types.  
-             But just in case, ...*)
-              (failwith
-              ("coerce: dependent->? case for products arose. " ^
-                  "Maybe it should be implemented after all"))
-        | _ -> raise Impossible
-              in let trms' = loop emptysubst (trms, sts1, sts2)
-          in Tuple trms'
-
-          | _ -> E.tyGenericErrors []
+	  | ( Inj(lab, trm, _), Sum lsos1, Sum lsos2) when
+	      [] = subSum false cntxt (lsos1, lsos2) ->
+		Inj(lab, trm, Sum lsos2) 
+		   
+	  | _ -> E.tyGenericErrors []
       with
       E.TypeError _ -> 
         (* Provide a less confusing error message, since some of
