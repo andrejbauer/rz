@@ -92,7 +92,7 @@ and proposition =
   | SimpleSupport of simple_ty                (* support of a simple set *)
   | SimplePer of simple_ty                    (* per of a simple set *)
   | BasicProp  of longname                    (* basic prop with a realizer *)
-  | Equal      of term * term                 (* (obs?) equality of terms *)
+  | Equal      of term * term                 (* equality of terms *)
   | And        of proposition list            (* conjunction *)
   | Imply      of proposition * proposition   (* implication *)
   | Iff        of proposition * proposition   (* equivalence *)
