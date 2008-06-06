@@ -466,6 +466,14 @@ and translateTerm = function
 
   | L.Subout (t, _) -> Proj (0, translateTerm t)
 
+  | L.IdentityCoerce(t, _, st2, _) ->
+      let m = translateSet st2 in
+      let n = fresh m.ty in
+	Let (VarPat n, translateTerm t,
+	     Obligation([], pApp m.tot (id n), id n))
+	
+	
+
 (*
   | L.Assure (None, p, t, _) ->
       let (ty, p') = translateProp p in
@@ -625,6 +633,12 @@ and translateProp = function
       in
       let r = fresh (SumTy tys) in
 	makeProp (r, SumTy tys) (PCase (Tuple[id r; translateTerm t], arms))
+
+  | L.PIdentityCoerce _ as orig_prop ->
+      begin
+	print_endline (L.string_of_prop orig_prop);
+	failwith "cannot translate PIdentityCoerce"
+      end
 
 (*
   | L.PAssure (None, p, q) ->
