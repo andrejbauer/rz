@@ -52,8 +52,16 @@ and pmatches fLet matchees pats trm =
         | Maybe    -> 
 	    begin
 	      match pmatch fLet m p trm with
-		| No -> No
-		| _ -> Maybe
+		| No -> 
+		    (* Even if the rest of the components might match,
+		       but if the first component definitely doesn't, then
+		       the whole sequence doesn't match. *)
+		    No
+		| _ -> 
+		    (* Even if the first component definitely does
+		       match, since we don't know about the rest
+		       we can't be sure about the whole sequence. *)
+		    Maybe
 	    end 
         | Yes trm' -> pmatch fLet m p trm' 
       end
@@ -690,16 +698,29 @@ and reduce trm =
           | trm' -> Proj(n, trm')
       end
 
-  | Case(trm1, arms) as orig_term ->
-      let trm1' = reduce trm1
-      in let rec armLoop = function
-          [] -> failwith "Outsyn.reduce Case: ran out of arms"
-        | (pat,trm)::rest ->
-            match pmatch fLet trm1' pat trm with
-              Yes trm' -> reduce trm'
-            | No       -> armLoop rest
-            | Maybe    -> orig_term
-      in armLoop arms
+  | Case(trm1, arms) ->
+      let trm1' = reduce trm1 in
+
+      let rec tryToEliminateCase = function
+          [] -> Case(trm1', []) (* Ran out of possible arms *)
+        | (pat,trm3)::rest ->
+	    begin
+              match pmatch fLet trm1' pat trm3 with
+		  Yes trm3' -> reduce trm3'
+		| No        -> tryToEliminateCase rest
+		| Maybe    -> 
+		    (* Well, we can't statically reduce the Case.
+		       But we can at least get rid of the arms that
+		       *don't* match! *)
+		    Case(trm1', (pat,trm3)::collectMatchableArms rest)
+	    end
+	 and collectMatchableArms = function
+	   | [] -> []
+	   | (pat,trm3) :: rest ->
+               match pmatch fLet trm1' pat trm3 with
+		 | No -> collectMatchableArms rest
+		 | _ -> (pat,trm3) :: collectMatchableArms rest
+      in tryToEliminateCase arms
 
   | trm -> trm
 
@@ -788,16 +809,8 @@ and reduceProp prp =
 	   | [] -> []
 	   | (pat,prp) :: rest ->
                match pmatch fPLet trm1' pat prp with
-		 | No -> (print_endline "collectMatchableArms no";
-			  collectMatchableArms rest)
-		 | Yes _ -> (print_endline "collectMatchableArms yes";
-			 print_endline (Pp.string_of_pattern pat);
-			 print_endline (Pp.string_of_term trm1');
-			 (pat,prp) :: collectMatchableArms rest)
-		 | Maybe -> (print_endline "collectMatchableArms Maybe";
-			 print_endline (Pp.string_of_pattern pat);
-			 print_endline (Pp.string_of_term trm1');
-			 (pat,prp) :: collectMatchableArms rest)
+		 | No -> collectMatchableArms rest
+		 | _ -> (pat,prp) :: collectMatchableArms rest
       in tryToEliminatePCase arms
 
   | PBool (BConst true) -> True
