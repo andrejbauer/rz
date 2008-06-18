@@ -57,18 +57,35 @@ let output_list_nobreak outputer separator ppf lst =
 let rec output_term ppf = function
     trm -> output_term_13 ppf trm
 
-and output_pattern ppf = function
-    WildPat -> fprintf ppf "_"
-  | VarPat nm -> fprintf ppf "%a"   output_name nm
-  | TuplePat pats -> fprintf ppf "(%a)"  output_patterns pats
-  | ConstrPat(lbl,None) -> fprintf ppf "`%s"  lbl
-  | ConstrPat(lbl,Some(nm,ty)) -> 
-      fprintf ppf "`%s(%a:%a)" lbl   output_name nm   output_ty ty
+and output_pattern ty ppf pat =
+  match pat, ty with 
+      WildPat, _ -> fprintf ppf "_"
+    | VarPat nm, _ -> fprintf ppf "%a"   output_name nm
+    | TuplePat pats, TupleTy tys -> 
+	fprintf ppf "(%a)" (output_patterns tys) pats
+    | ConstrPat(lbl,None), SumTy _ -> 
+	output_term ppf (Inj(lbl, None, ty))
+    | ConstrPat(lbl,Some(nm,_)), SumTy _ -> 
+	output_term ppf (Inj(lbl, Some (Id (LN(None,nm))), ty))
+    | _ -> failwith "coqpp/output_pattern: wrong type"
+	
+and output_patterns tys ppf pats =
+  let rec loop ppf = function
+      [], [] -> ()
+    | [pat], [ty] -> fprintf ppf "%a"  (output_pattern ty) pat
+    | pat::pats, ty::tys -> 
+	fprintf ppf "%a,%a"  (output_pattern ty) pat   loop (pats,tys)
+    | _ -> failwith "coqpp/output_patterns: inconsistent lists"
+  in
+    loop ppf (pats, tys)
 
-and output_patterns ppf = function
-    [] -> ()
-  | [pat] -> fprintf ppf "%a"  output_pattern pat
-  | pat::pats -> fprintf ppf "%a,%a"  output_pattern pat   output_patterns pats
+and output_letpattern ppf pat =
+  match pat with 
+      WildPat -> fprintf ppf "_"
+    | VarPat nm -> fprintf ppf "%a"   output_name nm
+    | TuplePat pats -> 
+	fprintf ppf "(%a)" (output_list output_letpattern ",") pats
+    | _ -> failwith "coqpp/output_letpattern: invalid pattern"
 
 and output_term_13 ppf = function
 (*
@@ -80,7 +97,7 @@ and output_term_13 ppf = function
 *)
   | Case (t, ty, lst) ->
        (let output_arm ppf (pat, u) =
-         fprintf ppf "%a => %a" output_pattern pat output_term_12 u
+         fprintf ppf "%a => %a" (output_pattern ty) pat output_term_12 u
         in let rec output_arms' ppf = function
               [] -> ()
           | arm::arms -> fprintf ppf "@[| %a @]@,%a" 
@@ -95,7 +112,7 @@ and output_term_13 ppf = function
 
     | Let (pat, t, u) ->
         fprintf ppf "@[let %a = @[<hov>%a@]@ in %a@]"
-            output_pattern pat  output_term_12 t  output_term_13 u
+            output_letpattern pat  output_term_12 t  output_term_13 u
 
     | trm -> output_term_12 ppf trm
 
@@ -319,7 +336,7 @@ and output_prop_15 ppf = function
       begin
         let output_arm ppf (pat, u) =
           fprintf ppf "%a =>@ @[<hv>%a@]"
-            output_pattern pat   output_prop_14 u
+            (output_pattern ty) pat   output_prop_14 u
         in let rec output_arms' ppf = function
             [] -> ()
           | arm::arms ->
@@ -330,7 +347,7 @@ and output_prop_15 ppf = function
           | arm::arms -> fprintf ppf "@[<hov 5>  %a @]@,%a" 
               output_arm arm  output_arms' arms
         in  
-             fprintf ppf "@[<v>@[<hv>match %a with@]@,@[<v>%a@]@]" 
+             fprintf ppf "@[<v>@[<hov 2>match %a with@]@,@[<v>%a@]end@]" 
                output_term_13 t   output_arms lst
       end
   | prp -> output_prop_14 ppf prp
@@ -369,7 +386,7 @@ and output_prop_14 ppf = function
 
   | PLet (pat, t, u) ->
         fprintf ppf "@[let %a := @[<hov>%a@]@ in %a@]"
-            output_pattern pat  output_term_12 t  output_prop_14 u
+            output_letpattern pat  output_term_12 t  output_prop_14 u
 
   | prp -> output_prop_13 ppf prp
     
@@ -541,7 +558,7 @@ and output_ty_3 ppf = function
 		fprintf ppf "sum3 %a %a %a"
 		  output_ty_0 ty1  output_ty_0 ty2  output_ty_0 ty3
 	    | [ty1; ty2; ty3; ty4] ->
-		fprintf ppf "sum3 %a %a %a %a"
+		fprintf ppf "sum4 %a %a %a %a"
 		  output_ty_0 ty1  output_ty_0 ty2  
 		  output_ty_0 ty3  output_ty_0 ty4
 	    | _ -> failwith "coqpp/output_ty_3: too many sum arms"
@@ -736,8 +753,8 @@ and output_toplevel ppf body =
      "Implicit Arguments eq_prod [s t].";
      "Implicit Arguments eq_arrow [s t].";
      "";
-     "Inductive sum3 (A B C : Type) : Type := in3_1 : A -> sum3 A B C | in3_2 : B -> sum3 A B C | in3_3 : C -> sum3 A B C";
-     "Inductive sum4 (A B C D : Type) : Type := in4_1 : A -> sum4 A B C D | in4_2 : B -> sum4 A B C D | in4_3 : C -> sum3 A B C D | in4_4 : sum4 A B C D";
+     "Inductive sum3 (A B C : Type) : Type := in3_0 : A -> sum3 A B C | in3_1 : B -> sum3 A B C | in3_2 : C -> sum3 A B C.";
+     "Inductive sum4 (A B C D : Type) : Type := in4_0 : A -> sum4 A B C D | in4_1 : B -> sum4 A B C D | in4_2 : C -> sum4 A B C D | in4_3 : D -> sum4 A B C D.";
      ""; "";
     ]
   in
