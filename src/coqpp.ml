@@ -11,7 +11,28 @@ exception Unimplemented
 exception Impossible
 
 
-let output_components outputer separator ppf lst =
+(****************************)
+(* General Helper Functions *)
+(****************************)
+
+(* getIndex : 'a list -> 'a -> int
+     Given a list and a value in the list, what is it's offset?
+
+     E.g.,  List.nth lst (getIndex lst x)   =   x
+*)
+let rec getIndex lst x =
+  let rec loop n = function
+    | [] -> failwith "coqpp/getIndex: cannot find value"
+    | y::ys -> if (x=y) then n else loop (n+1) ys
+  in
+    loop 0 lst
+
+
+(************************************)
+(* Pretty-Printing Helper Functions *)
+(************************************)
+
+let output_list outputer separator ppf lst =
   let rec output_loop ppf = function
       [] -> ()
     | [trm] -> outputer ppf trm
@@ -20,7 +41,7 @@ let output_components outputer separator ppf lst =
   in
   output_loop ppf lst
 
-let output_components_nobreak outputer separator ppf lst =
+let output_list_nobreak outputer separator ppf lst =
   let rec output_loop ppf = function
       [] -> ()
     | [trm] -> outputer ppf trm
@@ -50,14 +71,16 @@ and output_patterns ppf = function
   | pat::pats -> fprintf ppf "%a,%a"  output_pattern pat   output_patterns pats
 
 and output_term_13 ppf = function
+(*
   | Case (t, [(ConstrPat(_, Some(nm1,ty1)), trm1);
 	      (ConstrPat(_, Some(nm2,ty2)), trm2)]) ->
           fprintf ppf "@[<v>match @[<hov>%a@ with@]@,@[<v>| inl %a => %a@]@,@[<v>| inr %a => %a@]@,end@]"
 	    output_term_13 t  output_name nm1  output_term_12 trm1
 	                      output_name nm2  output_term_12 trm2
-  | Case (t, lst) ->
+*)
+  | Case (t, ty, lst) ->
        (let output_arm ppf (pat, u) =
-         fprintf ppf "%a -> %a" output_pattern pat output_term_12 u
+         fprintf ppf "%a => %a" output_pattern pat output_term_12 u
         in let rec output_arms' ppf = function
               [] -> ()
           | arm::arms -> fprintf ppf "@[| %a @]@,%a" 
@@ -112,7 +135,7 @@ and output_term_9 ppf = function
         output_term_8 t   op   output_term_8 u
   | BOp (bop, lst) ->
       assert (if bop = ImplyOp || bop = IffOp then List.length lst = 2 else List.length lst >= 1) ;
-      fprintf ppf "%s %a" (string_of_bop bop) (output_components output_term_8 " ") lst
+      fprintf ppf "%s %a" (string_of_bop bop) (output_list output_term_8 " ") lst
   | BNot t -> fprintf ppf "negb %a" output_term_8 t
   | trm -> output_term_8 ppf trm
       
@@ -153,10 +176,24 @@ and output_term_4 ppf = function
       fprintf ppf "pi%d %a" k   output_term_0 t  (* skip applications! *) 
 (*  | Proj (k, t) -> 
       fprintf ppf "%a.%d"   output_term_4 t  k  (* skip applications! *) *)
-  | Inj (lb, None, _) -> 
-      fprintf ppf "`%s" lb
-  | Inj (lb, Some t, _) -> 
-      fprintf ppf "`%s %a" lb   output_term_0 t  (* skip applications! *)
+  | Inj (lb, termOpt, SumTy arms) -> 
+      begin
+	let labels = List.map fst arms in
+	let num_labels = List.length labels in
+	let index = getIndex labels lb  in
+	let term = match termOpt with
+          | None -> EmptyTuple
+	  | Some term -> term   in
+	  match num_labels, index with
+	    | 1, 0 -> fprintf ppf "%a" output_term_0 term
+	    | 2, 0 -> fprintf ppf "inl %a" output_term_0 term
+	    | 2, 1 -> fprintf ppf "inr %a" output_term_0 term
+	    | (3|4), _ -> 
+		fprintf ppf "in%d_%d %a" num_labels index output_term_0 term
+	    | _ -> failwith "coqpp/output_term_4: Sum too big"
+      end
+  | Inj _ -> 
+      failwith "coqpp/output_term_4: bad injection type"
   | trm -> output_term_3 ppf trm
 
 and output_term_3 ppf = function
@@ -179,20 +216,20 @@ and output_bnd ppf (n,t) =
   fprintf ppf "(%s:%a)" (Name.string_of_name n)  output_ty t
 
 and output_bnds ppf lst =
-  output_components output_bnd " " ppf lst
+  output_list output_bnd " " ppf lst
 
 and output_mbnd ppf (n,mset) =
   fprintf ppf "(%s:%a)" (Name.string_of_name n)  output_modest mset
     
 and output_mbnds ppf lst =
-  output_components output_mbnd " " ppf lst
+  output_list output_mbnd " " ppf lst
 
 and output_pbnd ppf (n,pt) = 
   fprintf ppf "(%a:%a)" output_name n  output_proptype pt
 
 and output_pbnds ppf = function
     [] -> ()
-  | lst -> fprintf ppf "%a"   (output_components output_pbnd " ") lst
+  | lst -> fprintf ppf "%a"   (output_list output_pbnd " ") lst
 
 and output_quant_pbnds ppf = function
     [] -> () 
@@ -246,12 +283,12 @@ and output_term_0 ppf = function
   | Tuple [] -> fprintf ppf "tt" (* Coq's unit value *)
   | Tuple [t] -> fprintf ppf "TUPLE %a"  output_term_0 t (* Should never happen *)
   | Tuple lst -> 
-        fprintf ppf "@[(%a)@]"   (output_components output_term_9 ",") lst
+        fprintf ppf "@[(%a)@]"   (output_list output_term_9 ",") lst
   | trm -> ((* print_string (string_of_term trm ^ "\n"); *)
             fprintf ppf "@[(%a)@]"   output_term trm)
 
 and output_term_apps ppf lst = 
-  output_components_nobreak output_term_0 " " ppf lst
+  output_list_nobreak output_term_0 " " ppf lst
 
 and output_name ppf = function
   | Name.N (_, Name.Per) as nm ->
@@ -272,12 +309,13 @@ and output_prop ppf = function
     prp -> output_prop_15 ppf prp
 
 and output_prop_15 ppf = function
-  | PCase (t, [(ConstrPat(_, Some(nm1,_)), prp1);
+(*  | PCase (t, [(ConstrPat(_, Some(nm1,_)), prp1);
 	      (ConstrPat(_, Some(nm2,_)), prp2)]) ->
           fprintf ppf "@[<v>match @[<hov>%a@ with@]@,@[<v>| inl %a => %a@]@,@[<v>| inr %a => %a@]@,end@]"
 	    output_term_13 t  output_name nm1  output_prop_14 prp1
 	                      output_name nm2  output_prop_14 prp2
-  | PCase (t, lst) ->
+*)
+  | PCase (t, ty, lst) ->
       begin
         let output_arm ppf (pat, u) =
           fprintf ppf "%a =>@ @[<hv>%a@]"
@@ -346,7 +384,7 @@ and output_prop_11 ppf = function
 
 and output_prop_10 ppf = function
     And (_::_ as lst) -> 
-      output_components output_prop_10 " /\\ " ppf lst
+      output_list output_prop_10 " /\\ " ppf lst
   | prp -> output_prop_9 ppf prp
 
 and output_prop_9 ppf = function
@@ -488,15 +526,31 @@ and output_ty_4 ppf = function
   | typ -> output_ty_3 ppf typ
 
 and output_ty_3 ppf = function
-  | SumTy [(_, Some t1); (_, Some t2)] ->
-      fprintf ppf "%a + %a"   output_ty_2 t1  output_ty_2 t2
-  | SumTy _ ->
-      failwith "coqpp: output_ty_3: SumTy"
+  | SumTy arms ->
+      begin
+	let tyOptToTy = function
+	  | None -> TupleTy []
+	  | Some ty -> ty  in
+	let tys = List.map (fun (_, tyOpt) -> tyOptToTy tyOpt) arms in
+	  match tys with
+            | [] -> fprintf ppf "Empty_set"
+	    | [ty] -> output_ty_3 ppf ty
+	    | [ty1; ty2] -> 
+		fprintf ppf "%a + %a"   output_ty_0 ty1  output_ty_0 ty2
+	    | [ty1; ty2; ty3] ->
+		fprintf ppf "sum3 %a %a %a"
+		  output_ty_0 ty1  output_ty_0 ty2  output_ty_0 ty3
+	    | [ty1; ty2; ty3; ty4] ->
+		fprintf ppf "sum3 %a %a %a %a"
+		  output_ty_0 ty1  output_ty_0 ty2  
+		  output_ty_0 ty3  output_ty_0 ty4
+	    | _ -> failwith "coqpp/output_ty_3: too many sum arms"
+      end
   | typ -> output_ty_2 ppf typ
 
 and output_ty_2 ppf = function
    TupleTy (_::_ as ts) -> 
-     output_components_nobreak output_ty_1 " * " ppf ts
+     output_list_nobreak output_ty_1 " * " ppf ts
   | typ -> output_ty_1 ppf typ
 
 and output_ty_1 ppf = function
@@ -505,7 +559,7 @@ and output_ty_1 ppf = function
           (lb, None) -> fprintf ppf "`%s" lb
         | (lb, Some t) -> fprintf ppf "`%s of %a" lb   output_ty_1 t
       in
-        fprintf ppf "[%a]" (output_components doOne " | ") ts
+        fprintf ppf "[%a]" (output_list doOne " | ") ts
 *)
   | typ -> output_ty_0 ppf typ
 
@@ -538,14 +592,14 @@ and output_assertion ppf asn =
       output_prop asn.aprop
 
 and output_assertions ppf assertions = 
-  output_components_nobreak output_assertion "" ppf assertions
+  output_list_nobreak output_assertion "" ppf assertions
 
 and output_quant_tyvars ppf = function
     [] -> ()
   | nms -> fprintf ppf "forall (%a : Set),@ "  output_names nms
 
 and output_names ppf nms =
-  output_components_nobreak output_name " " ppf nms
+  output_list_nobreak output_name " " ppf nms
 
 and output_spec ppf = function
     Spec(nm, ValSpec (_,ty), assertions) ->
@@ -681,10 +735,13 @@ and output_toplevel ppf body =
      "Implicit Arguments total_arrow [s t].";
      "Implicit Arguments eq_prod [s t].";
      "Implicit Arguments eq_arrow [s t].";
+     "";
+     "Inductive sum3 (A B C : Type) : Type := in3_1 : A -> sum3 A B C | in3_2 : B -> sum3 A B C | in3_3 : C -> sum3 A B C";
+     "Inductive sum4 (A B C D : Type) : Type := in4_1 : A -> sum4 A B C D | in4_2 : B -> sum4 A B C D | in4_3 : C -> sum3 A B C D | in4_4 : sum4 A B C D";
      ""; "";
     ]
   in
     fprintf ppf "@[<v>%a@ %a@]@.@."  
-      (output_components output_string "") headers
+      (output_list output_string "") headers
       output_specs body
       

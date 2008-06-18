@@ -78,7 +78,7 @@ thy
 
         Definition sum : Set := [`yes : s] + [`no : unit] + [`maybe].
 
-	Definition tmp1  := `yes a.
+	Definition tmp1 : sum := `yes a.
 	Definition tmp2 : sum := tmp1.
 	
 	Definition d  := match tmp2 with

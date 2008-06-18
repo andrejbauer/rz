@@ -29,19 +29,19 @@ type 'a pattern_match =
 
 let rec pmatch (fLet : pattern * term * 'a -> 'a) matchee pat (trm:'a) = 
   match matchee, pat with 
-    (_, WildPat) ->
-      Yes (fLet(WildPat, matchee, trm))
-  | (_, VarPat nm) ->
-      Yes (fLet(VarPat nm, matchee, trm))
-  | (Tuple matchees, TuplePat pats ) -> 
-      pmatches fLet matchees pats trm
-  | (Inj(lbl1,None, _), ConstrPat(lbl2,None)) when lbl1 = lbl2 ->
-      Yes trm
-  | (Inj(lbl1,Some trm1, _), ConstrPat(lbl2, Some(nm2,_))) when lbl1 = lbl2 ->
-      Yes (fLet(VarPat nm2,trm1, trm))
-  | (Inj _, ConstrPat _) -> No
-  | _                    -> Maybe
-
+      (_, WildPat) ->
+	Yes (fLet(WildPat, matchee, trm))
+    | (_, VarPat nm) ->
+	Yes (fLet(VarPat nm, matchee, trm))
+    | (Tuple matchees, TuplePat pats ) -> 
+	pmatches fLet matchees pats trm
+    | (Inj(lbl1,None, _), ConstrPat(lbl2,None)) when lbl1 = lbl2 ->
+	Yes trm
+    | (Inj(lbl1,Some trm1, _), ConstrPat(lbl2, Some(nm2,_))) when lbl1 = lbl2 ->
+	Yes (fLet(VarPat nm2,trm1, trm))
+    | (Inj _, ConstrPat _) -> No
+    | _                    -> Maybe
+	
 and pmatches fLet matchees pats trm =
   match matchees, pats with
     [], [] -> Yes trm
@@ -355,13 +355,13 @@ let rec hoist trm =
         let (obs, trm') = hoist trm
         in (obs, PolyInst(trm', tys))
 
-    | Case(trm,arms) ->
+    | Case(trm,ty,arms) ->
         let (obs1, trm') = hoist trm
         in let (obs2, arms') = hoistCaseArms arms
         in let (obs', trm'', arms'') = 
            merge2Obs fvTerm fvCaseArms substTerm substCaseArms
              obs1 obs2 trm' arms'
-        in (obs', Case(trm'', arms''))
+        in (obs', Case(trm'',ty,arms''))
 
     | Let(pat, trm1, trm2) ->
         (* See comments for PLet *)
@@ -525,13 +525,13 @@ and hoistProp orig_prp =
             merge2Obs fvProp fvTerm substProp substTerm obs1 obs2 prp' trm'
           in (obs', PApp(prp'', trm''))
             
-      | PCase(trm, arms) -> 
+      | PCase(trm, ty, arms) -> 
           let (obs1, trm') = hoist trm
           in let (obs2, arms') = hoistPCaseArms arms
           in let (obs', trm'', arms'') =
             merge2Obs fvTerm fvPCaseArms substTerm substPCaseArms
               obs1 obs2 trm' arms'
-          in (obs', PCase(trm'', arms''))
+          in (obs', PCase(trm'', ty, arms''))
             
       | PObligation(bnd, prp1, prp2) ->
           (* For justification of this code, see the comments for 
@@ -698,11 +698,11 @@ and reduce trm =
           | trm' -> Proj(n, trm')
       end
 
-  | Case(trm1, arms) ->
+  | Case(trm1, ty, arms) ->
       let trm1' = reduce trm1 in
 
       let rec tryToEliminateCase = function
-          [] -> Case(trm1', []) (* Ran out of possible arms *)
+          [] -> Case(trm1', ty, []) (* Ran out of possible arms *)
         | (pat,trm3)::rest ->
 	    begin
               match pmatch fLet trm1' pat trm3 with
@@ -712,7 +712,7 @@ and reduce trm =
 		    (* Well, we can't statically reduce the Case.
 		       But we can at least get rid of the arms that
 		       *don't* match! *)
-		    Case(trm1', (pat,trm3)::collectMatchableArms rest)
+		    Case(trm1', ty, (pat,trm3)::collectMatchableArms rest)
 	    end
 	 and collectMatchableArms = function
 	   | [] -> []
@@ -720,7 +720,15 @@ and reduce trm =
                match pmatch fLet trm1' pat trm3 with
 		 | No -> collectMatchableArms rest
 		 | _ -> (pat,trm3) :: collectMatchableArms rest
-      in tryToEliminateCase arms
+      in 
+	if (!Flags.do_coq) then
+	  (* Coq expects exhaustive matches, even if we "know" the
+	     argument can't match those missing cases. 
+	       [E.g.,  "match (inl nat 3) with inl x => x" is rejected.]
+	     So, we don't try to eliminate arms. *)
+	  Case(trm1', ty, arms)
+	else 
+	  tryToEliminateCase arms
 
   | trm -> trm
 
@@ -790,7 +798,7 @@ and reduceProp prp =
       end
 *)
 
-  | PCase(trm1, arms) ->
+  | PCase(trm1, ty, arms) ->
       let trm1' = reduce trm1 in
       let rec tryToEliminatePCase = function
           [] -> False (* Ran out of possible arms *)
@@ -803,7 +811,7 @@ and reduceProp prp =
 		    (* Well, we can't statically reduce the PCase.
 		       But we can at least get rid of the arms that
 		       *don't* match! *)
-		    PCase(trm1', (pat,prp)::collectMatchableArms rest)
+		    PCase(trm1', ty, (pat,prp)::collectMatchableArms rest)
 	    end
 	 and collectMatchableArms = function
 	   | [] -> []
@@ -811,7 +819,12 @@ and reduceProp prp =
                match pmatch fPLet trm1' pat prp with
 		 | No -> collectMatchableArms rest
 		 | _ -> (pat,prp) :: collectMatchableArms rest
-      in tryToEliminatePCase arms
+      in 
+	if (!(Flags.do_coq)) then
+	  (* See above comment for reducing a Case *)
+	  PCase(trm1', ty, arms)
+	else 
+	  tryToEliminatePCase arms
 
   | PBool (BConst true) -> True
   | PBool (BConst false) -> False
@@ -1340,7 +1353,7 @@ let rec typeOf ctx = function
 	| _ -> failwith "Outsynrules.typeOf: Proj"
       end
   | Inj(lbl, _, ty) -> ty
-  | Case(_, arms) ->
+  | Case(_, _, arms) ->
       begin
 	let typeOfArm (pat,trm) =
 	      let ctx' = insertPattern ctx pat

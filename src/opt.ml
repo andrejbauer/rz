@@ -484,10 +484,11 @@ and optTerm ctx orig_term =
           let (ty, e') = optTerm ctx e in
             (sumTy, Inj(lbl, Some e', sumTy))
 
-      | Case (e, arms) ->
+      | Case (e, ty, arms) ->
           (** Optimize the subexpressions, and see if the case can
               be reduced *)
-          let (ty, e') = optTerm ctx e
+          let (ty, e') = optTerm ctx e in
+	  let ty' = optTy ctx ty
           in let doArm (pat, e3) =
             let (ctx',pat') = optPattern ctx pat
             in let ctx'' = insertPattern ctx' pat'
@@ -502,7 +503,7 @@ and optTerm ctx orig_term =
               in (joinTy ctx tyarm tyarms,
                  arm' :: arms')
           in let (tyarms, arms') = doArms arms
-          in (tyarms, optReduce ctx (Case(e',arms')))
+          in (tyarms, optReduce ctx (Case(e',ty',arms')))
 
       | Let(pat1, term1, term2) ->
           (** Phase 1: Basic Optimization: optimize subexpressions
@@ -920,8 +921,9 @@ and optProp ctx orig_prp =
             in
                  optReduceProp ctx (PApp(p', t'))
                    
-        | PCase (e, arms) ->
+        | PCase (e, ty, arms) ->
           let (ty, e') = optTerm ctx e in
+	  let ty' = optTy ctx ty in
           let doArm (pat, p3) =
             let (ctx',pat') = optPattern ctx pat in
             let ctx'' = insertPattern ctx' pat' in
@@ -930,31 +932,33 @@ and optProp ctx orig_prp =
 
           let arms' = List.map doArm arms in
 
-(* Bogus: the problem is "Translate" tends to generate non-exhaustive
-   matches 
+(* Bogus, optimization, since PCases are often inexhaustive.
+
           (* If all of the arms are equal, we'd like to eliminate the
              case altogether.  This isn't quite right, though, since
                "pcase ... of
-            `inl x => x
-          | `inr x => x"
-       cannot be further simplified.  So, we check that the
-       right-hand-sides are equal *and* that the right-hand-sides
-       do not refer to any pattern variables. *)
+                `inl x => x
+              | `inr x => x"
+             cannot be further simplified.  So, we check that the
+             right-hand-sides are equal *and* that the right-hand-sides
+             do not refer to any pattern variables *and* that the
+	     match is exhaustive [or that all the given are False.] *)
           let constantArm (pat, prp) =
              let pat_vars = bvPat pat in
              let prp_vars = fvProp prp in
              disjointNameLists pat_vars prp_vars    in
-    let first_prp = snd (List.hd arms') in    (* PCase must be non-empty *)
-    let rest_prps = List.map snd (List.tl arms') in
-    if (List.for_all ((=) first_prp) rest_prps && 
-        List.for_all constantArm arms') then
-      first_prp
-    else
+          let first_prp = snd (List.hd arms') in (* PCase must be non-empty *)
+          let rest_prps = List.map snd (List.tl arms') in
+          if (List.for_all ((=) first_prp) rest_prps && 
+              List.for_all constantArm arms' &&
+	      (List.length arms' = sumcases ||
+	       first_prp = False)) then
+		first_prp
+	  else
 *)
-            optReduceProp ctx (PCase(e',arms'))
+		optReduceProp ctx (PCase(e',ty',arms'))
 
         | PLet(pat, trm1, prp2) ->
-
             let (ty1, trm1') = optTerm ctx trm1
             in let (ctx', pat') = optPattern ctx pat
             in let ctx' = insertTermVariableLet ctx' pat' ty1

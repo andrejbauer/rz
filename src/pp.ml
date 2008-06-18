@@ -50,7 +50,7 @@ and output_patterns ppf = function
   | pat::pats -> fprintf ppf "%a,%a"  output_pattern pat   output_patterns pats
 
 and output_term_13 ppf = function
-     Case (t, lst) ->
+     Case (t, _, lst) ->
        (let output_arm ppf (pat, u) =
          fprintf ppf "%a -> %a" output_pattern pat output_term_12 u
         in let rec output_arms' ppf = function
@@ -258,7 +258,7 @@ and output_prop ppf = function
     prp -> output_prop_15 ppf prp
 
 and output_prop_15 ppf = function
-    PCase (t, lst) ->
+    PCase (t, _, lst) ->
       begin
         let output_arm ppf (pat, u) =
           fprintf ppf "%a =>@ @[<hv>%a@]"

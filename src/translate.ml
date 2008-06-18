@@ -318,7 +318,7 @@ let rec translateSet = function
 	  ty = t;
 	  tot = makeTot (x, t)
 	    (PCase
-	       (id x,
+	       (id x, t,
 		List.map
 		  (function
 		     | (lb, None) -> ConstrPat (lb, None), True
@@ -331,6 +331,7 @@ let rec translateSet = function
 	  per = makePer (y, y', t)
 	    (PCase
 	       (Tuple [id y; id y'],
+		TupleTy [t; t],
 		List.map
 		  (function
 		     | (lb, None) -> 
@@ -413,8 +414,10 @@ and translateTerm = function
 
   | L.Inj (lb, Some t, s) -> Inj (lb, Some (translateTerm t), (translateSet s).ty)
 
-  | L.Case (t1, _, lst, _) ->
-      Case (translateTerm t1, List.map
+  | L.Case (t1, s, lst, _) ->
+      Case (translateTerm t1, 
+	    (translateSet s).ty,
+	    List.map
 	       (function
 		    (lb, Some (n, s), t) ->
 		      (ConstrPat(lb, Some (n, (translateSet s).ty)), 
@@ -548,6 +551,7 @@ and translateProp = function
 	makeProp (u, ty)
 	  (PCase
 	     (id u,
+	      ty,
 	      List.map
 		(fun (lb, (t,p)) -> let x = fresh t in ConstrPat (lb, Some (x,t)), pApp p (id x))
 		lst'))
@@ -610,7 +614,8 @@ and translateProp = function
 	makeProp (any(), TopTy) (isEquiv p' s')
 
 
-  | L.PCase (t, _, lst) ->
+  | L.PCase (t, s, lst) ->
+      let s' = translateSet s in
       let tys, arms = List.fold_right
 	(fun arm (tys, arms) -> match arm with
 	    (lb, Some (n, s), p) ->
@@ -632,7 +637,10 @@ and translateProp = function
 	([], [])
       in
       let r = fresh (SumTy tys) in
-	makeProp (r, SumTy tys) (PCase (Tuple[id r; translateTerm t], arms))
+      let rty = SumTy tys in
+	makeProp (r, rty) (PCase (Tuple[id r; translateTerm t], 
+					TupleTy[rty; s'.ty], 
+					arms))
 
   | L.PIdentityCoerce _ as orig_prop ->
       begin

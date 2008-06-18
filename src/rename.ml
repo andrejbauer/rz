@@ -126,13 +126,14 @@ and renTerm ctx = function
 
   | Inj (lb, Some t, ty) -> Inj (lb, Some (renTerm ctx t), renTy ctx ty)
       
-  | Case (t, lst) ->
+  | Case (t, ty, lst) ->
       let renArm ct (pat, t) =
 	let pat, ct = renPat ct pat in
-	(pat, renTerm ct t)
+	  (pat, renTerm ct t)
       in
-      Case (renTerm ctx t,
-	    renList' renArm ctx lst)
+	Case (renTerm ctx t,
+	      renTy ctx ty,
+	      renList' renArm ctx lst)
 	
   | Let (pat, t1, t2) ->
       let t1 = renTerm ctx t1 in
@@ -221,13 +222,14 @@ and renProp ctx = function
       let bnds, ctx = renBindingList ctx bnds in
 	PObligation (bnds, renProp ctx p1, renProp ctx p2)
 
-  | PCase (t, lst) ->
+  | PCase (t, ty, lst) ->
       let renPArm ct (pat, p) =
 	let pat, ct = renPat ct pat in
-	(pat, renProp ct p)
+	  (pat, renProp ct p)
       in
-      PCase (renTerm ctx t,
-	     renList' renPArm ctx lst)
+	PCase (renTerm ctx t,
+	       renTy ctx ty,
+	       renList' renPArm ctx lst)
 
   | PLet (pat, t, p) ->
       let t = renTerm ctx t in

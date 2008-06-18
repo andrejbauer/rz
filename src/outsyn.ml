@@ -78,7 +78,7 @@ and term =
   | Tuple      of term list
   | Proj       of int * term
   | Inj        of label * term option * ty
-  | Case       of term * (pattern * term) list
+  | Case       of term * ty * (pattern * term) list
   | Let        of pattern * term * term   
   | Obligation of binding list * proposition * term
   | PolyInst   of term * ty list  (* Not fully implemented yet *)
@@ -102,7 +102,7 @@ and proposition =
   | PApp       of proposition * term          (* application of propositional function *)
   | PLambda    of binding * proposition       (* abstraction of a proposition over a type *)
   | PObligation of binding list * proposition * proposition   (* obligation *)
-  | PCase       of term * (pattern * proposition) list (* propositional case *)
+  | PCase       of term * ty * (pattern * proposition) list (* propositional case *)
   | PLet        of pattern * term * proposition        (* Local term-binding *)
   | PBool       of term                       (* coercion of a boolean to a prop *)
 
@@ -297,8 +297,8 @@ let rec fvTerm' flt acc = function
   | Proj (_, t) -> fvTerm' flt acc t
   | Inj (_, Some t, ty) -> fvTerm' flt (fvTy' flt acc ty) t
   | Inj (_, None, ty) -> fvTy' flt acc ty
-  | Case (t, lst) ->
-      fvCaseArms' flt (fvTerm' flt acc t) lst
+  | Case (t, ty, lst) ->
+      fvCaseArms' flt (fvTerm' flt (fvTy' flt acc ty) t) lst
   | Let (pat, t1, t2) -> 
       fvPat' flt (fvTerm' flt (fvTerm' (bvPat pat@flt) acc t2) t1) pat
   | Obligation (bnds, p, t) -> 
@@ -349,7 +349,8 @@ and fvProp' flt acc = function
   | PObligation (bnds, p, q) -> 
       let flt' = (List.map fst bnds) @ flt
       in fvProp' flt' (fvProp' flt' acc p) q
-  | PCase (t, lst) -> fvPCaseArms' flt (fvTerm' flt acc t) lst
+  | PCase (t, ty, lst) -> 
+      fvPCaseArms' flt (fvTerm' flt (fvTy' flt acc ty) t) lst
   | PLet (pat, t, p) -> fvPat' flt (fvProp' ((bvPat pat)@flt) (fvTerm' flt acc t) p) pat
   | PBool t -> fvTerm' flt acc t
 
@@ -488,7 +489,9 @@ let rec countTerm (cp: countPred) trm =
     | Proj (_, t) -> countTerm cp t
     | Inj (_, Some t, ty) -> countTerm cp t + countTy cp ty
     | Inj (_, None,ty) -> countTy cp ty
-    | Case (t, lst) -> List.fold_left (fun a arm -> a + countCaseArm cp arm) (countTerm cp t) lst
+    | Case (t, ty, lst) -> 
+	List.fold_left (fun a arm -> a + countCaseArm cp arm) 
+	  (countTerm cp t + countTy cp ty ) lst
     | Let (_, t1, t2) -> 
         (* XXX : Ignores types in patterns *)
         countTerm cp t1 + countTerm cp t2
@@ -524,8 +527,8 @@ and countProp cp prp =
       | PObligation (bnds, p, q) -> countProp cp p + countProp cp q
       | PBool t -> countTerm cp t
 
-  | PCase (t, lst) ->
-      (countTerm cp t) + (countList countPCaseArm cp lst)
+  | PCase (t, ty, lst) ->
+      (countTerm cp t) + (countTy cp ty) + (countList countPCaseArm cp lst)
 
   | PLet (_, t, p) ->
       (* XXX: Ignores types in patterns *)
@@ -783,8 +786,9 @@ and substProp ?occ sbst = function
       in 
         PObligation (bnds', substProp ?occ sbst' p, substProp ?occ sbst' q)
 
-  | PCase (trm, lst) -> 
+  | PCase (trm, ty, lst) -> 
         PCase (substTerm ?occ sbst trm,
+	       substTy ?occ sbst ty,
                substPCaseArms ?occ sbst lst)
   | PLet (pat, t, p) ->
       let (pat', sbst') = substPat ?occ sbst pat
@@ -867,9 +871,10 @@ and substTerm ?occ sbst orig_term =
           | Inj (k, None, ty) -> Inj (k, None, substTy ?occ sbst ty)
           | Inj (k, Some t, ty) -> Inj (k, Some (substTerm ?occ sbst t),
 				       substTy ?occ sbst ty)
-          | Case (t, lst) -> 
+          | Case (t, ty, lst) -> 
               Case (substTerm ?occ sbst t,
-                   substCaseArms ?occ sbst lst)
+		    substTy ?occ sbst ty,
+                    substCaseArms ?occ sbst lst)
           | Obligation (bnds, p, trm) ->
               let (sbst', bnds') = renameBnds ?occ sbst bnds
               in
@@ -1133,7 +1138,7 @@ and string_of_term' level t =
     | Proj (k, t) -> (4, ("pi" ^ (string_of_int k) ^ " " ^ (string_of_term' 3 t)))
     | Inj (lb, None, _) -> (4, ("`" ^ lb))
     | Inj (lb, Some t, _) -> (4, ("`" ^ lb ^ " " ^ (string_of_term' 3 t)))
-    | Case (t, lst) ->
+    | Case (t, _, lst) ->
         (13, "match " ^ (string_of_term' 13 t) ^ " with " ^
            (String.concat " | "
               (List.map (fun (pat, u) -> (string_of_pat pat) ^ " -> " ^
@@ -1206,7 +1211,7 @@ and string_of_prop level p =
           (string_of_prop 14 p) ^ " in " ^ string_of_prop 14 q ^ " end")
 *)
 
-    | PCase (t, lst) ->
+    | PCase (t, _, lst) ->
         (14, "match " ^ (string_of_term' 13 t) ^ " with " ^
             (String.concat " | "
               (List.map (fun (pat, p) ->

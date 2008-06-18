@@ -409,7 +409,7 @@ and thinTerm (ctx : context) orig_term =
 		   Inj(lbl, Some e', sumTy'), 
 		   sumTy')
 	  end
-      | Case (e, arms) ->
+      | Case (e, _, arms) ->
       let (ty, e', ty') = thinTerm ctx e
       in let doArm (pat, e3) = 
         let (ctx', pat') = thinPattern ctx pat
@@ -425,7 +425,7 @@ and thinTerm (ctx : context) orig_term =
          arm' :: arms',
          joinTy' ctx tyarm' tyarms')
       in let (tyarms, arms', tyarms') = doArms arms
-      in (tyarms, Case(e',arms'), tyarms')
+      in (tyarms, Case(e',ty',arms'), tyarms')
 
       | Let(VarPat name1, term1, term2) ->
       begin
@@ -552,14 +552,14 @@ and thinProp (ctx: context) orig_prp =
            | _     -> PApp(p', t')
       end
 
-      | PCase (e, arms) ->
-      let doArm (pat, p) =
-        let (ctx', pat') = thinPattern ctx pat
-        in let p' = thinProp ctx' p in
-          (pat', p')
-      in
-           PCase (thinTerm' ctx e, List.map doArm arms)
-
+      | PCase (e, _, arms) ->
+	  let doArm (pat, p) =
+            let (ctx', pat') = thinPattern ctx pat
+            in let p' = thinProp ctx' p in
+              (pat', p')   in
+	  let (_, e', ty') = thinTerm ctx e  in
+            PCase (e', ty', List.map doArm arms)
+	      
       | PLet(VarPat nm, trm1, prp2) ->
       begin
         let    (ty1, trm1', ty1') = thinTerm ctx trm1

@@ -3,136 +3,137 @@ module type Terms =
  sig
    type s
     
-   (** predicate (=s=) : s -> s -> bool *)
-   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
+   (**{v predicate (=s=) : s -> s -> bool v}*)
+   (**  {v assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x v}
          
-        assertion transitive_s : 
-          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+        {v assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z v}
    *)
     
-   (** predicate ||s|| : s -> bool *)
-   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**{v predicate ||s|| : s -> bool v}*)
+   (**  {v assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x v}
    *)
     
    val a : s
-   (**  assertion a_support :  a : ||s||
+   (**  {v assertion a_support :  a : ||s|| v}
    *)
     
    val b : s
-   (**  assertion b_support :  b : ||s||
+   (**  {v assertion b_support :  b : ||s|| v}
    *)
     
    val c : s
-   (**  assertion c_support :  c : ||s||
+   (**  {v assertion c_support :  c : ||s|| v}
    *)
     
    type ty_p
     
-   (** predicate p : s -> ty_p -> bool *)
-   (**  assertion strict_p :  forall x:s, d:ty_p,  p x d -> x : ||s||
+   (**{v predicate p : s -> ty_p -> bool v}*)
+   (**  {v assertion strict_p :  forall x:s, d:ty_p,  p x d -> x : ||s|| v}
          
-        assertion extensional_p : 
-          forall x:s, y:s, d:ty_p,  x =s= y -> p x d -> p y d
+        {v assertion extensional_p : 
+          forall x:s, y:s, d:ty_p,  x =s= y -> p x d -> p y d v}
    *)
     
    val emptyTuple : unit
     
    val var : s
-   (**  assertion var_def :  var =s= a
+   (**  {v assertion var_def :  var =s= a v}
    *)
     
    val tuple : s * s * s
-   (**  assertion tuple_def :  tuple =(s * s * s)= (a,b,c)
+   (**  {v assertion tuple_def :  tuple =(s * s * s)= (a,b,c) v}
    *)
     
    val proj : s
-   (**  assertion proj_def :  proj =s= b
+   (**  {v assertion proj_def :  proj =s= b v}
    *)
     
    val g : (s -> s) -> s -> s
-   (**  assertion g_def :  g =((s -> s) -> s -> s)= (fun f : s -> s => f)
+   (**  {v assertion g_def : 
+          g =((s -> s) -> s -> s)= (fun f : s -> s => f) v}
    *)
     
    val application : s -> s
-   (**  assertion application_def : 
-          application =(s -> s)= g (fun x : s => a)
+   (**  {v assertion application_def : 
+          application =(s -> s)= g (fun x : s => a) v}
    *)
     
    val description : s * ty_p
-   (**  assertion description_def : 
+   (**  {v assertion description_def : 
           let x = assure x:s, d:ty_p,
                       (x : ||s|| /\ p x d /\ 
                        (forall (x':||s||), 
                           forall a':ty_p,  p x' a' -> x =s= x')) in (x,d)
           in p (pi0 description) (pi1 description) /\ p (pi0 x) (pi1 x) /\ 
-          pi0 description =s= pi0 x
+          pi0 description =s= pi0 x v}
    *)
     
    val cases : s
-   (**  assertion cases_def :  cases =s= b
+   (**  {v assertion cases_def :  cases =s= b v}
    *)
     
    val r : s
-   (**  assertion r_support :  r : ||s||
+   (**  {v assertion r_support :  r : ||s|| v}
    *)
     
    val rzquot : s
-   (**  assertion rzquot_def :  rzquot =s= r
+   (**  {v assertion rzquot_def :  rzquot =s= r v}
    *)
     
    val rzchoose : s
-   (**  assertion rzchoose_def :  rzchoose =s= a
+   (**  {v assertion rzchoose_def :  rzchoose =s= a v}
    *)
     
-   (** predicate eq : s -> s -> bool *)
-   (**  assertion strict_eq : 
-          forall x:s, y:s,  eq x y -> x : ||s|| /\ y : ||s||
+   (**{v predicate eq : s -> s -> bool v}*)
+   (**  {v assertion strict_eq : 
+          forall x:s, y:s,  eq x y -> x : ||s|| /\ y : ||s|| v}
          
-        assertion extensional_eq : 
-          forall x:s, y:s, z:s, w:s,  x =s= z /\ y =s= w -> eq x y -> eq z w
+        {v assertion extensional_eq : 
+          forall x:s, y:s, z:s, w:s,  x =s= z /\ y =s= w -> eq x y -> eq z w v}
    *)
     
    
-   (**  assertion equiv_eq :  (forall (x:||s||),  eq x x) /\ 
+   (**  {v assertion equiv_eq :  (forall (x:||s||),  eq x x) /\ 
           (forall (x:||s||, y:||s||),  eq x y -> eq y x) /\ 
-          (forall (x:||s||, y:||s||, z:||s||),  eq x y /\ eq y z -> eq x z)
+          (forall (x:||s||, y:||s||, z:||s||),  eq x y /\ eq y z -> eq x z) v}
    *)
     
    val quot : s
-   (**  assertion quot_def :  eq quot a
+   (**  {v assertion quot_def :  eq quot a v}
    *)
     
    val choose_term : s
-   (**  assertion choose_term_def :  eq choose_term quot
+   (**  {v assertion choose_term_def :  eq choose_term quot v}
    *)
     
    val let_term : s * s
-   (**  assertion let_term_def :  let_term =(s * s)= (a,a)
+   (**  {v assertion let_term_def :  let_term =(s * s)= (a,a) v}
    *)
     
    val subin : s * ty_p
-   (**  assertion subin_def :  p (pi0 subin) (pi1 subin) /\ 
-          p a (assure d:ty_p, (p a d) in d) /\ pi0 subin =s= a
+   (**  {v assertion subin_def :  p (pi0 subin) (pi1 subin) /\ 
+          p a (assure d:ty_p, (p a d) in d) /\ pi0 subin =s= a v}
    *)
     
-   (** fishy *)
+   (* fishy *)
     
    val d : s * ty_p
-   (**  assertion d_support :  pi0 d : ||s|| /\ p (pi0 d) (pi1 d)
+   (**  {v assertion d_support :  pi0 d : ||s|| /\ p (pi0 d) (pi1 d) v}
    *)
     
    val subout : s
-   (**  assertion subout_def :  subout =s= pi0 d
+   (**  {v assertion subout_def :  subout =s= pi0 d v}
    *)
     
    val impossible : void
-   (**  assertion impossible_support :  false
+   (**  {v assertion impossible_support :  false v}
    *)
     
    val magic : s
-   (**  assertion magic_def :  magic =s= impossible
+   (**  {v assertion magic_def :  magic =s= impossible v}
    *)
     
-   (** subset *)
+   (* subset *)
  end
 

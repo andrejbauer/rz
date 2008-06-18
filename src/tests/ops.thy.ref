@@ -3,55 +3,55 @@ module type T =
  sig
    type s
     
-   (** predicate (=s=) : s -> s -> bool *)
-   (**  assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x
+   (**{v predicate (=s=) : s -> s -> bool v}*)
+   (**  {v assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x v}
          
-        assertion transitive_s : 
-          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z
+        {v assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z v}
    *)
     
-   (** predicate ||s|| : s -> bool *)
-   (**  assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x
+   (**{v predicate ||s|| : s -> bool v}*)
+   (**  {v assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x v}
    *)
     
    val (??) : s -> s
-   (**  assertion (??)_support :  (??) : ||s -> s||
+   (**  {v assertion (??)_support :  (??) : ||s -> s|| v}
    *)
     
    val (++) : s -> s -> s
-   (**  assertion (++)_support :  (++) : ||s -> s -> s||
+   (**  {v assertion (++)_support :  (++) : ||s -> s -> s|| v}
    *)
     
    val (&&) : s -> s -> s
-   (**  assertion (&&)_support :  (&&) : ||s -> s -> s||
+   (**  {v assertion (&&)_support :  (&&) : ||s -> s -> s|| v}
    *)
     
    val x : s
-   (**  assertion x_support :  x : ||s||
+   (**  {v assertion x_support :  x : ||s|| v}
    *)
     
    val f : s -> s
-   (**  assertion f_support :  f : ||s -> s||
+   (**  {v assertion f_support :  f : ||s -> s|| v}
    *)
     
    val y : s
-   (**  assertion y_def :  y =s= f ((??) x)
+   (**  {v assertion y_def :  y =s= f ((??) x) v}
    *)
     
    val z : s
-   (**  assertion z_def :  z =s= (x ++ x)
+   (**  {v assertion z_def :  z =s= (x ++ x) v}
    *)
     
    val w : s
-   (**  assertion w_def :  w =s= (&&) x x
+   (**  {v assertion w_def :  w =s= (&&) x x v}
    *)
     
    val g : (s -> s -> s) -> s
-   (**  assertion g_support :  g : ||(s -> s -> s) -> s||
+   (**  {v assertion g_support :  g : ||(s -> s -> s) -> s|| v}
    *)
     
    val u : s
-   (**  assertion u_def :  u =s= g (&&)
+   (**  {v assertion u_def :  u =s= g (&&) v}
    *)
  end
  
@@ -60,26 +60,26 @@ module M : T
 module type Q =
  sig
    val a : M.s
-   (**  assertion a_support :  a : ||M.s||
+   (**  {v assertion a_support :  a : ||M.s|| v}
    *)
     
    val f : M.s -> M.s
-   (**  assertion f_support :  f : ||M.s -> M.s||
+   (**  {v assertion f_support :  f : ||M.s -> M.s|| v}
    *)
     
    val b : M.s
-   (**  assertion b_def :  b =M.s= f (M.(??) a)
+   (**  {v assertion b_def :  b =M.s= f (M.(??) a) v}
    *)
     
    val c : M.s
-   (**  assertion c_def :  c =M.s= M.(++) a a
+   (**  {v assertion c_def :  c =M.s= M.(++) a a v}
    *)
     
    val d : M.s
-   (**  assertion d_def :  d =M.s= M.(++) a a
+   (**  {v assertion d_def :  d =M.s= M.(++) a a v}
    *)
     
-   (** Unfortunately, we can't parse
+   (* Unfortunately, we can't parse
             a M.++ a
        So we might as well make the parens optional
        in the input.
