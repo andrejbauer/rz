@@ -30,7 +30,12 @@ type name = N of bare_name | G of gensym
 let mk_word str = N (str, Word)
 
 let tyvarize = function
-    N(str,Word) -> N("'" ^ str, Word)
+    N(str,Word) -> 
+      if (! Flags.do_coq) then
+	N(str, Word)
+      else 
+	(* ML *)
+	N("'" ^ str, Word)
   | _ -> failwith "Name.tyvarize"
 
 let uncapitalize = function

@@ -230,16 +230,17 @@ and output_term_3 ppf = function
 
 (** Specifically for comma-separated variable/type pairs *)
 and output_bnd ppf (n,t) = 
-  fprintf ppf "(%s:%a)" (Name.string_of_name n)  output_ty t
+  fprintf ppf "(%a:%a)" output_name n output_ty t
 
 and output_bnds ppf lst =
   output_list output_bnd " " ppf lst
 
-and output_mbnd ppf (n,mset) =
-  fprintf ppf "(%s:%a)" (Name.string_of_name n)  output_modest mset
-    
-and output_mbnds ppf lst =
-  output_list output_mbnd " " ppf lst
+and output_modbnds ppf lst =
+  output_list output_modbnd "" ppf lst
+
+and output_modbnd ppf (n,sg) =
+  fprintf ppf " (%a:%a)" output_name n output_signat sg
+
 
 and output_pbnd ppf (n,pt) = 
   fprintf ppf "(%a:%a)" output_name n  output_proptype pt
@@ -276,7 +277,7 @@ and output_assertion_binds ppf lst =
 
 and output_totalbinds ppf lst =
       let outputer ppf (n,sty) = 
-        fprintf ppf "%s:||%a||" (Name.string_of_name n)  output_simple_ty sty
+        fprintf ppf "%a:||%a||" output_name n  output_simple_ty sty
       in let rec output_loop ppf = function
             [] -> ()
         | [trm] -> outputer ppf trm
@@ -619,45 +620,52 @@ and output_names ppf nms =
   output_list_nobreak output_name " " ppf nms
 
 and output_spec ppf = function
-    Spec(nm, ValSpec (_,ty), assertions) ->
-      (* Unlike Revised SML, ocaml doesn't let you explicitly quantify
-         with type variables, so we ignore them when pretty-printing.
-         (We could show them in a comment, I suppose)
-       *)
-      fprintf ppf "@[<v>@[<hov 2>Parameter %s : %a.@]%a@]" 
-        (Name.string_of_name nm)  output_ty ty  output_assertions assertions
+  | Spec(nm, ValSpec ([],ty), assertions) ->
+      fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.@]%a@]" 
+	output_name nm
+	output_ty ty  output_assertions assertions
+  | Spec(nm, ValSpec (nms,ty), assertions) ->
+      fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a%a.@]@,@[<hov 2>Implicit Arguments %a [%a].@]%a@]" 
+	output_name nm
+	output_quant_tyvars nms
+	output_ty ty  
+	output_name nm
+	output_names nms
+	output_assertions assertions
   | Spec(tynm, TySpec None, assertions) -> 
-      fprintf ppf "@[<v>@[<hov 2>Parameter %s : Set.@]%a@]"  
-        (Name.string_of_name tynm)   output_assertions assertions
+      fprintf ppf "@[<v>@[<hov 2>Parameter %a : Set.@]%a@]"  
+        output_name tynm   output_assertions assertions
   | Spec(tynm, TySpec (Some ty), assertions) -> 
-      fprintf ppf "@[<v>@[<hov 2>Definition %s : Set :=@ %a.@]%a@]"  
-        (Name.string_of_name tynm)   output_ty ty   output_assertions assertions
+      fprintf ppf "@[<v>@[<hov 2>Definition %a : Set :=@ %a.@]%a@]"  
+        output_name tynm   output_ty ty   output_assertions assertions
   | Spec(nm, ModulSpec sgntr, assertions) ->
-      fprintf ppf "@[<hov 2>@[Declare Module %s : %a.@]%a@]"
-        (Name.string_of_name nm)   output_signat sgntr   output_assertions assertions
+      fprintf ppf "@[<hov 2>@[Declare Module %a : %a.@]%a@]"
+        output_name nm  output_signat sgntr   output_assertions assertions
 
   | Spec(nm, SignatSpec (SignatName sn), assertions) ->
       fprintf ppf "@[<v>@[Module Type %a := %a.@]%a@]"   
         output_name nm  output_name sn  output_assertions assertions
-  | Spec(nm, SignatSpec (Signat specs), assertions) ->
-      fprintf ppf "@[<v>@[Module Type %a.@, @[<v>%a@]@,End %a.@]%a@]"   
-        output_name nm   output_specs specs    output_name nm
-	output_assertions assertions 
 
-  | Spec(nm, SignatSpec (SignatFunctor((mdnm, sg1), Signat specs)), assertions) ->
-      fprintf ppf "@[<v>@[Module Type %a (%a:%a).@, @[<v>%a@]@,End %a.@]%a@]"
-        output_name nm   output_name mdnm  output_signat sg1
-	output_specs specs    output_name nm
-	output_assertions assertions 
+  | Spec(nm, SignatSpec sg, assertions) ->
+      let rec collectArgs = function
+	| SignatFunctor(modulbnd, sg2) -> 
+	    let (args, specs) = collectArgs sg2 in
+	      modulbnd::args, specs
+	| Signat specs -> [], specs
+        | _ -> failwith "coqpp/collectArgs"  in
+      let (args, specs) = collectArgs sg  in
+	fprintf ppf "@[<v>@[Module Type %a%a.@, @[<v>%a@]@,End %a.@]%a@]"
+          output_name nm   
+	  output_modbnds args 
+	  output_specs specs
+	  output_name nm
+	  output_assertions assertions 
 
 
   | Spec(nm, PropSpec pt, assertions) ->
       fprintf ppf "@[<v>@[<hov 2>Parameter %a : %a.@]%a@]" 
         output_name nm   output_proptype pt
         output_assertions assertions
-
-  | Spec(nm, _, assertions) ->
-      failwith ("coqpp/outputSpec: " ^ Name.string_of_name nm)
 
   | Assertion assertion -> output_assertions ppf [assertion]
   | Comment cmmnt ->
@@ -695,20 +703,20 @@ and output_signat_sigapp ppf = function
 *)
 
 and output_signat ppf = function
-    SignatName s -> fprintf ppf "%s" (Name.string_of_name s)
+    SignatName nm -> output_name ppf nm
   | Signat body -> fprintf ppf "@[<v>sig@,  @[<v>%a@]@,end@]"  output_specs body
   | SignatFunctor ((m,sgnt1),sgnt2) ->
-      fprintf ppf "@[<v>functor (%s : %a) ->@ %a@]"
-         (Name.string_of_name m)   output_signat sgnt1   output_signat sgnt2
+      fprintf ppf "@[<v>functor (%a : %a) ->@ %a@]"
+         output_name m   output_signat sgnt1   output_signat sgnt2
   | SignatApp (sgnt1,mdl)  ->
             fprintf ppf "@[%a(%a)@]"    output_signat sgnt1    output_modul mdl
   | SignatProj (mdl, nm) -> 
-      fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name nm)
+      fprintf ppf "%a.%a"  output_modul mdl   output_name nm
 
 and output_modul ppf = function
-    ModulName s -> fprintf ppf "%s" (Name.string_of_name s)
+    ModulName s -> output_name ppf s
   | ModulProj (mdl, s) -> 
-      fprintf ppf "%a.%s"  output_modul mdl   (Name.string_of_name s)
+      fprintf ppf "%a.%a"  output_modul mdl   output_name s
   | ModulApp (mdl1, mdl2) -> 
       fprintf ppf "%a %a" output_modul mdl1   output_modul mdl2
   | ModulStruct _ -> failwith "coqpp/output_modul"

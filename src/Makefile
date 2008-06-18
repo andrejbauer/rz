@@ -9,12 +9,12 @@ EXECUTABLE=rz
 # Probably you do not have to change anything below this line
 
 SOURCES = \
+	flags.ml \
 	name.ml \
 	syntax.ml \
 	message.ml \
 	parser.ml \
 	lexer.ml \
-	flags.ml \
 	logic.ml \
 	error.ml \
 	logicrules.ml \

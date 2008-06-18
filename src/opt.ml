@@ -249,7 +249,7 @@ let tryPolymorph ctx nm signat =
       (* EXTEND term mapping with induct -> induct arg1 arg2, 
              i.e, assertions about the result value now need to
              have the extra term parameters applied *)
-          insertTermvar res_subst_term  (* exstending subst! *)
+          insertTermvar res_subst_term  (* extending subst! *)
              res_name
          (curried_app (id res_name) (List.map id argnames))
 
