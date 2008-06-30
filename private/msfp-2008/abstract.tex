@@ -1,0 +1,239 @@
+\documentclass{entcs} \usepackage{prentcsmacro}
+\usepackage{amsmath}
+\sloppy
+% The following is enclosed to allow easy detection of differences in
+% ascii coding.
+% Upper-case    A B C D E F G H I J K L M N O P Q R S T U V W X Y Z
+% Lower-case    a b c d e f g h i j k l m n o p q r s t u v w x y z
+% Digits        0 1 2 3 4 5 6 7 8 9
+% Exclamation   !           Double quote "          Hash (number) #
+% Dollar        $           Percent      %          Ampersand     &
+% Acute accent  '           Left paren   (          Right paren   )
+% Asterisk      *           Plus         +          Comma         ,
+% Minus         -           Point        .          Solidus       /
+% Colon         :           Semicolon    ;          Less than     <
+% Equals        =3D           Greater than >          Question mark ?
+% At            @           Left bracket [          Backslash     \
+% Right bracket ]           Circumflex   ^          Underscore    _
+% Grave accent  `           Left brace   {          Vertical bar  |
+% Right brace   }           Tilde        ~
+
+% A couple of exemplary definitions:
+
+\newcommand{\NN}{{\mathbb N}}
+\newcommand{\RR}{{\mathbb R}}
+\newcommand{\nat}{\mathtt{nat}}
+
+\def\lastname{Bauer}
+\begin{document}
+\begin{frontmatter}
+  \title{Mathematically Structured but\\
+    not Necessarily Functional Programming\\(Extended Abstract)}
+  \author{Andrej Bauer\thanksref{myemail}}
+  \address{Faculty of Mathematics and Physics\\University of Ljubljana\\
+    Ljubljana, Slovenia} \thanks[myemail]{Email:
+    \href{mailto:Andrej.Bauer@andrej.com} {\texttt{\normalshape
+        Andrej.Bauer@andrej.com}}}
+\begin{abstract} 
+  Realizability is an interpretation of intuitionistic logic which
+  subsumes the Curry-Howard interpretation of propositions as types,
+  because it allows the realizers to use computational effects such as
+  non-termination, store and exceptions. Therefore, we can use
+  realizability as a framework for program development and extraction
+  which allows any style of programming, not just the purely
+  functional one that is supported by the Curry-Howard correspondence.
+  In joint work with Christopher A.~Stone we developed RZ, a tool
+  which uses realizability to translate specifications written in
+  constructive logic into interface code annotated with logical
+  assertions. RZ does not extract code from proofs, but allows any
+  implementation method, from handwritten code to code extracted from
+  proofs by other tools. In our experience, RZ is useful for
+  specification of non-trivial theories. While the use of
+  computational effects does improve efficiency it also makes it
+  difficult to reason about programs and prove their correctness. We
+  demonstrate this fact by considering non-purely functional realizers
+  for a Brouwerian continuity principle.
+\end{abstract}
+\begin{keyword}
+  Realizability, constructive mathematics, specifications, functional
+  programming, computational effects.
+\end{keyword}
+\end{frontmatter}
+
+Realizability, a notion introduced by Kleene~\cite{kleene}, is a
+mathematical formalization of the Brouwer-Heyting-Kolmogorov
+interpretation of intuitionistic logic. Under the realizability
+interpretation, validity of a proposition is witnessed by a program,
+or a \emph{realizer}, which can be thought of as the computational
+content of the proposition. For example, a $\forall x .\, \exists y
+.\, \phi(x,y)$ statement is valid if there is a (not necessarily
+extensional) program computing from $x$ a $y$ and a realizer for
+$\phi(x,y)$. Realizability subsumes the Curry-Howard correspondence
+which interprets proposition as types and proofs as programs, because
+a realizer need not correspond to a proof---it may be non-terminating,
+or use computational effects such as store and exceptions.
+
+We can use realizability as a mathematical framework for program
+extraction and development, just as the Curry-Howard correspondence is
+used for the same purpose in systems such as Coq~\cite{coq} and
+Agda~\cite{agda}. Since realizers need not correspond to proofs, they
+are generally obtained as a combination of handwritten code and code
+extracted from constructive proofs. This allows us to realize
+statements which are not provable in intuitionistic logic. Even when a
+purely functional realizer could be extracted from a proof, we might
+prefer an impure handwritten one because it is more efficient, or
+because it is easier to write the code than the proof. In fact, an
+important advantage of realizability is the fact that it allows
+programmers to implement specifications in any way they see
+fit.\footnote{Whether the programmers also go to the trouble of
+  proving correctness of handwritten code is another matter.}
+
+In joint work with Chris Stone we developed \emph{RZ}~\cite{RZ}, a
+tool which employs the realizability interpretation to translate
+specifications in constructive logic into annotated interface code in
+Objective Caml~\cite{ocaml}. The system supports a rich input language
+allowing descriptions of complex mathematical structures. Currently,
+RZ does not extract code from proofs, but allows any implementation
+method, from handwritten code to code extracted from proofs by other
+tools. Recently, we have also been experimenting with translation into
+Coq using Matthieu Sozeau's \textsc{program}
+extension~\cite{program}. In a related project with Iztok
+Kavkler~\cite{era} we demonstrated that RZ can be used to develop
+non-trivial specifications. We wrote an RZ axiomatization of real
+numbers and the interval domain. We then implemented by hand the
+specification produced by RZ, which gave us a remarkably efficient
+library \emph{Era} for computing with exact real numbers. Most of Era
+is written in a purely functional style, and we could have easily
+extracted the realizers from constructive proofs. However, the ability
+to use non-functional features such as caching and in-place updates,
+improves performance and eases implementation.
+
+We demonstrate the use of non-purely functional realizers by looking
+at the statement
+%
+\begin{equation*}
+  \forall f \in \NN^{\NN^\NN} .\,
+  \forall a \in  \NN^\NN.\,
+  \exists n \in \NN .\,
+  \forall b \in \NN^\NN .\,
+  ((\forall k \leq n .\, a(k) = b(k)) \implies f(a) = f(b)).
+\end{equation*}
+%
+This is a continuity principle saying that every function from Baire
+space $\NN^\NN$ to $\NN$ is continuous, where $\NN$ is equipped with
+the discrete and $\NN^\NN$ with the product topology. It has important
+consequences for the theory of metric spaces in Brouwerian
+intuitionistic mathematics. We cannot hope to prove the statement in
+pure intuitionistic logic because such a proof would also be valid
+classically, but the statement is incompatible with classical
+logic.\footnote{Consider $f$ defined by $f(a) = 1$ if $\exists n \in
+  \NN .\, a(n) = 1$, and $f(a) = 0$ otherwise. An intuitionistic proof
+  applied to $f$ would essentially give a Halting Oracle.} By feeding
+the statement to RZ we find out that it is realized by a realizer
+%
+\begin{equation*}
+  \mathtt{r} :
+  ((\nat \to \nat) \to \nat) \to
+  (\nat \to \nat) \to \nat
+\end{equation*}
+%
+that takes as input realizers $\mathtt{f} : (\nat \to \nat) \to \nat$
+and $\mathtt{a} : \nat \to \nat$, which realize the corresponding
+functions~$f$ and~$a$, and returns a realizer $\mathtt{n} =
+\mathtt{r}\, \mathtt{f} \, \mathtt{a}$ of type $\nat$ such that
+$\mathtt{f}$ depends on at most the first $\mathtt{n}$ terms of the
+sequence $\mathtt{a}(0), \mathtt{a}(1), \mathtt{a}(2), \ldots$ Such a
+realizer is known as \emph{modulus of continuity}.  We cannot expect
+to construct~$\mathtt{r}$ in a purely functional
+language,\footnote{This is so because there are domain-theoretic
+  models which interpret purely functional code and invalidate the
+  continuity principle.}  although there are a number of ways of
+getting it with the aid of computational effects. For example, by
+using store we can implement $\mathtt{r}$ as (written in Objective
+Caml notation)
+%
+\begin{verbatim}
+let r f a =
+  let k = ref 0 in
+  let b n = (k := max !k n; a n) in
+    f b ; !k
+\end{verbatim}
+%
+Given $\mathtt{f}$ and $\mathtt{a}$, $\mathtt{r}$ evaluates
+$\mathtt{f}$ at the argument $\mathtt{b}$ which behaves just
+like~$\mathtt{a}$, except that it stores in location $\mathtt{k}$ the
+largest argument at which it was evaluated. When $\mathtt{f}$ returns
+a value, $\mathtt{r}$ discards it and returns the number stored
+in~$\mathtt{k}$.
+
+We could use exceptions instead of store:
+%
+\begin{verbatim}
+exception Abort
+let r f a =
+  let rec search k =
+    try
+      let b n = (if n < k then a n else raise Abort) in
+        f b ; k
+    with Abort -> search (k+1)
+  in
+    search 0
+\end{verbatim}
+%
+Now the argument $\mathtt{b}$ acts like $\mathtt{a}$ for arguments
+below the threshold value $\mathtt{k}$, and raises an exception
+otherwise. The program $\mathtt{r}$ keeps increasing $\mathtt{k}$ as
+long as exceptions are being raised. Eventually it finds a threshold
+which does not raise an exception and returns it. We leave it to the
+readers to construct $\mathtt{r}$ which uses continuations.
+
+It is not easy to prove that the realizer~$\mathtt{r}$ really does
+what it is supposed to. In fact, the first version, using store, only
+works because $\mathtt{k}$ is local and thus inaccessible
+to~$\mathtt{f}$. Had we used a globally accessible location
+$\mathtt{k}$, the following $\mathtt{f}$ would foil $\mathtt{r}$ by
+resetting $\mathtt{k}$ to~$0$:
+%
+\begin{verbatim}
+let f a =
+  let m = a 42 in k := 0 ; m
+\end{verbatim}
+%
+It is somewhat unclear whether $\mathtt{f}$ realizes an element of
+$\NN^{\NN^\NN}$. We remark that Haskell \texttt{State}
+monad~\cite{haskell} implements global store. It is an interesting
+question how to get~$\mathtt{r}$ in Haskell using only monads that are
+definable in pure Haskell.\footnote{We are asking for a monad
+  $\mathtt{T}$ such that $\mathtt{r}$ can be written in the Kleisli
+  category for~$\mathtt{T}$, i.e., a function accepting type $\alpha$
+  and returning type $\beta$ has type $\alpha \to \mathtt{T}\,\beta$.}
+
+The situation is even worse with the version of~$\mathtt{r}$ that uses
+exceptions. It simply does not work because $\mathtt{f}$ could
+intercept the exception:
+%
+\begin{verbatim}
+let f a =
+  try a 42 with Abort -> 23
+\end{verbatim}
+%
+Note that $\mathtt{f}$ is allowed to do this because it only has to
+work properly on arguments which do not raise exceptions. To mend the
+situation, we would need a local exception \texttt{Abort} which cannot
+be intercepted by~$\mathtt{f}$. While exceptions in Objective Caml can
+be declared locally, they can also be intercepted globally. One is
+tempted to either ask the designers of the language for truly local
+exceptions, or to formulate an additional invariant that~$\mathtt{f}$
+should satisfy, such as ``does not intercept exception
+$\mathtt{Abort}$''. Neither alternative is appealing.
+
+These considerations reflect the well known wisdom that it not easy to
+reason about computational effects. However, we feel that
+realizability still provides a convenient mathematical framework for
+development and extraction of programs and data structures, especially
+since it does not impose a particular programming style.
+
+\bibliographystyle{entcs}
+\bibliography{abstract}
+
+\end{document}
