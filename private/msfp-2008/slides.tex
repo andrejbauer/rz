@@ -266,12 +266,38 @@ not Necessarily Functional Programming}
 
 \end{frame}
 
-\begin{frame}
-  \frametitle{With effects}
+\begin{frame}[fragile]
+  \frametitle{With store}
 
-  Store.
+\begin{source}
+let r f a =
+  let k = ref 0 in
+  let b n = (k := max !k n; a n) in
+    f b ; !k
+\end{source}
+
 
   Exceptions.
+
+  Can we do it in Haskell?
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{With exceptions}
+
+\begin{source}
+exception Abort
+let r f a =
+  let rec search k =
+    try
+      let b n = 
+        if n < k then a n else raise Abort
+      in
+        f b ; k
+    with Abort -> search (k+1)
+  in
+    search 0
+\end{source}
 
   Can we do it in Haskell?
 \end{frame}
