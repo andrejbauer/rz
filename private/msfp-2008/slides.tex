@@ -1,0 +1,290 @@
+\documentclass[t]{beamer}
+
+\usepackage{palatino}
+\usepackage{amsfonts}
+\usepackage{fancyvrb}
+%\usepackage[all]{xypic}
+
+% To show source
+\DefineVerbatimEnvironment{source}{Verbatim}%
+{commandchars=\\\{\}}
+
+\DefineVerbatimEnvironment{sourcex}{Verbatim}%
+{fontsize=\footnotesize,commandchars=\\\{\}}
+
+
+\newcommand{\NN}{\mathbb{N}}
+\newcommand{\rz}{\Vdash}
+
+\title{Mathematically Structured but\\
+not Necessarily Functional Programming}
+\author{Andrej Bauer}
+\institute{Department of Mathematics and Physics\\
+  University of Ljubljana, Slovenia}
+\date{Mathematically Structured Functional Programming\\Reykjavik, July 2008}
+
+%\beamerdefaultoverlayspecification{<+->}
+\mode<presentation>
+% \usetheme{Goettingen}
+\usecolortheme{rose}
+\usefonttheme{serif}
+\setbeamertemplate{navigation symbols}{}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}
+  \frametitle{One-page summary of the talk}
+
+  \begin{itemize}
+  \item Program development and extract
+  \item RZ
+  \item Impure realizers
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{A successful framework for program development}
+
+  \begin{itemize}
+  \item Mathematical foundation: type theory
+  \item Interactive proof assistant such as Coq
+  \item Extraction of programs from formal proofs, or
+  \item Programs written directly and proved correct
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{How it is done in Coq}
+
+  \begin{itemize}
+  \item Propositions as types
+  \item Computational part -- the sort \texttt{Set}
+  \item Non-computational part -- the sort \texttt{Prop}
+  \item Furthermore, use \emph{setoids} instead of types
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{What about impure programs?}
+
+  YNot, Nanevski.
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Realizability as an alternative}
+
+  \begin{itemize}
+  \item We embrace the fact that $\text{proofs} \subsetneq \text{programs}$.
+  \item A proposition is:
+    %
+    \begin{itemize}
+    \item \emph{provable} if witnessed by a proof
+    \item \emph{realizable} if witnessed by a program
+    \end{itemize}
+  \item $\text{Provable} \implies \text{realizable}$
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}[fragile]
+  \frametitle{Not all programs are proofs}
+
+  \begin{itemize}
+  \item Consider
+    %
+    \begin{equation*}
+      \forall m : \NN .\, \exists n : \NN .\, m < n
+    \end{equation*}
+    %
+  \item The proof ``take $n$ to be $m+1$'' yields the realizer
+    %
+\begin{source}
+  let r = fun m -> m + 1      
+\end{source}
+    %
+  \item The following realizer does not correspond to a proof:
+    %
+\begin{source}
+  let s =
+    let k = ref 0 in
+      fun m -> (k := !k + 1; m + k)
+\end{source}
+    %
+    \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Sets and setoids}
+
+  \begin{itemize}
+  \item Propositions as types:
+    %
+    \begin{itemize}
+    \item types
+    \item setoids
+    \end{itemize}
+  \item Realizability:
+    %
+    \begin{itemize}
+    \item sets
+    \end{itemize}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Pers}
+
+  Comparison with setoids.
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Propositions as types}
+
+  \begin{itemize}
+  \item A proposition $\phi$ is interpreted as a type $|\phi|$ in
+    \emph{dependent} type theory:
+    %
+    \begin{align*}
+      |\top| &= \mathtt{unit} \\
+      |\phi \land \psi| &= |\phi| \times |\psi| \\
+      |\phi \lor \psi| &= |\phi| + |\psi| \\
+      |\forall x : A .\, \phi| &= \textstyle\prod_{x : |A|} |\phi| \\
+      |\exists x : A .\, \phi| &= \textstyle\sum_{x : |A|} |\phi|
+    \end{align*}
+  \item All terms of type $|\phi|$ realize $\phi$:
+    %
+    \begin{equation*}
+      \text{``$r$ realizes $\phi$''} \iff r : |\phi|
+    \end{equation*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Realizability}
+
+  \begin{itemize}
+  \item A proposition $\phi$ is interpreted as a type $|\phi|$ in a
+    programming language:
+    %
+    \begin{align*}
+      |\top| &= \mathtt{unit} \\
+      |\phi \land \psi| &= |\phi| \times |\psi| \\
+      |\phi \lor \psi| &= |\phi| + |\psi| \\
+      |\forall x : A .\, \phi| &= |A| \to |\phi| \\
+      |\exists x : A .\, \phi| &= |A| \times |\phi|
+    \end{align*}
+  \item \emph{Not} all terms of $|\phi|$ realize $\phi$:
+    %
+    \begin{equation*}
+      \text{``$r$ realizes $\phi$''} \iff \text{$r : |\phi|$ and $r \Vdash \phi$}
+    \end{equation*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{RZ}
+
+  What it is.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example use of RZ}
+
+  Era.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Translating into Coq}
+
+  Automatic separation of computational and non-computational part.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Non-functional realizers}
+
+  Realizers which use effects.
+
+  Usually they imply extra reasoning principles.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Unbounded search and Markov Principle}
+
+  \begin{itemize}
+  \item Markov principle: a sequence of $0$'s and $1$'s whose terms
+    are not all $0$ contains a $1$.
+  \item Provable in classical logic.
+  \item Not provable in intuitionistc logic.
+  \item As a formula:
+    %
+    \begin{equation*}
+      \forall a : \{0,1\}^\NN .\,
+      (\lnot \forall n : \NN .\, a(n) = 0) \implies
+      \exists n : \NN .\, a(n) = 1.
+    \end{equation*}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Compactness of Cantor space}
+
+  Escardo's programs.
+
+  Decompile prevents it.
+\end{frame}
+
+\begin{frame}
+  \frametitle{Continuity principle}
+
+  \begin{itemize}
+  \item 
+    Every map $f : \NN^\NN \to \NN$ is continuous at every point $a \in
+    \NN^\NN$.
+  \item 
+    In other words, $f(a)$ depends only on a finite prefix of
+    $a(0), a(1), a(2), \ldots$.
+  \item Incompatible with classical logic.
+  \item Cannot be proved in intuitionistic logic.
+  \item As a formula:
+    % 
+    \begin{multline*}
+      \forall f \in \NN^{\NN^\NN} .\,
+      \forall a \in  \NN^\NN.\,
+      \exists n \in \NN .\,
+      \forall b \in \NN^\NN .\,\\
+      ((\forall k \leq n .\, a(k) = b(k)) \implies f(a) = f(b)).
+    \end{multline*}
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{With effects}
+
+  Store.
+
+  Exceptions.
+
+  Can we do it in Haskell?
+\end{frame}
+
+\begin{frame}
+  \frametitle{When is a realizer ``good''?}
+
+  Longley's notion of functional realizer.
+
+  Why it is not suitable.
+
+  Can we do better?
+\end{frame}
+
+
+\end{document}
