@@ -254,13 +254,13 @@ not Necessarily Functional Programming}
     \begin{itemize}
     \item first-order logic
     \item rich set constructions, including dependent types
-    \item support for parametrized theories, e.g., the theory of a
-      vector space parametrized by a field.
+    \item support for parameterized theories, e.g., the theory of a
+      vector space parameterized by a field.
     \end{itemize}
   \item Output: program specifications
     %
     \begin{itemize}
-    \item OCaml signatures
+    \item Ocaml signatures
     \item Assertions about programs
     \end{itemize}
   \item Automatically eliminates non-computational realizers.
@@ -278,7 +278,7 @@ not Necessarily Functional Programming}
     \item wrote down theories of $\omega$-cpos,
       the interval domain and real numbers,
     \item translated them to specifications with RZ,
-    \item implementd the specification efficiently.
+    \item implemented the specification efficiently.
     \end{itemize}
   \item Conclusion: it works, but we have no tool to prove that our
     programs satisfy the assertions.
@@ -309,7 +309,7 @@ not Necessarily Functional Programming}
     contains a $1$.''
   \item ``A program which does not run forever terminates.''
   \item Provable in classical logic.
-  \item Cannot be proved in intuitionistc logic.
+  \item Cannot be proved in intuitionistic logic.
   \item $\forall a : \{0,1\}^\NN .\,
     (\lnot \forall n : \NN .\, a(n) = 0) \implies
     \exists n : \NN .\, a(n) = 1.$
@@ -360,21 +360,34 @@ let mp a =
 \begin{frame}[fragile]
   \frametitle{Continuity principle with store}
 
+  \begin{itemize}
+  \item How can we discover how many terms of $a(0)$, $a(1)$, \dots
+    are used by $\mathtt{f}$?
+  \item Feed $\mathtt{f}$ a sequence which is just like $a$, except
+    that it also stores the largest argument at which $\mathtt{f}$
+    evaluated it.
+  \item The code:
 \begin{source}
 let cont f a =
   let k = ref 0 in
   let b n = (k := max !k n; a n) in
     f b ; !k
 \end{source}
+  \end{itemize}
 
 \end{frame}
 
 \begin{frame}[fragile]
   \frametitle{Continuity principle with exceptions}
 
+
+  \begin{itemize}
+  \item Similar idea: throw an exception if $\mathtt{f}$ looks past a
+    threshold, and keep increasing the threshold until no exception is
+    raise.
+  \item The code
 \begin{source}
 exception Abort
-
 let cont f a =
   let rec search k =
     try
@@ -386,24 +399,60 @@ let cont f a =
   in
     search 0
 \end{source}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Can we prove these realizers work?}
-
-  \begin{itemize}
-  \item Store: presumably yes, using separation logic.
-  \item But with global store it does not work!
   \end{itemize}
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{Global store and continuity principle}
+  \frametitle{Can we prove these realizers work?}
 
+  \begin{itemize}
+  \item Store: presumably yes, using separation logic.
+  \item But with global store it does \emph{not} work:
 
+\begin{source}
+let k = ref 0
+let cont f a =
+  let b n = (k := max !k n; a n) in
+    f b ; !k
+\end{source}
 
+\item 
+This version is foiled by
+
+\begin{source}
+let f a =
+  let m = a 42 in k := 0 ; m
+\end{source}
+\item Note: Haskell's \texttt{State} monad is global store.
+\end{itemize}
 \end{frame}
 
+\begin{frame}[fragile]
+  \frametitle{Realizer with exceptions does not work!}
+
+  \begin{itemize}
+  \item 
+    The realizer using exceptions does \emph{not} work.
+  \item Foiled by
+
+\begin{source}
+let f a =
+  try a 42 with Abort -> 23
+\end{source}
+
+\item 
+Even if \texttt{Abort} is declared locally, we can still catch all
+exceptions in ML:
+  
+\begin{source}
+let f a =
+  try a 42 with _ -> 23
+\end{source}
+\item Haskell also has global exceptions.
+
+  \end{itemize}
+
+\end{frame}
 
 \begin{frame}
   \frametitle{Conclusion}
@@ -416,6 +465,7 @@ let cont f a =
     elegance or efficiency of programs.
   \item Constructive reasoning principles are a mathematical
     abstraction of non-functional programming features.
+  \item We need to study non-functional features more carefully.
   \end{itemize}
 
 \end{frame}
