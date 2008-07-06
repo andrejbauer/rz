@@ -1,4 +1,4 @@
-\documentclass[t]{beamer}
+ \documentclass[t]{beamer}
 
 \usepackage{palatino}
 \usepackage{amsfonts}
@@ -17,6 +17,7 @@
 \newcommand{\QQ}{\mathbb{Q}}
 \newcommand{\CC}{\mathbb{C}}
 \newcommand{\rz}{\Vdash}
+\newcommand{\nat}{\mathtt{nat}}
 
 \title{Mathematically Structured but\\
 not Necessarily Functional Programming}
@@ -39,32 +40,46 @@ not Necessarily Functional Programming}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Talk outline}
+  \frametitle{Ways of Mathematically Structured Programming}
 
   \begin{itemize}
-  \item Program development in type theory
-  \item Relizability as an alternative
-  \item RZ -- specifications via realizability
-  \item Examples of non-functional realizers in constructive mathematics
+  \item Use math to develop new programming constructs (monads).
+  \item Use math to reason and construct programs (Coq).
+  \item Programming by proving theorems (propositions as types).
+  \item Proving theorems by programing (types as propositions).
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Propositions as types (theory)}
+  \frametitle{Outline}
 
   \begin{itemize}
-  \item Curry-Howard correspondence:
+  \item Programming = Proving (propositions as types)
+  \item Programming = Proving (realizability)
+  \item RZ -- specifications via realizability
+  \item Examples of non-functional realizers in constructive mathematics
+  \end{itemize}
+  
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Programming by proving}
+
+  \begin{itemize}
+  \item The Curry-Howard correspondence:
     %
-    \begin{alignat*}{3}
-      \mathrm{Type} &= \mathrm{Prop} &= \mathrm{Set} \\
-      \mathrm{program} &= \mathrm{proof} &= \mathrm{element}
-    \end{alignat*}
-  \item Mathematically structured programming:
+    \begin{gather*}
+      \mathrm{Type} = \mathrm{Prop} = \mathrm{Set} \\
+      \mathrm{program} = \mathrm{proof} = \mathrm{element}
+    \end{gather*}
+  \item Programming by proving theorems:
     %
-    \begin{quote}
-      ``(Constructive) proofs of mathematically meaningful theorems
-      give useful programs.''
-    \end{quote}
+    \begin{center}
+      \emph{``Constructive proofs of \\
+        mathematically meaningful theorems \\
+        give useful programs.''}
+  \end{center}
   \end{itemize}
 \end{frame}
 
@@ -85,9 +100,9 @@ not Necessarily Functional Programming}
       \mathtt{deg}(p)) \to
       \sum_{z : \mathtt{complex}} \mathtt{eq}(p(z),0).
     \end{equation*}
-  \item What are $\mathtt{poly}$, $\mathtt{less}$, $\mathtt{complex}$, and $\mathtt{eq}$?
-  \item Programming language are usually \emph{not} dependently typed.
-  \item Can we get rid of $\mathtt{less}$ and $\mathtt{eq}$ to get simply
+  \item Must also define $\mathtt{poly}$, $\mathtt{less}$, $\mathtt{complex}$, and $\mathtt{eq}$.
+  \item Can we get rid of $\mathtt{less}$ and $\mathtt{eq}$?
+  \item Can we get rid of dependent types and have just
     %
     \begin{equation*}
       \mathtt{poly} \to \mathtt{complex} \; ?
@@ -97,7 +112,7 @@ not Necessarily Functional Programming}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Propositions as Types (practice a la Coq)}
+  \frametitle{Programming by proving a la Coq}
 
   \begin{itemize}
   \item Distinguish between computational and non-computational types:
@@ -106,11 +121,14 @@ not Necessarily Functional Programming}
       \mathtt{Set} &: \text{the sort of computational types} \\
       \mathtt{Prop} &: \text{the sort of non-computational types}
     \end{align*}
-  \item In previous example, $\mathtt{poly}$ and $\mathtt{complex}$
-    are computational and $\mathtt{less}$ and $\mathtt{eq}$ are
-    non-computational.
-  \item Actually, $\mathtt{poly}$ and $\mathtt{complex}$ are
-    \emph{setoids}, i.e., types equipped with an equivalence relation.
+  \item We also need \emph{setoids}, which are (computational) types
+    with (non-computational) equivalence relations.
+  \item In the previous example:
+    %
+    \begin{itemize}
+    \item Non-computational: $\mathtt{less}$, $\mathtt{eq}$.
+    \item Setoids: $\mathtt{poly}$, $\mathtt{complex}$.
+    \end{itemize}
   \item Coq's extraction mechanism gives an Ocaml or Haskell program of type
     $\mathtt{poly} \to \mathtt{complex}$.
   \end{itemize}
@@ -118,11 +136,15 @@ not Necessarily Functional Programming}
 
 
 \begin{frame}
-  \frametitle{Problems}
+  \frametitle{Does it actually work?}
 
   \begin{itemize}
-  \item It can be tricky to write efficient programs by proving
-    mathematically meaningful theorems.
+  \item Programmers want to write programs, not proofs.
+  \item And often it really is easier to just write a program.
+  \item The most efficient proof may not correspond to the most
+    efficient program.
+  \item When we use complex tactics, we may lose control of what the
+    extracted program does.
   \item Proofs give purely functional code. What if we want to use
     computational effects (store, exceptions, non-termination)?
   \end{itemize}
@@ -130,178 +152,189 @@ not Necessarily Functional Programming}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Mathematically Structured Programming}
+  \frametitle{What really happens}
 
   \begin{itemize}
   \item Write programs directly, not as proofs.
-  \item Prove that the programs are correct.
+  \item Then prove that the programs are correct.
   \item Coq's \textsc{program} extension does this.
-  \item By adapting the type theory, we can even handle non-functional
-    programs:
-    \begin{itemize}
-    \item YNot
-    \item Separation logic
-    \end{itemize}
+  \item By adapting the type theory and the extraction mechanism, we
+    can even handle non-functional programs.
   \end{itemize}
+
+  \pause
+
+  The connection to constructive math is almost lost.
+
 \end{frame}
 
-
-\begin{frame}[fragile]
-  \frametitle{Not all programs are proofs}
+\begin{frame}
+  \frametitle{Programming by proving (a la realizability)}
 
   \begin{itemize}
-  \item Consider
+  \item Pick a reasonable programming language.
+  \item $\mathrm{Proofs} \subsetneq \mathrm{Programs}$.
+  \item Programs realize propositions.
+  \item To each proposition $\phi$ we assign a (simple) type of
+    realizers~$|\phi|$.
+  \item We we define a \emph{realizability predicate} on values of $|\phi|$:
     %
     \begin{equation*}
-      \forall m : \NN .\, \exists n : \NN .\, m < n
+      p \rz \phi \qquad \text{``$p$ realizers $\phi$.''}
     \end{equation*}
     %
-  \item The proof ``take $n$ to be $m+1$'' yields the realizer
-    %
-\begin{source}
-  let r = fun m -> m + 1      
-\end{source}
-    %
-  \item The following realizer does not correspond to a proof:
-    %
-\begin{source}
-  let s =
-    let k = ref 0 in
-      fun m -> (k := !k + 1; m + k)
-\end{source}
-    %
-    \end{itemize}
+    This is necessary because not every value in $|\phi|$ is a valid
+    realizer.
+  \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Sets and setoids}
+  \frametitle{Types of realizer}
+
+  \begin{align*}
+    |\top| &= \mathtt{unit} \\
+    |\bot| &= \mathtt{unit} \\
+    |e_1 =_A e_2| &= \mathtt{unit} \\
+    |\phi_1 \land \phi_2| &= |\phi_1| \times |\phi_2| \\
+    |\phi_1 \lor \phi_2| &= |\phi_1| + |\phi_2| \\
+    |\phi_1 \implies \phi_2| &= |\phi_1| \to |\phi_2| \\
+    |\forall x \in A .\, \phi| &= |A| \to |\phi| \\
+    |\exists x \in A .\, \phi| &= |A| \times |\phi|
+  \end{align*}
+
+  Propositions built only from $\top$, $\bot$, $=$, $\land$, $\to$
+  have trivial realizers.
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Realizability predicate}
+
+  \begin{xalignat*}{3}
+    () &\rz \top & & & & \\
+    () &\rz e_1 =_A e_2 &\text{iff}& &
+      &\text{$t_1 \simeq_A t_2$} \\
+    (p_1,p_2) &\rz \phi_1 \land \phi_2 &\text{iff}& &
+      &\text{$p_1 \rz \phi_1$ and $p_2 \rz \phi_2$} \\
+    \mathtt{inl}(p) &\rz \phi_1 \lor \phi_2 &\text{iff}& &
+      &\text{$p \rz \phi_1$} \\
+    \mathtt{inr}(p) &\rz \phi_1 \lor \phi_2 &\text{iff}& &
+      &\text{$p \rz \phi_2$} \\
+    p &\rz \phi_1 \implies \phi_2 &\text{iff}& &
+      &\text{if $q \rz \phi_1$ then $p\,q {\downarrow}$ and $p\,q \rz \phi_2$} \\
+    (p,q) &\rz \exists x \in A .\, \phi(x) &\text{iff}& &
+      &\text{for some $u$, $q \rz_A u$ and $p \rz \phi(u)$} \\
+    p &\rz \forall x \in A .\, \phi(x) &\text{iff}& &
+      &\text{if $q \rz_A u$ then $p\,q {\downarrow}$ and $p\,q \rz \phi(u)$}
+  \end{xalignat*}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Setoids in realizability}
 
   \begin{itemize}
-  \item Propositions as types:
+  \item In realizability setoids are types equipped with
+    \emph{partial} equivalence relations (symmetric, transitive).
+  \item This is necessary because not every value realizes an element.
+  \item Even when the programming language is simply typed, we can
+    interpret dependent setoid types.
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{RZ --- specifications via realizability}
+
+  \begin{itemize}
+  \item A tool written by Chris Stone and me.
+  \item It uses realizability to translate mathematical theories to
+    program specifications.
+  \item Input: mathematical theories
     %
     \begin{itemize}
-    \item types
-    \item setoids
+    \item first-order logic
+    \item rich set constructions, including dependent types
+    \item support for parametrized theories, e.g., the theory of a
+      vector space parametrized by a field.
     \end{itemize}
-  \item Realizability:
+  \item Output: program specifications
     %
     \begin{itemize}
-    \item sets
+    \item OCaml signatures
+    \item Assertions about programs
     \end{itemize}
+  \item Automatically eliminates non-computational realizers.
   \end{itemize}
-
 \end{frame}
 
 \begin{frame}
-  \frametitle{Pers}
-
-  Comparison with setoids.
-
-\end{frame}
-
-\begin{frame}
-  \frametitle{Propositions as types}
+  \frametitle{Test case: Era}
 
   \begin{itemize}
-  \item A proposition $\phi$ is interpreted as a type $|\phi|$ in
-    \emph{dependent} type theory:
-    %
-    \begin{align*}
-      |\top| &= \mathtt{unit} \\
-      |\phi \land \psi| &= |\phi| \times |\psi| \\
-      |\phi \lor \psi| &= |\phi| + |\psi| \\
-      |\forall x : A .\, \phi| &= \textstyle\prod_{x : |A|} |\phi| \\
-      |\exists x : A .\, \phi| &= \textstyle\sum_{x : |A|} |\phi|
-    \end{align*}
-  \item All terms of type $|\phi|$ realize $\phi$:
-    %
-    \begin{equation*}
-      \text{``$r$ realizes $\phi$''} \iff r : |\phi|
-    \end{equation*}
+  \item A package for exact real numbers.
+  \item Written by Iztok Kavkler and me.
+  \item What we did:
+    \begin{itemize}
+    \item wrote down theories of $\omega$-cpos,
+      the interval domain and real numbers,
+    \item translated them to specifications with RZ,
+    \item implementd the specification efficiently.
+    \end{itemize}
+  \item Conclusion: it works, but we have no tool to prove that our
+    programs satisfy the assertions.
+  \item Plan: extend RZ so that it translates to Coq using the
+    \textsc{program} extension.
   \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{Realizability}
-
-  \begin{itemize}
-  \item A proposition $\phi$ is interpreted as a type $|\phi|$ in a
-    programming language:
-    %
-    \begin{align*}
-      |\top| &= \mathtt{unit} \\
-      |\phi \land \psi| &= |\phi| \times |\psi| \\
-      |\phi \lor \psi| &= |\phi| + |\psi| \\
-      |\forall x : A .\, \phi| &= |A| \to |\phi| \\
-      |\exists x : A .\, \phi| &= |A| \times |\phi|
-    \end{align*}
-  \item \emph{Not} all terms of $|\phi|$ realize $\phi$:
-    %
-    \begin{equation*}
-      \text{``$r$ realizes $\phi$''} \iff \text{$r : |\phi|$ and $r \Vdash \phi$}
-    \end{equation*}
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{RZ}
-
-  What it is.
-\end{frame}
-
-\begin{frame}
-  \frametitle{Example use of RZ}
-
-  Era.
-\end{frame}
-
-\begin{frame}
-  \frametitle{Translating into Coq}
-
-  Automatic separation of computational and non-computational part.
 \end{frame}
 
 \begin{frame}
   \frametitle{Non-functional realizers}
 
-  Realizers which use effects.
+  \begin{itemize}
+  \item There are constructive reasoning principles which cannot be
+    proved in pure intuitionistic logic.
+  \item They cannot be realized in pure type theory or pure Haskell.
+  \item They are realized by non-functionals programs.
+  \item Such principles express the mathematical meaning of
+    non-functional programs.
+  \end{itemize}
 
-  Usually they imply extra reasoning principles.
 \end{frame}
 
-\begin{frame}
-  \frametitle{Unbounded search and Markov Principle}
+\begin{frame}[fragile]
+  \frametitle{Markov Principle}
 
   \begin{itemize}
-  \item Markov principle: a sequence of $0$'s and $1$'s whose terms
-    are not all $0$ contains a $1$.
+  \item ``A sequence of $0$'s and $1$'s whose terms are not all $0$
+    contains a $1$.''
+  \item ``A program which does not run forever terminates.''
   \item Provable in classical logic.
-  \item Not provable in intuitionistc logic.
-  \item As a formula:
+  \item Cannot be proved in intuitionistc logic.
+  \item $\forall a : \{0,1\}^\NN .\,
+    (\lnot \forall n : \NN .\, a(n) = 0) \implies
+    \exists n : \NN .\, a(n) = 1.$
+  \item RZ tells us that the realizer has type
     %
     \begin{equation*}
-      \forall a : \{0,1\}^\NN .\,
-      (\lnot \forall n : \NN .\, a(n) = 0) \implies
-      \exists n : \NN .\, a(n) = 1.
+      (\mathtt{nat} \to \mathtt{bool}) \to \mathtt{nat}.
     \end{equation*}
+  \item Realized by unbounded search:
+      %
+    \begin{source}
+let mp a =
+  let n = ref 0 in
+    while not (a !n) do n := !n + 1 done ;
+    !n      
+    \end{source}
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Compactness of Cantor space}
-
-  Escardo's programs.
-
-  Decompile prevents it.
-\end{frame}
-
-\begin{frame}
-  \frametitle{Continuity principle}
+  \frametitle{Brouwer's Continuity Principle}
 
   \begin{itemize}
-  \item 
-    Every map $f : \NN^\NN \to \NN$ is continuous at every point $a \in
-    \NN^\NN$.
+  \item ``Every map is continuous.''
+  \item ``Every map $f : \NN^\NN \to \NN$ is continuous.''
   \item 
     In other words, $f(a)$ depends only on a finite prefix of
     $a(0), a(1), a(2), \ldots$.
@@ -316,32 +349,33 @@ not Necessarily Functional Programming}
       \forall b \in \NN^\NN .\,\\
       ((\forall k \leq n .\, a(k) = b(k)) \implies f(a) = f(b)).
     \end{multline*}
+  \item Realizers of type
+    %
+    \begin{equation*}
+      ((\nat \to \nat) \to \nat) \to (\nat \to \nat) \to \nat
+    \end{equation*}
   \end{itemize}
-
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{With store}
+  \frametitle{Continuity principle with store}
 
 \begin{source}
-let r f a =
+let cont f a =
   let k = ref 0 in
   let b n = (k := max !k n; a n) in
     f b ; !k
 \end{source}
 
-
-  Exceptions.
-
-  Can we do it in Haskell?
 \end{frame}
 
 \begin{frame}[fragile]
-  \frametitle{With exceptions}
+  \frametitle{Continuity principle with exceptions}
 
 \begin{source}
 exception Abort
-let r f a =
+
+let cont f a =
   let rec search k =
     try
       let b n = 
@@ -352,18 +386,38 @@ let r f a =
   in
     search 0
 \end{source}
-
-  Can we do it in Haskell?
 \end{frame}
 
 \begin{frame}
-  \frametitle{When is a realizer ``good''?}
+  \frametitle{Can we prove these realizers work?}
 
-  Longley's notion of functional realizer.
+  \begin{itemize}
+  \item Store: presumably yes, using separation logic.
+  \item But with global store it does not work!
+  \end{itemize}
+\end{frame}
 
-  Why it is not suitable.
+\begin{frame}[fragile]
+  \frametitle{Global store and continuity principle}
 
-  Can we do better?
+
+
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Conclusion}
+
+  \begin{itemize}
+  \item Realizability is a useful alternative to propositions as
+    types.
+  \item We \emph{can} keep the connection between constructive math
+    and programming tight, without sacrificing either mathematical
+    elegance or efficiency of programs.
+  \item Constructive reasoning principles are a mathematical
+    abstraction of non-functional programming features.
+  \end{itemize}
+
 \end{frame}
 
 
