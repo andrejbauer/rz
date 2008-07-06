@@ -14,6 +14,8 @@
 
 
 \newcommand{\NN}{\mathbb{N}}
+\newcommand{\QQ}{\mathbb{Q}}
+\newcommand{\CC}{\mathbb{C}}
 \newcommand{\rz}{\Vdash}
 
 \title{Mathematically Structured but\\
@@ -37,60 +39,112 @@ not Necessarily Functional Programming}
 \end{frame}
 
 \begin{frame}
-  \frametitle{One-page summary of the talk}
+  \frametitle{Talk outline}
 
   \begin{itemize}
-  \item Realizability
-  \item Specifications via realizability
-  \item Examples of non-functional realizers
+  \item Program development in type theory
+  \item Relizability as an alternative
+  \item RZ -- specifications via realizability
+  \item Examples of non-functional realizers in constructive mathematics
   \end{itemize}
 \end{frame}
 
 \begin{frame}
-  \frametitle{Program development via ``propositions as types''}
+  \frametitle{Propositions as types (theory)}
 
   \begin{itemize}
-  \item Mathematical foundation: type theory
-  \item Interactive proof assistant such as Coq
-  \item Extraction of programs from formal proofs, or
-  \item Programs written directly and proved correct
-  \end{itemize}
-\end{frame}
-
-\begin{frame}
-  \frametitle{How it is done in Coq}
-
-  \begin{itemize}
-  \item Propositions as types
-  \item Computational part -- the sort \texttt{Set}
-  \item Non-computational part -- the sort \texttt{Prop}
-  \item Furthermore, use \emph{setoids} instead of types
-  \end{itemize}
-
-\end{frame}
-
-\begin{frame}
-  \frametitle{What about impure programs?}
-
-  YNot, Nanevski.
-\end{frame}
-
-
-\begin{frame}
-  \frametitle{Realizability as an alternative}
-
-  \begin{itemize}
-  \item We embrace the fact that $\text{proofs} \subsetneq \text{programs}$.
-  \item A proposition is:
+  \item Curry-Howard correspondence:
     %
-    \begin{itemize}
-    \item \emph{provable} if witnessed by a proof
-    \item \emph{realizable} if witnessed by a program
-    \end{itemize}
-  \item $\text{Provable} \implies \text{realizable}$
+    \begin{alignat*}{3}
+      \mathrm{Type} &= \mathrm{Prop} &= \mathrm{Set} \\
+      \mathrm{program} &= \mathrm{proof} &= \mathrm{element}
+    \end{alignat*}
+  \item Mathematically structured programming:
+    %
+    \begin{quote}
+      ``(Constructive) proofs of mathematically meaningful theorems
+      give useful programs.''
+    \end{quote}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}
+  \frametitle{Example: Fundamental Theorem of Algebra}
+
+  \begin{itemize}
+  \item ``Every non-constant polynomial has a complex root.''
+  \item First-order logic:
+    \begin{equation*}
+      \forall p \in \QQ[x] .\,
+      0 < \mathrm{deg}(p) \implies \exists z \in \CC .\, p(z) = 0.
+    \end{equation*}
+  \item Type theory:
+    \begin{equation*}
+      \textstyle
+      \prod_{p : \mathtt{poly}} \mathtt{less}(0,
+      \mathtt{deg}(p)) \to
+      \sum_{z : \mathtt{complex}} \mathtt{eq}(p(z),0).
+    \end{equation*}
+  \item What are $\mathtt{poly}$, $\mathtt{less}$, $\mathtt{complex}$, and $\mathtt{eq}$?
+  \item Programming language are usually \emph{not} dependently typed.
+  \item Can we get rid of $\mathtt{less}$ and $\mathtt{eq}$ to get simply
+    %
+    \begin{equation*}
+      \mathtt{poly} \to \mathtt{complex} \; ?
+    \end{equation*}
   \end{itemize}
 
 \end{frame}
+
+\begin{frame}
+  \frametitle{Propositions as Types (practice a la Coq)}
+
+  \begin{itemize}
+  \item Distinguish between computational and non-computational types:
+    %
+    \begin{align*}
+      \mathtt{Set} &: \text{the sort of computational types} \\
+      \mathtt{Prop} &: \text{the sort of non-computational types}
+    \end{align*}
+  \item In previous example, $\mathtt{poly}$ and $\mathtt{complex}$
+    are computational and $\mathtt{less}$ and $\mathtt{eq}$ are
+    non-computational.
+  \item Actually, $\mathtt{poly}$ and $\mathtt{complex}$ are
+    \emph{setoids}, i.e., types equipped with an equivalence relation.
+  \item Coq's extraction mechanism gives an Ocaml or Haskell program of type
+    $\mathtt{poly} \to \mathtt{complex}$.
+  \end{itemize}
+\end{frame}
+
+
+\begin{frame}
+  \frametitle{Problems}
+
+  \begin{itemize}
+  \item It can be tricky to write efficient programs by proving
+    mathematically meaningful theorems.
+  \item Proofs give purely functional code. What if we want to use
+    computational effects (store, exceptions, non-termination)?
+  \end{itemize}
+
+\end{frame}
+
+\begin{frame}
+  \frametitle{Mathematically Structured Programming}
+
+  \begin{itemize}
+  \item Write programs directly, not as proofs.
+  \item Prove that the programs are correct.
+  \item Coq's \textsc{program} extension does this.
+  \item By adapting the type theory, we can even handle non-functional
+    programs:
+    \begin{itemize}
+    \item YNot
+    \item Separation logic
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
 
 \begin{frame}[fragile]
   \frametitle{Not all programs are proofs}
