@@ -244,8 +244,8 @@ and annotateEqual cntxt orig_expr expr1 expr2 =
   let (trm1',ty1') = LR.coerceFromSubset cntxt trm1 ty1 in
   let (trm2',ty2') = LR.coerceFromSubset cntxt trm2 ty2 in
   let (ty, _) = LR.joinTypes cntxt [ty1'; ty2'] in
-  let trm1'' = LR.coerce cntxt trm1' ty1 ty  in
-  let trm2'' = LR.coerce cntxt trm2' ty2 ty  in
+  let trm1'' = LR.coerce cntxt trm1' ty1' ty  in
+  let trm2'' = LR.coerce cntxt trm2' ty2' ty  in
   ResProp( L.Equal(ty, trm1'', trm2''),
            L.StableProp )
 

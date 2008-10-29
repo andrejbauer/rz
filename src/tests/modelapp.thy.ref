@@ -3,47 +3,47 @@ module type A =
  sig
    type a
     
-   (**{v predicate (=a=) : a -> a -> bool v}*)
-   (**  {v assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x v}
+   (** predicate (=a=) : a -> a -> bool *)
+   (**   assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x 
          
-        {v assertion transitive_a : 
-          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z v}
+         assertion transitive_a : 
+          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z 
    *)
     
-   (**{v predicate ||a|| : a -> bool v}*)
-   (**  {v assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x v}
+   (** predicate ||a|| : a -> bool *)
+   (**   assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x 
    *)
     
    val c : a
-   (**  {v assertion c_support :  c : ||a|| v}
+   (**   assertion c_support :  c : ||a|| 
    *)
     
    module E : sig
                 type e
                  
-                (**{v predicate (=e=) : e -> e -> bool v}*)
-                (**  {v assertion symmetric_e : 
-                       forall x:e, y:e,  x =e= y -> y =e= x v}
+                (** predicate (=e=) : e -> e -> bool *)
+                (**   assertion symmetric_e : 
+                       forall x:e, y:e,  x =e= y -> y =e= x 
                       
-                     {v assertion transitive_e : 
-                       forall x:e, y:e, z:e,  x =e= y /\ y =e= z -> x =e= z v}
+                      assertion transitive_e : 
+                       forall x:e, y:e, z:e,  x =e= y /\ y =e= z -> x =e= z 
                 *)
                  
-                (**{v predicate ||e|| : e -> bool v}*)
-                (**  {v assertion support_def_e : 
-                       forall x:e,  x : ||e|| <-> x =e= x v}
+                (** predicate ||e|| : e -> bool *)
+                (**   assertion support_def_e : 
+                       forall x:e,  x : ||e|| <-> x =e= x 
                 *)
                  
                 type f = e
                  
-                (**{v predicate ||f|| : f -> bool v}*)
-                (**  {v assertion f_def_support : 
-                       forall x:f,  x : ||f|| <-> x : ||e|| v}
+                (** predicate ||f|| : f -> bool *)
+                (**   assertion f_def_support : 
+                       forall x:f,  x : ||f|| <-> x : ||e|| 
                 *)
                  
-                (**{v predicate (=f=) : f -> f -> bool v}*)
-                (**  {v assertion f_def_per : 
-                       forall x:f, y:f,  x =f= y <-> x =e= y v}
+                (** predicate (=f=) : f -> f -> bool *)
+                (**   assertion f_def_per : 
+                       forall x:f, y:f,  x =f= y <-> x =e= y 
                 *)
               end
  end
@@ -52,73 +52,71 @@ module type B =
  sig
    type a
     
-   (**{v predicate (=a=) : a -> a -> bool v}*)
-   (**  {v assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x v}
+   (** predicate (=a=) : a -> a -> bool *)
+   (**   assertion symmetric_a :  forall x:a, y:a,  x =a= y -> y =a= x 
          
-        {v assertion transitive_a : 
-          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z v}
+         assertion transitive_a : 
+          forall x:a, y:a, z:a,  x =a= y /\ y =a= z -> x =a= z 
    *)
     
-   (**{v predicate ||a|| : a -> bool v}*)
-   (**  {v assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x v}
+   (** predicate ||a|| : a -> bool *)
+   (**   assertion support_def_a :  forall x:a,  x : ||a|| <-> x =a= x 
    *)
     
    type b = a
     
-   (**{v predicate ||b|| : b -> bool v}*)
-   (**  {v assertion b_def_support :  forall x:b,  x : ||b|| <-> x : ||a|| v}
+   (** predicate ||b|| : b -> bool *)
+   (**   assertion b_def_support :  forall x:b,  x : ||b|| <-> x : ||a|| 
    *)
     
-   (**{v predicate (=b=) : b -> b -> bool v}*)
-   (**  {v assertion b_def_per :  forall x:b, y:b,  x =b= y <-> x =a= y v}
+   (** predicate (=b=) : b -> b -> bool *)
+   (**   assertion b_def_per :  forall x:b, y:b,  x =b= y <-> x =a= y 
    *)
     
    type b'
     
-   (**{v predicate (=b'=) : b' -> b' -> bool v}*)
-   (**  {v assertion symmetric_b' : 
-          forall x:b', y:b',  x =b'= y -> y =b'= x v}
+   (** predicate (=b'=) : b' -> b' -> bool *)
+   (**   assertion symmetric_b' :  forall x:b', y:b',  x =b'= y -> y =b'= x 
          
-        {v assertion transitive_b' : 
-          forall x:b', y:b', z:b',  x =b'= y /\ y =b'= z -> x =b'= z v}
+         assertion transitive_b' : 
+          forall x:b', y:b', z:b',  x =b'= y /\ y =b'= z -> x =b'= z 
    *)
     
-   (**{v predicate ||b'|| : b' -> bool v}*)
-   (**  {v assertion support_def_b' : 
-          forall x:b',  x : ||b'|| <-> x =b'= x v}
+   (** predicate ||b'|| : b' -> bool *)
+   (**   assertion support_def_b' :  forall x:b',  x : ||b'|| <-> x =b'= x 
    *)
     
    val c : a
-   (**  {v assertion c_support :  c : ||a|| v}
+   (**   assertion c_support :  c : ||a|| 
    *)
     
    val d : b
-   (**  {v assertion d_support :  d : ||b|| v}
+   (**   assertion d_support :  d : ||b|| 
    *)
     
    module E : sig
                 type e = a
                  
-                (**{v predicate ||e|| : e -> bool v}*)
-                (**  {v assertion e_def_support : 
-                       forall x:e,  x : ||e|| <-> x : ||a|| v}
+                (** predicate ||e|| : e -> bool *)
+                (**   assertion e_def_support : 
+                       forall x:e,  x : ||e|| <-> x : ||a|| 
                 *)
                  
-                (**{v predicate (=e=) : e -> e -> bool v}*)
-                (**  {v assertion e_def_per : 
-                       forall x:e, y:e,  x =e= y <-> x =a= y v}
+                (** predicate (=e=) : e -> e -> bool *)
+                (**   assertion e_def_per : 
+                       forall x:e, y:e,  x =e= y <-> x =a= y 
                 *)
                  
                 type f = b
                  
-                (**{v predicate ||f|| : f -> bool v}*)
-                (**  {v assertion f_def_support : 
-                       forall x:f,  x : ||f|| <-> x : ||b|| v}
+                (** predicate ||f|| : f -> bool *)
+                (**   assertion f_def_support : 
+                       forall x:f,  x : ||f|| <-> x : ||b|| 
                 *)
                  
-                (**{v predicate (=f=) : f -> f -> bool v}*)
-                (**  {v assertion f_def_per : 
-                       forall x:f, y:f,  x =f= y <-> x =b= y v}
+                (** predicate (=f=) : f -> f -> bool *)
+                (**   assertion f_def_per : 
+                       forall x:f, y:f,  x =f= y <-> x =b= y 
                 *)
               end
  end
@@ -132,14 +130,13 @@ module type C =
     
    type a = FF(BB).a
     
-   (**{v predicate ||a|| : a -> bool v}*)
-   (**  {v assertion a_def_support : 
-          forall x:a,  x : ||a|| <-> x : ||FF(BB).a|| v}
+   (** predicate ||a|| : a -> bool *)
+   (**   assertion a_def_support : 
+          forall x:a,  x : ||a|| <-> x : ||FF(BB).a|| 
    *)
     
-   (**{v predicate (=a=) : a -> a -> bool v}*)
-   (**  {v assertion a_def_per : 
-          forall x:a, y:a,  x =a= y <-> x =FF(BB).a= y v}
+   (** predicate (=a=) : a -> a -> bool *)
+   (**   assertion a_def_per :  forall x:a, y:a,  x =a= y <-> x =FF(BB).a= y 
    *)
  end
 

@@ -120,7 +120,7 @@ and term =
     | Let      of binding * term * term * set  (* set is type of the whole let *)
     | Subin    of term * binding * proposition (* [Subin(a,(x,t),p)] coerces [a] to [{x:t|p}] *)
     | Subout   of term * set
-    | IdentityCoerce of term * set * set * proposition list (* from first set to second set, which are supposed to be equal except we can't check it.l *)
+    | IdentityCoerce of term * set * set * proposition list (* from first set to second set, which are supposed to be equal except we can't check it. *)
 
 and bop = AndOp | OrOp | ImplyOp | IffOp
 
@@ -346,7 +346,7 @@ and string_of_term trm =
     | The(bnd,prp) ->
 	"(the " ^ string_of_bnd bnd ^ " . " ^ string_of_prop prp ^ ")"
     | IdentityCoerce(trm, ty1, ty2, _) ->
-	"(" ^ toStr trm ^ " : " ^ string_of_set ty1 ^ " :> " ^
+	"(" ^ toStr trm ^ " : " ^ string_of_set ty1 ^ " ~> " ^
 	  string_of_set ty2 ^ ")"
   in
     toStr trm)

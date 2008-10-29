@@ -3,49 +3,49 @@ module type T =
  sig
    type s
     
-   (**{v predicate (=s=) : s -> s -> bool v}*)
-   (**  {v assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x v}
+   (** predicate (=s=) : s -> s -> bool *)
+   (**   assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x 
          
-        {v assertion transitive_s : 
-          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z v}
+         assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z 
    *)
     
-   (**{v predicate ||s|| : s -> bool v}*)
-   (**  {v assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x v}
+   (** predicate ||s|| : s -> bool *)
+   (**   assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x 
    *)
     
    type t
     
-   (**{v predicate (=t=) : s -> t -> t -> bool v}*)
-   (**  {v assertion strict_t : 
-          forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s|| v}
+   (** predicate (=t=) : s -> t -> t -> bool *)
+   (**   assertion strict_t : 
+          forall x:s, y:t, z:t,  y =(t x)= z -> x : ||s|| 
          
-        {v assertion extensional_t : 
-          forall x:s, y:s, z:t, w:t,  x =s= y -> z =(t x)= w -> z =(t y)= w v}
+         assertion extensional_t : 
+          forall x:s, y:s, z:t, w:t,  x =s= y -> z =(t x)= w -> z =(t y)= w 
          
-        {v assertion symmetric_t : 
-          forall x:s, y:t, z:t,  y =(t x)= z -> z =(t x)= y v}
+         assertion symmetric_t : 
+          forall x:s, y:t, z:t,  y =(t x)= z -> z =(t x)= y 
          
-        {v assertion transitive_t : 
+         assertion transitive_t : 
           forall x:s, y:t, z:t, w:t,  y =(t x)= z /\ z =(t x)= w ->
-            y =(t x)= w v}
+            y =(t x)= w 
    *)
     
-   (**{v predicate ||t|| : s -> t -> bool v}*)
-   (**  {v assertion support_def_t : 
-          forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y v}
+   (** predicate ||t|| : s -> t -> bool *)
+   (**   assertion support_def_t : 
+          forall x:s, y:t,  y : ||t x|| <-> y =(t x)= y 
    *)
     
    val a : s * t
-   (**  {v assertion a_support :  pi0 a : ||s|| /\ pi1 a : ||t (pi0 a)|| v}
+   (**   assertion a_support :  pi0 a : ||s|| /\ pi1 a : ||t (pi0 a)|| 
    *)
     
    val b : s * t
-   (**  {v assertion b_support :  pi0 b : ||s|| /\ pi1 b : ||t (pi0 b)|| v}
+   (**   assertion b_support :  pi0 b : ||s|| /\ pi1 b : ||t (pi0 b)|| 
    *)
     
    
-   (**  {v assertion eq :  pi0 a =s= pi0 b /\ pi1 a =(t (pi0 a))= pi1 b v}
+   (**   assertion eq :  pi0 a =s= pi0 b /\ pi1 a =(t (pi0 a))= pi1 b 
    *)
  end
 

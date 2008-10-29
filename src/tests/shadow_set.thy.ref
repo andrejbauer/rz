@@ -3,15 +3,15 @@ module type T =
  sig
    type s
     
-   (**{v predicate (=s=) : s -> s -> bool v}*)
-   (**  {v assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x v}
+   (** predicate (=s=) : s -> s -> bool *)
+   (**   assertion symmetric_s :  forall x:s, y:s,  x =s= y -> y =s= x 
          
-        {v assertion transitive_s : 
-          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z v}
+         assertion transitive_s : 
+          forall x:s, y:s, z:s,  x =s= y /\ y =s= z -> x =s= z 
    *)
     
-   (**{v predicate ||s|| : s -> bool v}*)
-   (**  {v assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x v}
+   (** predicate ||s|| : s -> bool *)
+   (**   assertion support_def_s :  forall x:s,  x : ||s|| <-> x =s= x 
    *)
  end
 
