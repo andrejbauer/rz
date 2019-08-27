@@ -33,7 +33,7 @@ To compile RZ, perform the following steps from the command line
 
 Run
 
-    `./rz.exe --help`
+    ./rz.exe --help
 
 to see basic usage information.
 
