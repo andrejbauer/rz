@@ -1,10 +1,7 @@
 # Configure the name of the executable
 
 # Linux, Unix, MacOS
-EXECUTABLE=rz
-
-# Windows
-#EXECUTABLE=rz.exe
+EXECUTABLE=rz.exe
 
 # Probably you do not have to change anything below this line
 
@@ -40,7 +37,7 @@ OCAMLYFLAGS = -v
 INCLUDES =
 
 OCAMLFLAGS = $(INCLUDES) -g # -p a
-OCAMLCPFLAGS = 
+OCAMLCPFLAGS =
 OCAMLOPTFLAGS =  $(INCLUDES)
 
 CMO = $(SOURCES:.ml=.cmo)
@@ -52,7 +49,7 @@ LIBSOPT = str.cmxa
 TARGET = $(EXECUTABLE)
 TARGETOPT = opt_$(EXECUTABLE)
 
-default: $(TARGET) 
+default: $(TARGET)
 
 all: $(TARGET) $(TARGETOPT)
 	echo $(TARGET)
@@ -68,17 +65,17 @@ parser.cmo: parser.ml parser.cmi
 
 parser.cmx: parser.ml parser.cmi
 
-parser.cmi: parser.mli 
+parser.cmi: parser.mli
 	$(OCAMLC) $(OCAMLFLAGS) -c parser.mli
 
-lexer.ml: lexer.mll 
+lexer.ml: lexer.mll
 	$(OCAMLLEX) lexer.mll
 
 parser.ml parser.mli: parser.mly
 	$(OCAMLYACC) $(OCAMLYFLAGS) parser.mly
 
 $(TARGET): %: $(CMO)
-	$(OCAMLC) -o $(TARGET) $(OCAMLFLAGS) $(LIBS) $+ 
+	$(OCAMLC) -o $(TARGET) $(OCAMLFLAGS) $(LIBS) $+
 
 $(TARGETOPT): %: $(CMX)
 	$(OCAMLOPT) -o $(TARGETOPT) $(OCAMLOPTFLAGS) $(LIBSOPT) $+
